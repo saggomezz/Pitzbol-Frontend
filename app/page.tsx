@@ -16,7 +16,7 @@ export default function Home() {
 
         {/* Título */}
         <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-50 mb-4">
-          Bienvenido a <span className="text-pink-600">Pitzbol</span>
+          Bienvenido a <span className="text-pink-600">Pitzbol</span>🔒
         </h1>
 
         {/* Subtítulo */}
