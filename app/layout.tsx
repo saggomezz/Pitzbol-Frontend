@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+// 1. Importa Montserrat (o la fuente que quieras)
 import { Geist, Geist_Mono } from "next/font/google";
+import { Montserrat } from "next/font/google"; // <--- AÑADE ESTA LÍNEA
 import "./globals.css";
 
 const geistSans = Geist({
@@ -10,6 +12,13 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+// 2. Configura la nueva fuente
+const montserrat = Montserrat({
+  variable: "--font-montserrat",  // <--- AÑADE ESTO
+  subsets: ["latin"],
+  weight: ["800", "900"], // Pide los pesos que usarás para el logo
 });
 
 export const metadata: Metadata = {
@@ -24,8 +33,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      {/* 3. Añade la variable de la fuente al body */}
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} antialiased`} // <--- AÑADE ${montserrat.variable}
       >
         {children}
       </body>
