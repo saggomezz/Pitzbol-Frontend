@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { FiUser, FiSearch, FiMenu } from "react-icons/fi";
 
 // --- 1. Definición de Tipos (Mejora la legibilidad y seguridad) ---
@@ -65,7 +66,7 @@ const Header = () => (
     </h1>
     <div className="hidden md:flex items-center gap-6">
       <button className="text-sm font-medium hover:text-red-500 transition-colors duration-300">
-        Identifícate
+        <Link href="/login">Identifícate</Link>
       </button>
       <button className="p-2 rounded-full hover:bg-[#143f56] transition-colors duration-300">
         <FiSearch size={20} />
