@@ -1,3 +1,9 @@
+PROYECTO DE TITULACION DE PILAR MORA Y MANUEL MENDOZA
+
+El objetivo de Pitzbol es desarrollar una plataforma web progresiva (PWA) que ayude a turistas y aficionados que visitarán México durante el Mundial a planificar sus recorridos de manera rápida, inteligente y personalizada. El sistema utilizará algoritmos de recomendación e itinerarios automáticos basados en la ubicación, preferencias y tiempo disponible del usuario, generando rutas optimizadas y fáciles de seguir.
+
+Además, el proyecto busca ofrecer una interfaz intuitiva, un rendimiento ágil en dispositivos móviles y la capacidad de funcionar sin instalación, permitiendo que cualquier usuario acceda a la plataforma desde su navegador y obtenga sugerencias relevantes en tiempo real.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
