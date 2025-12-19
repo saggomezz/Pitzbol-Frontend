@@ -1,7 +1,7 @@
 import Image from "next/image";
-import { FiSearch, FiMenu } from "react-icons/fi";
-import imgPasto from "./components/pastoVerde.png";
+import { FiMenu, FiSearch } from "react-icons/fi";
 import imglogo from "./components/logoPitzbol.png";
+import imgPasto from "./components/pastoVerde.png";
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
