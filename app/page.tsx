@@ -1,7 +1,14 @@
+"use client";
+
 import Image from "next/image";
-import { FiMenu, FiSearch } from "react-icons/fi";
+import { FiMenu, FiSearch, FiX, FiUser } from "react-icons/fi";
 import imglogo from "./components/logoPitzbol.png";
 import imgPasto from "./components/pastoVerde.png";
+import Link from "next/link";
+import React, { useState } from "react";
+import { GiSoccerBall } from "react-icons/gi"; // Importamos un balón de fútbol
+
+
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -23,71 +30,106 @@ const dates: DateInfo[] = [
   { day: "14", weekday: "DOM", fullDate: "2026-06-14", isGdlMatch: false, isActive: false },
 ];
 
+interface MatchProps {
+  location: string;
+  date: string;
+  team1: string;
+  flag1: string;
+  team2: string;
+  flag2: string;
+  time: string;
+}
 const recommendations: Recommendation[] = [
   { name: "Centro de Guadalajara", img: "https://www.liderempresarial.com/wp-content/uploads/2025/07/Asi-se-transformara-el-centro-de-Guadalajara-%C2%BFcuando-estara-listo.jpg" },
   { name: "Tlaquepaque", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
   { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
 ];
 
-const Header = () => (
-  <nav className="flex justify-between items-center bg-[#F6F0E6] px-2 md:px-8 h-20 md:h-24 sticky top-0 z-50 shadow-sm overflow-hidden">
-    <div className="flex items-center h-full max-w-[80%] md:max-w-none">
-      {/* 1. LOGO:*/}
-      <div className="relative h-24 w-24 md:h-32 md:w-32 right-2 md:right-5 flex-shrink-0">
-        <Image
-          src={imglogo}
-          alt="logoPitzbol"
-          fill
-          className="object-contain"
-          priority
-        />
-      </div>
+const Header = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-      {/* 2. CONTENEDOR NOMBRE + PASTO */}
-      <div className="relative flex items-center h-full ml-1 md:ml-2">
-        <div className="absolute inset-y-0 -left-6 sm:-left-6 md:-left-9 md:top-10 top-6 z-0 flex items-center w-[120%] min-w-[200px] sm:min-w-[120px] md:min-w-[350px]">
-          <Image
-            src={imgPasto}
-            alt="pastoVerde"
-            className="object-contain"
-          />
+  return (
+    <>
+      <nav className="flex justify-between items-center bg-[#F6F0E6] px-2 md:px-8 h-20 md:h-24 sticky top-0 z-50 shadow-sm overflow-hidden">
+        <div className="flex items-center h-full max-w-[80%] md:max-w-none">
+          {/* LOGO */}
+          <div className="relative h-24 w-24 md:h-32 md:w-32 right-2 md:right-5 flex-shrink-0">
+            <Image src={imglogo} alt="logoPitzbol" fill className="object-contain" priority />
+          </div>
+
+          {/* NOMBRE + PASTO */}
+          <div className="relative flex items-center h-full ml-1 md:ml-2">
+            <div className="absolute inset-y-0 -left-6 sm:-left-6 md:-left-9 md:top-10 top-6 z-0 flex items-center w-[120%] min-w-[200px] sm:min-w-[120px] md:min-w-[350px]">
+              <Image src={imgPasto} alt="pastoVerde" className="object-contain" />
+            </div>
+            <h1 className="relative z-10 text-[40px] xs:text-[35px] sm:text-[50px] md:text-[70px] leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)] md:drop-shadow-[0_4px_4px_rgba(0,0,0,0.4)]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+              <span className="text-[#FFFFFF]">PITZ</span>
+              <span className="text-[#F00808]">BOL</span>
+            </h1>
+          </div>
         </div>
 
-        { /* TEXTO PITZBOL */ }
-        <h1
-          className="relative z-10 text-[40px] xs:text-[35px] sm:text-[50px] md:text-[70px] leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)] md:drop-shadow-[0_4px_4px_rgba(0,0,0,0.4)]" 
-          style={{ fontFamily: "'Jockey One', sans-serif" }}
-        >
-          <span className="text-[#FFFFFF]">PITZ</span>
-          <span className="text-[#F00808]">BOL</span>
-        </h1>
-      </div>
-    </div>
+        <div className="flex items-center gap-1 md:gap-6">
+          <div className="hidden md:flex items-center gap-6 text-[18px]">
+            <button className="text-[#1A4D2E] font-bold hover:text-[#F00808]">Calendario</button>
+            {/* RUTA CORREGIDA A /registro/turista */}
+            <Link href="/registro/turista">
+              <button className="text-[#1A4D2E] font-bold hover:text-[#F00808]">Identifícate</button>
+            </Link>
+          </div>
 
-    {/* 3. LADO DERECHO (Buscador y Menú) */}
-    <div className="flex items-center gap-1 md:gap-6">
-      <div className="hidden md:flex items-center gap-6 text-[18px]">
-        <button className="text-[#1A4D2E] font-bold hover:text-[#F00808] transition-colors">Calendario</button>
-        <button className="text-[#1A4D2E] font-bold hover:text-[#F00808] transition-colors">Identifícate</button>
-      </div>
+          <button className="p-2 md:p-6 text-[#1A4D2E]">
+            <FiSearch size={22} className="md:w-8 md:h-8" />
+          </button>
 
-      {/* Lupa: Un poco más pequeña en móvil */}
-      <button className="p-2 md:p-6 text-[#1A4D2E]">
-        <FiSearch size={22} className="md:w-8 md:h-8" />
-      </button>
+          {/* BOTÓN HAMBURGUESA MÓVIL */}
+          <button className="md:hidden p-2 text-[#1A4D2E]" onClick={() => setIsMenuOpen(true)}>
+            <FiMenu size={28} />
+          </button>
+        </div>
+      </nav>
 
-      {/* Menú Hamburguesa: Solo visible en móvil para ahorrar espacio */}
-      <button className="md:hidden p-2 text-[#1A4D2E]">
-        <FiMenu size={24} />
-      </button>
-    </div>
-  </nav>
-);
+      {/* MENÚ LATERAL (ESTILO IMAGEN REFERENCIA) */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* Fondo oscuro traslúcido para cerrar al tocar fuera */}
+          <div className="absolute inset-0 bg-black/20" onClick={() => setIsMenuOpen(false)} />
+
+          {/* El Menú Verde Redondeado */}
+          <div className="relative w-[70%] h-[95vh] bg-[#1A4D2E] mt-[2.5vh] mr-2 rounded-[40px] p-8 flex flex-col text-white shadow-2xl animate-in slide-in-from-right duration-300">
+            {/* Botón Cerrar */}
+            <button className="self-end mb-4" onClick={() => setIsMenuOpen(false)}>
+              <FiX size={32} />
+            </button>
+
+            <h2 className="text-3xl font-bold mb-10">Menú</h2>
+
+            <div className="flex flex-col gap-6 text-xl ">
+              <Link href="/registro/turista" onClick={() => setIsMenuOpen(false)}>Identifícate</Link>
+              <button className="text-left">Favoritos</button>
+              <button className="text-left">Ser afiliado</button>
+              <button className="text-left">Nosotros</button>
+              <button className="text-left">Contáctanos</button>
+            </div>
+
+            {/* Parte inferior: Iniciar sesión */}
+            <div className="mt-auto border-t border-white/20 pt-6">
+              <Link href="/login" className="flex items-center gap-3 text-xl font-bold" onClick={() => setIsMenuOpen(false)}>
+                <FiUser size={28} />
+                Iniciar sesión
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
 
 const CategoryCarousel = ({ categories }: { categories: Category[] }) => (
   <section className="flex gap-4 p-4 md:py-6 md:px-8 overflow-x-auto md:justify-center bg-white">
     {categories.map((category) => (
-      <div key={category.name} className="relative w-40 h-24 md:w-56 md:h-28 rounded-xl overflow-hidden shadow-lg cursor-pointer group flex-shrink-0 transition-transform duration-300 md:hover:scale-105">
+      <div key={category.name} className="relative w-40 h-24 md:w-64 md:h-34 rounded-xl overflow-hidden shadow-lg cursor-pointer group flex-shrink-0 transition-transform duration-300 md:hover:scale-105">
         <Image
           src={category.img}
           alt={category.name}
@@ -103,37 +145,172 @@ const CategoryCarousel = ({ categories }: { categories: Category[] }) => (
   </section>
 );
 
-const DateSlider = ({ dates }: { dates: DateInfo[] }) => (
-  <div className="bg-gray-100 md:bg-gray-200">
-    <div className="flex gap-3 px-4 py-3 overflow-x-auto whitespace-nowrap md:justify-center">
-      {dates.map((date) => (
-        <div key={date.fullDate} className={`relative px-3 py-2 rounded-md text-sm font-medium cursor-pointer flex-shrink-0 transition-colors ${date.isGdlMatch ? "bg-green-600 text-white" : date.isActive ? "bg-red-500 text-white" : "bg-gray-300 md:bg-gray-400 text-gray-700 md:text-white hover:bg-gray-400"}`}>
-          <div className="font-bold text-center">{date.day}</div>
-          <div className="text-xs uppercase">{date.weekday}</div>
-          {date.isActive && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-white"></div>}
+const DateSlider = () => {
+  const getDates = () => {
+    const days = [];
+    const today = new Date();
+    for (let i = 0; i < 3; i++) {
+      const date = new Date();
+      date.setDate(today.getDate() + i);
+      days.push({
+        day: date.getDate().toString(),
+        weekday: date.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase().replace('.', ''),
+        fullDate: date.toISOString().split('T')[0]
+      });
+    }
+    return days;
+  };
+
+  const dynamicDates = getDates();
+
+  return (
+    <div className="bg-white md:bg-transparent py-1 md:py-1 w-full overflow-hidden">
+      <div className="flex gap-2 md:gap-0 px-2 md:px-0 justify-center items-center w-full max-w-7xl mx-auto">
+        {dynamicDates.map((date, index) => {
+          let bgColor = index === 0 ? "bg-[#0D601E]" : index === 1 ? "bg-white border-y border-gray-100 shadow-sm" : "bg-[#B90808]";
+          let textColor = index === 1 ? "text-[#6F4545]" : "text-white";
+
+          return (
+            <div
+              key={date.fullDate}
+              /*  Altura de los cuadros (h-12 móvil / h-14 laptop) */
+              className={`
+                relative flex-1 flex flex-col items-center justify-center cursor-pointer transition-all hover:brightness-110
+                h-12 md:h-12
+                ${index === 0 ? "rounded-l-[12px] md:rounded-l-[20px]" : ""}
+                ${index === 2 ? "rounded-r-[12px] md:rounded-r-[20px]" : ""}
+                ${bgColor}
+              `}
+            >
+              <div 
+                className="text-lg md:text-2xl font-normal leading-tight"
+                style={{ 
+                  fontFamily: "var(--font-jetbrains)",
+                  color: index === 1 ? "#6F4545" : "white" 
+                }}
+              >
+                {date.day}
+              </div>
+              
+              <div 
+                className="text-[9px] md:text-xs font-normal uppercase"
+                style={{ 
+                  fontFamily: "var(--font-jockey)",
+                  color: index === 1 ? "#6F4545" : "white" 
+                }}
+              >
+                {date.weekday}
+              </div>
+
+              {/* PELOTITA SIEMPRE EN EL VERDE (index === 0) */}
+              {index === 0 && (
+                <div className="absolute -top-1 -left-1 md:top-0 md:left-2 z-10">
+                  <GiSoccerBall 
+                    size={18} 
+                    className="text-black bg-white rounded-full p-0.5 shadow-md animate-bounce"
+                    style={{ animationDuration: '3s' }} 
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const MatchItem = ({ location, date, team1, flag1, team2, flag2, time }: any) => (
+  <div className="w-full mb-2"> {/* Reduje el margen inferior de mb-6 a mb-3 */}
+    <h3 className="text-center text-[#0D601E] text-xs md:text-sm mb-1 font-medium" style={{ fontFamily: 'var(--font-roboto)' }}>
+      Próximo partido en <span className="font-bold">{location}</span> - {date}:
+    </h3>
+
+    {/* CAMBIO 1: Altura del banner (de min-h-[100px] a min-h-[60px]) y redondeado más sutil */}
+    <div className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-2 shadow-md min-h-[60px] md:min-h-[50px]">
+      
+      {/* Equipo 1 */}
+      <div className="flex flex-1 items-center justify-end gap-2">
+        {/* CAMBIO 2: Tamaño de fuente del nombre del país (text-xs a text-base) */}
+        <span className="text-xs md:text-base font-normal text-right leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>
+          {team1}
+        </span>
+        {/* CAMBIO 3: Tamaño de la bandera (de w-16 a w-10) */}
+        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
+          <Image src={flag1} alt={team1} fill className="object-cover" />
         </div>
-      ))}
+      </div>
+
+      {/* Hora Central */}
+      <div className="flex flex-col items-center justify-center px-2 md:px-4 border-x border-white/20 mx-2">
+        {/* CAMBIO 4: Tamaño de la hora (de text-3xl a text-xl) */}
+        <span className="text-base md:text-xl font-bold text-black leading-none" style={{ fontFamily: 'var(--font-roboto)' }}>
+          {time}
+        </span>
+        <span className="text-[10px] md:text-xs font-medium text-black" style={{ fontFamily: 'var(--font-roboto)' }}>
+          hrs
+        </span>
+      </div>
+
+      {/* Equipo 2 */}
+      <div className="flex flex-1 items-center justify-start gap-2">
+        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
+          <Image src={flag2} alt={team2} fill className="object-cover" />
+        </div>
+        <span className="text-xs md:text-base font-normal text-left leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>
+          {team2}
+        </span>
+      </div>
+      
     </div>
   </div>
 );
 
-const MatchBanner = () => (
-  <div className="flex items-center justify-between bg-[#A89F9F] text-white rounded-lg px-4 py-3 shadow-md">
-    <div className="flex items-center gap-2">
-      <div className="w-10 h-10 rounded-full overflow-hidden relative border border-white/20">
-        <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Mexico.svg/1024px-Flag_of_Mexico.svg.png" alt="MX" fill className="object-cover" />
-      </div>
-      <span className="font-semibold text-sm md:text-base ">México</span>
+export default function Home() {
+  return (
+    <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
+      <Header />
+      <CategoryCarousel categories={categories} />
+      <DateSlider />
+      
+      <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 px-4 md:px-8 max-w-7xl mx-auto">
+        <div className="flex flex-col gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0">
+          
+          <MatchItem 
+            location="CDMX"
+            date="11 de Junio"
+            team1="México"
+            flag1="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Mexico.svg/1024px-Flag_of_Mexico.svg.png"
+            team2="Sudáfrica"
+            flag2="https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Flag_of_South_Africa.svg/1200px-Flag_of_South_Africa.svg.png"
+            time="13:00"
+          />
+
+          <MatchItem 
+            location="GDL"
+            date="11 de Junio"
+            team1="Corea"
+            flag1="https://upload.wikimedia.org/wikipedia/commons/0/09/Flag_of_South_Korea.svg"
+            team2="Dinamarca"
+            flag2="https://img.freepik.com/foto-gratis/fondo-textura-bandera-nacional-dinamarca-ia-generativa_169016-29875.jpg"
+            time="20:00"
+          />
+
+          <div className="bg-[#FAF9F2] rounded-xl p-4 shadow-sm min-h-[180px] border border-gray-200">
+            <h2 className="font-bold mb-2 text-gray-800" style={{ fontFamily: 'var(--font-roboto)' }}>
+              Itinerario de hoy:
+            </h2>
+            <div className="h-40 border-t border-gray-100 p-3 text-sm text-gray-500 text-center pt-10">
+              Cargando itinerario...
+            </div>
+          </div>
+        </div>
+
+        <Recommendations recommendations={recommendations} />
+      </main>
     </div>
-    <div className="text-center"><div className="text-sm font-bold text-[#000000] ">19:00</div><div className="text-xs font-medium text-[#000000] ">hrs</div></div>
-    <div className="flex items-center gap-2">
-      <span className="font-semibold text-sm md:text-base">Alemania</span>
-      <div className="w-10 h-10 rounded-full overflow-hidden relative border border-white/20">
-        <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Flag_of_Germany.svg/1024px-Flag_of_Germany.svg.png" alt="DE" fill className="object-cover" />
-      </div>
-    </div>
-  </div>
-);
+  );
+}
 
 const Recommendations = ({ recommendations }: { recommendations: Recommendation[] }) => (
   <div className="flex flex-col w-full md:w-3/5">
@@ -151,23 +328,3 @@ const Recommendations = ({ recommendations }: { recommendations: Recommendation[
     </div>
   </div>
 );
-
-export default function Home() {
-  return (
-    <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
-      <Header />
-      <CategoryCarousel categories={categories} />
-      <DateSlider dates={dates} />
-      <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 px-4 md:px-8">
-        <div className="flex flex-col gap-4 w-full md:w-2/5 flex-shrink-0">
-          <MatchBanner />
-          <div className="bg-[#FAF9F2] rounded-lg p-4 shadow-sm min-h-[180px] border border-gray-200">
-            <h2 className="font-bold mb-2 text-gray-800">Itinerario de hoy:</h2>
-            <div className="h-40 border-t border-gray-100 p-3 text-sm text-gray-500 text-center pt-10">Cargando itinerario...</div>
-          </div>
-        </div>
-        <Recommendations recommendations={recommendations} />
-      </main>
-    </div>
-  );
-}
