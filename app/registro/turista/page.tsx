@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 
+
 const Registro: React.FC = () => {
   const [form, setForm] = useState({
     nombre: "",
@@ -112,8 +113,8 @@ const Registro: React.FC = () => {
           {/* Botón */}
           <button
             type="submit"
-            className="w-full bg-gray-900 text-white text-sm py-2.5 rounded-lg hover:bg-black transition"
-          >
+            className="w-full bg-gray-900 text-white text-sm py-2.5 rounded-lg hover:bg-black transition "
+           >
             Registrarse
           </button>
         </form>
