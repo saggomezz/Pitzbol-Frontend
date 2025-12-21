@@ -7,6 +7,7 @@ import imgPasto from "./components/pastoVerde.png";
 import Link from "next/link";
 import React, { useState } from "react";
 import { GiSoccerBall } from "react-icons/gi"; // Importamos un balón de fútbol
+import AuthModal from "./components/AuthModal";
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -43,19 +44,17 @@ const recommendations: Recommendation[] = [
   { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
 ];
 
-const Header = () => {
+const Header = ({ onOpenAuth }: { onOpenAuth: () => void }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
     <>
-      <nav className="flex justify-between items-center bg-[#F6F0E6] px-2 md:px-8 h-20 md:h-24 sticky top-0 z-50 shadow-sm overflow-hidden">
+      <nav className="flex justify-between items-center bg-[#F6F0E6] px-2 md:px-8 h-20 md:h-24 sticky top-0 z-50 shadow-sm overflow-hidden text-[#1A4D2E]">
         <div className="flex items-center h-full max-w-[80%] md:max-w-none">
-          {/* LOGO */}
           <div className="relative h-24 w-24 md:h-32 md:w-32 right-2 md:right-5 flex-shrink-0">
             <Image src={imglogo} alt="logoPitzbol" fill className="object-contain" priority />
           </div>
 
-          {/* NOMBRE + PASTO */}
           <div className="relative flex items-center h-full ml-1 md:ml-2">
             <div className="absolute inset-y-0 -left-6 sm:-left-6 md:-left-9 md:top-10 top-6 z-0 flex items-center w-[120%] min-w-[200px] sm:min-w-[120px] md:min-w-[350px]">
               <Image src={imgPasto} alt="pastoVerde" className="object-contain" />
@@ -69,33 +68,32 @@ const Header = () => {
 
         <div className="flex items-center gap-1 md:gap-6">
           <div className="hidden md:flex items-center gap-6 text-[18px]">
-            <button className="text-[#1A4D2E] font-bold hover:text-[#F00808]">Calendario</button>
-            {/* RUTA CORREGIDA A /registro/turista */}
-            <Link href="/registro/turista">
-              <button className="text-[#1A4D2E] font-bold hover:text-[#F00808]">Identifícate</button>
+            <Link href="/calendario">
+                <button className="font-bold hover:text-[#F00808]">Calendario</button>
             </Link>
+            {/* 3. VINCULAMOS EL BOTÓN DE ESCRITORIO AL MODAL */}
+            <button 
+                onClick={onOpenAuth}
+                className="font-bold hover:text-[#F00808]"
+            >
+                Identifícate
+            </button>
           </div>
 
-          <button className="p-2 md:p-6 text-[#1A4D2E]">
+          <button className="p-2 md:p-6">
             <FiSearch size={22} className="md:w-8 md:h-8" />
           </button>
 
-          {/* BOTÓN HAMBURGUESA MÓVIL */}
-          <button className="md:hidden p-2 text-[#1A4D2E]" onClick={() => setIsMenuOpen(true)}>
+          <button className="md:hidden p-2" onClick={() => setIsMenuOpen(true)}>
             <FiMenu size={28} />
           </button>
         </div>
       </nav>
 
-      {/* MENÚ LATERAL (ESTILO IMAGEN REFERENCIA) */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
-          {/* Fondo oscuro traslúcido para cerrar al tocar fuera */}
           <div className="absolute inset-0 bg-black/20" onClick={() => setIsMenuOpen(false)} />
-
-          {/* El Menú Verde Redondeado */}
           <div className="relative w-[70%] h-[95vh] bg-[#1A4D2E] mt-[2.5vh] mr-2 rounded-[40px] p-8 flex flex-col text-white shadow-2xl animate-in slide-in-from-right duration-300">
-            {/* Botón Cerrar */}
             <button className="self-end mb-4" onClick={() => setIsMenuOpen(false)}>
               <FiX size={32} />
             </button>
@@ -103,19 +101,24 @@ const Header = () => {
             <h2 className="text-3xl font-bold mb-10">Menú</h2>
 
             <div className="flex flex-col gap-6 text-xl ">
-              <Link href="/registro/turista" onClick={() => setIsMenuOpen(false)}>Identifícate</Link>
+              {/* 4. VINCULAMOS BOTONES DEL MENÚ MÓVIL AL MODAL */}
+              <button className="text-left" onClick={() => { setIsMenuOpen(false); onOpenAuth(); }}>
+                Identifícate
+              </button>
               <button className="text-left">Favoritos</button>
               <button className="text-left">Ser afiliado</button>
               <button className="text-left">Nosotros</button>
               <button className="text-left">Contáctanos</button>
             </div>
 
-            {/* Parte inferior: Iniciar sesión */}
             <div className="mt-auto border-t border-white/20 pt-6">
-              <Link href="/login" className="flex items-center gap-3 text-xl font-bold" onClick={() => setIsMenuOpen(false)}>
+              <button 
+                className="flex items-center gap-3 text-xl font-bold" 
+                onClick={() => { setIsMenuOpen(false); onOpenAuth(); }}
+              >
                 <FiUser size={28} />
                 Iniciar sesión
-              </Link>
+              </button>
             </div>
           </div>
         </div>
@@ -263,15 +266,19 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time }: any) =>
 );
 
 export default function Home() {
+  // 5. ESTADO PARA CONTROLAR EL MODAL DESDE EL HOME
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
-      <Header />
+      {/* 6. PASAMOS LA FUNCIÓN DE APERTURA AL HEADER */}
+      <Header onOpenAuth={() => setIsAuthOpen(true)} />
+      
       <CategoryCarousel categories={categories} />
       <DateSlider />
       
       <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 pl-4 pr-4 md:pl-22 md:pr-22 w-full">
         <div className="flex flex-col gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
-          
           <MatchItem 
             location="CDMX"
             date="11 de Junio"
@@ -304,6 +311,9 @@ export default function Home() {
 
         <Recommendations recommendations={recommendations} />
       </main>
+
+      {/* 7. INSERTAMOS EL MODAL AL FINAL DEL HOME */}
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </div>
   );
 }
