@@ -1,14 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { FiMenu, FiSearch, FiX, FiUser } from "react-icons/fi";
+import { FiMenu, FiSearch, FiX, FiUser, FiChevronRight } from "react-icons/fi";
 import imglogo from "./components/logoPitzbol.png";
 import imgPasto from "./components/pastoVerde.png";
 import Link from "next/link";
 import React, { useState } from "react";
 import { GiSoccerBall } from "react-icons/gi"; // Importamos un balón de fútbol
-
-
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -146,6 +144,8 @@ const CategoryCarousel = ({ categories }: { categories: Category[] }) => (
 );
 
 const DateSlider = () => {
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false); // Estado para el modal
+
   const getDates = () => {
     const days = [];
     const today = new Date();
@@ -163,60 +163,56 @@ const DateSlider = () => {
 
   const dynamicDates = getDates();
 
-  return (
-    <div className="bg-white md:bg-transparent py-1 md:py-1 w-full overflow-hidden">
-      <div className="flex gap-2 md:gap-0 px-2 md:px-0 justify-center items-center w-full max-w-7xl mx-auto">
-        {dynamicDates.map((date, index) => {
-          let bgColor = index === 0 ? "bg-[#0D601E]" : index === 1 ? "bg-white border-y border-gray-100 shadow-sm" : "bg-[#B90808]";
-          let textColor = index === 1 ? "text-[#6F4545]" : "text-white";
+return (
+    <>
+      <div className="bg-white md:bg-transparent py-1 w-full overflow-hidden">
+        <div className="flex gap-1 md:gap-0 px-2 md:px-0 justify-center items-center w-full max-w-7xl mx-auto">
+          {dynamicDates.map((date, index) => {
+            let bgColor = index === 0 ? "bg-[#0D601E]" : index === 1 ? "bg-white border-y border-gray-100 shadow-sm" : "bg-[#B90808]";
+            let textColor = index === 1 ? "text-[#6F4545]" : "text-white";
 
-          return (
-            <div
-              key={date.fullDate}
-              /*  Altura de los cuadros (h-12 móvil / h-14 laptop) */
-              className={`
-                relative flex-1 flex flex-col items-center justify-center cursor-pointer transition-all hover:brightness-110
-                h-12 md:h-12
-                ${index === 0 ? "rounded-l-[12px] md:rounded-l-[20px]" : ""}
-                ${index === 2 ? "rounded-r-[12px] md:rounded-r-[20px]" : ""}
-                ${bgColor}
-              `}
-            >
-              <div 
-                className="text-lg md:text-2xl font-normal leading-tight"
-                style={{ 
-                  fontFamily: "var(--font-jetbrains)",
-                  color: index === 1 ? "#6F4545" : "white" 
-                }}
+            return (
+              <div
+                key={date.fullDate}
+                className={`
+                  relative flex-1 flex flex-col items-center justify-center cursor-pointer transition-all
+                  h-12 md:h-12
+                  ${index === 0 ? "rounded-l-[12px] md:rounded-l-[20px]" : ""}
+                  ${index === 2 ? "rounded-r-[12px] md:rounded-r-[20px]" : ""}
+                  ${bgColor}
+                `}
               >
-                {date.day}
-              </div>
-              
-              <div 
-                className="text-[9px] md:text-xs font-normal uppercase"
-                style={{ 
-                  fontFamily: "var(--font-jockey)",
-                  color: index === 1 ? "#6F4545" : "white" 
-                }}
-              >
-                {date.weekday}
-              </div>
-
-              {/* PELOTITA SIEMPRE EN EL VERDE (index === 0) */}
-              {index === 0 && (
-                <div className="absolute -top-1 -left-1 md:top-0 md:left-2 z-10">
-                  <GiSoccerBall 
-                    size={18} 
-                    className="text-black bg-white rounded-full p-0.5 shadow-md animate-bounce"
-                    style={{ animationDuration: '3s' }} 
-                  />
+                <div 
+                  className={`text-lg md:text-2xl font-normal leading-tight ${textColor}`}
+                  style={{ fontFamily: "var(--font-jetbrains)" }}
+                >
+                  {date.day}
                 </div>
-              )}
-            </div>
-          );
-        })}
+                <div 
+                  className={`text-[9px] md:text-xs font-normal uppercase ${textColor}`}
+                  style={{ fontFamily: "var(--font-jockey)" }}
+                >
+                  {date.weekday}
+                </div>
+
+                {index === 0 && (
+                  <div className="absolute -top-1 -left-1 md:top-0 md:left-2 z-10">
+                    <GiSoccerBall size={18} className="text-black bg-white rounded-full p-0.5 shadow-md animate-bounce" style={{ animationDuration: '3s' }} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <Link href="/calendario">
+            <button className="ml-2 p-3 text-black hover:scale-110 transition-transform flex-shrink-0">
+              <FiChevronRight size={35} />
+            </button>
+          </Link>
+        </div>
       </div>
-    </div>
+
+    </>
   );
 };
 
@@ -273,8 +269,8 @@ export default function Home() {
       <CategoryCarousel categories={categories} />
       <DateSlider />
       
-      <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 px-4 md:px-8 max-w-7xl mx-auto">
-        <div className="flex flex-col gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0">
+      <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 pl-4 pr-4 md:pl-22 md:pr-22 w-full">
+        <div className="flex flex-col gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
           
           <MatchItem 
             location="CDMX"
