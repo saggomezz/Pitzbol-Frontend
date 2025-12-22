@@ -1,13 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { FiMenu, FiSearch, FiX, FiUser, FiChevronRight } from "react-icons/fi";
-import imglogo from "./components/logoPitzbol.png";
-import imgPasto from "./components/pastoVerde.png";
 import Link from "next/link";
-import React, { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FiBriefcase, FiCalendar, FiChevronRight, FiInfo, FiMapPin, FiMenu, FiMessageCircle, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi"; // Importamos un balón de fútbol
 import AuthModal from "./components/AuthModal";
+import GuideModal from "./components/GuideModal";
+import BusinessModal from "./components/BusinessModal";
+import imglogo from "./components/logoPitzbol.png";
+import imgPasto from "./components/pastoVerde.png";
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -44,86 +46,94 @@ const recommendations: Recommendation[] = [
   { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
 ];
 
-const Header = ({ onOpenAuth }: { onOpenAuth: () => void }) => {
+const Header = ({ 
+  onOpenAuth, 
+  onOpenGuide,
+  onOpenBusiness
+}: { 
+  onOpenAuth: () => void; 
+  onOpenGuide: () => void; 
+  onOpenBusiness: () => void;
+}) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [isBusinessOpen, setIsBusinessOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
-    <>
-      <nav className="flex justify-between items-center bg-[#F6F0E6] px-2 md:px-8 h-20 md:h-24 sticky top-0 z-50 shadow-sm overflow-hidden text-[#1A4D2E]">
-        <div className="flex items-center h-full max-w-[80%] md:max-w-none">
-          <div className="relative h-24 w-24 md:h-32 md:w-32 right-2 md:right-5 flex-shrink-0">
-            <Image src={imglogo} alt="logoPitzbol" fill className="object-contain" priority />
-          </div>
-
-          <div className="relative flex items-center h-full ml-1 md:ml-2">
-            <div className="absolute inset-y-0 -left-6 sm:-left-6 md:-left-9 md:top-10 top-6 z-0 flex items-center w-[120%] min-w-[200px] sm:min-w-[120px] md:min-w-[350px]">
-              <Image src={imgPasto} alt="pastoVerde" className="object-contain" />
-            </div>
-            <h1 className="relative z-10 text-[40px] xs:text-[35px] sm:text-[50px] md:text-[70px] leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)] md:drop-shadow-[0_4px_4px_rgba(0,0,0,0.4)]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-              <span className="text-[#FFFFFF]">PITZ</span>
-              <span className="text-[#F00808]">BOL</span>
-            </h1>
-          </div>
+    <nav className="flex justify-between items-center bg-[#F6F0E6] px-4 md:px-8 h-20 md:h-24 sticky top-0 z-50 shadow-sm text-[#1A4D2E]">
+      <div className="flex items-center h-full">
+        <div className="relative h-20 w-20 md:h-32 md:w-32 flex-shrink-0">
+          <Image src={imglogo} alt="logoPitzbol" fill className="object-contain" priority />
         </div>
-
-        <div className="flex items-center gap-1 md:gap-6">
-          <div className="hidden md:flex items-center gap-6 text-[18px]">
-            <Link href="/calendario">
-                <button className="font-bold hover:text-[#F00808]">Calendario</button>
-            </Link>
-            {/* 3. VINCULAMOS EL BOTÓN DE ESCRITORIO AL MODAL */}
-            <button 
-                onClick={onOpenAuth}
-                className="font-bold hover:text-[#F00808]"
-            >
-                Identifícate
-            </button>
+        <div className="relative flex items-center h-full ml-1">
+          <div className="absolute inset-y-0 -left-6 md:-left-9 md:top-10 top-6 z-0 flex items-center w-[120%] min-w-[150px] md:min-w-[350px]">
+            <Image src={imgPasto} alt="pastoVerde" className="object-contain" />
           </div>
-
-          <button className="p-2 md:p-6">
-            <FiSearch size={22} className="md:w-8 md:h-8" />
-          </button>
-
-          <button className="md:hidden p-2" onClick={() => setIsMenuOpen(true)}>
-            <FiMenu size={28} />
-          </button>
+          <h1 className="relative z-10 text-[35px] md:text-[70px] leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+            <span className="text-[#FFFFFF]">PITZ</span>
+            <span className="text-[#F00808]">BOL</span>
+          </h1>
         </div>
-      </nav>
+      </div>
 
-      {isMenuOpen && (
-        <div className="fixed inset-0 z-[100] flex justify-end">
-          <div className="absolute inset-0 bg-black/20" onClick={() => setIsMenuOpen(false)} />
-          <div className="relative w-[70%] h-[95vh] bg-[#1A4D2E] mt-[2.5vh] mr-2 rounded-[40px] p-8 flex flex-col text-white shadow-2xl animate-in slide-in-from-right duration-300">
-            <button className="self-end mb-4" onClick={() => setIsMenuOpen(false)}>
-              <FiX size={32} />
-            </button>
+      <div className="flex items-center gap-2 md:gap-4 relative">
+        <Link href="/calendario">
+          <button className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808]" title="Calendario">
+            <FiCalendar size={24} className="md:w-7 md:h-7" />
+          </button>
+        </Link>
+        <button className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808]">
+          <FiSearch size={24} className="md:w-7 md:h-7" />
+        </button>
+        <button className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808]" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          {isMenuOpen ? <FiX size={24} className="md:w-7 md:h-7" /> : <FiMenu size={24} className="md:w-7 md:h-7" />}
+        </button>
 
-            <h2 className="text-3xl font-bold mb-10">Menú</h2>
-
-            <div className="flex flex-col gap-6 text-xl ">
-              {/* 4. VINCULAMOS BOTONES DEL MENÚ MÓVIL AL MODAL */}
-              <button className="text-left" onClick={() => { setIsMenuOpen(false); onOpenAuth(); }}>
-                Identifícate
+        {isMenuOpen && (
+          <div ref={menuRef} className="absolute top-[110%] right-0 w-64 md:w-72 bg-white/95 backdrop-blur-sm rounded-[32px] shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-4 flex flex-col gap-1">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-bold px-4 mb-2">Usuario</p>
+              <button onClick={() => { setIsMenuOpen(false); onOpenAuth(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
+                <FiUser size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
+                <span className="font-semibold text-sm italic group-hover:translate-x-1 transition-transform">Identificarse</span>
               </button>
-              <button className="text-left">Favoritos</button>
-              <button className="text-left">Ser afiliado</button>
-              <button className="text-left">Nosotros</button>
-              <button className="text-left">Contáctanos</button>
-            </div>
-
-            <div className="mt-auto border-t border-white/20 pt-6">
+              <div className="h-[1px] bg-gray-100 my-2 mx-4" />
+              <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-bold px-4 mb-2">Socios Pitzbol</p>
+              
               <button 
-                className="flex items-center gap-3 text-xl font-bold" 
-                onClick={() => { setIsMenuOpen(false); onOpenAuth(); }}
+                onClick={() => { setIsMenuOpen(false); onOpenGuide(); }}
+                className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left"
               >
-                <FiUser size={28} />
-                Iniciar sesión
+                <FiMapPin size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
+                <span className="font-semibold text-sm  group-hover:translate-x-1 transition-transform">Afiliación de Guías</span>
               </button>
+              <button 
+                onClick={() => { setIsMenuOpen(false); onOpenBusiness(); }}
+                className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left"
+              >
+                <FiBriefcase size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
+                <span className="font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                  Alianzas Comerciales
+                </span>
+              </button>
+              <div className="h-[1px] bg-gray-100 my-2 mx-4" />
+              <button className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left font-medium text-sm">Nosotros</button>
+              <button className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left font-medium text-sm">Soporte y Contacto</button>
             </div>
           </div>
-        </div>
-      )}
-    </>
+        )}
+      </div>
+    </nav>
   );
 };
 
@@ -260,23 +270,24 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time }: any) =>
           {team2}
         </span>
       </div>
-      
     </div>
   </div>
 );
 
 export default function Home() {
-  // 5. ESTADO PARA CONTROLAR EL MODAL DESDE EL HOME
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isLogged, setIsLogged] = useState(false);
+  const [isBusinessOpen, setIsBusinessOpen] = useState(false);
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
-      {/* 6. PASAMOS LA FUNCIÓN DE APERTURA AL HEADER */}
-      <Header onOpenAuth={() => setIsAuthOpen(true)} />
-      
+      <Header 
+        onOpenAuth={() => setIsAuthOpen(true)} 
+        onOpenGuide={() => setIsGuideOpen(true)}
+        onOpenBusiness={() => setIsBusinessOpen(true)}
+      />
       <CategoryCarousel categories={categories} />
       <DateSlider />
-      
       <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 pl-4 pr-4 md:pl-22 md:pr-22 w-full">
         <div className="flex flex-col gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
           <MatchItem 
@@ -311,10 +322,22 @@ export default function Home() {
 
         <Recommendations recommendations={recommendations} />
       </main>
+      <AuthModal 
+        isOpen={isAuthOpen} 
+        onClose={() => setIsAuthOpen(false)} 
+      />
+      
+      <GuideModal    
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)} 
+        isAlreadyUser={isLogged} 
+      />
 
-      {/* 7. INSERTAMOS EL MODAL AL FINAL DEL HOME */}
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
-    </div>
+      <BusinessModal 
+        isOpen={isBusinessOpen} 
+        onClose={() => setIsBusinessOpen(false)} 
+      />
+      </div>
   );
 }
 
