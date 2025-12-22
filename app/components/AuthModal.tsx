@@ -35,7 +35,8 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   const iconColor = "#769C7B";
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 md:p-4 bg-black/40 backdrop-blur-sm">
+    // SE ELIMINÓ 'backdrop-blur-sm' PARA QUITAR EL BLUR DEL FONDO
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 md:p-4 bg-black/40">
       <div className="relative bg-white w-full max-w-[500px] md:max-w-[950px] min-h-[550px] md:h-[600px] rounded-[30px] md:rounded-[50px] overflow-hidden shadow-2xl flex border border-white/20">
         
         <button onClick={onClose} className="absolute top-4 md:top-6 right-6 md:right-8 z-[210] text-gray-400 hover:text-red-500 transition-all">
@@ -111,7 +112,6 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
               <input type="password" placeholder="Contraseña:" className={`${inputClass} pl-14`} style={{ fontFamily: 'Inter, sans-serif' }} />
             </div>
             
-            {/* CONTENEDOR DEL BOTÓN CENTRADO */}
             <div className="w-full flex justify-center mt-2">
               <button className="w-3/4 bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium">
                 Registrar
