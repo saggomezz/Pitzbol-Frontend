@@ -1,11 +1,19 @@
 "use client";
-import React, { useState } from "react";
+
+import { AnimatePresence, motion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
-import { 
-  FiChevronLeft, FiPlus, FiChevronRight, FiX, FiClock, 
-  FiCalendar as FiCalendarIcon, FiMapPin, FiSun, FiZap, FiSmile, FiInfo 
+import { useState } from "react";
+import {
+  FiChevronLeft,
+  FiChevronRight,
+  FiPlus,
+  FiSmile,
+  FiSun,
+  FiX,
+  FiZap
 } from "react-icons/fi";
-import { motion, AnimatePresence } from "framer-motion";
+import imglogo from "../components/logoPitzbol.png";
 
 export default function CalendarioPage() {
   const [currentDate, setCurrentDate] = useState(new Date(2026, 5, 1)); 
@@ -35,24 +43,37 @@ export default function CalendarioPage() {
 
   return (
     <div className="h-screen bg-[#FDFCF9] flex flex-col font-sans overflow-hidden">
-      {/* HEADER */}
-      <header className="bg-white/70 backdrop-blur-xl px-8 py-4 flex justify-between items-center border-b border-[#F6F0E6] flex-shrink-0">
-        <div className="flex items-center gap-6">
-          <Link href="/">
-            <div className="p-2 hover:bg-[#F6F0E6] rounded-full transition-all text-[#1A4D2E] cursor-pointer">
-              <FiChevronLeft size={28} />
-            </div>
+      {/* HEADER CON LOGO QUE GIRA AL PASAR EL MOUSE */}
+      <header className="bg-[#F6F0E6] px-8 py-0 flex justify-between items-center border-b border-[#1A4D2E]/10 flex-shrink-0 z-50 h-20 md:h-24">
+        <div className="flex items-center h-full">
+          {/* LOGO CON EFECTO DE GIRO */}
+          <Link href="/" className="h-full flex items-center">
+            <motion.div 
+              whileHover={{ rotate: 190 }} // Gira 360 grados al poner el cursor
+              transition={{ duration: 2.0, ease: "easeInOut" }} // Duración del giro
+              className="relative h-20 w-20 md:h-32 md:w-32 flex-shrink-0 cursor-pointer"
+            >
+              <Image 
+                src={imglogo} 
+                alt="logoPitzbol" 
+                fill 
+                className="object-contain" 
+                priority 
+              />
+            </motion.div>
           </Link>
-          <div className="flex flex-col">
-            <h1 className="text-2xl font-black text-[#1A4D2E] uppercase leading-none" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+          
+          <div className="flex flex-col ml-1">
+            <h1 className="text-2xl md:text-3xl font-black text-[#1A4D2E] uppercase leading-none" style={{ fontFamily: "'Jockey One', sans-serif" }}>
               Calendario
             </h1>
-            <div className="flex items-center gap-2 text-[9px] text-[#769C7B] font-bold uppercase tracking-widest mt-1">
-              <FiSun size={10} /> GDL 28°C • Soleado
+            <div className="flex items-center gap-2 text-[9px] md:text-[10px] text-[#769C7B] font-bold uppercase tracking-widest mt-1">
+              <FiSun size={10} className="text-[#F00808]" /> GDL 28°C • Soleado
             </div>
           </div>
         </div>
-        <button className="bg-[#0D601E] hover:bg-[#094d18] text-white px-6 py-2.5 rounded-full font-bold shadow-xl shadow-[#0D601E]/20 transition-all flex items-center gap-3 text-[10px] uppercase tracking-[0.2em]">
+
+        <button className="bg-[#0D601E] hover:bg-[#094d18] text-white px-6 py-2.5 md:px-8 md:py-3 rounded-full font-bold shadow-xl shadow-[#0D601E]/20 transition-all flex items-center gap-3 text-[10px] md:text-xs uppercase tracking-[0.2em]">
           <FiPlus size={16} /> Crear Plan
         </button>
       </header>
