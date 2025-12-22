@@ -16,6 +16,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'www.liderempresarial.com' },
       { protocol: 'https', hostname: 'www.debate.com.mx' },
       { protocol: 'https', hostname: 'visitmexico.com' },
+      { protocol: 'https', hostname: 'arquitecturaviva.com' },
+      { protocol: 'https', hostname: 'A.espncdn.com' },
     ],
   },
 };
