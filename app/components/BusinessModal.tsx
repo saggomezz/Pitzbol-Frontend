@@ -79,30 +79,34 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
               <div className="max-w-2xl mx-auto space-y-6">
                 {step === 0 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-					<div className={cardClass}>
-					<span className={labelClass}>Identidad de Marca</span>
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<input placeholder="Nombre del Negocio" className={inputClass} />
-						
-						{/* Contenedor relativo para posicionar la flecha */}
-						<div className="relative">
-						<select className={inputClass + " appearance-none cursor-pointer pr-10"}>
-							<option value="" disabled selected>Categoría de Socio</option>
-							<option>Restaurante / Bar</option>
-							<option>Cafetería / Desayunos</option>
-							<option>Hotelería / Hostal / Airbnb</option>
-							<option>Transporte / Traslados</option>
-							<option>Renta de Equipo Deportivo</option>
-							<option>Artesanías / Souvenirs</option>
-							<option>Vida Nocturna / Club</option>
-						</select>
-						<FiChevronDown 
-							className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" 
-							size={18} 
-						/>
-						</div>
-					</div>
-					</div>
+                    <div className={cardClass}>
+                      <span className={labelClass}>Identidad de Marca</span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input placeholder="Nombre del Negocio" className={inputClass} />
+                        
+                        {/* Contenedor relativo corregido para evitar errores de consola */}
+                        <div className="relative">
+                          <select 
+                            className={inputClass + " appearance-none cursor-pointer pr-10"}
+                            defaultValue="" // ✅ Maneja la opción inicial correctamente en React
+                          >
+                            <option value="" disabled>Categoría de Socio</option>
+                            <option value="Restaurante / Bar">Restaurante / Bar</option>
+                            <option value="Cafetería / Desayunos">Cafetería / Desayunos</option>
+                            <option value="Hotelería / Hostal / Airbnb">Hotelería / Hostal / Airbnb</option>
+                            <option value="Transporte / Traslados">Transporte / Traslados</option>
+                            <option value="Renta de Equipo Deportivo">Renta de Equipo Deportivo</option>
+                            <option value="Artesanías / Souvenirs">Artesanías / Souvenirs</option>
+                            <option value="Vida Nocturna / Club">Vida Nocturna / Club</option>
+                          </select>
+                          <FiChevronDown 
+                            className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" 
+                            size={18} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     <div className={cardClass}>
                       <span className={labelClass}>Contacto Oficial</span>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -110,7 +114,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         <input placeholder="WhatsApp / Teléfono" className={inputClass} />
                       </div>
                     </div>
-                    <button onClick={() => setStep(1)} className={btnPrimary}>Siguiente Paso</button>
+
+                    <button onClick={() => setStep(1)} className={btnPrimary}>
+                      Siguiente Paso
+                    </button>
                   </motion.div>
                 )}
 

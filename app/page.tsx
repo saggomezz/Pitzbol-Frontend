@@ -1,15 +1,16 @@
 "use client";
-
+import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { FiBriefcase, FiCalendar, FiChevronRight, FiInfo, FiMapPin, FiMenu, FiMessageCircle, FiSearch, FiUser, FiX } from "react-icons/fi";
+import { FiBriefcase, FiCalendar, FiChevronRight, FiMapPin, FiMenu, FiSearch, FiUser, FiX, FiHeart } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi"; // Importamos un balón de fútbol
 import AuthModal from "./components/AuthModal";
-import GuideModal from "./components/GuideModal";
 import BusinessModal from "./components/BusinessModal";
+import GuideModal from "./components/GuideModal";
 import imglogo from "./components/logoPitzbol.png";
 import imgPasto from "./components/pastoVerde.png";
+import { useSearchParams, useRouter } from "next/navigation";
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -72,14 +73,30 @@ const Header = ({
   return (
     <nav className="flex justify-between items-center bg-[#F6F0E6] px-4 md:px-8 h-20 md:h-24 sticky top-0 z-50 shadow-sm text-[#1A4D2E]">
       <div className="flex items-center h-full">
-        <div className="relative h-20 w-20 md:h-32 md:w-32 flex-shrink-0">
-          <Image src={imglogo} alt="logoPitzbol" fill className="object-contain" priority />
-        </div>
+        {/* LOGO CON GIRO SUAVE DE 190 GRADOS */}
+        <motion.div 
+          whileHover={{ rotate: 190 }}
+          transition={{ duration: 2.0, ease: "easeInOut" }}
+          className="relative h-20 w-20 md:h-32 md:w-32 flex-shrink-0 cursor-pointer"
+        >
+          <Image 
+            src={imglogo} 
+            alt="logoPitzbol" 
+            fill 
+            className="object-contain" 
+            priority 
+          />
+        </motion.div>
+
         <div className="relative flex items-center h-full ml-1">
-          <div className="absolute inset-y-0 -left-6 md:-left-9 md:top-10 top-6 z-0 flex items-center w-[120%] min-w-[150px] md:min-w-[350px]">
-            <Image src={imgPasto} alt="pastoVerde" className="object-contain" />
+          <div className="absolute inset-y-0 -left-6 md:-left-6 md:top-8 top-6 z-0 flex items-center w-[120%] min-w-[150px] md:min-w-[250px]">
+            <Image 
+              src={imgPasto} 
+              alt="pastoVerde" 
+              className="object-contain" 
+            />
           </div>
-          <h1 className="relative z-10 text-[35px] md:text-[70px] leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+          <h1 className="relative z-10 text-[35px] md:text-[50px] leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
             <span className="text-[#FFFFFF]">PITZ</span>
             <span className="text-[#F00808]">BOL</span>
           </h1>
@@ -92,9 +109,21 @@ const Header = ({
             <FiCalendar size={24} className="md:w-7 md:h-7" />
           </button>
         </Link>
+
+        {/* ICONO DE FAVORITOS - REDIRIGE A PÁGINA */}
+        <Link href="/favoritos">
+          <button 
+            className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808] group" 
+            title="Favoritos"
+          >
+            <FiHeart size={24} className="md:w-7 md:h-7 transition-transform group-hover:scale-110" />
+          </button>
+        </Link>
+
         <button className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808]">
           <FiSearch size={24} className="md:w-7 md:h-7" />
         </button>
+
         <button className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808]" onClick={() => setIsMenuOpen(!isMenuOpen)}>
           {isMenuOpen ? <FiX size={24} className="md:w-7 md:h-7" /> : <FiMenu size={24} className="md:w-7 md:h-7" />}
         </button>
@@ -102,30 +131,32 @@ const Header = ({
         {isMenuOpen && (
           <div ref={menuRef} className="absolute top-[110%] right-0 w-64 md:w-72 bg-white/95 backdrop-blur-sm rounded-[32px] shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-4 flex flex-col gap-1">
+              {/* SECCIÓN USUARIO DENTRO DEL MENÚ */}
               <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-bold px-4 mb-2">Usuario</p>
               <button onClick={() => { setIsMenuOpen(false); onOpenAuth(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
                 <FiUser size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
                 <span className="font-semibold text-sm italic group-hover:translate-x-1 transition-transform">Identificarse</span>
               </button>
+              
+              {/* NUEVA OPCIÓN DE FAVORITOS DENTRO DEL MENÚ PARA REFUERZO */}
+              <button onClick={() => { setIsMenuOpen(false); onOpenAuth(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
+                <FiHeart size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
+                <span className="font-semibold text-sm group-hover:translate-x-1 transition-transform">Mis Favoritos</span>
+              </button>
+
               <div className="h-[1px] bg-gray-100 my-2 mx-4" />
               <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-bold px-4 mb-2">Socios Pitzbol</p>
               
-              <button 
-                onClick={() => { setIsMenuOpen(false); onOpenGuide(); }}
-                className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left"
-              >
+              <button onClick={() => { setIsMenuOpen(false); onOpenGuide(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
                 <FiMapPin size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
-                <span className="font-semibold text-sm  group-hover:translate-x-1 transition-transform">Afiliación de Guías</span>
+                <span className="font-semibold text-sm group-hover:translate-x-1 transition-transform">Afiliación de Guías</span>
               </button>
-              <button 
-                onClick={() => { setIsMenuOpen(false); onOpenBusiness(); }}
-                className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left"
-              >
+
+              <button onClick={() => { setIsMenuOpen(false); onOpenBusiness(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
                 <FiBriefcase size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
-                <span className="font-semibold text-sm group-hover:translate-x-1 transition-transform">
-                  Alianzas Comerciales
-                </span>
+                <span className="font-semibold text-sm group-hover:translate-x-1 transition-transform">Alianzas Comerciales</span>
               </button>
+
               <div className="h-[1px] bg-gray-100 my-2 mx-4" />
               <button className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left font-medium text-sm">Nosotros</button>
               <button className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left font-medium text-sm">Soporte y Contacto</button>
@@ -140,18 +171,19 @@ const Header = ({
 const CategoryCarousel = ({ categories }: { categories: Category[] }) => (
   <section className="flex gap-4 p-4 md:py-6 md:px-8 overflow-x-auto md:justify-center bg-white">
     {categories.map((category) => (
-      <div key={category.name} className="relative w-40 h-24 md:w-64 md:h-34 rounded-xl overflow-hidden shadow-lg cursor-pointer group flex-shrink-0 transition-transform duration-300 md:hover:scale-105">
-        <Image
-          src={category.img}
-          alt={category.name}
-          fill
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-black opacity-40 group-hover:opacity-20 transition-opacity duration-300"></div>
-        <div className="absolute inset-0 flex items-center justify-center p-2">
-          <span className="text-white text-xl font-bold text-center drop-shadow-md">{category.name}</span>
+      <Link 
+        key={category.name} 
+        href={category.name === "Fútbol" ? "/futbol" : "#"} 
+        className="flex-shrink-0"
+      >
+        <div className="relative w-40 h-24 md:w-64 md:h-34 rounded-xl overflow-hidden shadow-lg cursor-pointer group transition-transform duration-300 md:hover:scale-105">
+          <Image src={category.img} alt={category.name} fill className="object-cover" />
+          <div className="absolute inset-0 bg-black opacity-40 group-hover:opacity-20 transition-opacity duration-300"></div>
+          <div className="absolute inset-0 flex items-center justify-center p-2">
+            <span className="text-white text-xl font-bold text-center drop-shadow-md">{category.name}</span>
+          </div>
         </div>
-      </div>
+      </Link>
     ))}
   </section>
 );
@@ -279,6 +311,16 @@ export default function Home() {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isLogged, setIsLogged] = useState(false);
   const [isBusinessOpen, setIsBusinessOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  useEffect(() => {
+    const authAuth = searchParams.get("auth");
+    if (authAuth === "true") {
+      setIsAuthOpen(true);  
+      router.replace("/");
+    }
+  }, [searchParams, router]);
+  
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
       <Header 
@@ -322,6 +364,35 @@ export default function Home() {
 
         <Recommendations recommendations={recommendations} />
       </main>
+      {/* FOOTER PITZBOL - ESTILO UNIFICADO */}
+      <footer className="bg-[#F6F0E6] border-t border-[#1A4D2E]/10 pt-16 pb-8 px-6 md:px-20 text-[#1A4D2E]">
+          {/* LADO IZQUIERDO: LOGO Y SIGNIFICADO EVOLUCIONADO */}
+          <div className="lg:col-span-5 flex flex-col md:flex-row items-center md:items-start gap-6">
+            <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0">
+              <Image src={imglogo} alt="Pitzbol Logo" fill className="object-contain" />
+            </div>
+            <div className="flex flex-col gap-3">
+              <h2 className="text-3xl font-black uppercase leading-none" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                PITZ<span className="text-[#F00808]">BOL</span>
+              </h2>
+              <p className="text-sm leading-relaxed text-[#1A4D2E]/80">
+                Nuestra identidad nace del <strong className="text-[#0D601E]">"Pitz"</strong>, término maya que consagra el juego de pelota como un acto ritual y cosmogónico. 
+                Más que un escudo, nuestro emblema es un diálogo visual entre el ancestral <span className="font-semibold italic">"Ollamaliztli"</span> —donde la vida y el cosmos se decidían en el campo— y la euforia del fútbol contemporáneo. 
+                Encarnamos el movimiento perpetuo de la esfera de caucho, una herencia de honor y comunidad que hoy, bajo nuestra bandera, vuelve a unir a México con el mundo.
+              </p>
+            </div>
+          </div>
+
+        {/* LÍNEA FINAL */}
+        <div className="mt-16 pt-8 border-t border-[#1A4D2E]/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#769C7B]">
+          <p>© 2025 PITZBOL PROJECT - CAMINO AL MUNDIAL 2026</p>
+          <div className="flex gap-6">
+            <Link href="#" className="hover:text-[#F00808] transition-colors">Términos</Link>
+            <Link href="#" className="hover:text-[#F00808] transition-colors">Privacidad</Link>
+          </div>
+        </div>
+      </footer>
+
       <AuthModal 
         isOpen={isAuthOpen} 
         onClose={() => setIsAuthOpen(false)} 
