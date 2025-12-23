@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiLock, FiMail, FiX } from "react-icons/fi";
 
-// URL de tu Backend (Asegúrate que tu servidor Node.js esté corriendo en este puerto)
+
 const BACKEND_URL = "http://localhost:3001/api/auth";
 
 const ALL_COUNTRIES = [
@@ -42,7 +42,7 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
     }
   }, [nacionalidad]);
 
-  // --- FUNCIÓN DE REGISTRO CORREGIDA ---
+  // --- FUNCIÓN DE REGISTRO---
   const handleRegister = async () => {
     try {
       console.log(" NTENTANDO CONECTAR A:", `${BACKEND_URL}/register`);
@@ -57,8 +57,8 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
         body: JSON.stringify({
           email: regEmail,
           password: regPassword,
-          nombre: regNombre,       // <--- CORRECCIÓN: Se envía solo
-          apellido: regApellido,   // <--- CORRECCIÓN: Se envía solo
+          nombre: regNombre,      
+          apellido: regApellido,   
           telefono,
           nacionalidad
         }),
@@ -86,6 +86,9 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   // --- FUNCIÓN DE LOGIN ---
   const handleLogin = async () => {
     try {
+      // Asegúrate de que BACKEND_URL termina en puerto 3001
+      console.log("📡 Enviando login a:", `${BACKEND_URL}/login`);
+
       const response = await fetch(`${BACKEND_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -96,18 +99,24 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
       });
 
       const data = await response.json();
+      console.log("Respuesta del servidor:", data); 
 
       if (response.ok) {
-        // Aquí recibes el token.
-        // localStorage.setItem("token", data.token); 
-        alert("Bienvenido, " + data.email);
-        onClose(); // Cerrar el modal
+        // Guardamos el token y datos del usuario
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify({ email: data.email, uid: data.uid }));
+        
+        alert("¡Bienvenido de nuevo! " + data.email);
+        
+        // Aquí podrías redirigir al usuario o actualizar un estado global
+        onClose(); 
       } else {
-        alert("Error: " + (data.msg || "Credenciales incorrectas"));
+        // Manejo de errores más claro
+        alert("Error: " + (data.msg || "Ocurrió un error desconocido"));
       }
     } catch (error) {
-      console.error(error);
-      alert("Error de conexión con el servidor.");
+      console.error("Error de red:", error);
+      alert("Error de conexión. Revisa que el Backend (puerto 3001) esté encendido.");
     }
   };
 
