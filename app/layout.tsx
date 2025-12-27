@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Jockey_One, JetBrains_Mono } from "next/font/google"; // 1. Agregamos JetBrains_Mono
 import "./globals.css";
-
+import Script from "next/script";
 import { Roboto } from "next/font/google";
 
 const roboto = Roboto({
@@ -27,7 +27,6 @@ const jockey = Jockey_One({
   weight: "400",
 });
 
-// 2. Configuración de JetBrains Mono
 const jetbrains = JetBrains_Mono({
   variable: "--font-jetbrains",
   subsets: ["latin"],

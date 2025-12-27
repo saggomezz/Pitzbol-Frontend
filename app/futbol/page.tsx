@@ -24,28 +24,28 @@ const futbolPlaces = [
         id: 1,
         name: "Estadio Akron",
         type: "Estadio",
-        desc: "Casa de las Chivas y sede mundialista 2026. Una joya arquitectónica con forma de volcán.",
+        desc: "Casa de las Chivas y sede mundialista 2026.",
         img: "https://estadioakron.mx/img/acceso_directo/acceso_como_llego.jpg",
     },
     {
         id: 2,
         name: "Estadio Jalisco",
         type: "Estadio Histórico",
-        desc: "El coloso de la Calzada Independencia, sede de dos mundiales y del legendario Pelé.",
+        desc: "Sede de dos mundiales y del legendario Pelé.",
         img: "https://www.shutterstock.com/shutterstock/photos/2421042901/display_1500/stock-photo-guadalajara-mexico-october-aerial-mastery-drone-perspective-of-estadio-jalisco-2421042901.jpg",
     },
     {
         id: 3,
         name: "Museo Chivas",
         type: "Museo",
-        desc: "Un viaje por la historia del equipo más popular de México, ubicado dentro del Estadio Akron.",
+        desc: "Historia del equipo Chivas, ubicado dentro del Estadio Akron.",
         img: "https://estadioakron.mx/img/zona-para-eventos/museo-chivas/museochivas1.jpg",
     },
     {
         id: 4,
         name: "Tienda Selección",
         type: "Tienda",
-        desc: "Consigue la piel de la selección y artículos exclusivos para el Mundial 2026.",
+        desc: "Consigue mercancía de la selección y artículos exclusivos para el Mundial 2026.",
         img: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=1600",
     }
 ];
