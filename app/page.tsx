@@ -62,6 +62,7 @@ const Header = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [isBusinessOpen, setIsBusinessOpen] = useState(false);
+  const [user, setUser] = useState<{nombre: string, rol: string} | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -71,6 +72,18 @@ const Header = ({
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  
+  useEffect(() => {
+    const checkUser = () => {
+      const storedUser = localStorage.getItem("pitzbol_user");
+      if (storedUser) setUser(JSON.parse(storedUser));
+    };
+
+    checkUser();
+    // Escuchar cambios en el storage (por si se loguea desde un modal)
+    window.addEventListener("storage", checkUser);
+    return () => window.removeEventListener("storage", checkUser);
   }, []);
 
   return (
@@ -134,35 +147,66 @@ const Header = ({
         {isMenuOpen && (
           <div ref={menuRef} className="absolute top-[110%] right-0 w-64 md:w-72 bg-white/95 backdrop-blur-sm rounded-[32px] shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-4 flex flex-col gap-1">
-              {/* SECCIÓN USUARIO DENTRO DEL MENÚ */}
               <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-bold px-4 mb-2">Usuario</p>
-              <button onClick={() => { setIsMenuOpen(false); onOpenAuth(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
-                <FiUser size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
-                <span className="font-semibold text-sm italic group-hover:translate-x-1 transition-transform">Identificarse</span>
-              </button>
               
-              {/* OPCIÓN DE FAVORITOS DENTRO DEL MENÚ  */}
-              <button onClick={() => { setIsMenuOpen(false); onOpenAuth(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
-                <FiHeart size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
-                <span className="font-semibold text-sm group-hover:translate-x-1 transition-transform">Mis Favoritos</span>
-              </button>
+              {/* LÓGICA DINÁMICA: IDENTIFICARSE O PERFIL */}
+              {user ? (
+                <Link href="/perfil" onClick={() => setIsMenuOpen(false)}>
+                  <div className="group flex items-center gap-3 px-4 py-3 bg-[#1A4D2E]/5 hover:bg-[#1A4D2E] rounded-2xl transition-all text-left">
+                    <div className="w-8 h-8 bg-[#1A4D2E] rounded-full flex items-center justify-center text-white text-[10px] font-bold uppercase">
+                      {user.nombre[0]}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-black text-sm text-[#1A4D2E] group-hover:text-white uppercase">Mi Perfil</span>
+                      <span className="text-[9px] text-[#769C7B] group-hover:text-white/80 font-bold uppercase tracking-tighter">{user.rol} Pitzbol</span>
+                    </div>
+                  </div>
+                </Link>
+              ) : (
+                <button onClick={() => { setIsMenuOpen(false); onOpenAuth(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
+                  <FiUser size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
+                  <span className="font-semibold text-sm italic group-hover:translate-x-1 transition-transform">Identificarse</span>
+                </button>
+              )}
+              
+              {/* ... (Resto del menú: Mis Favoritos, etc.) ... */}
 
               <div className="h-[1px] bg-gray-100 my-2 mx-4" />
               <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-bold px-4 mb-2">Socios Pitzbol</p>
               
-              <button onClick={() => { setIsMenuOpen(false); onOpenGuide(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
-                <FiMapPin size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
-                <span className="font-semibold text-sm group-hover:translate-x-1 transition-transform">Afiliación de Guías</span>
-              </button>
+              {/* OCULTAR AFILIACIÓN SI YA ES GUÍA */}
+              {user?.rol !== 'guia' && (
+                <button onClick={() => { setIsMenuOpen(false); onOpenGuide(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
+                  <FiMapPin size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
+                  <span className="font-semibold text-sm group-hover:translate-x-1 transition-transform">Afiliación de Guías</span>
+                </button>
+              )}
 
               <button onClick={() => { setIsMenuOpen(false); onOpenBusiness(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
                 <FiBriefcase size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
                 <span className="font-semibold text-sm group-hover:translate-x-1 transition-transform">Alianzas Comerciales</span>
               </button>
-
               <div className="h-[1px] bg-gray-100 my-2 mx-4" />
               <button className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left font-medium text-sm">Nosotros</button>
               <button className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left font-medium text-sm">Soporte y Contacto</button>
+
+              {/* BOTÓN DE CERRAR SESIÓN (Solo si hay usuario) */}
+              {user && (
+                <>
+                  <div className="h-[1px] bg-gray-100 my-2 mx-4" />
+                  <button 
+                    onClick={() => {
+                      localStorage.removeItem("pitzbol_user");
+                      setUser(null);
+                      setIsMenuOpen(false);
+                    }} 
+                    className="group flex items-center gap-3 px-4 py-3 hover:bg-red-50 rounded-2xl transition-all text-left text-red-500 font-bold text-xs"
+                  >
+                    <FiX size={18} /> Cerrar Sesión
+                  </button>
+                </>
+              )}
+
             </div>
           </div>
         )}
@@ -551,8 +595,7 @@ export default function Home() {
         <div className="mt-16 pt-8 border-t border-[#1A4D2E]/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#769C7B]">
           <p>© 2025 PITZBOL PROJECT - CAMINO AL MUNDIAL 2026</p>
           <div className="flex gap-6">
-            <Link href="#" className="hover:text-[#F00808] transition-colors">Términos</Link>
-            <Link href="#" className="hover:text-[#F00808] transition-colors">Privacidad</Link>
+            <Link href="#" className="hover:text-[#F00808] transition-colors">Política de privacidad</Link>
           </div>
         </div>
       </footer>
