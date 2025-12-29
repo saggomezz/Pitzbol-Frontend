@@ -1,50 +1,20 @@
 "use client";
-import React, { useState } from "react";
-import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion"; // Añadido AnimatePresence
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion"; // Añadido AnimatePresence
-import { FiHeart, FiUser, FiArrowRight, FiSun } from "react-icons/fi";
-import imglogo from "../components/logoPitzbol.png"; 
+import Link from "next/link";
+import { useState } from "react";
+import { FiArrowRight, FiHeart, FiSun, FiUser } from "react-icons/fi";
 import AuthModal from "../components/AuthModal";
+import imglogo from "../components/logoPitzbol.png";
 
 export default function FavoritosPage() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   return (
     <div className="h-screen bg-[#FDFCF9] flex flex-col font-sans overflow-hidden">
-      
-      {/* HEADER IDÉNTICO AL DE CALENDARIO */}
-      <header className="bg-[#F6F0E6] px-8 py-0 flex justify-between items-center border-b border-[#1A4D2E]/10 flex-shrink-0 z-50 h-20 md:h-24">
-        <div className="flex items-center h-full">
-          <Link href="/" className="h-full flex items-center">
-            <motion.div 
-              whileHover={{ rotate: 190 }}
-              transition={{ duration: 2.0, ease: "easeInOut" }}
-              className="relative h-20 w-20 md:h-32 md:w-32 flex-shrink-0 cursor-pointer"
-            >
-              <Image 
-                src={imglogo} 
-                alt="logoPitzbol" 
-                fill 
-                className="object-contain" 
-                priority 
-              />
-            </motion.div>
-          </Link>
-          
-          <div className="flex flex-col ml-1">
-            <h1 className="text-2xl md:text-3xl font-black text-[#1A4D2E] uppercase leading-none" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-              Favoritos
-            </h1>
-            <div className="flex items-center gap-2 text-[9px] md:text-[10px] text-[#769C7B] font-bold uppercase tracking-widest mt-1">
-              <FiSun size={10} className="text-[#F00808]" /> GDL 28°C • Soleado
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* CONTENIDO PRINCIPAL */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 text-center relative">
+      <main className="flex-4 flex flex-col bottom-9 items-center justify-center p-6 text-center relative">
         <motion.div 
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }}
@@ -66,12 +36,12 @@ export default function FavoritosPage() {
             {/* BOTÓN CORREGIDO: Ahora abre el modal en lugar de redirigir */}
             <button 
               onClick={() => setIsAuthOpen(true)}
-              className="w-full bg-[#0D601E] text-white py-4 rounded-full font-bold uppercase tracking-[0.2em] text-xs shadow-lg hover:shadow-[#0D601E]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="w-full bg-[#0D601E] text-white py-4 rounded-full font-bold tracking-[0.1em] text-[14px] shadow-lg hover:shadow-[#0D601E]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
             >
               <FiUser size={16} /> Iniciar Sesión <FiArrowRight />
             </button>
 
-            <Link href="/" className="block py-2 text-[#769C7B] font-bold uppercase tracking-widest text-[10px] hover:text-[#1A4D2E] transition-colors">
+            <Link href="/" className="block py-2 text-[#769C7B] font-bold  text-[14px] hover:text-[#1A4D2E] transition-colors">
               Volver a la página principal
             </Link>
           </div>
