@@ -72,7 +72,7 @@ export default function FavoritosPage() {
             </button>
 
             <Link href="/" className="block py-2 text-[#769C7B] font-bold uppercase tracking-widest text-[10px] hover:text-[#1A4D2E] transition-colors">
-              Volver al mapa
+              Volver a la página principal
             </Link>
           </div>
         </motion.div>

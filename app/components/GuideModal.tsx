@@ -71,6 +71,17 @@ const GuideModal = ({ isOpen, onClose, isAlreadyUser = false }: { isOpen: boolea
       });
 
       if (response.ok) {
+        // --- NUEVO: GUARDAR SESIÓN LOCAL ---
+        const userData = {
+          id: `${formData.nombre}_${formData.apellido}`.replace(/\s+/g, '_'),
+          nombre: formData.nombre,
+          rol: "guia"
+        };
+        localStorage.setItem("pitzbol_user", JSON.stringify(userData));
+
+        // Emitimos un evento para que el Navbar se entere del cambio instantáneamente
+        window.dispatchEvent(new Event("storage"));
+
         setTimeout(() => {
           onClose();
         }, 3000);
