@@ -1,24 +1,16 @@
 "use client";
-import { AnimatePresence, motion } from "framer-motion";
-import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { useState } from "react";
 import {
-    FiBriefcase,
-    FiCalendar,
     FiFilter,
     FiHeart,
     FiInfo,
     FiMapPin,
-    FiMenu,
     FiSearch,
-    FiSun,
-    FiUser,
-    FiX
+    FiSun
 } from "react-icons/fi";
-import AuthModal from "../components/AuthModal";
-import imglogo from "../components/logoPitzbol.png";
 
+// Los datos de los lugares se mantienen igual
 const futbolPlaces = [
     {
         id: 1,
@@ -53,24 +45,13 @@ const futbolPlaces = [
 export default function FutbolPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [favorites, setFavorites] = useState<number[]>([]);
-    const [isAuthOpen, setIsAuthOpen] = useState(false);
-    const [isLogged, setIsLogged] = useState(false);
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setIsMenuOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
+    
+    // Solo necesitamos saber si el usuario existe para los favoritos
+    // Estos datos ahora se manejan idealmente vía context o el localStorage global
     const handleFavoriteClick = (id: number) => {
-        if (!isLogged) {
-            setIsAuthOpen(true);
+        const storedUser = localStorage.getItem("pitzbol_user");
+        if (!storedUser) {
+            alert("Por favor, identifícate para guardar favoritos.");
             return;
         }
         setFavorites(prev =>
@@ -80,75 +61,15 @@ export default function FutbolPage() {
 
     return (
         <div className="min-h-screen bg-[#FDFCF9] flex flex-col font-sans">
-            {/* HEADER */}
-            <header className="bg-[#F6F0E6] px-4 md:px-8 py-0 flex justify-between items-center border-b border-[#1A4D2E]/10 flex-shrink-0 z-50 h-20 md:h-24 sticky top-0">
-                <div className="flex items-center h-full">
-                    <Link href="/" className="h-full flex items-center">
-                        <motion.div
-                            whileHover={{ rotate: 190 }}
-                            transition={{ duration: 2.0, ease: "easeInOut" }}
-                            className="relative h-20 w-20 md:h-32 md:w-32 flex-shrink-0 cursor-pointer"
-                        >
-                            <Image src={imglogo} alt="logoPitzbol" fill className="object-contain" priority />
-                        </motion.div>
-                    </Link>
-                    <div className="flex flex-col ml-1">
-                        <h1 className="text-2xl md:text-3xl font-black text-[#1A4D2E] uppercase leading-none" style={{ fontFamily: "'Jockey One', sans-serif" }}>Fútbol</h1>
-                        <div className="flex items-center gap-2 text-[9px] md:text-[10px] text-[#769C7B] font-bold uppercase tracking-widest mt-1">
-                            <FiSun size={10} className="text-[#F00808]" /> GDL 28°C • Soleado
-                        </div>
-                    </div>
+            {/* EL HEADER HA SIDO ELIMINADO: Ahora lo provee layout.tsx */}
+
+            {/* BARRA DE ESTADO RÁPIDA (Opcional, debajo del Nav global) */}
+            <div className="bg-[#F6F0E6]/50 px-8 py-2 flex items-center justify-end">
+                <div className="flex items-center gap-2 text-[10px] text-[#769C7B] font-bold uppercase tracking-widest">
+                    <FiSun size={10} className="text-[#F00808]" /> GDL 28°C • Soleado
                 </div>
+            </div>
 
-                <div className="flex items-center gap-1 md:gap-4 relative">
-                    <Link href="/calendario">
-                        <button className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808]" title="Calendario">
-                            <FiCalendar size={24} className="md:w-7 md:h-7" />
-                        </button>
-                    </Link>
-
-                    <Link href="/favoritos">
-                        <button className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808] group" title="Favoritos">
-                            <FiHeart size={24} className="md:w-7 md:h-7 transition-transform group-hover:scale-110" />
-                        </button>
-                    </Link>
-
-                    <button className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808]" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-                        {isMenuOpen ? <FiX size={24} className="md:w-7 md:h-7" /> : <FiMenu size={24} className="md:w-7 md:h-7" />}
-                    </button>
-
-                    {isMenuOpen && (
-                        <div ref={menuRef} className="absolute top-[110%] right-0 w-64 md:w-72 bg-white/95 backdrop-blur-sm rounded-[32px] shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-[100]">
-                            <div className="p-4 flex flex-col gap-1">
-                                <p className="text-[10px] uppercase tracking-[0.2em] text-[#769C7B] font-bold px-4 mb-2">Usuario</p>
-                                <button onClick={() => { setIsMenuOpen(false); setIsAuthOpen(true); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
-                                    <FiUser size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
-                                    <span className="font-semibold text-sm italic text-[#1A4D2E] group-hover:translate-x-1 transition-transform">Identificarse</span>
-                                </button>
-                                <button onClick={() => { setIsMenuOpen(false); setIsAuthOpen(true); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
-                                    <FiHeart size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
-                                    <span className="font-semibold text-sm text-[#1A4D2E] group-hover:translate-x-1 transition-transform">Mis Favoritos</span>
-                                </button>
-                                <div className="h-[1px] bg-gray-100 my-2 mx-4" />
-                                <p className="text-[10px] uppercase tracking-[0.2em] text-[#769C7B] font-bold px-4 mb-2">Socios Pitzbol</p>
-                                <button onClick={() => setIsMenuOpen(false)} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
-                                    <FiMapPin size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
-                                    <span className="font-semibold text-sm text-[#1A4D2E] group-hover:translate-x-1 transition-transform">Afiliación de Guías</span>
-                                </button>
-                                <button onClick={() => setIsMenuOpen(false)} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
-                                    <FiBriefcase size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
-                                    <span className="font-semibold text-sm text-[#1A4D2E] group-hover:translate-x-1 transition-transform">Alianzas Comerciales</span>
-                                </button>
-                                <div className="h-[1px] bg-gray-100 my-2 mx-4" />
-                                <button className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left font-medium text-sm text-[#1A4D2E]">Nosotros</button>
-                                <button className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left font-medium text-sm text-[#1A4D2E]">Soporte y Contacto</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </header>
-
-            {/* CUERPO DE LA PÁGINA (RESTAURADO) */}
             <main className="max-w-[1600px] mx-auto px-6 py-12 w-full">
                 <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
                     <div>
@@ -175,7 +96,9 @@ export default function FutbolPage() {
 
                 {/* GRID DE TARJETAS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {futbolPlaces.map((place) => (
+                    {futbolPlaces
+                        .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .map((place) => (
                         <motion.div
                             key={place.id}
                             whileHover={{ y: -10 }}
@@ -219,12 +142,6 @@ export default function FutbolPage() {
                     ))}
                 </div>
             </main>
-
-            <AnimatePresence>
-                {isAuthOpen && (
-                    <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
-                )}
-            </AnimatePresence>
         </div>
     );
 }
