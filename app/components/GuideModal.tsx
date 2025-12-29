@@ -51,7 +51,7 @@ const GuideModal = ({ isOpen, onClose, isAlreadyUser = false }: { isOpen: boolea
     }
   }, [isOpen, isAlreadyUser]);
 
-  // --- MODIFICADO: FUNCIÓN DE FINALIZAR CON FETCH ---
+
   const handleFinish = async () => {
     setIsFinishing(true);
 
@@ -84,6 +84,7 @@ const GuideModal = ({ isOpen, onClose, isAlreadyUser = false }: { isOpen: boolea
 
         setTimeout(() => {
           onClose();
+          window.location.reload(); // Refrescar para que el Header detecte al usuario
         }, 3000);
       } else {
         alert("Hubo un error al registrar en la base de datos.");

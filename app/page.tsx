@@ -9,11 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi"; // Importamos un balón de fútbol
 import { construirItinerarioElegido, ordenarPorCercania } from '../lib/pitzbol-engine';
-import AuthModal from "./components/AuthModal";
-import BusinessModal from "./components/BusinessModal";
-import GuideModal from "./components/GuideModal";
-import imglogo from "./components/logoPitzbol.png";
-import imgPasto from "./components/pastoVerde.png";
+import imglogo from '../app/components/logoPitzbol.png';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -49,171 +45,6 @@ const recommendations: Recommendation[] = [
   { name: "Tlaquepaque", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
   { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
 ];
-
-const Header = ({ 
-  onOpenAuth, 
-  onOpenGuide,
-  onOpenBusiness
-}: { 
-  onOpenAuth: () => void; 
-  onOpenGuide: () => void; 
-  onOpenBusiness: () => void;
-}) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [isBusinessOpen, setIsBusinessOpen] = useState(false);
-  const [user, setUser] = useState<{nombre: string, rol: string} | null>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-  
-  useEffect(() => {
-    const checkUser = () => {
-      const storedUser = localStorage.getItem("pitzbol_user");
-      if (storedUser) setUser(JSON.parse(storedUser));
-    };
-
-    checkUser();
-    // Escuchar cambios en el storage (por si se loguea desde un modal)
-    window.addEventListener("storage", checkUser);
-    return () => window.removeEventListener("storage", checkUser);
-  }, []);
-
-  return (
-    <nav className="flex justify-between items-center bg-[#F6F0E6] px-4 md:px-8 h-20 md:h-24 sticky top-0 z-50 shadow-sm text-[#1A4D2E]">
-      <div className="flex items-center h-full">
-        {/* LOGO CON GIRO SUAVE DE 190 GRADOS */}
-        <motion.div 
-          whileHover={{ rotate: 190 }}
-          transition={{ duration: 2.0, ease: "easeInOut" }}
-          className="relative h-20 w-20 md:h-32 md:w-32 flex-shrink-0 cursor-pointer"
-        >
-          <Image 
-            src={imglogo} 
-            alt="logoPitzbol" 
-            fill 
-            className="object-contain" 
-            priority 
-          />
-        </motion.div>
-
-        <div className="relative flex items-center h-full ml-1">
-          <div className="absolute inset-y-0 -left-6 md:-left-6 md:top-8 top-6 z-0 flex items-center w-[120%] min-w-[150px] md:min-w-[250px]">
-            <Image 
-              src={imgPasto} 
-              alt="pastoVerde" 
-              className="object-contain" 
-            />
-          </div>
-          <h1 className="relative z-10 text-[35px] md:text-[50px] leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-            <span className="text-[#FFFFFF]">PITZ</span>
-            <span className="text-[#F00808]">BOL</span>
-          </h1>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 md:gap-4 relative">
-        <Link href="/calendario">
-          <button className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808]" title="Calendario">
-            <FiCalendar size={24} className="md:w-7 md:h-7" />
-          </button>
-        </Link>
-
-        {/* ICONO DE FAVORITOS - REDIRIGE A PÁGINA */}
-        <Link href="/favoritos">
-          <button 
-            className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808] group" 
-            title="Favoritos"
-          >
-            <FiHeart size={24} className="md:w-7 md:h-7 transition-transform group-hover:scale-110" />
-          </button>
-        </Link>
-
-        <button className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808]">
-          <FiSearch size={24} className="md:w-7 md:h-7" />
-        </button>
-
-        <button className="p-2 hover:bg-white/60 rounded-full transition-all text-[#1A4D2E] hover:text-[#F00808]" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-          {isMenuOpen ? <FiX size={24} className="md:w-7 md:h-7" /> : <FiMenu size={24} className="md:w-7 md:h-7" />}
-        </button>
-
-        {isMenuOpen && (
-          <div ref={menuRef} className="absolute top-[110%] right-0 w-64 md:w-72 bg-white/95 backdrop-blur-sm rounded-[32px] shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-4 flex flex-col gap-1">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-bold px-4 mb-2">Usuario</p>
-              
-              {/* LÓGICA DINÁMICA: IDENTIFICARSE O PERFIL */}
-              {user ? (
-                <Link href="/perfil" onClick={() => setIsMenuOpen(false)}>
-                  <div className="group flex items-center gap-3 px-4 py-3 bg-[#1A4D2E]/5 hover:bg-[#1A4D2E] rounded-2xl transition-all text-left">
-                    <div className="w-8 h-8 bg-[#1A4D2E] rounded-full flex items-center justify-center text-white text-[10px] font-bold uppercase">
-                      {user.nombre[0]}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-black text-sm text-[#1A4D2E] group-hover:text-white uppercase">Mi Perfil</span>
-                      <span className="text-[9px] text-[#769C7B] group-hover:text-white/80 font-bold uppercase tracking-tighter">{user.rol} Pitzbol</span>
-                    </div>
-                  </div>
-                </Link>
-              ) : (
-                <button onClick={() => { setIsMenuOpen(false); onOpenAuth(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
-                  <FiUser size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
-                  <span className="font-semibold text-sm italic group-hover:translate-x-1 transition-transform">Identificarse</span>
-                </button>
-              )}
-              
-              {/* ... (Resto del menú: Mis Favoritos, etc.) ... */}
-
-              <div className="h-[1px] bg-gray-100 my-2 mx-4" />
-              <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-bold px-4 mb-2">Socios Pitzbol</p>
-              
-              {/* OCULTAR AFILIACIÓN SI YA ES GUÍA */}
-              {user?.rol !== 'guia' && (
-                <button onClick={() => { setIsMenuOpen(false); onOpenGuide(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
-                  <FiMapPin size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
-                  <span className="font-semibold text-sm group-hover:translate-x-1 transition-transform">Afiliación de Guías</span>
-                </button>
-              )}
-
-              <button onClick={() => { setIsMenuOpen(false); onOpenBusiness(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
-                <FiBriefcase size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
-                <span className="font-semibold text-sm group-hover:translate-x-1 transition-transform">Alianzas Comerciales</span>
-              </button>
-              <div className="h-[1px] bg-gray-100 my-2 mx-4" />
-              <button className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left font-medium text-sm">Nosotros</button>
-              <button className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left font-medium text-sm">Soporte y Contacto</button>
-
-              {/* BOTÓN DE CERRAR SESIÓN (Solo si hay usuario) */}
-              {user && (
-                <>
-                  <div className="h-[1px] bg-gray-100 my-2 mx-4" />
-                  <button 
-                    onClick={() => {
-                      localStorage.removeItem("pitzbol_user");
-                      setUser(null);
-                      setIsMenuOpen(false);
-                    }} 
-                    className="group flex items-center gap-3 px-4 py-3 hover:bg-red-50 rounded-2xl transition-all text-left text-red-500 font-bold text-xs"
-                  >
-                    <FiX size={18} /> Cerrar Sesión
-                  </button>
-                </>
-              )}
-
-            </div>
-          </div>
-        )}
-      </div>
-    </nav>
-  );
-};
 
 const CategoryCarousel = ({ categories }: { categories: Category[] }) => (
   <section className="flex gap-4 p-4 md:py-6 md:px-8 overflow-x-auto md:justify-center bg-white">
@@ -351,10 +182,7 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time }: any) =>
 );
 
 export default function Home() {
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isLogged, setIsLogged] = useState(false);
-  const [isBusinessOpen, setIsBusinessOpen] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -448,10 +276,6 @@ export default function Home() {
   useEffect(() => {
     cargarItinerarioHome();
     const authAuth = searchParams.get("auth");
-    if (authAuth === "true") {
-      setIsAuthOpen(true);  
-      router.replace("/");
-    }
   }, [searchParams, router]);
   
   useEffect(() => {
@@ -473,14 +297,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
-      <Header 
-        onOpenAuth={() => setIsAuthOpen(true)} 
-        onOpenGuide={() => setIsGuideOpen(true)}
-        onOpenBusiness={() => setIsBusinessOpen(true)}
-      />
       <CategoryCarousel categories={categories} />
       <DateSlider />
-      
       <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 pl-4 pr-4 md:pl-22 md:pr-22 w-full">
         <div className="flex flex-col gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
           <MatchItem 
@@ -492,7 +310,6 @@ export default function Home() {
             flag2="https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Flag_of_South_Africa.svg/1200px-Flag_of_South_Africa.svg.png"
             time="13:00"
           />
-
           <MatchItem 
             location="GDL"
             date="11 de Junio"
@@ -502,7 +319,6 @@ export default function Home() {
             flag2="https://img.freepik.com/foto-gratis/fondo-textura-bandera-nacional-dinamarca-ia-generativa_169016-29875.jpg"
             time="20:00"
           />
-
           {/* CONTENEDOR DE ITINERARIO */}
           <div className="bg-[#FAF9F2] rounded-3xl p-6 shadow-sm min-h-[300px] border border-[#1A4D2E]/10 flex flex-col relative">
             <h2 className="font-black text-[#1A4D2E] uppercase text-xs tracking-widest mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
@@ -599,10 +415,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
-      <GuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} isAlreadyUser={isLogged} />
-      <BusinessModal isOpen={isBusinessOpen} onClose={() => setIsBusinessOpen(false)} />
     </div>
   );
 }
