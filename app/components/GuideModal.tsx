@@ -3,13 +3,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import {
-	FiCheckCircle,
-	FiChevronDown,
-	FiChevronLeft,
-	FiCreditCard, FiFileText,
-	FiInfo,
-	FiUser,
-	FiX
+  FiCheckCircle, FiChevronDown, FiChevronLeft,
+  FiCreditCard, FiFileText, FiInfo, FiUser,
+  FiX, FiCamera
 } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
 
@@ -24,17 +20,29 @@ const GuideModal = ({ isOpen, onClose, isAlreadyUser = false }: { isOpen: boolea
   const [nacionalidad, setNacionalidad] = useState("");
   const [isFinishing, setIsFinishing] = useState(false);
   const [rfc, setRfc] = useState("");
-const [rfcError, setRfcError] = useState(false);
+  const [rfcError, setRfcError] = useState(false);
 
-const validateRFC = (valor: string) => {
-  // Regex para RFC de persona física: 4 letras, 6 números, 3 alfanuméricos
-  const rfcRegex = /^[A-Z&Ñ]{4}[0-9]{6}[A-Z0-9]{3}$/i;
-  if (valor !== "" && !rfcRegex.test(valor)) {
-    setRfcError(true);
-  } else {
-    setRfcError(false);
-  }
-};
+  // --- NUEVO: ESTADO PARA CAPTURAR LOS INPUTS ---
+  const [formData, setFormData] = useState({
+    nombre: "",
+    apellido: "",
+    telefono: "",
+    correo: "",
+    password: "",
+    propuestaTour: "",
+    codigoPostal: "",
+    clabe: ""
+  });
+
+  // Función para actualizar el estado de los textos
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const validateRFC = (valor: string) => {
+    const rfcRegex = /^[A-Z&Ñ]{4}[0-9]{6}[A-Z0-9]{3}$/i;
+    setRfcError(valor !== "" && !rfcRegex.test(valor));
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -43,12 +51,38 @@ const validateRFC = (valor: string) => {
     }
   }, [isOpen, isAlreadyUser]);
 
-  const handleFinish = () => {
+  // --- MODIFICADO: FUNCIÓN DE FINALIZAR CON FETCH ---
+  const handleFinish = async () => {
     setIsFinishing(true);
 
-    setTimeout(() => {
-      onClose();
-    }, 3000);    //3 segundos
+    const payload = {
+      ...formData,
+      nacionalidad,
+      rfc,
+      categorias: selectedCats,
+      rol: "guia"
+    };
+
+    try {
+      const response = await fetch('http://localhost:3001/api/guides/register-guide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        setTimeout(() => {
+          onClose();
+        }, 3000);
+      } else {
+        alert("Hubo un error al registrar en la base de datos.");
+        setIsFinishing(false);
+      }
+    } catch (error) {
+      console.error("Error conectando al backend:", error);
+      alert("No se pudo conectar con el servidor.");
+      setIsFinishing(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -79,23 +113,19 @@ const validateRFC = (valor: string) => {
                 </h2>
                 <p className="text-[#1A4D2E] text-sm italic mt-1">Paso {isAlreadyUser ? step : step + 1} de 4</p>
               </div>
-			  {step > (isAlreadyUser ? 1 : 0) && (
-				 <button
-				 	onClick={() => setStep(step - 1)}
-    				className="absolute top-8 left-8 text-[#769C7B] hover:text-[#0D601E] flex items-center gap-1 text-xs font-bold uppercase transition-all"
- 		        >
-   					<FiChevronLeft size={20} />
-					Atrás
-				</button>
-				)}
+              
+              {step > (isAlreadyUser ? 1 : 0) && (
+                <button onClick={() => setStep(step - 1)} className="absolute top-8 left-8 text-[#769C7B] hover:text-[#0D601E] flex items-center gap-1 text-xs font-bold uppercase transition-all">
+                  <FiChevronLeft size={20} /> Atrás
+                </button>
+              )}
 
               <div className="max-w-2xl mx-auto">
-                {/* PASOS DEL FORMULARIO (Igual al anterior) */}
                 {step === 0 && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <input placeholder="Nombre(s)" className={inputClass} />
-                      <input placeholder="Apellido(s)" className={inputClass} />
+                      <input name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Nombre(s)" className={inputClass} />
+                      <input name="apellido" value={formData.apellido} onChange={handleChange} placeholder="Apellido(s)" className={inputClass} />
                       <div className="relative">
                         <select value={nacionalidad} onChange={(e) => setNacionalidad(e.target.value)} className={inputClass + " appearance-none cursor-pointer pr-10"}>
                           <option value="" disabled>Nacionalidad</option>
@@ -104,10 +134,10 @@ const validateRFC = (valor: string) => {
                         </select>
                         <FiChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" />
                       </div>
-                      <input placeholder="Teléfono" className={inputClass} />
+                      <input name="telefono" value={formData.telefono} onChange={handleChange} placeholder="Teléfono" className={inputClass} />
                     </div>
-                    <input placeholder="Correo electrónico" className={inputClass} />
-                    <input type="password" placeholder="Contraseña" className={inputClass} />
+                    <input name="correo" value={formData.correo} onChange={handleChange} placeholder="Correo electrónico" className={inputClass} />
+                    <input name="password" type="password" value={formData.password} onChange={handleChange} placeholder="Contraseña" className={inputClass} />
                     <button onClick={() => setStep(1)} className="w-full bg-[#0D601E] text-white py-3 rounded-full mt-4 font-bold uppercase tracking-widest text-xs">Siguiente Paso</button>
                   </div>
                 )}
@@ -121,129 +151,61 @@ const validateRFC = (valor: string) => {
                     </div>
                     <div className="relative mt-4">
                        <span className={labelClass}>Propuesta de Tour (Editable)</span>
-                       <textarea placeholder="Ej: Recorridos históricos y leyendas..." className={inputClass + " rounded-3xl min-h-[100px] py-4 resize-none"} />
+                       <textarea name="propuestaTour" value={formData.propuestaTour} onChange={handleChange} placeholder="Ej: Recorridos históricos y leyendas..." className={inputClass + " rounded-3xl min-h-[100px] py-4 resize-none"} />
                     </div>
                     <button onClick={() => setStep(2)} disabled={selectedCats.length === 0} className="w-full bg-[#0D601E] text-white py-3 rounded-full font-bold uppercase tracking-widest text-xs disabled:opacity-50">Siguiente: Documentos</button>
                   </div>
                 )}
 
-				{/* PASO 2: ESCANEO DE IDENTIFICACIÓN */}
-				{step === 2 && (
-				<motion.div key="step2" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
-					<div>
-					<span className={labelClass}>Identificación Oficial (INE / Pasaporte)</span>
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-						{/* Lado Frontal */}
-						<label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-[#769C7B]/40 rounded-[35px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all group">
-						<div className="flex flex-col items-center justify-center text-center px-4">
-							<FiFileText className="text-[#769C7B] mb-3" size={32} />
-							<p className="text-sm md:text-base text-[#1A4D2E] font-black uppercase italic leading-tight">Frente de la Identificación</p>
-							<p className="text-xs text-gray-500 mt-2 font-medium">Haz clic para escanear o subir archivo</p>
-						</div>
-						<input type="file" className="hidden" accept="image/*" />
-						</label>
+                {step === 2 && (
+                  <motion.div className="space-y-6">
+                    <span className={labelClass}>Identificación Oficial (INE / Pasaporte)</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                      <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-[#769C7B]/40 rounded-[35px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all">
+                        <FiFileText className="text-[#769C7B] mb-3" size={32} />
+                        <p className="text-sm text-[#1A4D2E] font-black uppercase italic">Frente</p>
+                        <input type="file" className="hidden" accept="image/*" />
+                      </label>
+                      <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-[#769C7B]/40 rounded-[35px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all">
+                        <FiFileText className="text-[#769C7B] mb-3" size={32} />
+                        <p className="text-sm text-[#1A4D2E] font-black uppercase italic">Reverso</p>
+                        <input type="file" className="hidden" accept="image/*" />
+                      </label>
+                    </div>
+                    <button onClick={() => setStep(3)} className="w-full bg-[#0D601E] text-white py-4 rounded-full font-bold uppercase tracking-widest text-xs shadow-lg">Siguiente: Datos Fiscales</button>
+                  </motion.div>
+                )}
 
-						{/* Lado Reverso */}
-						<label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-[#769C7B]/40 rounded-[35px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all group">
-						<div className="flex flex-col items-center justify-center text-center px-4">
-							<FiFileText className="text-[#769C7B] mb-3" size={32} />
-							<p className="text-sm md:text-base text-[#1A4D2E] font-black uppercase italic leading-tight">Reverso de la Identificación</p>
-							<p className="text-xs text-gray-500 mt-2 font-medium">Haz clic para escanear o subir archivo</p>
-						</div>
-						<input type="file" className="hidden" accept="image/*" />
-						</label>
-					</div>
-					</div>
+                {step === 3 && (
+                  <motion.div className="space-y-6">
+                    <div className="bg-[#F6F0E6]/20 p-6 rounded-[35px] border border-[#1A4D2E]/10">
+                      <h4 className="font-bold uppercase text-xs text-[#0D601E] mb-4">Información Fiscal</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input placeholder="RFC" value={rfc} onChange={(e) => setRfc(e.target.value.toUpperCase())} onBlur={(e) => validateRFC(e.target.value)} className={`${inputClass} uppercase ${rfcError ? "border-red-500" : ""}`} maxLength={13} />
+                        <input name="codigoPostal" value={formData.codigoPostal} onChange={handleChange} placeholder="Código Postal" className={inputClass} maxLength={5} />
+                      </div>
+                    </div>
 
-					<button onClick={() => setStep(3)} className="w-full bg-[#0D601E] text-white py-4 rounded-full font-bold uppercase tracking-widest text-xs shadow-lg">
-					Siguiente: Datos Fiscales y de Pago
-					</button>
-				</motion.div>
-				)}
+                    <div className="bg-[#F6F0E6]/20 p-6 rounded-[35px] border border-[#1A4D2E]/10">
+                      <h4 className="font-bold uppercase text-xs text-[#0D601E] mb-4">Método de Cobro</h4>
+                      <input name="clabe" value={formData.clabe} onChange={handleChange} placeholder="CLABE Interbancaria (18 dígitos)" className={inputClass} maxLength={18} />
+                    </div>
 
-				{/* PASO 3: DATOS FISCALES Y BANCARIOS (UNIFICADOS) */}
-				{step === 3 && (
-				<motion.div key="step3" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
-					
-				{/* SECCIÓN FISCAL */}
-				<div className="bg-[#F6F0E6]/20 p-6 rounded-[35px] border border-[#1A4D2E]/10 transition-all duration-300 hover:shadow-[0_0_20px_rgba(13,96,30,0.1)] hover:border-[#0D601E]/80">
-				<div className="flex items-center gap-2 mb-4 text-[#0D601E]">
-					<FiUser size={20} />
-					<h4 className="font-bold uppercase text-xs tracking-tighter">Información Fiscal</h4>
-				</div>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<div className="relative">
-					<input 
-						placeholder="RFC con Homoclave" 
-						value={rfc}
-						onChange={(e) => setRfc(e.target.value.toUpperCase())}
-						onBlur={(e) => validateRFC(e.target.value)}
-						className={`${inputClass} uppercase ${rfcError ? "border-red-500 focus:border-red-600 focus:ring-red-100" : ""}`} 
-						maxLength={13} 
-					/>
-					{rfcError && (
-						<span className="text-[11px] text-red-500 ml-4 mt-1 font-bold animate-pulse">
-						Formato de RFC inválido (13 caracteres)
-						</span>
-					)}
-					</div>
-					<div className="relative">
-					<input placeholder="Código Postal Fiscal" className={inputClass} maxLength={5} />
-					</div>
-				</div>
-				<p className="text-[11px] text-gray-500 mt-3 ml-2 flex items-start gap-2 italic leading-relaxed">
-					<FiInfo className="mt-0.5 flex-shrink-0" />
-					Ingresa tu RFC con homoclave y CP para la correcta emisión de facturas y cumplimiento fiscal.
-				</p>
-				</div>
-
-				{/* SECCIÓN BANCARIA */}
-				<div className="bg-[#F6F0E6]/20 p-6 rounded-[35px] border border-[#1A4D2E]/10 transition-all duration-300 hover:shadow-[0_0_20px_rgba(13,96,30,0.1)] hover:border-[#0D601E]/80 mt-6">
-				<div className="flex items-center gap-2 mb-4 text-[#0D601E]">
-					<FiCreditCard size={20} />
-					<h4 className="font-bold uppercase text-xs tracking-tighter">Método de Cobro</h4>
-				</div>
-				<input 
-					placeholder="CLABE Interbancaria (18 dígitos)" 
-					className={inputClass} 
-					maxLength={18} 
-				/>
-				<div className="space-y-2 mt-3 ml-2">
-					<p className="text-[12px] text-[#1A4D2E] font-medium flex items-center gap-2">
-					<FiCheckCircle className="text-[#0D601E]" /> 
-					Aquí es donde depositaremos las ganancias de tus tours vendidos.
-					</p>
-					<p className="text-[12px] text-gray-500 italic flex items-start gap-2 leading-relaxed">
-					<FiInfo className="mt-0.5 flex-shrink-0" />
-					Nota: Solicitamos tu CLABE ya que es el método más seguro para transferencias interbancarias en México.
-					</p>
-				</div>
-				</div>
-					<button onClick={handleFinish} className="w-full bg-[#8B0000] text-white py-4 rounded-full font-black uppercase tracking-[0.2em] text-sm shadow-xl hover:scale-[1.02] transition-transform">
-					Finalizar Afiliación
-					</button>
-				</motion.div>
-				)}
+                    {/* BOTÓN FINAL QUE LLAMA AL BACKEND */}
+                    <button onClick={handleFinish} className="w-full bg-[#8B0000] text-white py-4 rounded-full font-black uppercase tracking-widest text-sm shadow-xl">
+                      Finalizar Afiliación
+                    </button>
+                  </motion.div>
+                )}
               </div>
             </motion.div>
           ) : (
-            /* PASO FINAL: ANIMACIÓN DE CARGA */
-            <motion.div 
-              key="loading" 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-20 text-center"
-            >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                className="relative w-32 h-32 md:w-48 md:h-48 mb-8"
-              >
+            <motion.div key="loading" className="flex flex-col items-center justify-center py-20 text-center">
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="relative w-32 h-32 mb-8">
                 <Image src={imglogo} alt="Cargando" fill className="object-contain" />
               </motion.div>
-              <h3 className="text-2xl md:text-3xl font-black text-[#1A4D2E] uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>
-                Procesando solicitud...
-              </h3>
-              <p className="text-[#769C7B] italic mt-2">Estamos preparando tu nueva aventura como guía.</p>
+              <h3 className="text-2xl font-black text-[#1A4D2E] uppercase">Procesando solicitud...</h3>
+              <p className="text-[#769C7B] italic mt-2">Estamos guardando tus datos en Pitzbol.</p>
             </motion.div>
           )}
         </AnimatePresence>

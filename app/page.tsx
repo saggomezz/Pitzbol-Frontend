@@ -1,16 +1,19 @@
 "use client";
+import { generarItinerarioManual, Lugar } from '@/lib/pitzbol-engine';
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import Papa from 'papaparse';
 import { useEffect, useRef, useState } from "react";
-import { FiBriefcase, FiCalendar, FiChevronRight, FiMapPin, FiMenu, FiSearch, FiUser, FiX, FiHeart } from "react-icons/fi";
+import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi"; // Importamos un balón de fútbol
+import { construirItinerarioElegido, ordenarPorCercania } from '../lib/pitzbol-engine';
 import AuthModal from "./components/AuthModal";
 import BusinessModal from "./components/BusinessModal";
 import GuideModal from "./components/GuideModal";
 import imglogo from "./components/logoPitzbol.png";
 import imgPasto from "./components/pastoVerde.png";
-import { useSearchParams, useRouter } from "next/navigation";
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -138,7 +141,7 @@ const Header = ({
                 <span className="font-semibold text-sm italic group-hover:translate-x-1 transition-transform">Identificarse</span>
               </button>
               
-              {/* NUEVA OPCIÓN DE FAVORITOS DENTRO DEL MENÚ PARA REFUERZO */}
+              {/* OPCIÓN DE FAVORITOS DENTRO DEL MENÚ  */}
               <button onClick={() => { setIsMenuOpen(false); onOpenAuth(); }} className="group flex items-center gap-3 px-4 py-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
                 <FiHeart size={18} className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors" />
                 <span className="font-semibold text-sm group-hover:translate-x-1 transition-transform">Mis Favoritos</span>
@@ -266,17 +269,14 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time }: any) =>
     <h3 className="text-center text-[#0D601E] text-xs md:text-sm mb-1 font-medium" style={{ fontFamily: 'var(--font-roboto)' }}>
       Próximo partido en <span className="font-bold">{location}</span> - {date}:
     </h3>
-
-    {/* CAMBIO 1: Altura del banner (de min-h-[100px] a min-h-[60px]) y redondeado más sutil */}
     <div className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-2 shadow-md min-h-[60px] md:min-h-[50px]">
-      
       {/* Equipo 1 */}
       <div className="flex flex-1 items-center justify-end gap-2">
         {/* CAMBIO 2: Tamaño de fuente del nombre del país (text-xs a text-base) */}
         <span className="text-xs md:text-base font-normal text-right leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>
           {team1}
         </span>
-        {/* CAMBIO 3: Tamaño de la bandera (de w-16 a w-10) */}
+        {/* Tamaño de la bandera (de w-16 a w-10) */}
         <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
           <Image src={flag1} alt={team1} fill className="object-cover" />
         </div>
@@ -313,7 +313,96 @@ export default function Home() {
   const [isBusinessOpen, setIsBusinessOpen] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  // ESTADOS PARA LA IA
+  const [itinerarioTxt, setItinerarioTxt] = useState("Cargando itinerario...");
+  const [loadingIA, setLoadingIA] = useState(true);
+  const [lugaresBD, setLugaresBD] = useState<Lugar[]>([]);
+  const [seleccionados, setSeleccionados] = useState<Lugar[]>([]);
+  const [mostrarOpciones, setMostrarOpciones] = useState(false);
+  const [itinerarioFinal, setItinerarioFinal] = useState("");
+
+  // Cargar la base de datos al inicio
   useEffect(() => {
+    const cargarDatos = async () => {
+      const res = await fetch('/datosLugares.csv');
+      const reader = res.body?.getReader();
+      const result = await reader?.read();
+      const csv = new TextDecoder('utf-8').decode(result?.value);
+      const { data } = Papa.parse(csv, { header: true, dynamicTyping: true, skipEmptyLines: true });
+      setLugaresBD((data as Lugar[]).filter(l => l.nombre));
+    };
+    cargarDatos();
+  }, []);
+
+  const toggleLugar = (lugar: Lugar) => {
+    setSeleccionados(prev => {
+      // Buscamos si el lugar ya está en la lista usando el nombre
+      const existe = prev.find(s => s.nombre === lugar.nombre);
+      
+      if (existe) {
+        // Si ya existe, lo quitamos
+        return prev.filter(s => s.nombre !== lugar.nombre);
+      } else {
+        // Si no existe, lo agregamos
+        return [...prev, lugar];
+      }
+    });
+  };
+
+  const finalizarRuta = () => {
+    const texto = construirItinerarioElegido(seleccionados);
+    setItinerarioFinal(texto);
+    setMostrarOpciones(false);
+  };
+
+  const cargarItinerarioHome = async () => {
+    setLoadingIA(true);
+    
+    // Coordenadas por defecto (Centro de GDL)
+    let ubicacionUsuario = { lat: 20.6767, lng: -103.3371 };
+
+    // INTENTAR DETECTAR UBICACIÓN REAL
+    if ("geolocation" in navigator) {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+        });
+        ubicacionUsuario = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        console.log("Ubicación detectada con éxito");
+      } catch (error) {
+        console.log("Usando ubicación por defecto (GPS desactivado o timeout)");
+      }
+    }
+
+    try {
+      const res = await fetch('/datosLugares.csv');
+      const reader = res.body?.getReader();
+      const result = await reader?.read();
+      const csv = new TextDecoder('utf-8').decode(result?.value);
+
+      const { data } = Papa.parse(csv, { header: true, dynamicTyping: true, skipEmptyLines: true });
+      const dataLimpia = (data as Lugar[]).filter(l => l.nombre && l.lat);
+
+      const resultIA = generarItinerarioManual(
+        dataLimpia, 
+        ["futbol", "gastronomia", "postres"], 
+        300, 
+        ubicacionUsuario // <--- Ahora pasamos la ubicación real o la de defecto
+      );
+
+      setItinerarioTxt(resultIA);
+    } catch (error) {
+      setItinerarioTxt("Error al sincronizar con Pitzbol.");
+    } finally {
+      setLoadingIA(false);
+    }
+  };
+  useEffect(() => {
+    cargarItinerarioHome();
     const authAuth = searchParams.get("auth");
     if (authAuth === "true") {
       setIsAuthOpen(true);  
@@ -321,6 +410,23 @@ export default function Home() {
     }
   }, [searchParams, router]);
   
+  useEffect(() => {
+    if (mostrarOpciones && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const miPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          // Re-ordenamos la lista de lugares que ya cargaste del CSV
+          setLugaresBD((prevLugares) => ordenarPorCercania(prevLugares, miPos));
+          console.log("Lugares ordenados por tu GPS");
+        },
+        (error) => {
+          console.log("No se pudo obtener ubicación, usando orden alfabético.");
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  }, [mostrarOpciones]); // Esto se dispara cuando el usuario da clic en "Presiona para elegir lugares"
+
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
       <Header 
@@ -330,6 +436,7 @@ export default function Home() {
       />
       <CategoryCarousel categories={categories} />
       <DateSlider />
+      
       <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 pl-4 pr-4 md:pl-22 md:pr-22 w-full">
         <div className="flex flex-col gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
           <MatchItem 
@@ -352,19 +459,76 @@ export default function Home() {
             time="20:00"
           />
 
-          <div className="bg-[#FAF9F2] rounded-xl p-4 shadow-sm min-h-[180px] border border-gray-200">
-            <h2 className="font-bold mb-2 text-gray-800" style={{ fontFamily: 'var(--font-roboto)' }}>
-              Itinerario de hoy:
+          {/* CONTENEDOR DE ITINERARIO */}
+          <div className="bg-[#FAF9F2] rounded-3xl p-6 shadow-sm min-h-[300px] border border-[#1A4D2E]/10 flex flex-col relative">
+            <h2 className="font-black text-[#1A4D2E] uppercase text-xs tracking-widest mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+              {itinerarioFinal ? "Tu Ruta Elegida" : "Arma tu Itinerario"}
             </h2>
-            <div className="h-40 border-t border-gray-100 p-3 text-sm text-gray-500 text-center pt-10">
-              Cargando itinerario...
-            </div>
+
+            {!itinerarioFinal && !mostrarOpciones && (
+              <button 
+                onClick={() => setMostrarOpciones(true)}
+                className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#769C7B]/30 rounded-2xl hover:bg-[#F6F0E6] transition-all group"
+              >
+                <FiMapPin className="text-[#769C7B] group-hover:text-[#F00808] mb-2" size={24} />
+                <p className="text-[11px] font-bold text-[#769C7B] uppercase">Presiona para elegir lugares</p>
+              </button>
+            )}
+
+            {mostrarOpciones && (
+              <div className="flex-1 flex flex-col">
+                <div className="flex-1 overflow-y-auto max-h-60 mb-4 space-y-2 pr-2 custom-scrollbar">
+                  {lugaresBD.map((lugar) => (
+                    <div 
+                      key={lugar.nombre}
+                      onClick={() => toggleLugar(lugar)}
+                      className={`p-3 rounded-xl cursor-pointer border transition-all flex justify-between items-center ${
+                        seleccionados.find(s => s.nombre === lugar.nombre) 
+                        ? "bg-[#1A4D2E] border-[#1A4D2E] text-white" 
+                        : "bg-white border-[#F6F0E6] text-[#1A4D2E]"
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold uppercase">{lugar.nombre}</span>
+                      <span className="text-[9px] opacity-70">{lugar.tiempoEstancia} min</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={finalizarRuta}
+                  disabled={seleccionados.length === 0} // <--- Bloqueado si está vacío
+                  className={`w-full py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
+                    seleccionados.length > 0
+                      ? "bg-[#F00808] text-white shadow-lg active:scale-95" 
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  {seleccionados.length > 0
+                    ? `Generar Itinerario (${seleccionados.length})`
+                    : "Selecciona al menos 1 lugar"}
+                </button>
+              </div>
+            )}
+
+            {itinerarioFinal && (
+              <div className="flex-1 flex flex-col">
+                <div className="text-[13px] leading-relaxed text-[#1A4D2E]/80 font-medium whitespace-pre-wrap flex-1 overflow-y-auto max-h-64">
+                  {itinerarioFinal}
+                </div>
+                <button 
+                  onClick={() => {setItinerarioFinal(""); setSeleccionados([]);}}
+                  className="mt-4 text-[10px] font-bold text-[#769C7B] uppercase hover:text-[#F00808]"
+                >
+                  Reiniciar selección
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         <Recommendations recommendations={recommendations} />
       </main>
-      {/* FOOTER PITZBOL - ESTILO UNIFICADO */}
+
+      {/*FOOTER*/}
       <footer className="bg-[#F6F0E6] border-t border-[#1A4D2E]/10 pt-16 pb-8 px-6 md:px-20 text-[#1A4D2E]">
           {/* LADO IZQUIERDO: LOGO Y SIGNIFICADO EVOLUCIONADO */}
           <div className="lg:col-span-5 flex flex-col md:flex-row items-center md:items-start gap-6">
@@ -393,36 +557,25 @@ export default function Home() {
         </div>
       </footer>
 
-      <AuthModal 
-        isOpen={isAuthOpen} 
-        onClose={() => setIsAuthOpen(false)} 
-      />
-      
-      <GuideModal    
-        isOpen={isGuideOpen}
-        onClose={() => setIsGuideOpen(false)} 
-        isAlreadyUser={isLogged} 
-      />
-
-      <BusinessModal 
-        isOpen={isBusinessOpen} 
-        onClose={() => setIsBusinessOpen(false)} 
-      />
-      </div>
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <GuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} isAlreadyUser={isLogged} />
+      <BusinessModal isOpen={isBusinessOpen} onClose={() => setIsBusinessOpen(false)} />
+    </div>
   );
 }
 
-const Recommendations = ({ recommendations }: { recommendations: Recommendation[] }) => (
+// SOLUCIÓN: Definición de Recommendations para evitar el error "is not defined"
+const Recommendations = ({ recommendations }: { recommendations: any[] }) => (
   <div className="flex flex-col w-full md:w-3/5">
-    <h2 className="text-2xl font-bold mb-4 text-gray-800">Recomendaciones</h2>
+    <h2 className="text-2xl font-bold mb-4 text-[#1A4D2E]">Recomendaciones</h2>
     <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-6">
       {recommendations.map((place) => (
         <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
           <div className="w-full relative overflow-hidden pb-[56.25%] md:pb-[100%]">
             {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={place.name} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">Sin imagen</div>}
-            <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#0B2C3D] text-white px-3 py-1 rounded-full shadow-lg">Ubicar</button></div>
+            <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#1A4D2E] text-white px-3 py-1 rounded-full shadow-lg">Ubicar</button></div>
           </div>
-          <div className="p-4"><h3 className="font-semibold text-gray-800 truncate text-center">{place.name}</h3></div>
+          <div className="p-4"><h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3></div>
         </div>
       ))}
     </div>
