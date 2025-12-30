@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Geist, Geist_Mono, Jockey_One, JetBrains_Mono, Roboto } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import AuthModal from "./components/AuthModal";
 import GuideModal from "./components/GuideModal";
 
@@ -58,7 +59,12 @@ export default function RootLayout({
           {children}
         </main>
 
-        <DynamicAuthModal 
+        {/* 3. FOOTER GLOBAL */}
+        <Footer />
+
+        {/* 4. MODALES GLOBALES
+            Se renderizan fuera del flujo del 'main' para evitar conflictos de z-index. */}
+        <AuthModal 
           isOpen={isAuthOpen} 
           onClose={() => setIsAuthOpen(false)} 
         />

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiLock, FiMail, FiX } from "react-icons/fi";
@@ -165,9 +166,13 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
                 />
               </div>
               <div className="text-right mt-2 px-4">
-                <button className="text-[11px] md:text-[13px] text-gray-500 hover:text-[#0D601E] transition-colors italic">
+                <Link
+                  href="/forgot-password"
+                  onClick={onClose}
+                  className="text-[11px] md:text-[13px] text-gray-500 hover:text-[#0D601E] transition-colors italic"
+                >
                   ¿Olvidaste tu contraseña?
-                </button>
+                </Link>
               </div>
             </div>
 
