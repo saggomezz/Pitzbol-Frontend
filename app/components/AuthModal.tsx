@@ -275,7 +275,7 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
           </p>
           <button 
             onClick={() => setIsLogin(!isLogin)}
-            className="px-8 md:px-12 py-3 border-2 border-[#8B0000] text-[#8B0000] rounded-full font-bold hover:bg-[#8B0000] hover:text-white transition-all tracking-widest text-[11px] md:text-[12px]"
+            className="px-8 md:px-12 py-3 border-2 border-[#8B0000] text-[#8B0000] rounded-full  hover:bg-[#8B0000] hover:text-white transition-all  text-[11px] md:text-[14px]"
           >
             {isLogin ? "Iniciar sesión" : "Registrarme"}
           </button>
