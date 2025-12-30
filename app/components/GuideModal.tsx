@@ -1,229 +1,202 @@
 "use client";
-import { AnimatePresence, motion } from "framer-motion";
-import Image from "next/image";
 import { useEffect, useState } from "react";
-import {
-  FiCheckCircle, FiChevronDown, FiChevronLeft,
-  FiCreditCard, FiFileText, FiInfo, FiUser,
-  FiX, FiCamera
+import { 
+  FiCamera, FiMessageSquare, FiPlus, FiX, FiUser, FiStar, FiEdit2, FiClock, FiDollarSign, FiUsers, FiTrash2 
 } from "react-icons/fi";
-import imglogo from "./logoPitzbol.png";
+import { motion, AnimatePresence } from "framer-motion";
 
-const CATEGORIES = [
-  "Arte", "Cultural", "Gastronómico", "Vida Nocturna", 
-  "Deportiva", "Aventura", "Arquitectura", "Naturaleza"
-];
-
-const GuideModal = ({ isOpen, onClose, isAlreadyUser = false }: { isOpen: boolean; onClose: () => void; isAlreadyUser?: boolean; }) => {
-  const [step, setStep] = useState(isAlreadyUser ? 1 : 0);
-  const [selectedCats, setSelectedCats] = useState<string[]>([]);
-  const [nacionalidad, setNacionalidad] = useState("");
-  const [isFinishing, setIsFinishing] = useState(false);
-  const [rfc, setRfc] = useState("");
-  const [rfcError, setRfcError] = useState(false);
-
-  // --- NUEVO: ESTADO PARA CAPTURAR LOS INPUTS ---
-  const [formData, setFormData] = useState({
-    nombre: "",
-    apellido: "",
-    telefono: "",
-    correo: "",
-    password: "",
-    propuestaTour: "",
-    codigoPostal: "",
-    clabe: ""
-  });
-
-  // Función para actualizar el estado de los textos
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const validateRFC = (valor: string) => {
-    const rfcRegex = /^[A-Z&Ñ]{4}[0-9]{6}[A-Z0-9]{3}$/i;
-    setRfcError(valor !== "" && !rfcRegex.test(valor));
-  };
+export default function PerfilDetallado() {
+  const [perfil, setPerfil] = useState<any>(null);
+  const [tours, setTours] = useState<any[]>([]);
+  const [showTourModal, setShowTourModal] = useState(false);
+  const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [especialidades, setEspecialidades] = useState<string[]>([]);
+  
+  // Estado para el formulario del modal
+  const [tourForm, setTourForm] = useState({ titulo: "", duracion: "", precio: "", maxPersonas: "" });
 
   useEffect(() => {
-    if (isOpen) {
-      setStep(isAlreadyUser ? 1 : 0);
-      setIsFinishing(false);
-    }
-  }, [isOpen, isAlreadyUser]);
-
-
-  const handleFinish = async () => {
-    setIsFinishing(true);
-
-    const payload = {
-      ...formData,
-      nacionalidad,
-      rfc,
-      categorias: selectedCats,
-      rol: "guia"
+    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    
+    const cargarDatosFirestore = async () => {
+      try {
+        const res = await fetch(`http://localhost:3001/api/guides/get-profile/${userLocal.id}`);
+        const data = await res.json();
+        
+        setPerfil(data);
+        // --- AQUÍ SE SINCRONIZA CON EL REGISTRO (Campo 07) ---
+        setEspecialidades(data["07_especialidades"] || []);
+        setFotoPerfil(data.fotoUrl || null);
+        
+        // Cargar tours existentes
+        const toursRes = await fetch(`http://localhost:3001/api/guides/get-tours/${userLocal.id}`);
+        const toursData = await toursRes.json();
+        setTours(toursData || []);
+        
+      } catch (error) {
+        console.error("Error cargando perfil:", error);
+        // Fallback por si el backend no responde
+        setPerfil({ nombre: userLocal.nombre, rol: "guía" });
+      } finally {
+        setLoading(false);
+      }
     };
 
+    if (userLocal.id) cargarDatosFirestore();
+  }, []);
+
+  // --- FUNCIÓN PARA GUARDAR EN BASE DE DATOS ---
+  const guardarExperiencia = async () => {
+    if (!tourForm.titulo || !tourForm.duracion || !tourForm.precio || !tourForm.maxPersonas) {
+      alert("Por favor completa los campos obligatorios");
+      return;
+    }
+
     try {
-      const response = await fetch('http://localhost:3001/api/guides/register-guide', {
+      const response = await fetch('http://localhost:3001/api/guides/add-tour', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          guideId: perfil.id || JSON.parse(localStorage.getItem("pitzbol_user")!).id,
+          ...tourForm
+        }),
       });
 
       if (response.ok) {
-        // --- NUEVO: GUARDAR SESIÓN LOCAL ---
-        const userData = {
-          id: `${formData.nombre}_${formData.apellido}`.replace(/\s+/g, '_'),
-          nombre: formData.nombre,
-          rol: "guia"
-        };
-        localStorage.setItem("pitzbol_user", JSON.stringify(userData));
-
-        // Emitimos un evento para que el Navbar se entere del cambio instantáneamente
-        window.dispatchEvent(new Event("storage"));
-
-        setTimeout(() => {
-          onClose();
-          window.location.reload(); // Refrescar para que el Header detecte al usuario
-        }, 3000);
-      } else {
-        alert("Hubo un error al registrar en la base de datos.");
-        setIsFinishing(false);
+        const resData = await response.json();
+        setTours([...tours, resData.tour]); // Actualiza la lista visualmente
+        setShowTourModal(false);
+        setTourForm({ titulo: "", duracion: "", precio: "", maxPersonas: "" });
       }
     } catch (error) {
-      console.error("Error conectando al backend:", error);
-      alert("No se pudo conectar con el servidor.");
-      setIsFinishing(false);
+      alert("Error al conectar con el servidor");
     }
   };
 
-  if (!isOpen) return null;
-
-  const toggleCategory = (cat: string) => {
-    setSelectedCats(prev => 
-      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
-    );
-  };
-
-  const inputClass = "w-full px-6 py-2.5 bg-transparent border border-[#1A4D2E]/20 rounded-full outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm";
-  const labelClass = "text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-2 block";
+  if (loading) return <div className="h-screen flex items-center justify-center font-bold text-[#1A4D2E] bg-[#FDFCF9]">Cargando...</div>;
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-2 md:p-4 bg-black/40">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }} 
-        animate={{ opacity: 1, scale: 1 }}
-        className="relative bg-white w-full max-w-[850px] min-h-[500px] max-h-[90vh] overflow-y-auto rounded-[30px] md:rounded-[50px] shadow-2xl p-8 md:p-12 border border-white/20"
-      >
-        <AnimatePresence mode="wait">
-          {!isFinishing ? (
-            <motion.div key="form" exit={{ opacity: 0, scale: 0.9 }}>
-              <button onClick={onClose} className="absolute top-6 right-8 text-gray-400 hover:text-red-500 transition-all z-10"><FiX size={28} /></button>
-              <div className="text-center mb-8">
-                <h2 className="text-[32px] md:text-[42px] text-[#8B0000] font-black leading-none uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>
-                  {step === 0 ? "Únete como Guía" : step === 1 ? "¿Qué experiencias ofreces?" : step === 2 ? "Documentación" : "Datos de Pago"}
-                </h2>
-                <p className="text-[#1A4D2E] text-sm italic mt-1">Paso {isAlreadyUser ? step : step + 1} de 4</p>
+    <div className="min-h-screen bg-[#FDFCF9] text-[#1A4D2E] pb-20 font-sans">
+      <div className="max-w-6xl mx-auto px-8 py-10 flex justify-between items-center">
+        <div className="flex flex-col">
+          <h1 className="text-4xl md:text-5xl font-black text-[#1A4D2E] uppercase" style={{ fontFamily: "'Jockey One', sans-serif" }}>Mi perfil</h1>
+          <p className="text-xs text-[#769C7B] font-bold uppercase tracking-[0.3em] mt-2">Panel de {perfil["03_rol"] || 'guía'} pitzbol</p>
+        </div>
+        <button className="relative p-3 bg-white rounded-2xl shadow-sm border border-[#F6F0E6] text-[#1A4D2E] hover:text-[#F00808] transition-all">
+          <FiMessageSquare size={24} />
+          <span className="absolute top-2 right-2 w-3 h-3 bg-[#0D601E] border-2 border-white rounded-full" />
+        </button>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <aside className="lg:col-span-4 space-y-8">
+          <section className="flex flex-col items-center text-center">
+            <div className="relative mb-8">
+              {!fotoPerfil && (
+                <motion.div initial={{ y: 5, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="absolute -top-8 left-1/2 -translate-x-1/2 w-max bg-[#FF8A00] text-white text-[10px] font-bold px-4 py-2 rounded-xl shadow-lg animate-bounce uppercase tracking-wider z-20">Sube tu foto de perfil</motion.div>
+              )}
+              <div className="w-48 h-48 md:w-56 md:h-56 rounded-[50px] overflow-hidden border-4 border-white shadow-2xl bg-white flex items-center justify-center relative z-10">
+                {fotoPerfil ? <img src={fotoPerfil} alt="Perfil" className="w-full h-full object-cover" /> : <FiUser size={80} className="text-[#1A4D2E]/10" />}
+              </div>
+              <motion.label whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="absolute -bottom-2 -right-2 p-4 bg-[#F00808] text-white rounded-2xl shadow-xl cursor-pointer z-30">
+                <FiCamera size={20} />
+                <input type="file" className="hidden" accept="image/*" />
+              </motion.label>
+            </div>
+            <h2 className="text-3xl font-bold text-[#1A4D2E] mb-1">{perfil["01_nombre"]}</h2>
+          </section>
+
+          <div className="bg-white border border-[#F6F0E6] rounded-[40px] p-8 flex divide-x divide-[#F6F0E6] shadow-sm">
+            <div className="flex-1 pr-4 space-y-3">
+              <h3 className="text-center font-black text-[10px] uppercase text-[#769C7B] tracking-widest">Idiomas</h3>
+              <span className="bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full text-[10px] font-bold text-center block">Español (Nativo)</span>
+            </div>
+            <div className="flex-1 pl-4 flex flex-col items-center justify-center text-center">
+              <h3 className="font-black text-[10px] uppercase text-[#769C7B] tracking-widest mb-2">Estatus</h3>
+              <p className="font-black text-[#1A4D2E] text-base">Principiante</p>
+            </div>
+          </div>
+        </aside>
+
+        <main className="lg:col-span-8 space-y-12">
+          {/* ESPECIALIDADES: Aquí se muestran las categorías del registro */}
+          <section>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold italic">Especialidad Principal</h3>
+              <button className="text-[#0D601E] flex items-center gap-1 text-xs font-bold hover:scale-105 transition-transform"><FiPlus /> Añadir etiqueta</button>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              {especialidades.map((esp, i) => (
+                <div key={i} className="group flex items-center gap-3 bg-white p-4 rounded-3xl border border-[#F6F0E6] shadow-sm relative overflow-hidden">
+                  <div className="w-2 h-2 rounded-full bg-[#0D601E]" />
+                  <span className="text-xs font-bold">{esp}</span>
+                  <button className="hidden group-hover:flex text-[#F00808] transition-all"><FiTrash2 size={14}/></button>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <h3 className="text-xl font-bold italic">Catálogo de experiencias</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <motion.div whileHover={{ y: -5 }} onClick={() => setShowTourModal(true)} className="bg-[#FAF9F2] rounded-[40px] p-8 border-2 border-dashed border-[#0D601E]/20 flex flex-col items-center justify-center text-center cursor-pointer group hover:bg-white transition-all min-h-[250px]">
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-[#0D601E] mb-4 group-hover:scale-110 transition-transform shadow-sm"><FiPlus size={28} /></div>
+                <h4 className="text-lg font-bold text-[#1A4D2E]">Diseñar nueva experiencia</h4>
+                <p className="text-xs text-[#769C7B] mt-2 px-6">Publica una nueva ruta y comienza a recibir pitzboleros</p>
+                <button className="mt-6 text-[#0D601E] font-bold text-xs underline underline-offset-4">Comenzar ahora</button>
+              </motion.div>
+
+              {tours.map((tour, i) => (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={i} className="bg-white rounded-[40px] p-8 border border-[#F6F0E6] shadow-lg relative">
+                  <button className="absolute top-6 right-6 text-gray-300 hover:text-[#0D601E]"><FiEdit2 size={16}/></button>
+                  <h4 className="text-lg font-black uppercase text-[#1A4D2E]">{tour.titulo}</h4>
+                  <div className="flex gap-4 mt-4">
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-[#769C7B]"><FiClock/> {tour.duracion}h</div>
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-[#769C7B]"><FiDollarSign/> ${tour.precio}</div>
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-[#769C7B]"><FiUsers/> máx {tour.maxPersonas}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <AnimatePresence>
+        {showTourModal && (
+          <div className="fixed inset-0 z-[150] bg-[#1A4D2E]/60 backdrop-blur-md flex items-center justify-center p-6">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white w-full max-w-lg rounded-[50px] p-10 shadow-3xl">
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-3xl font-black text-[#1A4D2E] uppercase" style={{ fontFamily: "'Jockey One', sans-serif" }}>Nuevo tour</h2>
+                <button onClick={() => setShowTourModal(false)} className="text-[#F00808] bg-[#FDF2F2] p-2 rounded-full"><FiX size={24}/></button>
               </div>
               
-              {step > (isAlreadyUser ? 1 : 0) && (
-                <button onClick={() => setStep(step - 1)} className="absolute top-8 left-8 text-[#769C7B] hover:text-[#0D601E] flex items-center gap-1 text-xs font-bold uppercase transition-all">
-                  <FiChevronLeft size={20} /> Atrás
-                </button>
-              )}
-
-              <div className="max-w-2xl mx-auto">
-                {step === 0 && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <input name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Nombre(s)" className={inputClass} />
-                      <input name="apellido" value={formData.apellido} onChange={handleChange} placeholder="Apellido(s)" className={inputClass} />
-                      <div className="relative">
-                        <select value={nacionalidad} onChange={(e) => setNacionalidad(e.target.value)} className={inputClass + " appearance-none cursor-pointer pr-10"}>
-                          <option value="" disabled>Nacionalidad</option>
-                          <option value="México">México</option>
-                          <option value="Otro">Otro</option>
-                        </select>
-                        <FiChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" />
-                      </div>
-                      <input name="telefono" value={formData.telefono} onChange={handleChange} placeholder="Teléfono" className={inputClass} />
-                    </div>
-                    <input name="correo" value={formData.correo} onChange={handleChange} placeholder="Correo electrónico" className={inputClass} />
-                    <input name="password" type="password" value={formData.password} onChange={handleChange} placeholder="Contraseña" className={inputClass} />
-                    <button onClick={() => setStep(1)} className="w-full bg-[#0D601E] text-white py-3 rounded-full mt-4 font-bold uppercase tracking-widest text-xs">Siguiente Paso</button>
+              <div className="space-y-5">
+                <div>
+                  <label className="text-[10px] font-black uppercase ml-4 text-gray-400">Nombre de la experiencia *</label>
+                  <input value={tourForm.titulo} onChange={(e) => setTourForm({...tourForm, titulo: e.target.value})} type="text" placeholder="Ej: Caminata por el Centro" className="w-full bg-[#FDFCF9] border border-[#F6F0E6] p-4 rounded-3xl outline-none font-bold text-sm" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-[10px] font-black uppercase ml-4 text-gray-400">Horas *</label>
+                    <input value={tourForm.duracion} onChange={(e) => setTourForm({...tourForm, duracion: e.target.value})} type="number" min="1" placeholder="0" className="w-full bg-[#FDFCF9] border border-[#F6F0E6] p-4 rounded-3xl text-center font-bold text-sm outline-none" />
                   </div>
-                )}
-
-                {step === 1 && (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {CATEGORIES.map(cat => (
-                        <button key={cat} onClick={() => toggleCategory(cat)} className={`py-3 px-2 rounded-2xl border text-xs font-bold transition-all ${selectedCats.includes(cat) ? 'bg-[#0D601E] border-[#0D601E] text-white shadow-lg' : 'border-gray-200 text-gray-500 hover:border-[#0D601E]'}`}>{cat}</button>
-                      ))}
-                    </div>
-                    <div className="relative mt-4">
-                       <span className={labelClass}>Propuesta de Tour (Editable)</span>
-                       <textarea name="propuestaTour" value={formData.propuestaTour} onChange={handleChange} placeholder="Ej: Recorridos históricos y leyendas..." className={inputClass + " rounded-3xl min-h-[100px] py-4 resize-none"} />
-                    </div>
-                    <button onClick={() => setStep(2)} disabled={selectedCats.length === 0} className="w-full bg-[#0D601E] text-white py-3 rounded-full font-bold uppercase tracking-widest text-xs disabled:opacity-50">Siguiente: Documentos</button>
+                  <div>
+                    <label className="text-[10px] font-black uppercase ml-4 text-gray-400">Precio (MXN) *</label>
+                    <input value={tourForm.precio} onChange={(e) => setTourForm({...tourForm, precio: e.target.value.replace(/[^0-9.]/g, '')})} type="text" placeholder="$0" className="w-full bg-[#FDFCF9] border border-[#F6F0E6] p-4 rounded-3xl text-center font-bold text-sm outline-none" />
                   </div>
-                )}
-
-                {step === 2 && (
-                  <motion.div className="space-y-6">
-                    <span className={labelClass}>Identificación Oficial (INE / Pasaporte)</span>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                      <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-[#769C7B]/40 rounded-[35px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all">
-                        <FiFileText className="text-[#769C7B] mb-3" size={32} />
-                        <p className="text-sm text-[#1A4D2E] font-black uppercase italic">Frente</p>
-                        <input type="file" className="hidden" accept="image/*" />
-                      </label>
-                      <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-[#769C7B]/40 rounded-[35px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all">
-                        <FiFileText className="text-[#769C7B] mb-3" size={32} />
-                        <p className="text-sm text-[#1A4D2E] font-black uppercase italic">Reverso</p>
-                        <input type="file" className="hidden" accept="image/*" />
-                      </label>
-                    </div>
-                    <button onClick={() => setStep(3)} className="w-full bg-[#0D601E] text-white py-4 rounded-full font-bold uppercase tracking-widest text-xs shadow-lg">Siguiente: Datos Fiscales</button>
-                  </motion.div>
-                )}
-
-                {step === 3 && (
-                  <motion.div className="space-y-6">
-                    <div className="bg-[#F6F0E6]/20 p-6 rounded-[35px] border border-[#1A4D2E]/10">
-                      <h4 className="font-bold uppercase text-xs text-[#0D601E] mb-4">Información Fiscal</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input placeholder="RFC" value={rfc} onChange={(e) => setRfc(e.target.value.toUpperCase())} onBlur={(e) => validateRFC(e.target.value)} className={`${inputClass} uppercase ${rfcError ? "border-red-500" : ""}`} maxLength={13} />
-                        <input name="codigoPostal" value={formData.codigoPostal} onChange={handleChange} placeholder="Código Postal" className={inputClass} maxLength={5} />
-                      </div>
-                    </div>
-
-                    <div className="bg-[#F6F0E6]/20 p-6 rounded-[35px] border border-[#1A4D2E]/10">
-                      <h4 className="font-bold uppercase text-xs text-[#0D601E] mb-4">Método de Cobro</h4>
-                      <input name="clabe" value={formData.clabe} onChange={handleChange} placeholder="CLABE Interbancaria (18 dígitos)" className={inputClass} maxLength={18} />
-                    </div>
-
-                    {/* BOTÓN FINAL QUE LLAMA AL BACKEND */}
-                    <button onClick={handleFinish} className="w-full bg-[#8B0000] text-white py-4 rounded-full font-black uppercase tracking-widest text-sm shadow-xl">
-                      Finalizar Afiliación
-                    </button>
-                  </motion.div>
-                )}
+                  <div>
+                    <label className="text-[10px] font-black uppercase ml-4 text-gray-400">Cupo *</label>
+                    <input value={tourForm.maxPersonas} onChange={(e) => setTourForm({...tourForm, maxPersonas: e.target.value})} type="number" min="1" placeholder="0" className="w-full bg-[#FDFCF9] border border-[#F6F0E6] p-4 rounded-3xl text-center font-bold text-sm outline-none" />
+                  </div>
+                </div>
+                <button onClick={guardarExperiencia} className="w-full bg-[#0D601E] text-white py-5 rounded-full font-bold text-sm shadow-xl mt-4 active:scale-95 transition-transform">Guardar experiencia</button>
               </div>
             </motion.div>
-          ) : (
-            <motion.div key="loading" className="flex flex-col items-center justify-center py-20 text-center">
-              <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="relative w-32 h-32 mb-8">
-                <Image src={imglogo} alt="Cargando" fill className="object-contain" />
-              </motion.div>
-              <h3 className="text-2xl font-black text-[#1A4D2E] uppercase">Procesando solicitud...</h3>
-              <p className="text-[#769C7B] italic mt-2">Estamos guardando tus datos en Pitzbol.</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
-};
-
-export default GuideModal;
+}
