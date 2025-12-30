@@ -27,7 +27,7 @@ export default function ForgotPasswordPage() {
         url: `${window.location.origin}/reset-password`,
       });
 
-      setMessage("📧 Revisa tu correo para continuar");
+      setMessage("Revisa tu correo para continuar");
     } catch (error: any) {
       setMessage("Correo no registrado o inválido");
     }
