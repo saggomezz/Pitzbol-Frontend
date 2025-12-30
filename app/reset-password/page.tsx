@@ -1,60 +1,85 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState } from "react";
 import { confirmPasswordReset, getAuth } from "firebase/auth";
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { FiLock, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
+import { motion } from "framer-motion";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
 };
 
-const app = initializeApp(firebaseConfig);
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 export default function ResetPasswordPage() {
-  const params = useSearchParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const oobCode = params.get("oobCode");
-
-  const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [status, setStatus] = useState<{ type: 'error' | 'success' | null, msg: string }>({ type: null, msg: "" });
+  
+  const oobCode = searchParams.get("oobCode");
 
   const handleReset = async () => {
-    if (!oobCode || !password) {
-      alert("Datos inválidos");
+    if (!oobCode) {
+      setStatus({ type: 'error', msg: "El código de recuperación es inválido o ha expirado." });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setStatus({ type: 'error', msg: "La contraseña debe tener al menos 6 caracteres." });
       return;
     }
 
     try {
-      await confirmPasswordReset(auth, oobCode, password);
-      alert("Contraseña actualizada correctamente");
-      router.push("/");
-    } catch {
-      alert("El enlace es inválido o expiró");
+      await confirmPasswordReset(auth, oobCode, newPassword);
+      setStatus({ type: 'success', msg: "¡Contraseña actualizada! Redirigiendo..." });
+      setTimeout(() => router.push("/"), 3000);
+    } catch (error) {
+      setStatus({ type: 'error', msg: "Error al actualizar. Intenta solicitar un nuevo enlace." });
     }
   };
 
   return (
-    <div className="h-screen flex items-center justify-center">
-      <div className="w-full max-w-sm p-6 shadow-lg rounded-xl">
-        <h1 className="text-2xl mb-4 text-center">Nueva contraseña</h1>
+    <div className="min-h-screen bg-[#FDFCF9] flex items-center justify-center p-6 font-sans">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-md bg-white p-10 rounded-[40px] shadow-2xl border border-[#F6F0E6] text-center"
+      >
+        <h2 className="text-3xl font-black text-[#1A4D2E] uppercase mb-6" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+          Nueva <span className="text-[#F00808]">Contraseña</span>
+        </h2>
 
-        <input
-          type="password"
-          placeholder="Nueva contraseña"
-          className="w-full border p-2 rounded"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-        />
+        <div className="space-y-4">
+          <div className="relative">
+            <FiLock className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
+            <input
+              type="password"
+              placeholder="Escribe tu nueva clave"
+              className="w-full pl-12 pr-6 py-3.5 bg-[#FDFCF9] border border-[#F6F0E6] rounded-full outline-none text-[#1A4D2E] focus:border-[#0D601E]"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+          </div>
 
-        <button
-          onClick={handleReset}
-          className="w-full bg-green-700 text-white py-2 rounded mt-4"
-        >
-          Actualizar contraseña
-        </button>
-      </div>
+          <button
+            onClick={handleReset}
+            className="w-full bg-[#0D601E] text-white py-4 rounded-full font-bold text-xs uppercase tracking-widest shadow-lg transition-all active:scale-95"
+          >
+            Actualizar contraseña
+          </button>
+
+          {status.type && (
+            <div className={`flex items-center justify-center gap-2 text-[11px] font-bold uppercase mt-4 ${status.type === 'error' ? "text-[#F00808]" : "text-[#0D601E]"}`}>
+              {status.type === 'error' ? <FiAlertCircle /> : <FiCheckCircle />}
+              {status.msg}
+            </div>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 }

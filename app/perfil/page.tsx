@@ -82,10 +82,6 @@ export default function PerfilDetallado() {
               </motion.label>
             </div>
             <h2 className="text-3xl font-bold text-[#1A4D2E] mb-1">{perfil.nombre}</h2>
-            <div className="flex items-center justify-center gap-1 text-[#FFD700]">
-              {[1, 2, 3, 4, 5].map(i => <FiStar key={i} fill={i <= 4 ? "currentColor" : "none"} />)}
-              <span className="text-gray-400 text-xs ml-1">(3 reseñas)</span>
-            </div>
           </section>
 
           {/* Cuadro de Idiomas y Estatus (Restaurado) */}
