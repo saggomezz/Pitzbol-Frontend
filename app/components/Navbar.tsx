@@ -123,9 +123,15 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
 
                             <div className="h-[1px] bg-gray-100 my-2 mx-2" />
                             <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-3 mb-1">Pitzbol</p>
-                            <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left"><FiInfo /> Nosotros</button>
-                            <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left"><FiMessageSquare /> Soporte</button>
-                            <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left"><FiShield /> Privacidad</button>
+                            <button onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
+                                <FiInfo /> Nosotros
+                            </button>
+                            <Link href="/soporte" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
+                                <FiMessageSquare /> Soporte y Contacto
+                            </Link>
+                            <button onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
+                                <FiShield /> Política de Privacidad
+                            </button>
 
                             {user && (
                                 <>
