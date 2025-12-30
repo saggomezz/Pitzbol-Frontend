@@ -4,16 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
-    FiBriefcase,
-    FiCalendar, FiHeart,
-    FiMapPin,
-    FiMenu,
-    FiUser,
-    FiX,
-    FiInfo,
-    FiMessageSquare,
-    FiShield,
-    FiLogOut
+    FiBriefcase, FiCalendar, FiHeart, FiMapPin, FiMenu, FiUser, FiX, FiInfo, FiMessageSquare, FiShield, FiLogOut
 } from "react-icons/fi";
 
 import imglogo from "./logoPitzbol.png";
@@ -30,14 +21,19 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
     const [user, setUser] = useState<any>(null);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    // Cargar usuario y escuchar cambios
-    useEffect(() => {
-        const checkUser = () => {
-            const storedUser = localStorage.getItem("pitzbol_user");
-            setUser(storedUser ? JSON.parse(storedUser) : null);
-        };
+    // Función para leer el usuario
+    const checkUser = () => {
+        const storedUser = localStorage.getItem("pitzbol_user");
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
+        } else {
+            setUser(null);
+        }
+    };
 
+    useEffect(() => {
         checkUser();
+        // Listener para cambios locales
         window.addEventListener("storage", checkUser);
         
         const closeMenu = (e: MouseEvent) => {
@@ -51,17 +47,19 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
         };
     }, []);
 
-    const handleLogout = () => {
-        localStorage.removeItem("pitzbol_user");
-        setUser(null);
-        setIsMenuOpen(false);
-        // Redirigir al home para asegurar que toda la app se resetee
-        window.location.href = "/";
-    };
+	const handleLogout = () => {
+		
+		localStorage.removeItem("pitzbol_user");//Limpiar storage
+		//Limpiar estado local
+		setUser(null);
+		setIsMenuOpen(false);
+		//Forzar recarga total al Home para resetear todos los formularios internos
+		window.location.href = "/"; 
+	};
 
-    // Lógica de visibilidad
-    const isGuia = user?.rol === "guia";
-    const isNegocio = user?.rol === "negocio" || user?.rol === "negociante";
+    // Determinamos si mostramos las opciones de SOCIOS
+    // Aparecen si: NO hay usuario O si el usuario NO es guía/negocio
+    const showSocios = !user || (user.rol !== "guia" && user.rol !== "negocio" && user.rol !== "negociante");
 
     return (
         <nav className="flex justify-between items-center bg-[#F6F0E6] px-4 md:px-8 h-20 md:h-24 sticky top-0 z-[100] shadow-sm text-[#1A4D2E]">
@@ -109,8 +107,8 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
                                 </button>
                             )}
 
-                            {/* SECCIÓN SOCIOS: Condicional según el ROL */}
-                            {!isGuia && !isNegocio && (
+                            {/* ESTA ES LA CLAVE: Si showSocios es true, aparecen las opciones de registro */}
+                            {showSocios && (
                                 <>
                                     <div className="h-[1px] bg-gray-100 my-2 mx-2" />
                                     <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-3 mb-1">Socios</p>
@@ -124,17 +122,10 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
                             )}
 
                             <div className="h-[1px] bg-gray-100 my-2 mx-2" />
-
                             <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-3 mb-1">Pitzbol</p>
-                            <button onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
-                                <FiInfo /> Nosotros
-                            </button>
-                            <button onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
-                                <FiMessageSquare /> Soporte y Contacto
-                            </button>
-                            <button onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
-                                <FiShield /> Política de Privacidad
-                            </button>
+                            <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left"><FiInfo /> Nosotros</button>
+                            <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left"><FiMessageSquare /> Soporte</button>
+                            <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left"><FiShield /> Privacidad</button>
 
                             {user && (
                                 <>
