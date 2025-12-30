@@ -129,9 +129,9 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
                             <button onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
                                 <FiInfo /> Nosotros
                             </button>
-                            <button onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
+                            <Link href="/soporte" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
                                 <FiMessageSquare /> Soporte y Contacto
-                            </button>
+                            </Link>
                             <button onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
                                 <FiShield /> Política de Privacidad
                             </button>
