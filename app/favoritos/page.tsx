@@ -40,7 +40,6 @@ export default function FavoritosPage() {
             >
               <FiUser size={16} /> Iniciar Sesión <FiArrowRight />
             </button>
-
             <Link href="/" className="block py-2 text-[#769C7B] font-bold  text-[14px] hover:text-[#1A4D2E] transition-colors">
               Volver a la página principal
             </Link>
