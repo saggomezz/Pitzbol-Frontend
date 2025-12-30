@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiLock, FiMail, FiX } from "react-icons/fi";
 
-
+// Solo dejamos hasta /api/auth
 const BACKEND_URL = "http://localhost:3001/api/auth";
 
 const ALL_COUNTRIES = [
@@ -23,7 +23,7 @@ const ALL_COUNTRIES = [
 const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const [isLogin, setIsLogin] = useState(false);
 
-  // --- ESTADOS PARA LOS CAMPOS DEL FORMULARIO ---
+  // --- CAMPOS DEL FORMULARIO ---
   // Datos de Registro
   const [regNombre, setRegNombre] = useState("");
   const [regApellido, setRegApellido] = useState("");
