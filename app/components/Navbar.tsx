@@ -35,6 +35,8 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
         checkUser();
         // Listener para cambios locales
         window.addEventListener("storage", checkUser);
+        // Listener para evento personalizado de autenticación
+        window.addEventListener("authStateChanged", checkUser);
         
         const closeMenu = (e: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false);
@@ -43,6 +45,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
         
         return () => {
             window.removeEventListener("storage", checkUser);
+            window.removeEventListener("authStateChanged", checkUser);
             document.removeEventListener("mousedown", closeMenu);
         };
     }, []);
