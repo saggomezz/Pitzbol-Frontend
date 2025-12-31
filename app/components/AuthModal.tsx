@@ -105,7 +105,7 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
       if (response.ok) {
         // Guardamos el token y datos del usuario
         localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify({ email: data.email, uid: data.uid }));
+        localStorage.setItem("pitzbol_user", JSON.stringify({ email: data.email, uid: data.uid }));
         
         alert("¡Bienvenido de nuevo! " + data.email);
         
