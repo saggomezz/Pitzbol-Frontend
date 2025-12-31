@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiLock, FiMail, FiX } from "react-icons/fi";
 
-// Solo dejamos hasta /api/auth
 const BACKEND_URL = "http://localhost:3001/api/auth";
 
 const ALL_COUNTRIES = [
@@ -23,7 +22,6 @@ const ALL_COUNTRIES = [
 const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const [isLogin, setIsLogin] = useState(false);
 
-  // --- CAMPOS DEL FORMULARIO ---
   // Datos de Registro
   const [regNombre, setRegNombre] = useState("");
   const [regApellido, setRegApellido] = useState("");
@@ -43,10 +41,8 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
     }
   }, [nacionalidad]);
 
-  // --- FUNCIÓN DE REGISTRO---
   const handleRegister = async () => {
     try {
-      console.log(" NTENTANDO CONECTAR A:", `${BACKEND_URL}/register`);
       if (!regEmail || !regPassword || !regNombre) {
         alert("Por favor completa los campos obligatorios");
         return;
@@ -58,38 +54,39 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
         body: JSON.stringify({
           email: regEmail,
           password: regPassword,
-          nombre: regNombre,      
-          apellido: regApellido,   
+          nombre: regNombre,
+          apellido: regApellido,
           telefono,
-          nacionalidad
+          nacionalidad,
+          role: "turista" 
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        alert("¡Registro exitoso! Por favor inicia sesión.");
-        setIsLogin(true); // Cambiar visualmente al panel de login
-        // Limpiar todos los campos
-        setRegEmail(""); 
-        setRegPassword(""); 
-        setRegNombre(""); 
-        setRegApellido(""); // Limpiamos apellido también
+        // Al registrar, guardamos sesión temporal y mandamos al perfil
+        const userData = {
+          nombre: regNombre,
+          rol: "turista",
+          uid: data.uid || "new_user"
+        };
+        localStorage.setItem("pitzbol_user", JSON.stringify(userData));
+        window.dispatchEvent(new Event("storage"));
+        
+        alert("¡Registro exitoso! Bienvenido a Pitzbol.");
+        onClose();
+        window.location.href = "/perfil"; 
       } else {
         alert("Error: " + (data.msg || "Error al registrar"));
       }
     } catch (error) {
-      console.error(error);
       alert("Error de conexión con el servidor.");
     }
   };
 
-  // --- FUNCIÓN DE LOGIN ---
   const handleLogin = async () => {
     try {
-      // Asegúrate de que BACKEND_URL termina en puerto 3001
-      console.log("📡 Enviando login a:", `${BACKEND_URL}/login`);
-
       const response = await fetch(`${BACKEND_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -100,24 +97,30 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
       });
 
       const data = await response.json();
-      console.log("Respuesta del servidor:", data); 
 
       if (response.ok) {
-        // Guardamos el token y datos del usuario
+        // Guardamos token y el objeto de usuario completo para que el Perfil lo lea
         localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify({ email: data.email, uid: data.uid }));
         
-        alert("¡Bienvenido de nuevo! " + data.email);
+        const sessionUser = {
+            uid: data.user.uid,
+            email: data.user.email,
+            nombre: data.user.nombre,
+            rol: data.user.role || "turista"
+        };
         
-        // Aquí podrías redirigir al usuario o actualizar un estado global
-        onClose(); 
+        localStorage.setItem("pitzbol_user", JSON.stringify(sessionUser));
+        
+        // Notificamos al Navbar
+        window.dispatchEvent(new Event("storage"));
+        
+        onClose();
+        window.location.href = "/perfil"; 
       } else {
-        // Manejo de errores más claro
-        alert("Error: " + (data.msg || "Ocurrió un error desconocido"));
+        alert("Error: " + (data.msg || "Credenciales inválidas"));
       }
     } catch (error) {
-      console.error("Error de red:", error);
-      alert("Error de conexión. Revisa que el Backend (puerto 3001) esté encendido.");
+      alert("Error de conexión. Revisa que el servidor esté encendido.");
     }
   };
 
@@ -129,156 +132,68 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 md:p-4 bg-black/40">
       <div className="relative bg-white w-full max-w-[500px] md:max-w-[950px] min-h-[550px] md:h-[600px] rounded-[30px] md:rounded-[50px] overflow-hidden shadow-2xl flex border border-white/20">
-        
         <button onClick={onClose} className="absolute top-4 md:top-6 right-6 md:right-8 z-[210] text-gray-400 hover:text-red-500 transition-all">
           <FiX size={28} />
         </button>
 
-        {/* --- LADO IZQUIERDO: INICIAR SESIÓN --- */}
+        {/* --- INICIAR SESIÓN --- */}
         <div className="w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white">
           <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-8 font-black text-center" style={{ fontFamily: 'var(--font-jockey)' }}>
             INICIAR SESIÓN
           </h2>
-          
           <div className="w-full max-w-sm space-y-5 text-center">
             <div className="relative text-left">
               <FiMail className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={18} />
-              <input 
-                type="email" 
-                placeholder="Correo electrónico" 
-                className={`${inputClass} pl-14`} 
-                style={{ fontFamily: 'Inter, sans-serif' }}
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-              />
+              <input type="email" placeholder="Correo electrónico" className={`${inputClass} pl-14`} value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
             </div>
-            
             <div className="text-left">
               <div className="relative">
                 <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={18} />
-                <input 
-                  type="password" 
-                  placeholder="Contraseña:" 
-                  className={`${inputClass} pl-14`} 
-                  style={{ fontFamily: 'Inter, sans-serif' }} 
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                />
+                <input type="password" placeholder="Contraseña:" className={`${inputClass} pl-14`} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
               </div>
               <div className="text-right mt-2 px-4">
-                <Link
-                  href="/forgot-password"
-                  onClick={onClose}
-                  className="text-[11px] md:text-[13px] text-gray-500 hover:text-[#0D601E] transition-colors italic"
-                >
-                  ¿Olvidaste tu contraseña?
-                </Link>
+                <Link href="/forgot-password" onClick={onClose} className="text-[11px] md:text-[13px] text-gray-500 hover:text-[#0D601E] transition-colors italic">¿Olvidaste tu contraseña?</Link>
               </div>
             </div>
-
-            <button 
-              onClick={handleLogin}
-              className="w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium mt-4"
-            >
-              Iniciar sesión
-            </button>
+            <button onClick={handleLogin} className="w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium mt-4">Iniciar sesión</button>
           </div>
         </div>
 
-        {/* --- LADO DERECHO: CREAR UNA CUENTA --- */}
-        <div className="hidden md:flex w-1/2 h-full p-8 md:p-12 flex-col items-center justify-center bg-white border-l border-gray-100">
-          <h2 className="text-[35px] md:text-[42px] text-[#8B0000] mb-6 font-black text-center" style={{ fontFamily: 'var(--font-jockey)' }}>
-            CREAR UNA CUENTA
-          </h2>
-          
+        {/* --- CREAR CUENTA --- */}
+        <div className="hidden md:flex w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white border-l border-gray-100">
+          <h2 className="text-[35px] md:text-[42px] text-[#8B0000] mb-6 font-black text-center" style={{ fontFamily: 'var(--font-jockey)' }}>CREAR UNA CUENTA</h2>
           <div className="w-full max-w-sm grid grid-cols-2 gap-3 mb-5">
-            <input 
-              placeholder="Nombre(s)" 
-              className={inputClass} 
-              style={{ fontFamily: 'Inter, sans-serif' }}
-              value={regNombre}
-              onChange={(e) => setRegNombre(e.target.value)}
-            />
-            <input 
-              placeholder="Apellido(s)" 
-              className={inputClass} 
-              style={{ fontFamily: 'Inter, sans-serif' }}
-              value={regApellido}
-              onChange={(e) => setRegApellido(e.target.value)}
-            />
+            <input placeholder="Nombre(s)" className={inputClass} value={regNombre} onChange={(e) => setRegNombre(e.target.value)} />
+            <input placeholder="Apellido(s)" className={inputClass} value={regApellido} onChange={(e) => setRegApellido(e.target.value)} />
             <div className="relative col-span-1">
-              <select 
-                value={nacionalidad}
-                onChange={(e) => setNacionalidad(e.target.value)}
-                className={inputClass + " appearance-none cursor-pointer pr-10"} 
-                style={{ fontFamily: 'Inter, sans-serif' }}
-              >
+              <select value={nacionalidad} onChange={(e) => setNacionalidad(e.target.value)} className={inputClass + " appearance-none cursor-pointer pr-10"}>
                 <option value="" disabled>Nacionalidad</option>
                 {ALL_COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
               </select>
               <FiChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" />
             </div>
-            <input 
-              value={telefono} 
-              onChange={(e) => setTelefono(e.target.value)} 
-              placeholder="Teléfono" 
-              className={inputClass} 
-              style={{ fontFamily: 'Inter, sans-serif' }} 
-            />
+            <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono" className={inputClass} />
           </div>
-          
           <div className="w-full max-w-sm space-y-4">
             <div className="relative text-left">
               <FiMail className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
-              <input 
-                placeholder="Correo electrónico:" 
-                className={`${inputClass} pl-14`} 
-                style={{ fontFamily: 'Inter, sans-serif' }}
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-              />
+              <input placeholder="Correo electrónico:" className={`${inputClass} pl-14`} value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
             </div>
             <div className="relative text-left">
               <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
-              <input 
-                type="password" 
-                placeholder="Contraseña:" 
-                className={`${inputClass} pl-14`} 
-                style={{ fontFamily: 'Inter, sans-serif' }}
-                value={regPassword}
-                onChange={(e) => setRegPassword(e.target.value)}
-              />
+              <input type="password" placeholder="Contraseña:" className={`${inputClass} pl-14`} value={regPassword} onChange={(e) => setRegPassword(e.target.value)} />
             </div>
-            
             <div className="w-full flex justify-center mt-2">
-              <button 
-                onClick={handleRegister}
-                className="w-3/4 bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium"
-              >
-                Registrar
-              </button>
+              <button onClick={handleRegister} className="w-3/4 bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium">Registrar</button>
             </div>
           </div>
         </div>
 
         {/* --- PANEL DESLIZANTE --- */}
-        <motion.div 
-          animate={{ x: isLogin ? 0 : "100%" }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="hidden md:flex absolute top-0 left-0 w-1/2 h-full bg-[#B2C7B5] z-[205] flex flex-col items-center justify-center p-8 md:p-12 text-center"
-        >
-          <h2 className="text-[40px] md:text-[54px] text-[#1A4D2E] leading-none mb-4" style={{ fontFamily: 'var(--font-jockey)' }}>
-            BIENVENIDO
-          </h2>
-          <p className="text-[#1A4D2E] mb-8 font-medium text-sm md:text-base">
-            {isLogin ? "¿Ya tienes una cuenta?" : "¿No te has registrado?"}
-          </p>
-          <button 
-            onClick={() => setIsLogin(!isLogin)}
-            className="px-8 md:px-12 py-3 border-2 border-[#8B0000] text-[#8B0000] rounded-full  hover:bg-[#8B0000] hover:text-white transition-all  text-[11px] md:text-[14px]"
-          >
-            {isLogin ? "Iniciar sesión" : "Registrarme"}
-          </button>
+        <motion.div animate={{ x: isLogin ? 0 : "100%" }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="hidden md:flex absolute top-0 left-0 w-1/2 h-full bg-[#B2C7B5] z-[205] flex flex-col items-center justify-center p-8 md:p-12 text-center">
+          <h2 className="text-[40px] md:text-[54px] text-[#1A4D2E] leading-none mb-4" style={{ fontFamily: 'var(--font-jockey)' }}>BIENVENIDO</h2>
+          <p className="text-[#1A4D2E] mb-8 font-medium text-sm md:text-base">{isLogin ? "¿Ya tienes una cuenta?" : "¿No te has registrado?"}</p>
+          <button onClick={() => setIsLogin(!isLogin)} className="px-8 md:px-12 py-3 border-2 border-[#8B0000] text-[#8B0000] rounded-full hover:bg-[#8B0000] hover:text-white transition-all text-[11px] md:text-[14px]">{isLogin ? "Iniciar sesión" : "Registrarme"}</button>
         </motion.div>
       </div>
     </div>
