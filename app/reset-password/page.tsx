@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { confirmPasswordReset, getAuth } from "firebase/auth";
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { FiLock, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
+import { FiLock, FiCheckCircle, FiAlertCircle, FiEye, FiEyeOff } from "react-icons/fi";
 import { motion } from "framer-motion";
 
 const firebaseConfig = {
@@ -19,6 +19,9 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [status, setStatus] = useState<{ type: 'error' | 'success' | null, msg: string }>({ type: null, msg: "" });
   
   const oobCode = searchParams.get("oobCode");
@@ -30,6 +33,10 @@ export default function ResetPasswordPage() {
     }
     if (newPassword.length < 6) {
       setStatus({ type: 'error', msg: "La contraseña debe tener al menos 6 caracteres." });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setStatus({ type: 'error', msg: "Las contraseñas no coinciden. Por favor verifica." });
       return;
     }
 
@@ -57,12 +64,36 @@ export default function ResetPasswordPage() {
           <div className="relative">
             <FiLock className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Escribe tu nueva clave"
-              className="w-full pl-12 pr-6 py-3.5 bg-[#FDFCF9] border border-[#F6F0E6] rounded-full outline-none text-[#1A4D2E] focus:border-[#0D601E]"
+              className="w-full pl-12 pr-12 py-3.5 bg-[#FDFCF9] border border-[#F6F0E6] rounded-full outline-none text-[#1A4D2E] focus:border-[#0D601E]"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-5 top-1/2 -translate-y-1/2 text-[#769C7B] hover:text-[#0D601E] transition-colors"
+            >
+              {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+            </button>
+          </div>
+          <div className="relative">
+            <FiLock className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="Confirma tu nueva clave"
+              className="w-full pl-12 pr-12 py-3.5 bg-[#FDFCF9] border border-[#F6F0E6] rounded-full outline-none text-[#1A4D2E] focus:border-[#0D601E]"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-5 top-1/2 -translate-y-1/2 text-[#769C7B] hover:text-[#0D601E] transition-colors"
+            >
+              {showConfirmPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+            </button>
           </div>
 
           <button
