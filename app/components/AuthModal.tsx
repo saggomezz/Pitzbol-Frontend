@@ -31,7 +31,9 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   const [telefono, setTelefono] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
 
   // Datos de Login
   const [loginEmail, setLoginEmail] = useState("");
@@ -51,6 +53,14 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
       console.log(" NTENTANDO CONECTAR A:", `${BACKEND_URL}/register`);
       if (!regEmail || !regPassword || !regNombre) {
         alert("Por favor completa los campos obligatorios");
+        return;
+      }
+      if (regPassword !== regConfirmPassword) {
+        alert("Las contraseñas no coinciden. Por favor verifica.");
+        return;
+      }
+      if (regPassword.length < 6) {
+        alert("La contraseña debe tener al menos 6 caracteres.");
         return;
       }
 
@@ -75,6 +85,7 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
         // Limpiar todos los campos
         setRegEmail(""); 
         setRegPassword(""); 
+        setRegConfirmPassword("");
         setRegNombre(""); 
         setRegApellido(""); // Limpiamos apellido también
       } else {
@@ -263,6 +274,24 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E] transition-colors"
               >
                 {showRegPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+              </button>
+            </div>
+            <div className="relative text-left">
+              <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
+              <input 
+                type={showRegConfirmPassword ? "text" : "password"} 
+                placeholder="Confirmar contraseña:" 
+                className={`${inputClass} pl-14 pr-12`} 
+                style={{ fontFamily: 'Inter, sans-serif' }}
+                value={regConfirmPassword}
+                onChange={(e) => setRegConfirmPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E] transition-colors"
+              >
+                {showRegConfirmPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
               </button>
             </div>
             
