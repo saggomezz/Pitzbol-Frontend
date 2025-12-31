@@ -88,6 +88,9 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
         setRegConfirmPassword("");
         setRegNombre(""); 
         setRegApellido(""); // Limpiamos apellido también
+        
+        // Disparar evento personalizado por si el servidor almacena la sesión automáticamente
+        window.dispatchEvent(new Event("authStateChanged"));
       } else {
         alert("Error: " + (data.msg || "Error al registrar"));
       }
@@ -118,9 +121,12 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
       if (response.ok) {
         // Guardamos el token y datos del usuario
         localStorage.setItem("token", data.token);
-        localStorage.setItem("pitzbol_user", JSON.stringify({ email: data.email, uid: data.uid }));
+        localStorage.setItem("pitzbol_user", JSON.stringify({ email: data.email, uid: data.uid, nombre: data.nombre }));
         
         alert("¡Bienvenido de nuevo! " + data.email);
+        
+        // Disparar evento personalizado para actualizar el Navbar
+        window.dispatchEvent(new Event("authStateChanged"));
         
         // Aquí podrías redirigir al usuario o actualizar un estado global
         onClose(); 
