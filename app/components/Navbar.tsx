@@ -35,6 +35,8 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
         checkUser();
         // Listener para cambios locales
         window.addEventListener("storage", checkUser);
+        // Listener para evento personalizado de autenticación
+        window.addEventListener("authStateChanged", checkUser);
         
         const closeMenu = (e: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false);
@@ -43,6 +45,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
         
         return () => {
             window.removeEventListener("storage", checkUser);
+            window.removeEventListener("authStateChanged", checkUser);
             document.removeEventListener("mousedown", closeMenu);
         };
     }, []);
@@ -98,8 +101,8 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
                             <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-3 mb-1">Cuenta</p>
                             {user ? (
                                 <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl hover:bg-[#1A4D2E] hover:text-white transition-all group">
-                                    <div className="w-8 h-8 bg-[#1A4D2E] group-hover:bg-white group-hover:text-[#1A4D2E] rounded-full flex items-center justify-center text-white text-[10px] font-bold uppercase transition-colors">{user.nombre[0]}</div>
-                                    <span className="font-bold text-sm uppercase">{user.nombre}</span>
+                                    <div className="w-8 h-8 bg-[#1A4D2E] group-hover:bg-white group-hover:text-[#1A4D2E] rounded-full flex items-center justify-center text-white text-[10px] font-bold uppercase transition-colors">{user.nombre ? user.nombre[0] : 'U'}</div>
+                                    <span className="font-bold text-sm uppercase">{user.nombre || 'Usuario'}</span>
                                 </Link>
                             ) : (
                                 <button onClick={() => { setIsMenuOpen(false); onOpenAuth(); }} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">

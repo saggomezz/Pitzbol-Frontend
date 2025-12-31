@@ -6,6 +6,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthModal from "./components/AuthModal";
 import GuideModal from "./components/GuideModal";
+import BusinessModal from "./components/BusinessModal";
 
 const roboto = Roboto({
   variable: "--font-roboto",
@@ -42,8 +43,10 @@ export default function RootLayout({
 }) {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isBusinessOpen, setIsBusinessOpen] = useState(false);
   const DynamicGuideModal = GuideModal as any;
   const DynamicAuthModal = AuthModal as any;
+  const DynamicBusinessModal = BusinessModal as any;
 
   return (
     <html lang="es">
@@ -52,7 +55,7 @@ export default function RootLayout({
         <Navbar 
           onOpenAuth={() => setIsAuthOpen(true)} 
           onOpenGuide={() => setIsGuideOpen(true)}
-          onOpenBusiness={() => console.log("Negocios")} 
+          onOpenBusiness={() => setIsBusinessOpen(true)} 
         />
 
         <main className="relative z-10">
@@ -72,6 +75,11 @@ export default function RootLayout({
         <DynamicGuideModal 
           isOpen={isGuideOpen} 
           onClose={() => setIsGuideOpen(false)} 
+        />
+
+        <DynamicBusinessModal 
+          isOpen={isBusinessOpen} 
+          onClose={() => setIsBusinessOpen(false)} 
         />
 
       </body>

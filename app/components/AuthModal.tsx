@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { FiChevronDown, FiLock, FiMail, FiX } from "react-icons/fi";
+import { FiChevronDown, FiLock, FiMail, FiX, FiEye, FiEyeOff } from "react-icons/fi";
 
 const BACKEND_URL = "http://localhost:3001/api/auth";
 
@@ -29,10 +29,14 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   const [telefono, setTelefono] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
 
   // Datos de Login
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   useEffect(() => {
     const country = ALL_COUNTRIES.find(c => c.name === nacionalidad);
@@ -45,6 +49,14 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
     try {
       if (!regEmail || !regPassword || !regNombre) {
         alert("Por favor completa los campos obligatorios");
+        return;
+      }
+      if (regPassword !== regConfirmPassword) {
+        alert("Las contraseñas no coinciden. Por favor verifica.");
+        return;
+      }
+      if (regPassword.length < 6) {
+        alert("La contraseña debe tener al menos 6 caracteres.");
         return;
       }
 
@@ -101,6 +113,7 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
       if (response.ok) {
         // Guardamos token y el objeto de usuario completo para que el Perfil lo lea
         localStorage.setItem("token", data.token);
+        localStorage.setItem("pitzbol_user", JSON.stringify({ email: data.email, uid: data.uid, nombre: data.nombre }));
         
         const sessionUser = {
             uid: data.user.uid,
@@ -149,7 +162,21 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
             <div className="text-left">
               <div className="relative">
                 <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={18} />
-                <input type="password" placeholder="Contraseña:" className={`${inputClass} pl-14`} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+                <input 
+                  type={showLoginPassword ? "text" : "password"} 
+                  placeholder="Contraseña:" 
+                  className={`${inputClass} pl-14 pr-14`} 
+                  style={{ fontFamily: 'Inter, sans-serif' }} 
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                  className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E] transition-colors"
+                >
+                  {showLoginPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                </button>
               </div>
               <div className="text-right mt-2 px-4">
                 <Link href="/forgot-password" onClick={onClose} className="text-[11px] md:text-[13px] text-gray-500 hover:text-[#0D601E] transition-colors italic">¿Olvidaste tu contraseña?</Link>
@@ -181,7 +208,39 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
             </div>
             <div className="relative text-left">
               <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
-              <input type="password" placeholder="Contraseña:" className={`${inputClass} pl-14`} value={regPassword} onChange={(e) => setRegPassword(e.target.value)} />
+              <input 
+                type={showRegPassword ? "text" : "password"} 
+                placeholder="Contraseña:" 
+                className={`${inputClass} pl-14 pr-12`} 
+                style={{ fontFamily: 'Inter, sans-serif' }}
+                value={regPassword}
+                onChange={(e) => setRegPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowRegPassword(!showRegPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E] transition-colors"
+              >
+                {showRegPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+              </button>
+            </div>
+            <div className="relative text-left">
+              <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
+              <input 
+                type={showRegConfirmPassword ? "text" : "password"} 
+                placeholder="Confirmar contraseña:" 
+                className={`${inputClass} pl-14 pr-12`} 
+                style={{ fontFamily: 'Inter, sans-serif' }}
+                value={regConfirmPassword}
+                onChange={(e) => setRegConfirmPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E] transition-colors"
+              >
+                {showRegConfirmPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+              </button>
             </div>
             <div className="w-full flex justify-center mt-2">
               <button onClick={handleRegister} className="w-3/4 bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium">Registrar</button>
