@@ -121,9 +121,15 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
       if (response.ok) {
         // Guardamos el token y datos del usuario
         localStorage.setItem("token", data.token);
-        localStorage.setItem("pitzbol_user", JSON.stringify({ email: data.email, uid: data.uid, nombre: data.nombre }));
+        localStorage.setItem("pitzbol_user", JSON.stringify({ 
+          email: data.user.email, 
+          uid: data.user.uid, 
+          nombre: data.user.nombre,
+          apellido: data.user.apellido,
+          role: data.user.role
+        }));
         
-        alert("¡Bienvenido de nuevo! " + data.email);
+        alert(`¡Bienvenido de nuevo, ${data.user.nombre}!`);
         
         // Disparar evento personalizado para actualizar el Navbar
         window.dispatchEvent(new Event("authStateChanged"));
