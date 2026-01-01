@@ -1,7 +1,15 @@
+"use client";
+import { generarItinerarioManual, Lugar } from '@/lib/pitzbol-engine';
+import { motion } from "framer-motion";
 import Image from "next/image";
-import { FiSearch, FiMenu } from "react-icons/fi";
-import imgPasto from "./components/pastoVerde.png";
-import imglogo from "./components/logoPitzbol.png";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import Papa from 'papaparse';
+import { Suspense, useEffect, useRef, useState } from "react";
+import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
+import { GiSoccerBall } from "react-icons/gi"; // Importamos un balón de fútbol
+import { construirItinerarioElegido, ordenarPorCercania } from '../lib/pitzbol-engine';
+import imglogo from '../app/components/logoPitzbol.png';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -23,151 +31,365 @@ const dates: DateInfo[] = [
   { day: "14", weekday: "DOM", fullDate: "2026-06-14", isGdlMatch: false, isActive: false },
 ];
 
+interface MatchProps {
+  location: string;
+  date: string;
+  team1: string;
+  flag1: string;
+  team2: string;
+  flag2: string;
+  time: string;
+}
 const recommendations: Recommendation[] = [
   { name: "Centro de Guadalajara", img: "https://www.liderempresarial.com/wp-content/uploads/2025/07/Asi-se-transformara-el-centro-de-Guadalajara-%C2%BFcuando-estara-listo.jpg" },
   { name: "Tlaquepaque", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
   { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
 ];
 
-const Header = () => (
-  <nav className="flex justify-between items-center bg-[#F6F0E6] px-2 md:px-8 h-20 md:h-24 sticky top-0 z-50 shadow-sm overflow-hidden">
-    <div className="flex items-center h-full max-w-[80%] md:max-w-none">
-      {/* 1. LOGO:*/}
-      <div className="relative h-24 w-24 md:h-32 md:w-32 right-2 md:right-5 flex-shrink-0">
-        <Image
-          src={imglogo}
-          alt="logoPitzbol"
-          fill
-          className="object-contain"
-          priority
-        />
-      </div>
-
-      {/* 2. CONTENEDOR NOMBRE + PASTO */}
-      <div className="relative flex items-center h-full ml-1 md:ml-2">
-        <div className="absolute inset-y-0 -left-6 sm:-left-6 md:-left-9 md:top-10 top-6 z-0 flex items-center w-[120%] min-w-[200px] sm:min-w-[120px] md:min-w-[350px]">
-          <Image
-            src={imgPasto}
-            alt="pastoVerde"
-            className="object-contain"
-          />
-        </div>
-
-        { /* TEXTO PITZBOL */ }
-        <h1
-          className="relative z-10 text-[40px] xs:text-[35px] sm:text-[50px] md:text-[70px] leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)] md:drop-shadow-[0_4px_4px_rgba(0,0,0,0.4)]" 
-          style={{ fontFamily: "'Jockey One', sans-serif" }}
-        >
-          <span className="text-[#FFFFFF]">PITZ</span>
-          <span className="text-[#F00808]">BOL</span>
-        </h1>
-      </div>
-    </div>
-
-    {/* 3. LADO DERECHO (Buscador y Menú) */}
-    <div className="flex items-center gap-1 md:gap-6">
-      <div className="hidden md:flex items-center gap-6 text-[18px]">
-        <button className="text-[#1A4D2E] font-bold hover:text-[#F00808] transition-colors">Calendario</button>
-        <button className="text-[#1A4D2E] font-bold hover:text-[#F00808] transition-colors">Identifícate</button>
-      </div>
-
-      {/* Lupa: Un poco más pequeña en móvil */}
-      <button className="p-2 md:p-6 text-[#1A4D2E]">
-        <FiSearch size={22} className="md:w-8 md:h-8" />
-      </button>
-
-      {/* Menú Hamburguesa: Solo visible en móvil para ahorrar espacio */}
-      <button className="md:hidden p-2 text-[#1A4D2E]">
-        <FiMenu size={24} />
-      </button>
-    </div>
-  </nav>
-);
-
 const CategoryCarousel = ({ categories }: { categories: Category[] }) => (
   <section className="flex gap-4 p-4 md:py-6 md:px-8 overflow-x-auto md:justify-center bg-white">
     {categories.map((category) => (
-      <div key={category.name} className="relative w-40 h-24 md:w-56 md:h-28 rounded-xl overflow-hidden shadow-lg cursor-pointer group flex-shrink-0 transition-transform duration-300 md:hover:scale-105">
-        <Image
-          src={category.img}
-          alt={category.name}
-          fill
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-black opacity-40 group-hover:opacity-20 transition-opacity duration-300"></div>
-        <div className="absolute inset-0 flex items-center justify-center p-2">
-          <span className="text-white text-xl font-bold text-center drop-shadow-md">{category.name}</span>
+      <Link 
+        key={category.name} 
+        href={category.name === "Fútbol" ? "/futbol" : "#"} 
+        className="flex-shrink-0"
+      >
+        <div className="relative w-40 h-24 md:w-64 md:h-34 rounded-xl overflow-hidden shadow-lg cursor-pointer group transition-transform duration-300 md:hover:scale-105">
+          <Image src={category.img} alt={category.name} fill className="object-cover" />
+          <div className="absolute inset-0 bg-black opacity-40 group-hover:opacity-20 transition-opacity duration-300"></div>
+          <div className="absolute inset-0 flex items-center justify-center p-2">
+            <span className="text-white text-xl font-bold text-center drop-shadow-md">{category.name}</span>
+          </div>
         </div>
-      </div>
+      </Link>
     ))}
   </section>
 );
 
-const DateSlider = ({ dates }: { dates: DateInfo[] }) => (
-  <div className="bg-gray-100 md:bg-gray-200">
-    <div className="flex gap-3 px-4 py-3 overflow-x-auto whitespace-nowrap md:justify-center">
-      {dates.map((date) => (
-        <div key={date.fullDate} className={`relative px-3 py-2 rounded-md text-sm font-medium cursor-pointer flex-shrink-0 transition-colors ${date.isGdlMatch ? "bg-green-600 text-white" : date.isActive ? "bg-red-500 text-white" : "bg-gray-300 md:bg-gray-400 text-gray-700 md:text-white hover:bg-gray-400"}`}>
-          <div className="font-bold text-center">{date.day}</div>
-          <div className="text-xs uppercase">{date.weekday}</div>
-          {date.isActive && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-white"></div>}
-        </div>
-      ))}
-    </div>
-  </div>
-);
+const DateSlider = ({ dates }: { dates: any[] }) => {
+  // Si no vienen fechas del repo, usamos las 3 por defecto de la Versión A
+  const displayDates = dates || getDates(); 
 
-const MatchBanner = () => (
-  <div className="flex items-center justify-between bg-[#A89F9F] text-white rounded-lg px-4 py-3 shadow-md">
-    <div className="flex items-center gap-2">
-      <div className="w-10 h-10 rounded-full overflow-hidden relative border border-white/20">
-        <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Mexico.svg/1024px-Flag_of_Mexico.svg.png" alt="MX" fill className="object-cover" />
-      </div>
-      <span className="font-semibold text-sm md:text-base ">México</span>
-    </div>
-    <div className="text-center"><div className="text-sm font-bold text-[#000000] ">19:00</div><div className="text-xs font-medium text-[#000000] ">hrs</div></div>
-    <div className="flex items-center gap-2">
-      <span className="font-semibold text-sm md:text-base">Alemania</span>
-      <div className="w-10 h-10 rounded-full overflow-hidden relative border border-white/20">
-        <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Flag_of_Germany.svg/1024px-Flag_of_Germany.svg.png" alt="DE" fill className="object-cover" />
-      </div>
-    </div>
-  </div>
-);
+  return (
+    <div className="bg-white md:bg-transparent py-1 w-full overflow-hidden">
+      <div className="flex gap-1 md:gap-0 px-2 md:px-0 justify-center items-center w-full max-w-7xl mx-auto">
+        {displayDates.map((date, index) => {
+          // Mantenemos la lógica de colores de Pitzbol
+          let bgColor = index === 0 ? "bg-[#0D601E]" : index === 1 ? "bg-white border-y border-gray-100 shadow-sm" : "bg-[#B90808]";
+          let textColor = index === 1 ? "text-[#6F4545]" : "text-white";
 
-const Recommendations = ({ recommendations }: { recommendations: Recommendation[] }) => (
-  <div className="flex flex-col w-full md:w-3/5">
-    <h2 className="text-2xl font-bold mb-4 text-gray-800">Recomendaciones</h2>
-    <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-6">
-      {recommendations.map((place) => (
-        <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
-          <div className="w-full relative overflow-hidden pb-[56.25%] md:pb-[100%]">
-            {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={place.name} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">Sin imagen</div>}
-            <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#0B2C3D] text-white px-3 py-1 rounded-full shadow-lg">Ubicar</button></div>
-          </div>
-          <div className="p-4"><h3 className="font-semibold text-gray-800 truncate text-center">{place.name}</h3></div>
+          return (
+            <div
+              key={date.fullDate}
+              className={`
+                relative flex-1 flex flex-col items-center justify-center cursor-pointer transition-all
+                h-12 md:h-12
+                ${index === 0 ? "rounded-l-[12px] md:rounded-l-[20px]" : ""}
+                ${index === 2 ? "rounded-r-[12px] md:rounded-r-[20px]" : ""}
+                ${bgColor}
+              `}
+            >
+              <div className={`text-lg md:text-2xl font-normal leading-tight ${textColor}`} style={{ fontFamily: "var(--font-jetbrains)" }}>
+                {date.day}
+              </div>
+              <div className={`text-[9px] md:text-xs font-normal uppercase ${textColor}`} style={{ fontFamily: "var(--font-jockey)" }}>
+                {date.weekday}
+              </div>
+
+              {/* Mantenemos el detalle del balón que tanto les gusta */}
+              {index === 0 && (
+                <div className="absolute -top-1 -left-1 md:top-0 md:left-2 z-10">
+                  <GiSoccerBall size={18} className="text-black bg-white rounded-full p-0.5 shadow-md animate-bounce" style={{ animationDuration: '3s' }} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        <Link href="/calendario">
+          <button className="ml-2 p-3 text-black hover:scale-110 transition-transform">
+            <FiChevronRight size={35} />
+          </button>
+        </Link>
+      </div>
+    </div>
+  );
+};
+
+const MatchItem = ({ location, date, team1, flag1, team2, flag2, time }: any) => (
+  <div className="w-full mb-2"> {/* Reduje el margen inferior de mb-6 a mb-3 */}
+    <h3 className="text-center text-[#0D601E] text-xs md:text-sm mb-1 font-medium" style={{ fontFamily: 'var(--font-roboto)' }}>
+      Próximo partido en <span className="font-bold">{location}</span> - {date}:
+    </h3>
+    <div className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-2 shadow-md min-h-[60px] md:min-h-[50px]">
+      {/* Equipo 1 */}
+      <div className="flex flex-1 items-center justify-end gap-2">
+        {/* CAMBIO 2: Tamaño de fuente del nombre del país (text-xs a text-base) */}
+        <span className="text-xs md:text-base font-normal text-right leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>
+          {team1}
+        </span>
+        {/* Tamaño de la bandera (de w-16 a w-10) */}
+        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
+          <Image src={flag1} alt={team1} fill className="object-cover" />
         </div>
-      ))}
+      </div>
+
+      {/* Hora Central */}
+      <div className="flex flex-col items-center justify-center px-2 md:px-4 border-x border-white/20 mx-2">
+        {/* CAMBIO 4: Tamaño de la hora (de text-3xl a text-xl) */}
+        <span className="text-base md:text-xl font-bold text-black leading-none" style={{ fontFamily: 'var(--font-roboto)' }}>
+          {time}
+        </span>
+        <span className="text-[10px] md:text-xs font-medium text-black" style={{ fontFamily: 'var(--font-roboto)' }}>
+          hrs
+        </span>
+      </div>
+
+      {/* Equipo 2 */}
+      <div className="flex flex-1 items-center justify-start gap-2">
+        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
+          <Image src={flag2} alt={team2} fill className="object-cover" />
+        </div>
+        <span className="text-xs md:text-base font-normal text-left leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>
+          {team2}
+        </span>
+      </div>
     </div>
   </div>
 );
 
 export default function Home() {
   return (
+    <Suspense fallback={<div className="min-h-screen bg-[#FDFCF9] flex items-center justify-center font-bold">Cargando...</div>}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
+  const [isLogged, setIsLogged] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // ESTADOS PARA LA IA
+  const [itinerarioTxt, setItinerarioTxt] = useState("Cargando itinerario...");
+  const [loadingIA, setLoadingIA] = useState(true);
+  const [lugaresBD, setLugaresBD] = useState<Lugar[]>([]);
+  const [seleccionados, setSeleccionados] = useState<Lugar[]>([]);
+  const [mostrarOpciones, setMostrarOpciones] = useState(false);
+  const [itinerarioFinal, setItinerarioFinal] = useState("");
+
+  // Cargar la base de datos al inicio
+  useEffect(() => {
+    const cargarDatos = async () => {
+      const res = await fetch('/datosLugares.csv');
+      const reader = res.body?.getReader();
+      const result = await reader?.read();
+      const csv = new TextDecoder('utf-8').decode(result?.value);
+      const { data } = Papa.parse(csv, { header: true, dynamicTyping: true, skipEmptyLines: true });
+      setLugaresBD((data as Lugar[]).filter(l => l.nombre));
+    };
+    cargarDatos();
+  }, []);
+
+  const toggleLugar = (lugar: Lugar) => {
+    setSeleccionados(prev => {
+      // Buscamos si el lugar ya está en la lista usando el nombre
+      const existe = prev.find(s => s.nombre === lugar.nombre);
+      
+      if (existe) {
+        // Si ya existe, lo quitamos
+        return prev.filter(s => s.nombre !== lugar.nombre);
+      } else {
+        // Si no existe, lo agregamos
+        return [...prev, lugar];
+      }
+    });
+  };
+
+  const finalizarRuta = () => {
+    const texto = construirItinerarioElegido(seleccionados);
+    setItinerarioFinal(texto);
+    setMostrarOpciones(false);
+  };
+
+  const cargarItinerarioHome = async () => {
+    setLoadingIA(true);
+    
+    // Coordenadas por defecto (Centro de GDL)
+    let ubicacionUsuario = { lat: 20.6767, lng: -103.3371 };
+
+    // INTENTAR DETECTAR UBICACIÓN REAL
+    if ("geolocation" in navigator) {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+        });
+        ubicacionUsuario = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        console.log("Ubicación detectada con éxito");
+      } catch (error) {
+        console.log("Usando ubicación por defecto (GPS desactivado o timeout)");
+      }
+    }
+
+    try {
+      const res = await fetch('/datosLugares.csv');
+      const reader = res.body?.getReader();
+      const result = await reader?.read();
+      const csv = new TextDecoder('utf-8').decode(result?.value);
+
+      const { data } = Papa.parse(csv, { header: true, dynamicTyping: true, skipEmptyLines: true });
+      const dataLimpia = (data as Lugar[]).filter(l => l.nombre && l.lat);
+
+      const resultIA = generarItinerarioManual(
+        dataLimpia, 
+        ["futbol", "gastronomia", "postres"], 
+        300, 
+        ubicacionUsuario // <--- Ahora pasamos la ubicación real o la de defecto
+      );
+
+      setItinerarioTxt(resultIA);
+    } catch (error) {
+      setItinerarioTxt("Error al sincronizar con Pitzbol.");
+    } finally {
+      setLoadingIA(false);
+    }
+  };
+  useEffect(() => {
+    cargarItinerarioHome();
+        const authAuth = searchParams.get("auth");
+  }, [searchParams, router]);
+  
+  useEffect(() => {
+    if (mostrarOpciones && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const miPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          // Re-ordenamos la lista de lugares que ya cargaste del CSV
+          setLugaresBD((prevLugares) => ordenarPorCercania(prevLugares, miPos));
+          console.log("Lugares ordenados por tu GPS");
+        },
+        (error) => {
+          console.log("No se pudo obtener ubicación, usando orden alfabético.");
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  }, [mostrarOpciones]); // Esto se dispara cuando el usuario da clic en "Presiona para elegir lugares"
+
+  return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
-      <Header />
       <CategoryCarousel categories={categories} />
-      <DateSlider dates={dates} />
-      <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 px-4 md:px-8">
-        <div className="flex flex-col gap-4 w-full md:w-2/5 flex-shrink-0">
-          <MatchBanner />
-          <div className="bg-[#FAF9F2] rounded-lg p-4 shadow-sm min-h-[180px] border border-gray-200">
-            <h2 className="font-bold mb-2 text-gray-800">Itinerario de hoy:</h2>
-            <div className="h-40 border-t border-gray-100 p-3 text-sm text-gray-500 text-center pt-10">Cargando itinerario...</div>
+      <DateSlider />
+      <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 pl-4 pr-4 md:pl-22 md:pr-22 w-full">
+        <div className="flex flex-col gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
+          <MatchItem 
+            location="CDMX"
+            date="11 de Junio"
+            team1="México"
+            flag1="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Mexico.svg/1024px-Flag_of_Mexico.svg.png"
+            team2="Sudáfrica"
+            flag2="https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Flag_of_South_Africa.svg/1200px-Flag_of_South_Africa.svg.png"
+            time="13:00"
+          />
+          <MatchItem 
+            location="GDL"
+            date="11 de Junio"
+            team1="Corea"
+            flag1="https://upload.wikimedia.org/wikipedia/commons/0/09/Flag_of_South_Korea.svg"
+            team2="Dinamarca"
+            flag2="https://img.freepik.com/foto-gratis/fondo-textura-bandera-nacional-dinamarca-ia-generativa_169016-29875.jpg"
+            time="20:00"
+          />
+          {/* CONTENEDOR DE ITINERARIO */}
+          <div className="bg-[#FAF9F2] rounded-3xl p-6 shadow-sm min-h-[300px] border border-[#1A4D2E]/10 flex flex-col relative">
+            <h2 className="font-black text-[#1A4D2E] uppercase text-xs tracking-widest mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+              {itinerarioFinal ? "Tu Ruta Elegida" : "Arma tu Itinerario"}
+            </h2>
+
+            {!itinerarioFinal && !mostrarOpciones && (
+              <button 
+                onClick={() => setMostrarOpciones(true)}
+                className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#769C7B]/30 rounded-2xl hover:bg-[#F6F0E6] transition-all group"
+              >
+                <FiMapPin className="text-[#769C7B] group-hover:text-[#F00808] mb-2" size={24} />
+                <p className="text-[11px] font-bold text-[#769C7B] uppercase">Presiona para elegir lugares</p>
+              </button>
+            )}
+
+            {mostrarOpciones && (
+              <div className="flex-1 flex flex-col">
+                <div className="flex-1 overflow-y-auto max-h-60 mb-4 space-y-2 pr-2 custom-scrollbar">
+                  {lugaresBD.map((lugar) => (
+                    <div 
+                      key={lugar.nombre}
+                      onClick={() => toggleLugar(lugar)}
+                      className={`p-3 rounded-xl cursor-pointer border transition-all flex justify-between items-center ${
+                        seleccionados.find(s => s.nombre === lugar.nombre) 
+                        ? "bg-[#1A4D2E] border-[#1A4D2E] text-white" 
+                        : "bg-white border-[#F6F0E6] text-[#1A4D2E]"
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold uppercase">{lugar.nombre}</span>
+                      <span className="text-[9px] opacity-70">{lugar.tiempoEstancia} min</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={finalizarRuta}
+                  disabled={seleccionados.length === 0} // <--- Bloqueado si está vacío
+                  className={`w-full py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
+                    seleccionados.length > 0
+                      ? "bg-[#F00808] text-white shadow-lg active:scale-95" 
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  {seleccionados.length > 0
+                    ? `Generar Itinerario (${seleccionados.length})`
+                    : "Selecciona al menos 1 lugar"}
+                </button>
+              </div>
+            )}
+
+            {itinerarioFinal && (
+              <div className="flex-1 flex flex-col">
+                <div className="text-[13px] leading-relaxed text-[#1A4D2E]/80 font-medium whitespace-pre-wrap flex-1 overflow-y-auto max-h-64">
+                  {itinerarioFinal}
+                </div>
+                <button 
+                  onClick={() => {setItinerarioFinal(""); setSeleccionados([]);}}
+                  className="mt-4 text-[10px] font-bold text-[#769C7B] uppercase hover:text-[#F00808]"
+                >
+                  Reiniciar selección
+                </button>
+              </div>
+            )}
           </div>
         </div>
+
         <Recommendations recommendations={recommendations} />
       </main>
     </div>
   );
 }
+
+// SOLUCIÓN: Definición de Recommendations para evitar el error "is not defined"
+const Recommendations = ({ recommendations }: { recommendations: any[] }) => (
+  <div className="flex flex-col w-full md:w-3/5">
+    <h2 className="text-2xl font-bold mb-4 text-[#1A4D2E]">Recomendaciones</h2>
+    <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-6">
+      {recommendations.map((place) => (
+        <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
+          <div className="w-full relative overflow-hidden pb-[56.25%] md:pb-[100%]">
+            {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={place.name} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">Sin imagen</div>}
+            <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#1A4D2E] text-white px-3 py-1 rounded-full shadow-lg">Ubicar</button></div>
+          </div>
+          <div className="p-4"><h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3></div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
