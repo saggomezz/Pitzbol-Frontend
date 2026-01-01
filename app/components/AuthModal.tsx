@@ -117,12 +117,15 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
 
       if (response.ok) {
         // Guardamos token y el objeto de usuario completo para que el Perfil lo lea
-        localStorage.setItem("token", data.token);
+        localStorage.setItem("pitzbol_token", data.token);
         localStorage.setItem("pitzbol_user", JSON.stringify({ 
           email: data.user.email, 
           uid: data.user.uid, 
           nombre: data.user.nombre,
           apellido: data.user.apellido,
+          telefono: data.user.telefono || "No registrado",
+          nacionalidad: data.user.nacionalidad || "No registrado",
+          especialidades: data.user.especialidades || [],
           role: data.user.role
         }));
         
