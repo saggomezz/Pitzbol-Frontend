@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { sendPasswordResetEmail, getAuth } from "firebase/auth";
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { FiMail, FiArrowRight, FiUnlock, FiRefreshCw } from "react-icons/fi";
-import Link from "next/link";
+import { getApp, getApps, initializeApp } from "firebase/app";
+import { getAuth, sendPasswordResetEmail } from "firebase/auth";
 import { motion } from "framer-motion";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { FiArrowRight, FiMail, FiRefreshCw, FiUnlock } from "react-icons/fi";
+import axios from "axios";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -30,9 +31,13 @@ export default function ForgotPasswordPage() {
   }, [cooldown]);
 
   const handleSend = async (isResend = false) => {
+    // 1. Bloqueo por seguridad (cooldown)
     if (cooldown > 0 && isResend) return;
-
+    
     setIsError(false);
+    setMessage(""); // Limpiamos mensajes previos
+
+    // 2. Validación básica de email
     if (!email || !email.includes("@")) {
       setMessage("Introduce un correo electrónico válido");
       setIsError(true);
@@ -40,15 +45,37 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      await sendPasswordResetEmail(auth, email, {
-        url: `${window.location.origin}/reset-password`, 
+      // 3. LLAMADA AL BACKEND
+      // Nota: Asegúrate de que el puerto 3001 sea el de tu servidor Express
+      const response = await axios.post("http://localhost:3001/api/auth/recover-password", { 
+        email: email 
       });
-      setMessage(isResend ? "Enlace reenviado con éxito" : "Revisa tu bandeja de entrada para continuar");
-      setIsError(false);
-      setCooldown(60); // Bloquea el reenvío por 60 segundos
+
+      // 4. Manejo de respuesta exitosa
+      // El backend ahora genera el link y Nodemailer envía el correo
+      if (response.status === 200) {
+        setMessage(isResend 
+          ? "¡Enviado de nuevo! Revisa tu bandeja de entrada." 
+          : "¡Listo! Te enviamos un correo con las instrucciones."
+        );
+        setIsError(false);
+        setCooldown(60); // Activamos el contador de 60 segundos
+      }
     } catch (error: any) {
-      setMessage("El correo no está registrado o hubo un error técnico");
+      // 5. Manejo de errores detallado
+      console.error("❌ Error en la conexión con Pitzbol Auth:", error);
+      
       setIsError(true);
+      
+      if (error.response) {
+        // El servidor respondió con un error (400, 404, 500)
+        setMessage(error.response.data.msg || "Error en el servidor de correos.");
+      } else if (error.request) {
+        // La petición se hizo pero el backend no respondió (servidor apagado)
+        setMessage("No se pudo conectar con el servidor. ¿Está encendido el backend?");
+      } else {
+        setMessage("Ocurrió un error inesperado. Inténtalo de nuevo.");
+      }
     }
   };
 
