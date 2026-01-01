@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { 
-  FiCamera, FiMessageSquare, FiPlus, FiX, FiUser, FiStar, FiEdit2, FiClock, FiDollarSign, FiUsers, FiTrash2 
+  FiCamera, FiMessageSquare, FiPlus, FiX, FiUser, FiMap, FiClock, FiDollarSign, FiUsers, FiTrash2, FiHeart 
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -15,30 +15,30 @@ export default function PerfilDetallado() {
 
   useEffect(() => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    
+    // Priorizamos los datos que vienen del registro
     const datosCargados = {
-      id: userLocal.id || "temp_id",
-      nombre: userLocal.nombre || "Valeria",
-      rol: userLocal.rol || "guía",
-      especialidades: userLocal["07_especialidades"] || ["Arte e Historia", "Deporte Futbol", "Vida Nocturna"],
+      id: userLocal.uid || userLocal.id || "temp_id",
+      nombre: userLocal.nombre || "Usuario",
+      rol: userLocal.role || userLocal.rol || "turista",
+      especialidades: userLocal["07_especialidades"] || (userLocal.role === "guia" ? ["Arte e Historia", "Deporte Futbol"] : ["Cultura", "Gastronomía"]),
       fotoUrl: userLocal.fotoUrl || null 
     };
+
     setPerfil(datosCargados);
     setFotoPerfil(datosCargados.fotoUrl);
     setEspecialidades(datosCargados.especialidades);
     setLoading(false);
   }, []);
 
-  const eliminarEspecialidad = (index: number) => {
-    const nuevas = especialidades.filter((_, i) => i !== index);
-    setEspecialidades(nuevas);
-  };
+  const esGuia = perfil?.rol === "guia";
 
   if (loading) return <div className="h-screen flex items-center justify-center font-bold text-[#1A4D2E] bg-[#FDFCF9]">Cargando...</div>;
 
   return (
     <div className="min-h-screen bg-[#FDFCF9] text-[#1A4D2E] pb-20 font-sans">
       
-      {/* Título de sección */}
+      {/* 1. Encabezado (Diseño original) */}
       <div className="max-w-6xl mx-auto px-8 py-10 flex justify-between items-center">
         <div className="flex flex-col">
           <h1 className="text-4xl md:text-5xl font-black text-[#1A4D2E] uppercase" style={{ fontFamily: "'Jockey One', sans-serif" }}>
@@ -57,7 +57,7 @@ export default function PerfilDetallado() {
 
       <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-10">
         
-        {/* Columna Izquierda: Foto e Idiomas */}
+        {/* 2. Columna Izquierda (Diseño original) */}
         <aside className="lg:col-span-4 space-y-8">
           <section className="flex flex-col items-center text-center">
             <div className="relative mb-8">
@@ -84,117 +84,94 @@ export default function PerfilDetallado() {
             <h2 className="text-3xl font-bold text-[#1A4D2E] mb-1">{perfil.nombre}</h2>
           </section>
 
-          {/* Cuadro de Idiomas y Estatus (Restaurado) */}
           <div className="bg-white border border-[#F6F0E6] rounded-[40px] p-8 flex divide-x divide-[#F6F0E6] shadow-sm">
             <div className="flex-1 pr-4 space-y-3">
-              <h3 className="text-center font-black text-[10px] uppercase text-[#769C7B] tracking-widest">Idiomas</h3>
+              <h3 className="text-center font-black text-[10px] uppercase text-[#769C7B] tracking-widest">
+                {esGuia ? "Idiomas" : "Nacionalidad"}
+              </h3>
               <div className="flex flex-col gap-2">
-                <span className="bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full text-[10px] font-bold text-center">Español (Nativo)</span>
+                <span className="bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full text-[10px] font-bold text-center block">
+                  {esGuia ? "Español (Nativo)" : "México"}
+                </span>
               </div>
             </div>
             <div className="flex-1 pl-4 flex flex-col items-center justify-center text-center">
               <h3 className="font-black text-[10px] uppercase text-[#769C7B] tracking-widest mb-2">Estatus</h3>
-              <p className="font-black text-[#1A4D2E] text-base">Principiante</p>
+              <p className="font-black text-[#1A4D2E] text-base">
+                {esGuia ? "Principiante" : "Viajero"}
+              </p>
             </div>
           </div>
         </aside>
 
-        {/* Columna Derecha: Especialidades y Tours */}
+        {/* 3. Columna Derecha */}
         <main className="lg:col-span-8 space-y-12">
           
-          {/* Sección de Especialidades (Ubicación anterior) */}
+          {/* Especialidades / Intereses (Diseño intacto) */}
           <section>
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold italic">Especialidad Principal</h3>
-              <button className="text-[#0D601E] flex items-center gap-1 text-xs font-bold hover:scale-105 transition-transform">
-                <FiPlus /> Añadir etiqueta
-              </button>
+              <h3 className="text-xl font-bold italic">
+                {esGuia ? "Especialidad Principal" : "Mis Intereses"}
+              </h3>
+              {/* Solo el guía puede añadir etiquetas */}
+              {esGuia && (
+                <button className="text-[#0D601E] flex items-center gap-1 text-xs font-bold hover:scale-105 transition-transform">
+                  <FiPlus /> Añadir etiqueta
+                </button>
+              )}
             </div>
             <div className="flex flex-wrap gap-4">
               {especialidades.map((esp, i) => (
                 <div key={i} className="group flex items-center gap-3 bg-white p-4 rounded-3xl border border-[#F6F0E6] shadow-sm relative overflow-hidden">
-                  <div className="w-2 h-2 rounded-full bg-[#0D601E]" />
+                  <div className={`w-2 h-2 rounded-full ${esGuia ? "bg-[#0D601E]" : "bg-[#F00808]"}`} />
                   <span className="text-xs font-bold">{esp}</span>
-                  <button onClick={() => eliminarEspecialidad(i)} className="hidden group-hover:flex text-[#F00808] transition-all">
-                    <FiTrash2 size={14}/>
-                  </button>
+                  {/* Solo el guía puede borrar etiquetas */}
+                  {esGuia && (
+                    <button className="hidden group-hover:flex text-[#F00808] transition-all">
+                      <FiTrash2 size={14}/>
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           </section>
 
-          {/* Catálogo de Experiencias */}
+          {/* Sección de Actividad */}
           <section className="space-y-6">
-            <h3 className="text-xl font-bold italic">Catálogo de experiencias</h3>
+            <h3 className="text-xl font-bold italic">
+              {esGuia ? "Catálogo de experiencias" : "Mis próximos destinos"}
+            </h3>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Botón Creativo de Nuevo Tour */}
-              <motion.div 
-                whileHover={{ y: -5 }}
-                onClick={() => setShowTourModal(true)}
-                className="bg-[#FAF9F2] rounded-[40px] p-8 border-2 border-dashed border-[#0D601E]/20 flex flex-col items-center justify-center text-center cursor-pointer group hover:bg-white transition-all min-h-[250px]"
-              >
-                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-[#0D601E] mb-4 group-hover:scale-110 transition-transform shadow-sm">
-                  <FiPlus size={28} />
+              {esGuia ? (
+                <>
+                  {/* Diseño de Guía Original: Botón de nuevo tour */}
+                  <motion.div 
+                    whileHover={{ y: -5 }}
+                    onClick={() => setShowTourModal(true)}
+                    className="bg-[#FAF9F2] rounded-[40px] p-8 border-2 border-dashed border-[#0D601E]/20 flex flex-col items-center justify-center text-center cursor-pointer group hover:bg-white transition-all min-h-[250px]"
+                  >
+                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-[#0D601E] mb-4 group-hover:scale-110 transition-transform shadow-sm">
+                      <FiPlus size={28} />
+                    </div>
+                    <h4 className="text-lg font-bold text-[#1A4D2E]">Diseñar nueva experiencia</h4>
+                    <p className="text-xs text-[#769C7B] mt-2 px-6">Publica una nueva ruta y comienza a recibir pitzboleros</p>
+                    <button className="mt-6 text-[#0D601E] font-bold text-xs underline underline-offset-4">Comenzar ahora</button>
+                  </motion.div>
+                </>
+              ) : (
+                /* Diseño de Turista: Placeholder de viajes */
+                <div className="col-span-full bg-[#FAF9F2] rounded-[40px] p-12 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center">
+                  <FiMap size={40} className="text-gray-300 mb-4" />
+                  <h4 className="text-lg font-bold text-[#1A4D2E]">No tienes tours reservados</h4>
+                  <p className="text-xs text-[#769C7B] mt-2">¡Explora Pitzbol y encuentra tu próxima aventura!</p>
+                  <button className="mt-6 bg-[#1A4D2E] text-white px-8 py-3 rounded-full font-bold text-sm">Explorar tours</button>
                 </div>
-                <h4 className="text-lg font-bold text-[#1A4D2E]">Diseñar nueva experiencia</h4>
-                <p className="text-xs text-[#769C7B] mt-2 px-6">Publica una nueva ruta y comienza a recibir pitzboleros</p>
-                <button className="mt-6 text-[#0D601E] font-bold text-xs underline underline-offset-4">Comenzar ahora</button>
-              </motion.div>
-
-              {/* Aquí se renderizarán los tours reales guardados */}
-              {tours.map((tour, i) => (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={i} className="bg-white rounded-[40px] p-8 border border-[#F6F0E6] shadow-lg relative">
-                  <button className="absolute top-6 right-6 text-gray-300 hover:text-[#0D601E]"><FiEdit2 size={16}/></button>
-                  <h4 className="text-lg font-black uppercase text-[#1A4D2E]">{tour.titulo}</h4>
-                  <div className="flex gap-4 mt-4">
-                    <div className="flex items-center gap-1 text-[10px] font-bold text-[#769C7B]"><FiClock/> {tour.duracion}h</div>
-                    <div className="flex items-center gap-1 text-[10px] font-bold text-[#769C7B]"><FiDollarSign/> ${tour.precio}</div>
-                    <div className="flex items-center gap-1 text-[10px] font-bold text-[#769C7B]"><FiUsers/> máx {tour.maxPersonas}</div>
-                  </div>
-                </motion.div>
-              ))}
+              )}
             </div>
           </section>
         </main>
       </div>
-
-      {/* Modal de Tour con Validaciones */}
-      <AnimatePresence>
-        {showTourModal && (
-          <div className="fixed inset-0 z-[150] bg-[#1A4D2E]/60 backdrop-blur-md flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white w-full max-w-lg rounded-[50px] p-10 shadow-3xl">
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-3xl font-black text-[#1A4D2E] uppercase" style={{ fontFamily: "'Jockey One', sans-serif" }}>Nuevo tour</h2>
-                <button onClick={() => setShowTourModal(false)} className="text-[#F00808] bg-[#FDF2F2] p-2 rounded-full"><FiX size={24}/></button>
-              </div>
-              
-              <div className="space-y-5">
-                <div>
-                  <label className="text-[10px] font-black uppercase ml-4 text-gray-400">Nombre de la experiencia *</label>
-                  <input type="text" placeholder="Ej: Caminata por el Centro" className="w-full bg-[#FDFCF9] border border-[#F6F0E6] p-4 rounded-3xl outline-none font-bold text-sm" />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-[10px] font-black uppercase ml-4 text-gray-400">Horas *</label>
-                    <input type="number" min="1" placeholder="0" className="w-full bg-[#FDFCF9] border border-[#F6F0E6] p-4 rounded-3xl text-center font-bold text-sm outline-none" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black uppercase ml-4 text-gray-400">Precio (MXN) *</label>
-                    <input type="text" placeholder="$0" onInput={(e: any) => e.target.value = e.target.value.replace(/[^0-9.]/g, '')} className="w-full bg-[#FDFCF9] border border-[#F6F0E6] p-4 rounded-3xl text-center font-bold text-sm outline-none" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black uppercase ml-4 text-gray-400">Cupo *</label>
-                    <input type="number" min="1" placeholder="0" className="w-full bg-[#FDFCF9] border border-[#F6F0E6] p-4 rounded-3xl text-center font-bold text-sm outline-none" />
-                  </div>
-                </div>
-                <button className="w-full bg-[#0D601E] text-white py-5 rounded-full font-bold text-sm shadow-xl mt-4 active:scale-95 transition-transform">
-                  Guardar experiencia
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
