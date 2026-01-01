@@ -41,11 +41,23 @@ export default function ResetPasswordPage() {
     }
 
     try {
+      console.log("Intentando reset con código:", oobCode);
       await confirmPasswordReset(auth, oobCode, newPassword);
       setStatus({ type: 'success', msg: "¡Contraseña actualizada! Redirigiendo..." });
+      
+      // IMPORTANTE: Limpia el localStorage para forzar login nuevo
+      localStorage.removeItem("pitzbol_user");
+      
       setTimeout(() => router.push("/"), 3000);
-    } catch (error) {
-      setStatus({ type: 'error', msg: "Error al actualizar. Intenta solicitar un nuevo enlace." });
+    } catch (error: any) {
+      console.error("Error detallado de Firebase:", error.code, error.message);
+      
+      // Mensajes más claros para el usuario
+      const mensaje = error.code === 'auth/invalid-action-code' 
+        ? "El enlace ha expirado o ya fue usado." 
+        : "Error al actualizar. Intenta solicitar un nuevo enlace.";
+        
+      setStatus({ type: 'error', msg: mensaje });
     }
   };
 
