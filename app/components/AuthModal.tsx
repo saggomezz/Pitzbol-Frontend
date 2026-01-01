@@ -113,16 +113,15 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
       if (response.ok) {
         // Guardamos token y el objeto de usuario completo para que el Perfil lo lea
         localStorage.setItem("token", data.token);
-        localStorage.setItem("pitzbol_user", JSON.stringify({ email: data.email, uid: data.uid, nombre: data.nombre }));
+        localStorage.setItem("pitzbol_user", JSON.stringify({ 
+          email: data.user.email, 
+          uid: data.user.uid, 
+          nombre: data.user.nombre,
+          apellido: data.user.apellido,
+          role: data.user.role
+        }));
         
-        const sessionUser = {
-            uid: data.user.uid,
-            email: data.user.email,
-            nombre: data.user.nombre,
-            rol: data.user.role || "turista"
-        };
-        
-        localStorage.setItem("pitzbol_user", JSON.stringify(sessionUser));
+        alert(`¡Bienvenido de nuevo, ${data.user.nombre}!`);
         
         // Notificamos al Navbar
         window.dispatchEvent(new Event("storage"));
