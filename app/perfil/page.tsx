@@ -97,7 +97,6 @@ export default function PerfilDetallado() {
   useEffect(() => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
     
-    // Priorizamos los datos que vienen del registro
     const datosCargados = {
       id: userLocal.uid || userLocal.id || "temp_id",
       nombre: userLocal.nombre || "Usuario",
@@ -375,6 +374,7 @@ export default function PerfilDetallado() {
   };
 
   const esGuia = perfil?.rol === "guia";
+  const esAdmin = perfil?.rol === "admin";
 
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-gradient-to-br from-[#F6F0E6] to-[#FDFCF9]">
