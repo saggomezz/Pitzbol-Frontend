@@ -66,53 +66,76 @@ const CategoryCarousel = ({ categories }: { categories: Category[] }) => (
   </section>
 );
 
-const DateSlider = ({ dates }: { dates: any[] }) => {
-  // Si no vienen fechas del repo, usamos las 3 por defecto de la Versión A
-  const displayDates = dates || getDates(); 
+const DateSlider = () => {
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false); // Estado para el modal
 
-  return (
-    <div className="bg-white md:bg-transparent py-1 w-full overflow-hidden">
-      <div className="flex gap-1 md:gap-0 px-2 md:px-0 justify-center items-center w-full max-w-7xl mx-auto">
-        {displayDates.map((date, index) => {
-          // Mantenemos la lógica de colores de Pitzbol
-          let bgColor = index === 0 ? "bg-[#0D601E]" : index === 1 ? "bg-white border-y border-gray-100 shadow-sm" : "bg-[#B90808]";
-          let textColor = index === 1 ? "text-[#6F4545]" : "text-white";
+  const getDates = () => {
+    const days = [];
+    const today = new Date();
+    for (let i = 0; i < 3; i++) {
+      const date = new Date();
+      date.setDate(today.getDate() + i);
+      days.push({
+        day: date.getDate().toString(),
+        weekday: date.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase().replace('.', ''),
+        fullDate: date.toISOString().split('T')[0]
+      });
+    }
+    return days;
+  };
 
-          return (
-            <div
-              key={date.fullDate}
-              className={`
-                relative flex-1 flex flex-col items-center justify-center cursor-pointer transition-all
-                h-12 md:h-12
-                ${index === 0 ? "rounded-l-[12px] md:rounded-l-[20px]" : ""}
-                ${index === 2 ? "rounded-r-[12px] md:rounded-r-[20px]" : ""}
-                ${bgColor}
-              `}
-            >
-              <div className={`text-lg md:text-2xl font-normal leading-tight ${textColor}`} style={{ fontFamily: "var(--font-jetbrains)" }}>
-                {date.day}
-              </div>
-              <div className={`text-[9px] md:text-xs font-normal uppercase ${textColor}`} style={{ fontFamily: "var(--font-jockey)" }}>
-                {date.weekday}
-              </div>
+  const dynamicDates = getDates();
 
-              {/* Mantenemos el detalle del balón que tanto les gusta */}
-              {index === 0 && (
-                <div className="absolute -top-1 -left-1 md:top-0 md:left-2 z-10">
-                  <GiSoccerBall size={18} className="text-black bg-white rounded-full p-0.5 shadow-md animate-bounce" style={{ animationDuration: '3s' }} />
+return (
+    <>
+      <div className="bg-white md:bg-transparent py-1 w-full overflow-hidden">
+        <div className="flex gap-1 md:gap-0 px-2 md:px-0 justify-center items-center w-full max-w-7xl mx-auto">
+          {dynamicDates.map((date, index) => {
+            let bgColor = index === 0 ? "bg-[#0D601E]" : index === 1 ? "bg-white border-y border-gray-100 shadow-sm" : "bg-[#B90808]";
+            let textColor = index === 1 ? "text-[#6F4545]" : "text-white";
+
+            return (
+              <div
+                key={date.fullDate}
+                className={`
+                  relative flex-1 flex flex-col items-center justify-center cursor-pointer transition-all
+                  h-12 md:h-12
+                  ${index === 0 ? "rounded-l-[12px] md:rounded-l-[20px]" : ""}
+                  ${index === 2 ? "rounded-r-[12px] md:rounded-r-[20px]" : ""}
+                  ${bgColor}
+                `}
+              >
+                <div 
+                  className={`text-lg md:text-2xl font-normal leading-tight ${textColor}`}
+                  style={{ fontFamily: "var(--font-jetbrains)" }}
+                >
+                  {date.day}
                 </div>
-              )}
-            </div>
-          );
-        })}
+                <div 
+                  className={`text-[9px] md:text-xs font-normal uppercase ${textColor}`}
+                  style={{ fontFamily: "var(--font-jockey)" }}
+                >
+                  {date.weekday}
+                </div>
 
-        <Link href="/calendario">
-          <button className="ml-2 p-3 text-black hover:scale-110 transition-transform">
-            <FiChevronRight size={35} />
-          </button>
-        </Link>
+                {index === 0 && (
+                  <div className="absolute -top-1 -left-1 md:top-0 md:left-2 z-10">
+                    <GiSoccerBall size={18} className="text-black bg-white rounded-full p-0.5 shadow-md animate-bounce" style={{ animationDuration: '3s' }} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <Link href="/calendario">
+            <button className="ml-2 p-3 text-black hover:scale-110 transition-transform flex-shrink-0">
+              <FiChevronRight size={35} />
+            </button>
+          </Link>
+        </div>
       </div>
-    </div>
+
+    </>
   );
 };
 
