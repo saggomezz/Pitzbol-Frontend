@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
-    FiBriefcase, FiCalendar, FiHeart, FiMapPin, FiMenu, FiUser, FiX, FiInfo, FiMessageSquare, FiShield, FiLogOut
+    FiBriefcase, FiCalendar, FiHeart, FiMapPin, FiMenu, FiUser, FiX, FiInfo, FiMessageSquare, FiShield, FiLogOut, FiHome
 } from "react-icons/fi";
 
 import imglogo from "./logoPitzbol.png";
@@ -82,6 +82,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
             </div>
 
             <div className="flex items-center gap-2 md:gap-4 relative">
+                <Link href="/"><FiHome size={24} className="cursor-pointer hover:text-[#F00808] transition-colors" /></Link>
                 <Link href="/calendario"><FiCalendar size={24} className="cursor-pointer hover:text-[#F00808] transition-colors" /></Link>
                 <Link href="/favoritos"><FiHeart size={24} className="cursor-pointer hover:text-[#F00808] transition-colors" /></Link>
 
