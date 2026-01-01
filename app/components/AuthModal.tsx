@@ -77,14 +77,19 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
       const data = await response.json();
 
       if (response.ok) {
-        // Al registrar, guardamos sesión temporal y mandamos al perfil
+        // Al registrar, guardamos todos los datos incluyendo teléfono y nacionalidad
         const userData = {
           nombre: regNombre,
+          apellido: regApellido,
+          email: regEmail,
+          telefono: telefono,
+          nacionalidad: nacionalidad,
           rol: "turista",
-          uid: data.uid || "new_user"
+          role: "turista",
+          uid: data.user?.uid || "new_user"
         };
         localStorage.setItem("pitzbol_user", JSON.stringify(userData));
-        window.dispatchEvent(new Event("storage"));
+        window.dispatchEvent(new Event("authStateChanged"));
         
         alert("¡Registro exitoso! Bienvenido a Pitzbol.");
         onClose();

@@ -20,6 +20,10 @@ export default function PerfilDetallado() {
     const datosCargados = {
       id: userLocal.uid || userLocal.id || "temp_id",
       nombre: userLocal.nombre || "Usuario",
+      apellido: userLocal.apellido || "",
+      email: userLocal.email || "",
+      telefono: userLocal.telefono || "No registrado",
+      nacionalidad: userLocal.nacionalidad || "No registrado",
       rol: userLocal.role || userLocal.rol || "turista",
       especialidades: userLocal["07_especialidades"] || (userLocal.role === "guia" ? ["Arte e Historia", "Deporte Futbol"] : ["Cultura", "Gastronomía"]),
       fotoUrl: userLocal.fotoUrl || null 
@@ -81,7 +85,8 @@ export default function PerfilDetallado() {
                 <input type="file" className="hidden" accept="image/*" />
               </motion.label>
             </div>
-            <h2 className="text-3xl font-bold text-[#1A4D2E] mb-1">{perfil.nombre}</h2>
+            <h2 className="text-3xl font-bold text-[#1A4D2E] mb-1">{perfil.nombre} {perfil.apellido}</h2>
+            <p className="text-sm text-[#769C7B]">{perfil.email}</p>
           </section>
 
           <div className="bg-white border border-[#F6F0E6] rounded-[40px] p-8 flex divide-x divide-[#F6F0E6] shadow-sm">
@@ -91,9 +96,15 @@ export default function PerfilDetallado() {
               </h3>
               <div className="flex flex-col gap-2">
                 <span className="bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full text-[10px] font-bold text-center block">
-                  {esGuia ? "Español (Nativo)" : "México"}
+                  {esGuia ? "Español (Nativo)" : perfil.nacionalidad}
                 </span>
               </div>
+            </div>
+            <div className="flex-1 px-4 flex flex-col items-center justify-center text-center">
+              <h3 className="font-black text-[10px] uppercase text-[#769C7B] tracking-widest mb-2">Teléfono</h3>
+              <p className="font-bold text-[#1A4D2E] text-sm break-all">
+                {perfil.telefono}
+              </p>
             </div>
             <div className="flex-1 pl-4 flex flex-col items-center justify-center text-center">
               <h3 className="font-black text-[10px] uppercase text-[#769C7B] tracking-widest mb-2">Estatus</h3>
