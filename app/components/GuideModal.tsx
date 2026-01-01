@@ -96,50 +96,71 @@ const GuideModal = ({ isOpen, onClose, isAlreadyUser = false }: { isOpen: boolea
   };
 
   const handleFinish = async () => {
-      const error = validateStep();
-      if (error) {
-          setErrorMsg(error);
-          return;
+    const error = validateStep();
+    if (error) {
+      setErrorMsg(error);
+      return;
+    }
+    
+    setIsFinishing(true);
+
+    // --- AQUÍ OBTENEMOS EL UID DEL USUARIO ACTUAL ---
+    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    const uid = userLocal.uid || userLocal.id; // Extraemos el ID único de Firebase
+
+    if (!uid) {
+      alert("Error: No se encontró una sesión activa. Por favor intenta iniciar sesión de nuevo.");
+      setIsFinishing(false);
+      return;
+    }
+
+    // Agregamos el uid al payload que va al backend
+    const payload = { 
+      ...formData, 
+      uid, // <--- Enviamos el UID para que el backend actualice el rol
+      nacionalidad, 
+      rfc, 
+      categorias: selectedCats, 
+      rol: "guia" 
+    };
+
+    try {
+      const response = await fetch('http://localhost:3001/api/guides/register-guide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Actualizamos el localStorage con el nuevo rol para que el perfil cambie de inmediato
+        const updatedUserData = {
+          ...userLocal,
+          nombre: formData.nombre,
+          apellido: formData.apellido,
+          rol: "guia", // Cambiamos el rol localmente
+          "07_especialidades": selectedCats
+        };
+        
+        localStorage.setItem("pitzbol_user", JSON.stringify(updatedUserData));
+        
+        // Avisamos al Navbar que el usuario ahora es guía
+        window.dispatchEvent(new Event("storage"));
+
+        setTimeout(() => {
+          onClose();
+          // Mandamos al perfil detallado
+          window.location.href = "/perfil"; 
+        }, 2500);
+      } else {
+        setIsFinishing(false);
+        alert("Hubo un error al procesar tu afiliación como guía.");
       }
-      setIsFinishing(true);
-
-      const payload = { ...formData, nacionalidad, rfc, categorias: selectedCats, rol: "guia" };
-
-      try {
-          const response = await fetch('http://localhost:3001/api/guides/register-guide', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-          });
-
-          if (response.ok) {
-              // GUARDAMOS EL OBJETO COMPLETO PARA EL PERFIL
-              const userData = {
-                  id: `${formData.nombre}_${formData.apellido}`.replace(/\s+/g, '_'),
-                  nombre: formData.nombre,
-                  apellido: formData.apellido, // Importante para el perfil
-                  rol: "guia",
-                  "07_especialidades": selectedCats // Lo pasamos de una vez para evitar el delay de la BD
-              };
-              
-              localStorage.setItem("pitzbol_user", JSON.stringify(userData));
-              
-              // Disparamos el evento para el Navbar
-              window.dispatchEvent(new Event("storage"));
-
-              setTimeout(() => {
-                  onClose();
-                  // Redirigimos al perfil directamente para que vea sus datos
-                  window.location.href = "/perfil"; 
-              }, 2500);
-          } else {
-              setIsFinishing(false);
-              alert("Error en el registro.");
-          }
-      } catch (error) {
-          setIsFinishing(false);
-          alert("Error de conexión.");
-      }
+    } catch (error) {
+      setIsFinishing(false);
+      alert("Error de conexión con el servidor.");
+    }
   };
 
   const inputClass = "w-full px-6 py-2.5 bg-transparent border border-[#1A4D2E]/20 rounded-full outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm";
