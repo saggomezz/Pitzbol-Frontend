@@ -28,7 +28,7 @@ export default function Footer() {
             <div className="mt-16 pt-8 border-t border-[#1A4D2E]/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#769C7B]">
                 <p>© {currentYear} PITZBOL PROJECT - CAMINO AL MUNDIAL 2026</p>
                 <div className="flex gap-6">
-                    <Link href="#" className="hover:text-[#F00808] transition-colors">Política de privacidad</Link>
+                    <Link href="/politica-privacidad" className="hover:text-[#F00808] transition-colors">Política de privacidad</Link>
                 </div>
             </div>
         </footer>
