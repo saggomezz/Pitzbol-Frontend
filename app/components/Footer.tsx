@@ -8,11 +8,11 @@ export default function Footer() {
     return (
         <footer className="bg-[#F6F0E6] border-t border-[#1A4D2E]/10 pt-16 pb-8 px-6 md:px-20 text-[#1A4D2E]">
             {/* LADO IZQUIERDO: LOGO Y SIGNIFICADO */}
-            <div className="lg:col-span-5 flex flex-col md:flex-row items-center md:items-start gap-6">
+            <div className="lg:col-span-5 flex flex-col md:flex-row items-center gap-6">
                 <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0">
                     <Image src={imglogo} alt="Pitzbol Logo" fill className="object-contain" />
                 </div>
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 justify-center">
                     <h2 className="text-3xl font-black uppercase leading-none" style={{ fontFamily: "'Jockey One', sans-serif" }}>
                         PITZ<span className="text-[#F00808]">BOL</span>
                     </h2>
