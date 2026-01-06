@@ -111,6 +111,12 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
                                 </button>
                             )}
 
+                            <div className="h-[1px] bg-gray-100 my-2 mx-2" />
+                            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-3 mb-1">Explorar</p>
+                            <Link href="/mapa" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
+                                <FiMapPin /> Mapa de Lugares
+                            </Link>
+
                             {/* ESTA ES LA CLAVE: Si showSocios es true, aparecen las opciones de registro */}
                             {showSocios && (
                                 <>
@@ -127,9 +133,6 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
 
                             <div className="h-[1px] bg-gray-100 my-2 mx-2" />
                             <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-3 mb-1">Pitzbol</p>
-                            <Link href="/mapa" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
-                                <FiMapPin /> Mapa de Lugares
-                            </Link>
                             <Link href="/nosotros" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
                                 <FiInfo /> Nosotros
                             </Link>
