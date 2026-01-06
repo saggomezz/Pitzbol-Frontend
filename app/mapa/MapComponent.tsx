@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from "react-leaflet";
+import { useRouter } from 'next/navigation';
+import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
 import type { LatLngExpression, Icon as LeafletIcon } from "leaflet";
 import { FiMapPin } from "react-icons/fi";
 
@@ -71,6 +72,8 @@ export default function MapComponent({
     mapCenter,
     mapZoom,
 }: MapComponentProps) {
+    const router = useRouter();
+    
     if (!redIcon) return <div>Cargando mapa...</div>;
 
     return (
@@ -86,8 +89,8 @@ export default function MapComponent({
             />
             <MapController center={mapCenter as LatLngExpression} zoom={mapZoom} />
 
-            {/* Marcadores para todos los lugares filtrados */}
-            {lugares.map((lugar, idx) => {
+            {/* Marcadores - si hay un lugar seleccionado, solo mostrar ese */}
+            {(selectedPlace ? [selectedPlace] : lugares).map((lugar, idx) => {
                 const lat = parseFloat(lugar.latitud || "20.6597");
                 const lng = parseFloat(lugar.longitud || "-103.3496");
 
@@ -101,7 +104,9 @@ export default function MapComponent({
                         position={position}
                         icon={redIcon}
                         eventHandlers={{
-                            click: () => onSelectPlace(lugar),
+                            click: () => {
+                                onSelectPlace(lugar);
+                            },
                         }}
                     >
                         {/* Tooltip mejorado al pasar el cursor */}
@@ -163,62 +168,6 @@ export default function MapComponent({
                                 </div>
                             </div>
                         </Tooltip>
-
-                        {/* Popup al hacer click */}
-                        <Popup>
-                            <div style={{ minWidth: "200px" }}>
-                                <h3
-                                    style={{
-                                        margin: "0 0 0.5rem 0",
-                                        color: "#1A4D2E",
-                                        fontSize: "1rem",
-                                        fontWeight: 700,
-                                    }}
-                                >
-                                    {lugar.nombre}
-                                </h3>
-                                <span
-                                    style={{
-                                        display: "inline-block",
-                                        background: "linear-gradient(135deg, #1A4D2E 0%, #0D601E 100%)",
-                                        color: "white",
-                                        padding: "0.2rem 0.6rem",
-                                        borderRadius: "20px",
-                                        fontSize: "0.65rem",
-                                        fontWeight: 700,
-                                        textTransform: "uppercase",
-                                        marginBottom: "0.5rem",
-                                    }}
-                                >
-                                    {lugar.categoria}
-                                </span>
-                                <p
-                                    style={{
-                                        margin: "0.5rem 0",
-                                        fontSize: "0.85rem",
-                                        color: "#4A5568",
-                                        lineHeight: 1.4,
-                                    }}
-                                >
-                                    {lugar.descripcion?.substring(0, 100)}
-                                    {(lugar.descripcion?.length || 0) > 100 ? "..." : ""}
-                                </p>
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "0.3rem",
-                                        fontSize: "0.8rem",
-                                        color: "#769C7B",
-                                        fontWeight: 600,
-                                        marginTop: "0.5rem",
-                                    }}
-                                >
-                                    <FiMapPin size={14} />
-                                    {lugar.ubicacion}
-                                </div>
-                            </div>
-                        </Popup>
                     </Marker>
                 );
             })}

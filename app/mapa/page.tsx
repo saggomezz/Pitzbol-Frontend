@@ -44,7 +44,9 @@ import {
     FiTrendingUp,
     FiDollarSign,
     FiActivity,
-    FiChevronDown
+    FiChevronDown,
+    FiNavigation,
+    FiExternalLink
 } from "react-icons/fi";
 import { 
     GiSoccerBall, 
@@ -102,6 +104,8 @@ export default function MapaPage() {
     const [selectedPlace, setSelectedPlace] = useState<Lugar | null>(null);
     const [mapCenter, setMapCenter] = useState<[number, number]>([20.6597, -103.3496]); // Guadalajara
     const [mapZoom, setMapZoom] = useState(12);
+    const [showFavoriteToast, setShowFavoriteToast] = useState(false);
+    const [favoriteToastMessage, setFavoriteToastMessage] = useState("");
 
     const categories = [
         { name: "Todos Los Lugares", icon: FiMapPin },
@@ -169,13 +173,31 @@ export default function MapaPage() {
         setFilteredLugares(filtered);
     }, [selectedCategory, searchTerm, lugares]);
 
+    // Deseleccionar con ESC
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === "Escape" && selectedPlace) {
+                handleClearSelection();
+            }
+        };
+        
+        window.addEventListener("keydown", handleEscape);
+        return () => window.removeEventListener("keydown", handleEscape);
+    }, [selectedPlace]);
+
     const toggleFavorite = (e: React.MouseEvent, nombre: string) => {
         e.stopPropagation();
-        const updated = favorites.includes(nombre)
+        const isRemoving = favorites.includes(nombre);
+        const updated = isRemoving
             ? favorites.filter((n) => n !== nombre)
             : [...favorites, nombre];
         setFavorites(updated);
         localStorage.setItem("pitzbol_favorites", JSON.stringify(updated));
+        
+        // Mostrar notificación
+        setFavoriteToastMessage(isRemoving ? "Eliminado de favoritos" : "Agregado a favoritos");
+        setShowFavoriteToast(true);
+        setTimeout(() => setShowFavoriteToast(false), 2000);
     };
 
     // Manejar selección de lugar (desde lista o desde mapa)
@@ -185,6 +207,13 @@ export default function MapaPage() {
         const lng = parseFloat(lugar.longitud || "-103.3496");
         setMapCenter([lat, lng]);
         setMapZoom(15);
+    };
+
+    // Limpiar selección y volver a mostrar todos los lugares
+    const handleClearSelection = () => {
+        setSelectedPlace(null);
+        setMapCenter([20.6597, -103.3496]);
+        setMapZoom(12);
     };
 
     if (loading) {
@@ -290,7 +319,7 @@ export default function MapaPage() {
                         <div className={styles.results}>
                             <div className={styles.resultsHeader}>
                                 <span className={styles.resultsCount}>
-                                    {filteredLugares.length} lugar{filteredLugares.length !== 1 ? "es" : ""}
+                                    {filteredLugares.length} LUGARES ENCONTRADOS
                                 </span>
                             </div>
 
@@ -323,26 +352,27 @@ export default function MapaPage() {
                                                 className={styles.placeImage}
                                             />
                                             <div className={styles.placeContent}>
-                                                <div>
-                                                    <span className={styles.placeCategory}>
-                                                        {lugar.categoria}
-                                                    </span>
-                                                    <h3 className={styles.placeName}>{lugar.nombre}</h3>
-                                                    <p className={styles.placeDescription}>
-                                                        {lugar.descripcion?.substring(0, 60)}
-                                                        {(lugar.descripcion?.length || 0) > 60 ? "..." : ""}
-                                                    </p>
-                                                </div>
-                                                <div className={styles.placeFooter}>
-                                                    <div className={styles.placeLocation}>
-                                                        <FiMapPin size={14} />
-                                                        <span>{lugar.ubicacion}</span>
+                                                <div className={styles.placeHeader}>
+                                                    <div>
+                                                        <span className={styles.placeCategory}>
+                                                            {lugar.categoria}
+                                                        </span>
+                                                        <h3 className={styles.placeName}>{lugar.nombre}</h3>
+                                                        <p className={styles.placeDescription}>
+                                                            {lugar.descripcion?.substring(0, 60)}
+                                                            {(lugar.descripcion?.length || 0) > 60 ? "..." : ""}
+                                                        </p>
                                                     </div>
-                                                    <button
+                                                    <motion.button
                                                         className={`${styles.favoriteButton} ${
                                                             favorites.includes(lugar.nombre) ? styles.active : ""
                                                         }`}
                                                         onClick={(e) => toggleFavorite(e, lugar.nombre)}
+                                                        whileTap={{ scale: 0.85 }}
+                                                        animate={{ 
+                                                            scale: favorites.includes(lugar.nombre) ? [1, 1.2, 1] : 1 
+                                                        }}
+                                                        transition={{ duration: 0.3 }}
                                                     >
                                                         <FiHeart
                                                             size={16}
@@ -352,7 +382,13 @@ export default function MapaPage() {
                                                                     : "none"
                                                             }
                                                         />
-                                                    </button>
+                                                    </motion.button>
+                                                </div>
+                                                <div className={styles.placeFooter}>
+                                                    <div className={styles.placeLocation}>
+                                                        <FiMapPin size={14} />
+                                                        <span>{lugar.ubicacion}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </motion.div>
@@ -363,7 +399,17 @@ export default function MapaPage() {
                     </div>
 
                     {/* RIGHT PANEL - MAPA INTERACTIVO */}
-                    <div className={styles.rightPanel}>
+                    <div 
+                        className={styles.rightPanel}
+                        onClick={(e) => {
+                            // Deseleccionar solo si se hace click en el mapa (no en el infoBox)
+                            if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.leaflet-container')) {
+                                if (selectedPlace && !(e.target as HTMLElement).closest(`.${styles.placeInfoBox}`)) {
+                                    handleClearSelection();
+                                }
+                            }
+                        }}
+                    >
                         <div className={styles.mapContainer}>
                             <MapComponent
                                 lugares={filteredLugares}
@@ -377,17 +423,83 @@ export default function MapaPage() {
                             <AnimatePresence>
                                 {selectedPlace && (
                                     <motion.div
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: 20 }}
+                                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                        transition={{ type: "spring", damping: 20, stiffness: 300 }}
                                         className={styles.placeInfoBox}
                                     >
-                                        <h3 className={styles.infoTitle}>{selectedPlace.nombre}</h3>
-                                        <span className={styles.infoCategory}>{selectedPlace.categoria}</span>
-                                        <p className={styles.infoDescription}>{selectedPlace.descripcion}</p>
-                                        <div className={styles.infoLocation}>
-                                            <FiMapPin size={16} />
-                                            {selectedPlace.ubicacion}
+                                        {/* Botón de cerrar */}
+                                        <button 
+                                            className={styles.closeInfoBox}
+                                            onClick={handleClearSelection}
+                                            title="Ver todos los lugares"
+                                        >
+                                            ×
+                                        </button>
+                                        
+                                        {/* Imagen del lugar con gradiente overlay */}
+                                        <div className={styles.infoImage}>
+                                            <img
+                                                src="https://via.placeholder.com/400x200?text=Lugar"
+                                                alt={selectedPlace.nombre}
+                                            />
+                                            <div className={styles.imageOverlay}></div>
+                                            <div className={styles.categoryBadgeOverlay}>
+                                                {selectedPlace.categoria}
+                                            </div>
+                                            <motion.button 
+                                                className={`${styles.favoriteButtonOverlay} ${
+                                                    favorites.includes(selectedPlace.nombre) ? styles.active : ""
+                                                }`}
+                                                onClick={(e) => toggleFavorite(e, selectedPlace.nombre)}
+                                                whileTap={{ scale: 0.85 }}
+                                                animate={{ 
+                                                    scale: favorites.includes(selectedPlace.nombre) ? [1, 1.25, 1] : 1,
+                                                    rotate: favorites.includes(selectedPlace.nombre) ? [0, -10, 10, 0] : 0
+                                                }}
+                                                transition={{ duration: 0.4 }}
+                                                title={favorites.includes(selectedPlace.nombre) ? "Quitar de favoritos" : "Agregar a favoritos"}
+                                            >
+                                                <FiHeart 
+                                                    fill={favorites.includes(selectedPlace.nombre) ? "currentColor" : "none"}
+                                                />
+                                            </motion.button>
+                                        </div>
+
+                                        {/* Contenido */}
+                                        <div className={styles.infoContent}>
+                                            <h3 
+                                                className={styles.infoTitle}
+                                                onClick={() => window.location.href = `/informacion/${selectedPlace.nombre}`}
+                                            >
+                                                {selectedPlace.nombre}
+                                            </h3>
+                                            
+                                            <p className={styles.infoDescription}>{selectedPlace.descripcion}</p>
+                                            
+                                            <div 
+                                                className={styles.infoLocation}
+                                                onClick={() => {
+                                                    const lat = parseFloat(selectedPlace.latitud || "20.6597");
+                                                    const lng = parseFloat(selectedPlace.longitud || "-103.3496");
+                                                    window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, "_blank");
+                                                }}
+                                            >
+                                                <div className={styles.locationIcon}>
+                                                    <FiMapPin size={16} />
+                                                </div>
+                                                <span>{selectedPlace.ubicacion}</span>
+                                            </div>
+
+                                            {/* Botón de acción mejorado */}
+                                            <button
+                                                className={styles.btnPrimary}
+                                                onClick={() => window.location.href = `/informacion/${selectedPlace.nombre}`}
+                                            >
+                                                <span>Detalles</span>
+                                                <FiExternalLink size={18} />
+                                            </button>
                                         </div>
                                     </motion.div>
                                 )}
@@ -396,6 +508,21 @@ export default function MapaPage() {
                     </div>
                 </div>
             </div>
+            
+            {/* Toast de notificación de favoritos */}
+            <AnimatePresence>
+                {showFavoriteToast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 50, scale: 0.8 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.8 }}
+                        className={styles.favoriteToast}
+                    >
+                        <FiHeart size={20} fill="currentColor" />
+                        <span>{favoriteToastMessage}</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
