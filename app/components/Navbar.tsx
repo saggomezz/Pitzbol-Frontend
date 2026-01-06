@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
-    FiBriefcase, FiCalendar, FiHeart, FiMapPin, FiMenu, FiUser, FiX, FiInfo, FiMessageSquare, FiShield, FiLogOut, FiHome
+    FiBriefcase, FiCalendar, FiHeart, FiMapPin, FiMenu, FiUser, FiX, FiInfo, FiMessageSquare, FiShield, FiLogOut, FiHome, FiAward
 } from "react-icons/fi";
 
 import imglogo from "./logoPitzbol.png";
@@ -123,10 +123,10 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
                                     <div className="h-[1px] bg-gray-100 my-2 mx-2" />
                                     <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-3 mb-1">Socios</p>
                                     <button onClick={() => { setIsMenuOpen(false); onOpenGuide(); }} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
-                                        <FiMapPin /> Afiliación Guías
+                                        <FiAward /> Conviértete en un Guía
                                     </button>
                                     <button onClick={() => { setIsMenuOpen(false); onOpenBusiness(); }} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
-                                        <FiBriefcase /> Alianzas Comerciales
+                                        <FiBriefcase /> Registrar mi Negocio
                                     </button>
                                 </>
                             )}
