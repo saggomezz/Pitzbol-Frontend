@@ -180,7 +180,7 @@ export default function SoportePage() {
                                 Envíanos un email y te responderemos en las próximas 24 horas.
                             </p>
                             <a href="mailto:soporte@pitzbol.com" className={styles.cardLink}>
-                                soporte@pitzbol.com <FiArrowRight size={16} />
+                                pitzbol2026@gmail.com <FiArrowRight size={16} />
                             </a>
                         </div>
 
