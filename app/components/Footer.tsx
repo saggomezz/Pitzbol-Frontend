@@ -3,6 +3,8 @@ import Link from "next/link";
 import imglogo from "./logoPitzbol.png";
 
 export default function Footer() {
+    const currentYear = new Date().getFullYear();
+    
     return (
         <footer className="bg-[#F6F0E6] border-t border-[#1A4D2E]/10 pt-16 pb-8 px-6 md:px-20 text-[#1A4D2E]">
             {/* LADO IZQUIERDO: LOGO Y SIGNIFICADO */}
@@ -24,7 +26,7 @@ export default function Footer() {
 
             {/* LÍNEA FINAL */}
             <div className="mt-16 pt-8 border-t border-[#1A4D2E]/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#769C7B]">
-                <p>© 2025 PITZBOL PROJECT - CAMINO AL MUNDIAL 2026</p>
+                <p>© {currentYear} PITZBOL PROJECT - CAMINO AL MUNDIAL 2026</p>
                 <div className="flex gap-6">
                     <Link href="#" className="hover:text-[#F00808] transition-colors">Política de privacidad</Link>
                 </div>
