@@ -192,17 +192,17 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             {/* PITZBOL SECCIÓN */}
                             <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">Pitzbol</p>
 
-                            <button className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group w-full text-left">
+                            <Link href="/nosotros" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group w-full text-left">
                                 <FiInfo className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" /> 
                                 <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Nosotros</span>
-                            </button>
+                            </Link>
 
                             <Link href="/soporte" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group transition-colors">
                                 <FiMessageSquare className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" /> 
                                 <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Soporte y Contacto</span>
                             </Link>
 
-                            <Link href="/privacidad" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group transition-colors">
+                            <Link href="/politica-privacidad" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group transition-colors">
                                 <FiShield className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" /> 
                                 <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Política de Privacidad</span>
                             </Link>
