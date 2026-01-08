@@ -33,9 +33,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness }: Navb
 
     useEffect(() => {
         checkUser();
-        // Listener para cambios locales
         window.addEventListener("storage", checkUser);
-        // Listener para evento personalizado de autenticación
         window.addEventListener("authStateChanged", checkUser);
         
         const closeMenu = (e: MouseEvent) => {
