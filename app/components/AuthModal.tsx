@@ -93,7 +93,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         localStorage.setItem("pitzbol_user", JSON.stringify(userData));
         window.dispatchEvent(new Event("storage"));
 
-        // LÓGICA DE REDIRECCIÓN SEGÚN ROL 
+        // LOGICA DE REDIRECCIÓN SEGÚN ROL 
         if (intendedRole === "guia") {
           alert("Cuenta creada. Ahora completa tu información para ser guía.");
           onClose();

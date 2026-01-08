@@ -105,7 +105,6 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         const response = await fetch('http://localhost:3001/api/ocr/verify-ine', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          // Enviamos el tipo al backend para que sepa qué validar
           body: JSON.stringify({ imageBase64: base64, side: tipo }) 
         });
 
