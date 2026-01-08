@@ -3,9 +3,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import {
-    FiCalendar, FiHeart, FiMenu, FiUser, FiX, FiInfo, FiMessageSquare, 
-    FiShield, FiLogOut, FiHome, FiSearch, FiMapPin, FiBriefcase, FiClock, FiCreditCard, FiPlusCircle
+import { FiBriefcase,FiCalendar, FiClock, FiCreditCard, FiHeart, FiHome, FiInfo,
+    FiLogOut,FiMapPin,FiMenu,FiMessageSquare,FiPlusCircle,FiSearch,FiShield,FiUser,
+    FiX, FiAward 
 } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
@@ -124,6 +124,12 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                 </button>
                             )}
 
+                            <div className="h-[1px] bg-gray-100 my-2 mx-2" />
+                            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-3 mb-1">Explorar</p>
+                            <Link href="/mapa" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
+                                <FiMapPin /> Mapa de Lugares
+                            </Link>
+
                             <div className="h-[1px] bg-gray-100 my-3 mx-2" />
 
                             {/* SECCIÓN DINÁMICA POR ROL */}
@@ -167,8 +173,8 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                             onClick={() => { setIsMenuOpen(false); user ? onOpenGuide() : onOpenAuthAsGuide(); }} 
                                             className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group"
                                         >
-                                            <FiMapPin className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" /> 
-                                            <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Quiero ser Guía</span>
+                                            <FiAward  className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" /> 
+                                            <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Conviértete en Guía</span>
                                         </button>
                                     )}
                                     {/* BOTÓN ALIANZAS COMERCIALES */}
