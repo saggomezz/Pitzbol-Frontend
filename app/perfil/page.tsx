@@ -1,9 +1,64 @@
 "use client";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { 
-  FiCamera, FiMessageSquare, FiPlus, FiX, FiUser, FiMap, FiClock, FiDollarSign, FiUsers, FiTrash2, FiShield, FiTrendingUp, FiActivity
+import { FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
+  FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
+} from "react-icons/fa";
+import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
+  FiPlus, FiShield, FiUser, FiX
 } from "react-icons/fi";
-import { motion, AnimatePresence } from "framer-motion";
+
+const NACIONALIDADES = [
+  "Mexicana", "Argentina", "Brasileña", "Chilena", "Colombiana", "Peruana", "Uruguaya", "Venezolana",
+  "Estadounidense", "Canadiense", "Española", "Francesa", "Alemana", "Italiana", "Inglesa", "Portuguesa",
+  "Japonesa", "China", "Coreana", "India", "Australiana", "Rusa", "Otra"
+];
+
+const LADAS = [
+  { code: "+1", country: "USA/Canadá" },
+  { code: "+52", country: "México" },
+  { code: "+54", country: "Argentina" },
+  { code: "+55", country: "Brasil" },
+  { code: "+56", country: "Chile" },
+  { code: "+57", country: "Colombia" },
+  { code: "+51", country: "Perú" },
+  { code: "+58", country: "Venezuela" },
+  { code: "+598", country: "Uruguay" },
+  { code: "+34", country: "España" },
+  { code: "+33", country: "Francia" },
+  { code: "+49", country: "Alemania" },
+  { code: "+39", country: "Italia" },
+  { code: "+44", country: "Reino Unido" },
+  { code: "+351", country: "Portugal" },
+  { code: "+81", country: "Japón" },
+  { code: "+86", country: "China" },
+  { code: "+82", country: "Corea del Sur" },
+  { code: "+91", country: "India" },
+  { code: "+61", country: "Australia" },
+  { code: "+7", country: "Rusia" },
+];
+
+const INTERESES_DISPONIBLES = [
+  { nombre: "Arte e Historia", icono: FaPalette, color: "from-purple-500 to-pink-500" },
+  { nombre: "Arquitectura", icono: FaBuilding, color: "from-gray-600 to-gray-800" },
+  { nombre: "Cultura", icono: FaLandmark, color: "from-blue-500 to-indigo-600" },
+  { nombre: "Gastronomía", icono: FaUtensils, color: "from-orange-500 to-red-500" },
+  { nombre: "Deporte Fútbol", icono: FaFutbol, color: "from-green-600 to-green-800" },
+  { nombre: "Música", icono: FaMusic, color: "from-purple-600 to-pink-600" },
+  { nombre: "Naturaleza", icono: FaTree, color: "from-green-500 to-emerald-600" },
+  { nombre: "Fotografía", icono: FaCamera, color: "from-cyan-500 to-blue-500" },
+  { nombre: "Vida Nocturna", icono: FaMoon, color: "from-indigo-600 to-purple-700" },
+  { nombre: "Compras", icono: FaShoppingBag, color: "from-pink-500 to-rose-500" },
+  { nombre: "Museos", icono: FaLandmark, color: "from-amber-600 to-yellow-700" },
+  { nombre: "Tours Guiados", icono: FaMapMarkedAlt, color: "from-teal-500 to-cyan-600" },
+  { nombre: "Aventura", icono: FaMountain, color: "from-orange-600 to-red-600" },
+  { nombre: "Religión", icono: FaChurch, color: "from-slate-600 to-gray-700" },
+  { nombre: "Mercados Locales", icono: FaStore, color: "from-yellow-600 to-orange-600" }
+];
+
+const getInteresData = (nombre: string) => {
+  return INTERESES_DISPONIBLES.find(i => i.nombre === nombre) || INTERESES_DISPONIBLES[0];
+};
 
 export default function PerfilDetallado() {
   const [perfil, setPerfil] = useState<any>(null);
@@ -12,198 +67,733 @@ export default function PerfilDetallado() {
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [especialidades, setEspecialidades] = useState<string[]>([]);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false); 
+
+  const [editandoNacionalidad, setEditandoNacionalidad] = useState(false);
+  const [nacionalidadTemp, setNacionalidadTemp] = useState("");
+  const [errorNacionalidad, setErrorNacionalidad] = useState("");
+  
+  const [editandoTelefono, setEditandoTelefono] = useState(false);
+  const [ladaTemp, setLadaTemp] = useState("+52");
+  const [numeroTemp, setNumeroTemp] = useState("");
+  const [errorTelefono, setErrorTelefono] = useState("");
+  
+  const [editandoEspecialidades, setEditandoEspecialidades] = useState(false);
+  const [especialidadesTemp, setEspecialidadesTemp] = useState<string[]>([]);
+  const [nuevoInteres, setNuevoInteres] = useState("");
+  const [errorEspecialidades, setErrorEspecialidades] = useState("");
+  
+  const [guardando, setGuardando] = useState(false);
+  const [exito, setExito] = useState("");
 
   useEffect(() => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-    
-    const datosCargados = {
-      id: userLocal.uid || userLocal.id || "temp_id",
-      nombre: userLocal.nombre || "Usuario",
-      rol: userLocal.rol || userLocal.role || "turista",
-      especialidades: userLocal["07_especialidades"] || (userLocal.rol === "guia" ? ["Arte e Historia", "Deporte Futbol"] : ["Cultura", "Gastronomía"]),
-      fotoUrl: userLocal.fotoUrl || null 
-    };
+    const cargarDatos = async () => {
+      if (!userLocal.uid) {
+        setLoading(false);
+        return;
+      }
 
-    setPerfil(datosCargados);
-    setFotoPerfil(datosCargados.fotoUrl);
-    setEspecialidades(datosCargados.especialidades);
-    setLoading(false);
+      const initialEspecialidades = userLocal.especialidades || userLocal["07_especialidades"] || [];      
+      setPerfil({
+        id: userLocal.uid,
+        nombre: userLocal.nombre || userLocal["01_nombre"] || "Usuario",
+        apellido: userLocal.apellido || userLocal["02_apellido"] || "",
+        email: userLocal.email || userLocal["04_correo"] || "",
+        telefono: userLocal.telefono || userLocal["06_telefono"] || "No registrado",
+        nacionalidad: userLocal.nacionalidad || "No registrado",
+        rol: userLocal.role || userLocal["03_rol"] || "turista",
+        guide_status: userLocal.guide_status || "ninguno", 
+        especialidades: initialEspecialidades,
+        fotoUrl: userLocal.fotoUrl || userLocal["13_foto_rostro"] || null
+      });
+
+      setEspecialidades(initialEspecialidades);
+      setEspecialidadesTemp(initialEspecialidades);
+
+      try {
+        const response = await fetch(`http://localhost:3001/api/guides/profile/${userLocal.uid}`);
+        if (response.ok) {
+          const dataFresca = await response.json();
+          const serverSpecs = dataFresca["07_especialidades"] || [];
+
+          setEspecialidades(serverSpecs);
+          setEspecialidadesTemp(serverSpecs);
+
+          setPerfil((prev: any) => ({
+            ...prev,
+            ...dataFresca,
+            especialidades: serverSpecs
+          }));
+
+          localStorage.setItem("pitzbol_user", JSON.stringify({
+            ...userLocal,
+            ...dataFresca,
+            especialidades: serverSpecs,
+            "07_especialidades": serverSpecs
+          }));
+          window.dispatchEvent(new Event("storage"));
+        }
+      } catch (error) {
+        console.error("Error de sincronización con Pitzbol Server:", error);
+      }
+      setLoading(false);
+    };
+    cargarDatos();
   }, []);
 
-  // --- CONSTANTES DE ROL ---
+  const guardarTelefono = async () => {
+    setErrorTelefono("");
+    
+    if (!numeroTemp.trim()) {
+      setErrorTelefono("Por favor ingresa un número de teléfono");
+      return;
+    }
+
+    const telefonoRegex = /^[\d\s\-()]+$/;
+    if (!telefonoRegex.test(numeroTemp)) {
+      setErrorTelefono("El número solo puede contener números, espacios, guiones y paréntesis");
+      return;
+    }
+
+    const soloDigitos = numeroTemp.replace(/\D/g, "");
+    if (soloDigitos.length < 7) {
+      setErrorTelefono("El número debe tener al menos 7 dígitos");
+      return;
+    }
+
+    if (soloDigitos.length > 15) {
+      setErrorTelefono("El número no puede tener más de 15 dígitos");
+      return;
+    }
+
+    setGuardando(true);
+    setExito("");
+
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const telefonoCompleto = `${ladaTemp} ${numeroTemp}`;
+
+      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          uid: perfil.id,
+          telefono: telefonoCompleto,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || "Error al actualizar teléfono");
+      }
+
+      const perfilActualizado = { ...perfil, telefono: telefonoCompleto };
+      setPerfil(perfilActualizado);
+      
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal.telefono = telefonoCompleto;
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+
+      setExito("Teléfono actualizado correctamente");
+      setEditandoTelefono(false);
+      
+      setTimeout(() => setExito(""), 3000);
+
+    } catch (err: any) {
+      setErrorTelefono(err.message || "Error al guardar");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarTelefono = () => {
+    if (perfil.telefono && perfil.telefono !== "No registrado") {
+      const match = perfil.telefono.match(/^(\+\d+)\s*(.+)$/);
+      if (match) {
+        setLadaTemp(match[1]);
+        setNumeroTemp(match[2]);
+      } else {
+        setLadaTemp("+52");
+        setNumeroTemp(perfil.telefono);
+      }
+    }
+    setEditandoTelefono(false);
+    setErrorTelefono("");
+  };
+
+  const agregarEspecialidad = (interes: string) => {
+    setErrorEspecialidades("");
+    if (especialidadesTemp.includes(interes)) {
+      setErrorEspecialidades("Este interés ya está agregado");
+      return;
+    }
+    if (especialidadesTemp.length >= 10) {
+      setErrorEspecialidades("Máximo 10 intereses permitidos");
+      return;
+    }
+    setEspecialidadesTemp((prev: string[]) => [...prev, interes]);
+  };
+
+  const eliminarEspecialidad = (especialidad: string) => {
+    setEspecialidadesTemp((prev: string[]) => prev.filter(e => e !== especialidad));
+    setErrorEspecialidades("");
+  };
+
+  const guardarEspecialidades = async () => {
+    setGuardando(true);
+    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+
+    try {
+      const response = await fetch('http://localhost:3001/api/guides/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: userLocal.uid,
+          categorias: especialidadesTemp 
+        })
+      });
+
+      if (response.ok) {
+        setEspecialidades([...especialidadesTemp]);
+        setEditandoEspecialidades(false);
+        const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+
+        const updatedUser = {
+          ...userLocal,
+          "07_especialidades": especialidadesTemp,
+          "especialidades": especialidadesTemp  
+        };
+        
+        localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
+        window.dispatchEvent(new Event("storage"));
+        setExito("Cambios guardados con éxito");
+        setTimeout(() => setExito(""), 3000);
+      }
+    } catch (error) {
+      console.error("Error al guardar intereses");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarEspecialidades = () => {
+    setEspecialidadesTemp([...especialidades]);
+    setNuevoInteres("");
+    setEditandoEspecialidades(false);
+    setErrorEspecialidades("");
+  };
+
   const esGuia = perfil?.rol === "guia";
   const esAdmin = perfil?.rol === "admin";
 
-  if (loading) return <div className="h-screen flex items-center justify-center font-bold text-[#1A4D2E] bg-[#FDFCF9]">Cargando...</div>;
+  if (loading) return (
+    <div className="h-screen flex items-center justify-center bg-gradient-to-br from-[#F6F0E6] to-[#FDFCF9]">
+      <motion.div 
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        className="w-16 h-16 border-4 border-[#0D601E] border-t-transparent rounded-full"
+      />
+    </div>
+  );
+
+const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      setFotoPerfil(base64); // Cambio visual inmediato
+
+      const stored = localStorage.getItem("pitzbol_user");
+      const userLocal = stored ? JSON.parse(stored) : null;
+
+      try {
+        const response = await fetch('http://localhost:3001/api/guides/update-photo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: userLocal?.uid,
+            fotoBase64: base64
+          })
+        });
+
+        if (response.ok) {
+          setExito("Foto actualizada");
+          const updated = { ...userLocal, fotoUrl: base64 };
+          localStorage.setItem("pitzbol_user", JSON.stringify(updated));
+        }
+      } catch (err) {
+        console.error("Error al subir foto");
+      }
+    };
+  };
 
   return (
-    <div className="min-h-screen bg-[#FDFCF9] text-[#1A4D2E] pb-20 font-sans">
-      
-      {/* 1. Encabezado */}
-      <div className="max-w-6xl mx-auto px-8 py-10 flex justify-between items-center">
-        <div className="flex flex-col">
-          <h1 className="text-4xl md:text-5xl font-black text-[#1A4D2E] uppercase" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-            Mi perfil
-          </h1>
-          <p className="text-xs text-[#769C7B] font-bold uppercase tracking-[0.3em] mt-2">
-            Panel de {perfil.rol} pitzbol
-          </p>
-        </div>
-
-        <button className="relative p-3 bg-white rounded-2xl shadow-sm border border-[#F6F0E6] text-[#1A4D2E] hover:text-[#F00808] transition-all">
-          <FiMessageSquare size={24} />
-          <span className="absolute top-2 right-2 w-3 h-3 bg-[#0D601E] border-2 border-white rounded-full" />
-        </button>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-10">
-        
-        {/* 2. Columna Izquierda */}
-        <aside className="lg:col-span-4 space-y-8">
-          <section className="flex flex-col items-center text-center">
-            <div className="relative mb-8">
-              {esAdmin && (
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#8B0000] text-white text-[10px] font-black px-4 py-2 rounded-xl shadow-lg uppercase tracking-wider z-20">
-                  Acceso Total
-                </div>
-              )}
-              <div className={`w-48 h-48 md:w-56 md:h-56 rounded-[50px] overflow-hidden border-4 ${esAdmin ? 'border-[#8B0000]' : 'border-white'} shadow-2xl bg-white flex items-center justify-center relative z-10`}>
-                {fotoPerfil ? (
-                  <img src={fotoPerfil} alt="Perfil" className="w-full h-full object-cover" />
-                ) : (
-                  <FiUser size={80} className="text-[#1A4D2E]/10" />
-                )}
-              </div>
-              <motion.label whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="absolute -bottom-2 -right-2 p-4 bg-[#F00808] text-white rounded-2xl shadow-xl cursor-pointer z-30">
-                <FiCamera size={20} />
-                <input type="file" className="hidden" accept="image/*" />
-              </motion.label>
+    <div className="min-h-screen bg-gradient-to-br from-[#F6F0E6] via-[#FDFCF9] to-white pb-20">
+      {esAdmin && (
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="mb-6 p-6 bg-gradient-to-r from-[#1A4D2E] to-[#0D601E] rounded-[28px] shadow-lg border-l-8 border-[#F00808] flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/10 rounded-xl text-white">
+              <FiShield size={24} />
             </div>
-            <h2 className="text-3xl font-bold text-[#1A4D2E] mb-1">{perfil.nombre}</h2>
-            {esAdmin && <span className="text-[#8B0000] font-black text-xs uppercase tracking-widest">Administrador Master</span>}
-          </section>
-
-          <div className="bg-white border border-[#F6F0E6] rounded-[40px] p-8 flex divide-x divide-[#F6F0E6] shadow-sm">
-            <div className="flex-1 pr-4 space-y-3">
-              <h3 className="text-center font-black text-[10px] uppercase text-[#769C7B] tracking-widest">
-                {esGuia || esAdmin ? "Idiomas" : "Nacionalidad"}
-              </h3>
-              <div className="flex flex-col gap-2">
-                <span className="bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full text-[10px] font-bold text-center block">
-                  Español (Nativo)
-                </span>
-              </div>
-            </div>
-            <div className="flex-1 pl-4 flex flex-col items-center justify-center text-center">
-              <h3 className="font-black text-[10px] uppercase text-[#769C7B] tracking-widest mb-2">Estatus</h3>
-              <p className="font-black text-[#1A4D2E] text-base">
-                {esAdmin ? "SuperUser" : (esGuia ? "Principiante" : "Viajero")}
-              </p>
+            <div>
+              <h4 className="text-white font-bold text-lg leading-tight">Panel de Control</h4>
+              <p className="text-white/60 text-xs">Tienes solicitudes pendientes de revisión</p>
             </div>
           </div>
-        </aside>
+          <button 
+            onClick={() => setIsAdminModalOpen(true)}
+            className="px-6 py-2.5 bg-white text-[#1A4D2E] rounded-xl font-bold text-sm hover:bg-[#F6F0E6] transition-all shadow-sm"
+          >
+            Ver Solicitudes
+          </button>
+        </motion.div>
+      )}
+      
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 py-12">
+          <div>
+            <motion.h1 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-5xl md:text-6xl font-black uppercase mb-2" 
+              style={{ fontFamily: "'Jockey One', sans-serif" }}
+            >
+              MI <span className="text-[#F00808]">PERFIL</span>
+            </motion.h1>
+            <p className="text-[#B2C7B5] text-sm font-semibold uppercase tracking-wider">
+              Panel de {perfil.rol} · Pitzbol
+            </p>
+          </div>
+        </div>
+      </div>
 
-        {/* 3. Columna Derecha */}
-        <main className="lg:col-span-8 space-y-12">
+      <div className="max-w-7xl mx-auto px-6 md:px-12 -mt-16 pt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* --- SECCIÓN PARA ADMIN --- */}
-          {esAdmin && (
-            <section className="bg-white border-2 border-[#8B0000]/10 rounded-[40px] p-10 space-y-8 shadow-sm">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-[#8B0000] text-white rounded-2xl">
-                  <FiShield size={24} />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-[#8B0000] uppercase" style={{ fontFamily: "'Jockey One', sans-serif" }}>Consola de Mando</h3>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Gestión global de Pitzbol</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-[#FDFCF9] p-6 rounded-[30px] border border-gray-100">
-                  <FiActivity className="text-[#0D601E] mb-2" size={20}/>
-                  <p className="text-[10px] font-black text-gray-400 uppercase">Usuarios Hoy</p>
-                  <p className="text-2xl font-black text-[#1A4D2E]">3</p>
-                </div>
-                <div className="bg-[#FDFCF9] p-6 rounded-[30px] border border-gray-100">
-                  <FiTrendingUp className="text-[#8B0000] mb-2" size={20}/>
-                  <p className="text-[10px] font-black text-gray-400 uppercase">Tours Activos</p>
-                  <p className="text-2xl font-black text-[#1A4D2E]">12</p>
-                </div>
-                <div className="bg-[#FDFCF9] p-6 rounded-[30px] border border-gray-100">
-                  <FiDollarSign className="text-blue-600 mb-2" size={20}/>
-                  <p className="text-[10px] font-black text-gray-400 uppercase">Alianzas</p>
-                  <p className="text-2xl font-black text-[#1A4D2E]">0</p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-4">
-                <button className="bg-[#1A4D2E] text-white px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest hover:bg-[#0D601E] transition-all">Ver todos los guías</button>
-                <button className="border-2 border-[#1A4D2E] text-[#1A4D2E] px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest hover:bg-[#1A4D2E] hover:text-white transition-all">Reportes de sistema</button>
-              </div>
-            </section>
-          )}
-
-          {/* --- SECCIÓN ORIGINAL PARA GUÍAS/TURISTAS (Solo se oculta al Admin para no estorbar) --- */}
-          {!esAdmin && (
-            <>
-              <section>
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xl font-bold italic">
-                    {esGuia ? "Especialidad Principal" : "Mis Intereses"}
-                  </h3>
-                  {esGuia && (
-                    <button className="text-[#0D601E] flex items-center gap-1 text-xs font-bold hover:scale-105 transition-transform">
-                      <FiPlus /> Añadir etiqueta
-                    </button>
+          {/* Card de Perfil Principal */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="lg:col-span-1"
+          >
+            <div className="bg-white rounded-[32px] shadow-2xl p-8 border border-gray-100">
+              <div className="flex flex-col items-center">
+                {/* Foto de perfil */}
+                <div className="relative mb-8 mt-4 group">
+                  {!fotoPerfil && (
+                    <motion.label 
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                      whileTap={{ scale: 0.9 }}
+                      className="absolute -bottom-2 -right-2 p-4 bg-[#F00808] text-white rounded-xl shadow-xl cursor-pointer hover:bg-[#d00707] transition-colors"
+                    >
+                      <FiCamera size={20} />
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={handleFotoChange} 
+                      />
+                    </motion.label>
                   )}
-                </div>
-                <div className="flex flex-wrap gap-4">
-                  {especialidades.map((esp, i) => (
-                    <div key={i} className="group flex items-center gap-3 bg-white p-4 rounded-3xl border border-[#F6F0E6] shadow-sm relative overflow-hidden">
-                      <div className={`w-2 h-2 rounded-full ${esGuia ? "bg-[#0D601E]" : "bg-[#F00808]"}`} />
-                      <span className="text-xs font-bold">{esp}</span>
-                      {esGuia && (
-                        <button className="hidden group-hover:flex text-[#F00808] transition-all">
-                          <FiTrash2 size={14}/>
-                        </button>
+                  
+                  <div className="relative w-40 h-40 md:w-48 md:h-48">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#0D601E] to-[#F00808] rounded-[28px] opacity-20 blur-xl" />
+                    <div className="relative w-full h-full rounded-[28px] overflow-hidden border-4 border-white shadow-xl bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center">
+                      {fotoPerfil ? (
+                        <img src={fotoPerfil} alt="Perfil" className="w-full h-full object-cover" />
+                      ) : (
+                        <FiUser size={64} className="text-gray-300" />
                       )}
                     </div>
-                  ))}
+                  </div>
+                  
+                  <motion.label 
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="absolute -bottom-2 -right-2 p-4 bg-[#F00808] text-white rounded-xl shadow-xl cursor-pointer hover:bg-[#d00707] transition-colors"
+                  >
+                    <FiCamera size={20} />
+                    <input type="file" className="hidden" accept="image/*" />
+                  </motion.label>
                 </div>
-              </section>
 
-              <section className="space-y-6">
-                <h3 className="text-xl font-bold italic">
-                  {esGuia ? "Catálogo de experiencias" : "Mis próximos destinos"}
-                </h3>
+                {/* Info básica */}
+                <h2 className="text-2xl md:text-3xl font-black text-[#1A4D2E] text-center mb-1">
+                  {perfil.nombre} {perfil.apellido}
+                </h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {esGuia ? (
+                <div className="flex items-center gap-2 text-[#769C7B] text-sm mb-4">
+                  <FiMail size={14} />
+                  <span className="font-medium">{perfil.email}</span>
+                </div>
+
+                {/* Badge de rol */}
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white rounded-full text-xs font-bold uppercase tracking-wider mb-6">
+                  <FiAward size={14} />
+                  {esGuia ? "Guía Pitzbol" : "Pitzbolero"}
+                </div>
+
+                {/* Stats Cards - Solo visibles para Guías y Turistas */}
+                {!esAdmin && (
+                  <div className="w-full space-y-4 mb-6">
+                    {/* Card de Nacionalidad */}
                     <motion.div 
-                      whileHover={{ y: -5 }}
-                      onClick={() => setShowTourModal(true)}
-                      className="bg-[#FAF9F2] rounded-[40px] p-8 border-2 border-dashed border-[#0D601E]/20 flex flex-col items-center justify-center text-center cursor-pointer group hover:bg-white transition-all min-h-[250px]"
+                      whileHover={{ y: -2 }}
+                      className="bg-gradient-to-br from-[#E8F5E9] to-white p-5 rounded-2xl border border-[#0D601E]/10 relative"
                     >
-                      <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-[#0D601E] mb-4 group-hover:scale-110 transition-transform shadow-sm">
-                        <FiPlus size={28} />
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="p-2 bg-[#0D601E]/10 rounded-lg">
+                          <FiGlobe size={18} className="text-[#0D601E]" />
+                        </div>
+                        <h3 className="text-sm font-black uppercase text-[#1A4D2E] tracking-wider">Nacionalidad</h3>
                       </div>
-                      <h4 className="text-lg font-bold text-[#1A4D2E]">Diseñar nueva experiencia</h4>
-                      <p className="text-xs text-[#769C7B] mt-2 px-6">Publica una nueva ruta y comienza a recibir pitzboleros</p>
-                      <button className="mt-6 text-[#0D601E] font-bold text-xs underline underline-offset-4">Comenzar ahora</button>
+                      <p className="text-base font-bold text-[#1A4D2E] pl-12">{perfil?.nacionalidad}</p>
                     </motion.div>
-                  ) : (
-                    <div className="col-span-full bg-[#FAF9F2] rounded-[40px] p-12 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center">
-                      <FiMap size={40} className="text-gray-300 mb-4" />
-                      <h4 className="text-lg font-bold text-[#1A4D2E]">No tienes tours reservados</h4>
-                      <button className="mt-6 bg-[#1A4D2E] text-white px-8 py-3 rounded-full font-bold text-sm">Explorar tours</button>
+
+                    {/* Card de Teléfono */}
+                    <motion.div 
+                      whileHover={{ y: -2 }}
+                      className="bg-gradient-to-br from-[#FFF3E0] to-white p-5 rounded-2xl border border-[#FF8A00]/10 relative"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-[#FF8A00]/10 rounded-lg">
+                            <FiPhone size={18} className="text-[#FF8A00]" />
+                          </div>
+                          <h3 className="text-sm font-black uppercase text-[#1A4D2E] tracking-wider">Teléfono</h3>
+                        </div>
+                        {!editandoTelefono && (
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setEditandoTelefono(true)}
+                            className="px-3 py-1.5 bg-[#FF8A00] text-white rounded-lg text-xs font-bold hover:bg-[#e67d00] transition-colors flex items-center gap-1.5"
+                          >
+                            <FiEdit2 size={14} /> Editar
+                          </motion.button>
+                        )}
+                      </div>
+                      
+                      {editandoTelefono ? (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <select
+                              value={ladaTemp}
+                              onChange={(e) => setLadaTemp(e.target.value)}
+                              className="sm:col-span-1 text-sm font-bold text-[#1A4D2E] bg-white border-2 rounded-xl px-4 py-3 focus:outline-none border-[#FF8A00]/20"
+                            >
+                              {LADAS.map((lada) => (
+                                <option key={lada.code} value={lada.code}>{lada.code}</option>
+                              ))}
+                            </select>
+                            <input
+                              type="tel"
+                              value={numeroTemp}
+                              onChange={(e) => setNumeroTemp(e.target.value)}
+                              className="sm:col-span-2 text-sm font-semibold text-[#1A4D2E] bg-white border-2 rounded-xl px-4 py-3 focus:outline-none border-[#FF8A00]/20"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={guardarTelefono} className="flex-1 bg-[#FF8A00] text-white text-xs font-bold py-2 rounded-lg">Guardar</button>
+                            <button onClick={cancelarTelefono} className="px-4 bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-lg">X</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-base font-bold text-[#1A4D2E] pl-12 break-all">{perfil?.telefono}</p>
+                      )}
+                    </motion.div>
+                  </div>
+                )}
+
+                {/* Estadística  */}
+                <div className="w-full bg-gradient-to-r from-[#0D601E]/5 to-transparent rounded-2xl p-4 border border-[#0D601E]/10">
+                  <div className="flex justify-between items-center">
+                    <div className="text-center flex-1">
+                      <p className="text-2xl font-black text-[#0D601E]">0</p>
+                      <p className="text-[10px] text-[#769C7B] font-bold uppercase">Tours</p>
+                    </div>
+                    <div className="w-px h-10 bg-[#0D601E]/10" />
+                    <div className="text-center flex-1">
+                      <p className="text-2xl font-black text-[#F00808]">0</p>
+                      <p className="text-[10px] text-[#769C7B] font-bold uppercase">Favoritos</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Contenido Principal */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Sección de Interesess */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white rounded-[32px] shadow-xl p-8 border border-gray-100"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-2xl font-black text-[#1A4D2E] mb-1" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    {esGuia ? "ESPECIALIDADES" : "MIS INTERESES"}
+                  </h3>
+                  <p className="text-xs text-[#769C7B] font-semibold">
+                    {editandoEspecialidades ? especialidadesTemp.length : especialidades.length} {(editandoEspecialidades ? especialidadesTemp.length : especialidades.length) === 1 ? 'categoría' : 'categorías'}
+                  </p>
+                </div>
+                {!editandoEspecialidades && (
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setEditandoEspecialidades(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#0D601E] text-white rounded-xl text-sm font-bold hover:bg-[#094d18] transition-colors"
+                  >
+                    <FiEdit2 size={16} /> Editar
+                  </motion.button>
+                )}
+              </div>
+              
+              {editandoEspecialidades ? (
+                <div className="space-y-6">
+                  {/* Grid de intereses disponibles para seleccionar */}
+                  <div>
+                    <p className="text-sm font-bold text-[#769C7B] mb-4 tracking-wide">Selecciona tus intereses</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {INTERESES_DISPONIBLES.filter(int => !especialidadesTemp.includes(int.nombre)).map((interes, i) => {
+                        const Icon = interes.icono;
+                        return (
+                          <motion.button
+                            key={interes.nombre}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: i * 0.03 }}
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => agregarEspecialidad(interes.nombre)}
+                            disabled={guardando}
+                            className="group relative bg-white rounded-2xl p-4 border-2 border-gray-200 hover:border-[#0D601E] transition-all shadow-sm hover:shadow-lg disabled:opacity-50"
+                          >
+                            <div className="flex flex-col items-center gap-2">
+                              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${interes.color} flex items-center justify-center text-white shadow-lg`}>
+                                <Icon size={24} />
+                              </div>
+                              <span className="text-xs font-bold text-[#1A4D2E] text-center leading-tight">
+                                {interes.nombre}
+                              </span>
+                            </div>
+                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-[#0D601E] rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <FiPlus size={14} className="text-white" />
+                            </div>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {errorEspecialidades && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="flex items-center gap-2 text-red-600 text-sm font-semibold bg-red-50 px-4 py-3 rounded-xl border-2 border-red-200"
+                      >
+                        <FiX size={18} />
+                        <span>{errorEspecialidades}</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Intereses seleccionados */}
+                  {especialidadesTemp.length > 0 && (
+                    <div>
+                      <p className="text-sm font-bold text-[#769C7B] mb-4 tracking-wide">
+                        Mis intereses seleccionados ({especialidadesTemp.length}/10)
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        <AnimatePresence>
+                          {especialidadesTemp.map((esp, i) => {
+                            const interesData = getInteresData(esp);
+                            const Icon = interesData.icono;
+                            return (
+                              <motion.div 
+                                key={esp}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.5 }}
+                                transition={{ delay: i * 0.03 }}
+                                className="group relative bg-gradient-to-br from-white to-gray-50 rounded-2xl p-4 border-2 border-[#0D601E]/20 shadow-md hover:shadow-xl transition-all"
+                              >
+                                <div className="flex flex-col items-center gap-2">
+                                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${interesData.color} flex items-center justify-center text-white shadow-lg`}>
+                                    <Icon size={24} />
+                                  </div>
+                                  <span className="text-xs font-bold text-[#1A4D2E] text-center leading-tight">
+                                    {esp}
+                                  </span>
+                                </div>
+                                <motion.button 
+                                  whileHover={{ scale: 1.1, rotate: 90 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => eliminarEspecialidad(esp)}
+                                  disabled={guardando}
+                                  className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg transition-colors disabled:opacity-50"
+                                >
+                                  <FiX size={16} strokeWidth={3} />
+                                </motion.button>
+                              </motion.div>
+                            );
+                          })}
+                        </AnimatePresence>
+                      </div>
                     </div>
                   )}
+
+                  {/* Botones de acción */}
+                  <div className="flex gap-3 pt-4 border-t-2 border-gray-100">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={guardarEspecialidades}
+                      disabled={guardando}
+                      className="flex-1 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white text-base font-black py-4 rounded-2xl hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl tracking-wider"
+                    >
+                      {guardando ? (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="w-6 h-6 border-3 border-white border-t-transparent rounded-full"
+                        />
+                      ) : (
+                        <>
+                          <FiCheck size={24} />
+                          Guardar Cambios
+                        </>
+                      )}
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={cancelarEspecialidades}
+                      disabled={guardando}
+                      className="px-8 bg-gray-200 text-gray-700 text-base font-bold py-4 rounded-2xl hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed tracking-wider"
+                    >
+                      Cancelar
+                    </motion.button>
+                  </div>
                 </div>
-              </section>
-            </>
-          )}
-        </main>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {especialidades.map((esp, i) => {
+                    const interesData = getInteresData(esp);
+                    const Icon = interesData.icono;
+                    return (
+                      <motion.div 
+                        key={i}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.05 }}
+                        whileHover={{ y: -4, scale: 1.05 }}
+                        className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-5 border-2 border-gray-100 hover:border-[#0D601E]/30 transition-all shadow-md hover:shadow-xl"
+                      >
+                        <div className="flex flex-col items-center gap-3">
+                          <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${interesData.color} flex items-center justify-center text-white shadow-lg`}>
+                            <Icon size={28} />
+                          </div>
+                          <span className="text-sm font-bold text-[#1A4D2E] text-center leading-tight">
+                            {esp}
+                          </span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+
+            {/* Sección de los Tours */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white rounded-[32px] shadow-xl p-8 border border-gray-100 overflow-hidden"
+            >
+              {/* Encabezado de la sección */}
+              <div className="mb-6 flex justify-between items-end">
+                <div>
+                  <h3 className="text-2xl font-black text-[#1A4D2E] leading-none" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    {esGuia ? "MIS EXPERIENCIAS" : "PRÓXIMOS DESTINOS"}
+                  </h3>
+                  <p className="text-[11px] text-[#769C7B] font-bold uppercase tracking-wider mt-1">
+                    {esGuia ? "Gestión de tours publicados" : "Explora tus reservaciones"}
+                  </p>
+                </div>
+                {esGuia && (
+                  <span className="text-[10px] bg-[#F6F0E6] text-[#1A4D2E] px-3 py-1 rounded-full font-bold">
+                    {tours.length} Publicados
+                  </span>
+                )}
+              </div>
+
+              {/* Contenido condicional por ROL */}
+              {esGuia ? (
+                <div className="space-y-4">
+                  {/* Botón Minimalista para crear tour */}
+                  <motion.button 
+                    whileHover={{ scale: 1.01, backgroundColor: "#f9f9f9" }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => setShowTourModal(true)} 
+                    className="w-full py-5 border-2 border-dashed border-gray-200 rounded-[24px] flex items-center justify-center gap-3 text-gray-400 hover:text-[#0D601E] hover:border-[#0D601E]/30 transition-all group"
+                  >
+                    <div className="w-8 h-8 bg-gray-100 group-hover:bg-[#0D601E] group-hover:text-white rounded-full flex items-center justify-center transition-colors">
+                      <FiPlus size={18} />
+                    </div>
+                    <span className="text-sm font-bold tracking-tight">Crear nueva experiencia</span>
+                  </motion.button>
+
+                  {/* Renderizado de tours  */}
+                  {tours.length === 0 && (
+                    <p className="text-center text-[11px] text-gray-400 italic py-4">
+                      Aún no has publicado experiencias. ¡Comienza creando una!
+                    </p>
+                  )}
+                </div>
+              ) : (
+                /* Vista para Turista */
+                <div className="relative group cursor-pointer" onClick={() => window.location.href = '/tours'}>
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#0D601E]/5 to-[#F00808]/5 rounded-[24px] -z-10" />
+                  <div className="py-12 flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 border border-gray-50">
+                      <FiMap size={28} className="text-[#0D601E]" />
+                    </div>
+                    <h4 className="text-lg font-black text-[#1A4D2E]">¿A dónde vamos hoy?</h4>
+                    <p className="text-xs text-[#769C7B] max-w-[200px] mt-1 mb-6">
+                      Encuentra el tour perfecto para tu visita a Guadalajara.
+                    </p>
+                    <button className="px-6 py-2 bg-[#1A4D2E] text-white rounded-full text-[11px] font-bold uppercase tracking-widest shadow-lg">
+                      Explorar ahora
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </div>
       </div>
     </div>
   );

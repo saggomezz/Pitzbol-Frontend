@@ -19,7 +19,13 @@ const ALL_COUNTRIES = [
   { name: "Reino Unido", lada: "+44" }, { name: "Uruguay", lada: "+598" },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
-const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+declare global {
+  interface Window {
+    onAuthSuccessShowGuide?: () => void;
+    onAuthSuccessShowBusiness?: () => void;
+  }
+}
+const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: boolean; onClose: () => void; intendedRole?: "turista" | "guia" | "negocio" }) => {
   const [isLogin, setIsLogin] = useState(false);
 
   // Datos de Registro
@@ -33,7 +39,7 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
 
-  // Datos de Login
+  // y datos de Login
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -52,11 +58,7 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
         return;
       }
       if (regPassword !== regConfirmPassword) {
-        alert("Las contraseñas no coinciden. Por favor verifica.");
-        return;
-      }
-      if (regPassword.length < 6) {
-        alert("La contraseña debe tener al menos 6 caracteres.");
+        alert("Las contraseñas no coinciden.");
         return;
       }
 
@@ -70,25 +72,43 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
           apellido: regApellido,
           telefono,
           nacionalidad,
-          role: "turista" 
+          role: intendedRole
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Al registrar, guardamos sesión temporal y mandamos al perfil
         const userData = {
           nombre: regNombre,
-          rol: "turista",
-          uid: data.uid || "new_user"
+          apellido: regApellido,
+          email: regEmail,
+          telefono: telefono,
+          nacionalidad: nacionalidad,
+          rol: "turista", 
+        role: "turista",
+          guide_status: "pendiente",
+          uid: data.user?.uid
         };
         localStorage.setItem("pitzbol_user", JSON.stringify(userData));
         window.dispatchEvent(new Event("storage"));
-        
-        alert("¡Registro exitoso! Bienvenido a Pitzbol.");
-        onClose();
-        window.location.href = "/perfil"; 
+
+        // LÓGICA DE REDIRECCIÓN SEGÚN ROL 
+        if (intendedRole === "guia") {
+          alert("Cuenta creada. Ahora completa tu información para ser guía.");
+          onClose();
+          window.onAuthSuccessShowGuide?.(); 
+        } 
+        else if (intendedRole === "negocio") {
+          alert("Cuenta creada. Ahora completa tu información de negocio.");
+          onClose();
+          window.onAuthSuccessShowBusiness?.(); 
+        } 
+        else {
+          alert("¡Registro exitoso! Bienvenido a Pitzbol.");
+          onClose();
+          window.location.href = "/perfil"; 
+        }
       } else {
         alert("Error: " + (data.msg || "Error al registrar"));
       }
@@ -96,7 +116,7 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
       alert("Error de conexión con el servidor.");
     }
   };
-
+  
   const handleLogin = async () => {
     try {
       const response = await fetch(`${BACKEND_URL}/login`, {
@@ -111,28 +131,43 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
       const data = await response.json();
 
       if (response.ok) {
-        // Guardamos token y el objeto de usuario completo para que el Perfil lo lea
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("pitzbol_user", JSON.stringify({ email: data.email, uid: data.uid, nombre: data.nombre }));
+        const userRole = data.user.role || data.user.rol || data.user["03_rol"];
+        const especialidadesData = data.user.especialidades || data.user["07_especialidades"] || [];
+
+        localStorage.setItem("pitzbol_token", data.token);
+        localStorage.setItem("pitzbol_user", JSON.stringify({ 
+          email: data.user.email, 
+          uid: data.user.uid, 
+          nombre: data.user.nombre,
+          apellido: data.user.apellido,
+          telefono: data.user.telefono || "No registrado",
+          nacionalidad: data.user.nacionalidad || "No registrado",
+          especialidades: especialidadesData,
+          "07_especialidades": especialidadesData,
+          role: userRole,
+          rol: userRole,
+          guide_status: data.user.guide_status || "ninguno"
+        }));
         
-        const sessionUser = {
-            uid: data.user.uid,
-            email: data.user.email,
-            nombre: data.user.nombre,
-            rol: data.user.role || "turista"
-        };
-        
-        localStorage.setItem("pitzbol_user", JSON.stringify(sessionUser));
-        
-        // Notificamos al Navbar
+        alert(`¡Bienvenido de nuevo, ${data.user.nombre}!`);
+      
         window.dispatchEvent(new Event("storage"));
+        window.dispatchEvent(new Event("authStateChanged"));
         
         onClose();
-        window.location.href = "/perfil"; 
+        
+        // Redirección
+        if (userRole === "admin" || userRole === "admins") {
+          window.location.href = "/admin"; 
+        } else {
+          window.location.href = "/perfil"; 
+        }
+
       } else {
         alert("Error: " + (data.msg || "Credenciales inválidas"));
       }
     } catch (error) {
+      console.error("Login error:", error);
       alert("Error de conexión. Revisa que el servidor esté encendido.");
     }
   };
@@ -149,7 +184,7 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
           <FiX size={28} />
         </button>
 
-        {/* --- INICIAR SESIÓN --- */}
+        {/* --- INICIAR SESION --- */}
         <div className="w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white">
           <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-8 font-black text-center" style={{ fontFamily: 'var(--font-jockey)' }}>
             INICIAR SESIÓN
@@ -248,7 +283,7 @@ const AuthModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
           </div>
         </div>
 
-        {/* --- PANEL DESLIZANTE --- */}
+        {/* PANEL  */}
         <motion.div animate={{ x: isLogin ? 0 : "100%" }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="hidden md:flex absolute top-0 left-0 w-1/2 h-full bg-[#B2C7B5] z-[205] flex flex-col items-center justify-center p-8 md:p-12 text-center">
           <h2 className="text-[40px] md:text-[54px] text-[#1A4D2E] leading-none mb-4" style={{ fontFamily: 'var(--font-jockey)' }}>BIENVENIDO</h2>
           <p className="text-[#1A4D2E] mb-8 font-medium text-sm md:text-base">{isLogin ? "¿Ya tienes una cuenta?" : "¿No te has registrado?"}</p>
