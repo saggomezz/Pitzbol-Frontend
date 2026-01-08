@@ -9,7 +9,6 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi"; // Importamos un balón de fútbol
 import { construirItinerarioElegido, ordenarPorCercania } from '../lib/pitzbol-engine';
-import imglogo from '../app/components/logoPitzbol.png';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -147,11 +146,9 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time }: any) =>
     <div className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-2 shadow-md min-h-[60px] md:min-h-[50px]">
       {/* Equipo 1 */}
       <div className="flex flex-1 items-center justify-end gap-2">
-        {/* CAMBIO 2: Tamaño de fuente del nombre del país (text-xs a text-base) */}
         <span className="text-xs md:text-base font-normal text-right leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>
           {team1}
         </span>
-        {/* Tamaño de la bandera (de w-16 a w-10) */}
         <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
           <Image src={flag1} alt={team1} fill className="object-cover" />
         </div>
@@ -159,7 +156,6 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time }: any) =>
 
       {/* Hora Central */}
       <div className="flex flex-col items-center justify-center px-2 md:px-4 border-x border-white/20 mx-2">
-        {/* CAMBIO 4: Tamaño de la hora (de text-3xl a text-xl) */}
         <span className="text-base md:text-xl font-bold text-black leading-none" style={{ fontFamily: 'var(--font-roboto)' }}>
           {time}
         </span>
@@ -217,14 +213,11 @@ function HomeContent() {
 
   const toggleLugar = (lugar: Lugar) => {
     setSeleccionados(prev => {
-      // Buscamos si el lugar ya está en la lista usando el nombre
       const existe = prev.find(s => s.nombre === lugar.nombre);
       
       if (existe) {
-        // Si ya existe, lo quitamos
         return prev.filter(s => s.nombre !== lugar.nombre);
       } else {
-        // Si no existe, lo agregamos
         return [...prev, lugar];
       }
     });
@@ -271,7 +264,7 @@ function HomeContent() {
         dataLimpia, 
         ["futbol", "gastronomia", "postres"], 
         300, 
-        ubicacionUsuario // <--- Ahora pasamos la ubicación real o la de defecto
+        ubicacionUsuario 
       );
 
       setItinerarioTxt(resultIA);
@@ -291,7 +284,6 @@ function HomeContent() {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const miPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          // Re-ordenamos la lista de lugares que ya cargaste del CSV
           setLugaresBD((prevLugares) => ordenarPorCercania(prevLugares, miPos));
           console.log("Lugares ordenados por tu GPS");
         },
@@ -301,7 +293,7 @@ function HomeContent() {
         { enableHighAccuracy: true, timeout: 5000 }
       );
     }
-  }, [mostrarOpciones]); // Esto se dispara cuando el usuario da clic en "Presiona para elegir lugares"
+  }, [mostrarOpciones]); 
 
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
@@ -363,7 +355,7 @@ function HomeContent() {
                 </div>
                 <button
                   onClick={finalizarRuta}
-                  disabled={seleccionados.length === 0} // <--- Bloqueado si está vacío
+                  disabled={seleccionados.length === 0} 
                   className={`w-full py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
                     seleccionados.length > 0
                       ? "bg-[#F00808] text-white shadow-lg active:scale-95" 
@@ -399,7 +391,6 @@ function HomeContent() {
   );
 }
 
-// SOLUCIÓN: Definición de Recommendations para evitar el error "is not defined"
 const Recommendations = ({ recommendations }: { recommendations: any[] }) => (
   <div className="flex flex-col w-full md:w-3/5">
     <h2 className="text-2xl font-bold mb-4 text-[#1A4D2E]">Recomendaciones</h2>

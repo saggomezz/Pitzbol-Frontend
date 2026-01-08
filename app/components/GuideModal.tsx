@@ -1,273 +1,411 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { useEffect, useState } from "react";
-import {
-  FiChevronDown, FiChevronLeft, FiFileText, FiX
-} from "react-icons/fi";
+import { useEffect, useState, useRef } from "react";
+import Webcam from "react-webcam"; // Librería para la cámara
+import { FiChevronLeft, FiFileText, FiX, FiCheck, FiShield, FiCamera } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
 
 const CATEGORIES = ["Arte", "Cultural", "Gastronómico", "Vida Nocturna", "Deportiva", "Aventura", "Arquitectura", "Naturaleza"];
 
-// Mapeo de Ladas por País
-const COUNTRY_DATA: { [key: string]: string } = {
-  "México": "+52 ", "Estados Unidos": "+1 ", "Canadá": "+1 ",
-  "España": "+34 ", "Argentina": "+54 ", "Colombia": "+57 ", "Chile": "+56 ", "Otro": ""
-};
-
-const GuideModal = ({ isOpen, onClose, isAlreadyUser = false }: { isOpen: boolean; onClose: () => void; isAlreadyUser?: boolean; }) => {
-  const [step, setStep] = useState(isAlreadyUser ? 1 : 0);
+const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose: () => void; onOpenAuth?: () => void; }) => {
+  const [userLocal, setUserLocal] = useState<any>(null);
+  const [step, setStep] = useState(0);
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
-  const [nacionalidad, setNacionalidad] = useState("");
   const [isFinishing, setIsFinishing] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [rfc, setRfc] = useState("");
-  const [rfcError, setRfcError] = useState(false);
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [formData, setFormData] = useState({ codigoPostal: "", clabe: "" });
+  const [verifyingOCR, setVerifyingOCR] = useState(false);
+  const [isUploading, setIsUploading] = useState({ frente: false, vuelta: false });
+  const [docsUploaded, setDocsUploaded] = useState({ frente: false, vuelta: false });
+  const [imgFrenteBase64, setImgFrenteBase64] = useState<string | null>(null);  //para guardar las imágenes y enviarlas al final
+  const [imgVueltaBase64, setImgVueltaBase64] = useState<string | null>(null);
+  const [faceCaptured, setFaceCaptured] = useState<string | null>(null);
+  const webcamRef = useRef<Webcam>(null); 
+  const [imgRostro, setImgRostro] = useState<string | null>(null);
+  const [isFaceAligned, setIsFaceAligned] = useState(false);
+  const [verifyingFace, setVerifyingFace] = useState(false);
 
-  const [formData, setFormData] = useState({
-    nombre: "", apellido: "", telefono: "", correo: "", password: "", propuestaTour: "", codigoPostal: "", clabe: ""
-  });
+  // BORRAR DESPUES - FUNCION PARA SALTAR SEGURIDAD EN PRUEBAS
+  const [ineFrente, setIneFrente] = useState<string | null>(null);
+  const [ineReverso, setIneReverso] = useState<string | null>(null);
+  const [facePhoto, setFacePhoto] = useState<string | null>(null);
+  const [extractedRFC, setExtractedRFC] = useState<string>("");
+  const [isDebugMode, setIsDebugMode] = useState(false);
+
+  const handleSkipSecurity = () => {
+      // Pixel blanco para simular las imágenes
+      const fakeImage = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"; 
+      
+      setIsDebugMode(true);
+      setIneFrente(fakeImage);
+      setIneReverso(fakeImage);
+      setDocsUploaded({ frente: true, vuelta: true });
+      setImgRostro(fakeImage); 
+      setFacePhoto(fakeImage); 
+      setRfc("XAXX010101000");
+      setFormData(prev => ({ ...prev, codigoPostal: "44100" }));
+      setStep(4); 
+      
+      alert("⚡ Modo Debug: Cámara desactivada y datos cargados.");
+  };
+  // HASTA AQUI
+  
+  const capturarFoto = () => {
+    const screenshot = webcamRef.current?.getScreenshot();
+    if (screenshot) {
+      setImgRostro(screenshot);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
-      setStep(isAlreadyUser ? 1 : 0);
+      const stored = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      if (stored.uid) {
+        setUserLocal(stored);
+        setStep(1); 
+      } else {
+        setUserLocal(null);
+        setStep(0);
+      }
       setIsFinishing(false);
+      setShowConfirmation(false);
       setErrorMsg("");
-      setFormData({ nombre: "", apellido: "", telefono: "", correo: "", password: "", propuestaTour: "", codigoPostal: "", clabe: "" });
-      setConfirmPassword("");
-      setSelectedCats([]);
-      setNacionalidad("");
-      setRfc("");
+      setDocsUploaded({ frente: false, vuelta: false });
+      setImgFrenteBase64(null);
+      setImgVueltaBase64(null);
     }
-  }, [isOpen, isAlreadyUser]);
-
-  const capitalize = (str: string) => str.replace(/\b\w/g, (l) => l.toUpperCase());
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setErrorMsg(""); // Limpiar error al escribir
-
-    if (name === "nombre" || name === "apellido") {
-      setFormData({ ...formData, [name]: capitalize(value.replace(/[0-9]/g, "")) });
-    } else if (name === "telefono") {
-      setFormData({ ...formData, [name]: value.replace(/[^\d+ ]/g, "") });
-    } else if (name === "codigoPostal" || name === "clabe") {
-      setFormData({ ...formData, [name]: value.replace(/\D/g, "") });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
-  };
-
-  const handleCountryChange = (country: string) => {
-    setNacionalidad(country);
-    setFormData({ ...formData, telefono: COUNTRY_DATA[country] || "" });
-  };
-
-  const validateStep = () => {
-    if (step === 0) {
-      if (formData.nombre.length < 2) return "Escribe un nombre válido";
-      if (formData.apellido.length < 2) return "Escribe un apellido válido";
-      if (!nacionalidad) return "Selecciona tu nacionalidad";
-      if (formData.telefono.length < 8) return "Introduce un teléfono válido";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) return "Correo electrónico inválido";
-      if (formData.password.length < 6) return "La contraseña debe tener al menos 6 caracteres";
-      if (formData.password !== confirmPassword) return "Las contraseñas no coinciden";
-    }
-    if (step === 1) {
-      if (selectedCats.length === 0) return "Selecciona al menos una categoría";
-      if (formData.propuestaTour.length < 10) return "Cuéntanos un poco más sobre tu propuesta";
-    }
-    if (step === 3) {
-      if (rfc.length < 12 || rfcError) return "RFC inválido";
-      if (formData.codigoPostal.length !== 5) return "Código postal debe ser de 5 dígitos";
-      if (formData.clabe.length !== 18) return "La CLABE debe ser de 18 dígitos";
-    }
-    return "";
-  };
+  }, [isOpen]);
 
   const nextStep = () => {
-    const error = validateStep();
-    if (error) {
-      setErrorMsg(error);
-    } else {
-      setStep(step + 1);
+    if (step === 1 && selectedCats.length === 0) {
+        setErrorMsg("Selecciona al menos una categoría");
+        return;
     }
+    setErrorMsg("");
+    setStep(step + 1);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, tipo: 'frente' | 'vuelta') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(prev => ({ ...prev, [tipo]: true }));
+    setErrorMsg("");
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      setVerifyingOCR(true);
+
+      try {
+        const response = await fetch('http://localhost:3001/api/ocr/verify-ine', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          // Enviamos el tipo al backend para que sepa qué validar
+          body: JSON.stringify({ imageBase64: base64, side: tipo }) 
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          setDocsUploaded(prev => ({ ...prev, [tipo]: true }));
+          if (tipo === 'frente') {
+            setImgFrenteBase64(base64);
+            if (data.extractedData?.rfc) setRfc(data.extractedData.rfc);
+          } else {
+            setImgVueltaBase64(base64);
+          }
+          console.log(`✅ ${tipo} cargado exitosamente`);
+        } else {
+          const msg = tipo === 'vuelta' 
+            ? "No pudimos validar el reverso. Asegúrate de que se vea el código de barras/QR claramente."
+            : (data.message || "Documento no válido.");
+          setErrorMsg(msg);
+          setDocsUploaded(prev => ({ ...prev, [tipo]: false }));
+        }
+      } catch (error) {
+        setErrorMsg("Error de conexión con el servidor de validación.");
+      } finally {
+        setIsUploading(prev => ({ ...prev, [tipo]: false }));
+        setVerifyingOCR(false);
+      }
+    };
   };
 
   const handleFinish = async () => {
-    const error = validateStep();
-    if (error) {
-      setErrorMsg(error);
-      return;
-    }
-    
-    setIsFinishing(true);
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      setIsFinishing(true);
+      setErrorMsg("");
 
-    // --- AQUÍ OBTENEMOS EL UID DEL USUARIO ACTUAL ---
-    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-    const uid = userLocal.uid || userLocal.id; // Extraemos el ID único de Firebase
+      try {
+          let bioData = { success: true, confidence: "100", message: "Saltado por Debug" };
 
-    if (!uid) {
-      alert("Error: No se encontró una sesión activa. Por favor intenta iniciar sesión de nuevo.");
-      setIsFinishing(false);
-      return;
-    }
+          if (!isDebugMode) {
+              const bioRes = await fetch('http://localhost:3001/api/ocr/compare-biometry', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ 
+                      faceBase64: imgRostro, 
+                      ineBase64: imgFrenteBase64 
+                  })
+              });
 
-    // Agregamos el uid al payload que va al backend
-    const payload = { 
-      ...formData, 
-      uid, // <--- Enviamos el UID para que el backend actualice el rol
-      nacionalidad, 
-      rfc, 
-      categorias: selectedCats, 
-      rol: "guia" 
-    };
+              const contentType = bioRes.headers.get("content-type");
+              if (!contentType || !contentType.includes("application/json")) {
+                  throw new Error("El servidor no respondió con JSON.");
+              }
 
-    try {
-      const response = await fetch('http://localhost:3001/api/guides/register-guide', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+              bioData = await bioRes.json();
 
-      if (response.ok) {
-        const data = await response.json();
+              if (!bioData.success) {
+                  setErrorMsg("La validación facial falló: " + bioData.message);
+                  setIsFinishing(false);
+                  return;
+              }
+          }
 
-        // Actualizamos el localStorage con el nuevo rol para que el perfil cambie de inmediato
-        const updatedUserData = {
-          ...userLocal,
-          nombre: formData.nombre,
-          apellido: formData.apellido,
-          rol: "guia", // Cambiamos el rol localmente
-          "07_especialidades": selectedCats
-        };
-        
-        localStorage.setItem("pitzbol_user", JSON.stringify(updatedUserData));
-        
-        // Avisamos al Navbar que el usuario ahora es guía
-        window.dispatchEvent(new Event("storage"));
+          const payload = {
+              uid: userLocal?.uid,
+              nombre: userLocal?.nombre,
+              apellido: userLocal?.apellido,
+              email: userLocal?.email, 
+              telefono: userLocal?.telefono,
+              nacionalidad: userLocal?.nacionalidad, 
+              rfc: rfc,
+              codigoPostal: formData.codigoPostal,
+              categorias: selectedCats,
+              ineFrente: imgFrenteBase64,
+              ineReverso: imgVueltaBase64,
+              facePhoto: imgRostro,
+              validacion_biometrica: {
+                  coincide: bioData.success,
+                  porcentaje: bioData.confidence,
+                  mensaje: bioData.message
+              }
+          };
 
-        setTimeout(() => {
-          onClose();
-          // Mandamos al perfil detallado
-          window.location.href = "/perfil"; 
-        }, 2500);
-      } else {
-        setIsFinishing(false);
-        alert("Hubo un error al procesar tu afiliación como guía.");
+          const response = await fetch('http://localhost:3001/api/guides/register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+          });
+
+          if (response.ok) {
+              const updatedUser = { ...userLocal, guide_status: "pendiente", "07_especialidades": selectedCats, especialidades: selectedCats };
+              localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
+              localStorage.setItem("pitzbol_guide_submitted", "true");
+              window.dispatchEvent(new Event("storage"));
+              
+              setShowConfirmation(true);
+          } else {
+              const errData = await response.json();
+              setErrorMsg(errData.msg || "Error al guardar perfil.");
+          }
+      } catch (e: any) {
+          console.error("Error detallado:", e);
+          setErrorMsg("Error de conexión: Verifica el servidor.");
+      } finally {
+          setIsFinishing(false);
       }
-    } catch (error) {
-      setIsFinishing(false);
-      alert("Error de conexión con el servidor.");
-    }
   };
-
-  const inputClass = "w-full px-6 py-2.5 bg-transparent border border-[#1A4D2E]/20 rounded-full outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm";
-  const labelClass = "text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-2 block";
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-2 md:p-4 bg-black/40">
-      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="relative bg-white w-full max-w-[850px] min-h-[500px] max-h-[90vh] overflow-y-auto rounded-[30px] md:rounded-[50px] shadow-2xl p-8 md:p-12 border border-white/20">
-        <AnimatePresence mode="wait">
-          {!isFinishing ? (
-            <motion.div key="form">
-              <button onClick={onClose} className="absolute top-6 right-8 text-gray-400 hover:text-red-500 transition-all z-10"><FiX size={28} /></button>
-              <div className="text-center mb-8">
-                <h2 className="text-[32px] md:text-[42px] text-[#8B0000] font-black leading-none uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>
-                  {step === 0 ? "Únete como Guía" : step === 1 ? "¿Qué experiencias ofreces?" : step === 2 ? "Documentación" : "Datos de Pago"}
-                </h2>
-                <p className="text-[#1A4D2E] text-sm italic mt-1">Paso {step + 1} de 4</p>
-              </div>
+  const btnPrimary = "w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium";
+  const inputClass = "w-full px-6 py-2.5 bg-transparent border border-[#1A4D2E]/20 rounded-full outline-none text-[#1A4D2E] focus:border-[#0D601E] text-sm md:text-base";
 
-              <div className="max-w-2xl mx-auto">
-                {step === 0 && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <input name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Nombre(s)" className={inputClass} />
-                      <input name="apellido" value={formData.apellido} onChange={handleChange} placeholder="Apellido(s)" className={inputClass} />
-                      <div className="relative">
-                        <select value={nacionalidad} onChange={(e) => handleCountryChange(e.target.value)} className={inputClass + " appearance-none cursor-pointer pr-10"}>
-                          <option value="" disabled>Nacionalidad</option>
-                          {Object.keys(COUNTRY_DATA).map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <FiChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" />
-                      </div>
-                      <input name="telefono" value={formData.telefono} onChange={handleChange} placeholder="Teléfono" className={inputClass} />
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-2 md:p-4 bg-black/40 backdrop-blur-sm">
+      <div className="relative bg-white w-full max-w-[500px] md:max-w-[950px] min-h-[550px] md:h-[600px] rounded-[30px] md:rounded-[50px] overflow-hidden shadow-2xl flex border border-white/20">
+        
+        {!isFinishing && !showConfirmation && (
+          <div className="absolute top-6 left-8 right-8 flex justify-between items-center z-[310]">
+            {step > 1 ? (
+              <button onClick={() => setStep(step - 1)} className="text-[#1A4D2E] hover:text-[#0D601E] flex items-center gap-1 transition-all">
+                <FiChevronLeft size={28} /> <span className="hidden md:block font-bold text-sm italic">Atrás</span>
+              </button>
+            ) : <div />}
+            <button onClick={onClose} className="text-gray-400 hover:text-red-500 transition-all"><FiX size={28} /></button>
+          </div>
+        )}
+        {/* BOTÓN TEMPORAL DE DEBUG */}
+        {!isFinishing && !showConfirmation && (
+          <button 
+            type="button"
+            onClick={(e) => {
+                e.preventDefault();
+                handleSkipSecurity();
+            }}
+            className="absolute bottom-4 right-6 z-[350]  hover:bg-yellow-400 text-[#1A4D2E] text-[9px] font-black px-3 py-1.5 rounded-full shadow-lg transition-all tracking-tighter"
+          >
+            Skip
+          </button>
+        )}
+        <div className="w-full h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white relative">
+          <AnimatePresence mode="wait">
+            {(isFinishing || verifyingOCR) ? (
+              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center text-center">
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="relative w-48 h-48 md:w-64 md:h-64 mb-10">
+                  <Image src={imglogo} alt="Pitzbol" fill className="object-contain" />
+                </motion.div>
+                <h3 className="text-3xl font-black text-[#1A4D2E] uppercase">
+                  {verifyingOCR ? "Validando INE" : verifyingFace ? "Verificando Biometría" : "Guardando Perfil"}
+                </h3>
+                <p className="text-[#769C7B] italic text-lg animate-pulse mt-4">
+                  {verifyingOCR ? "Analizando legibilidad del documento..." : 
+                  verifyingFace ? "Comparando rostro con identificación..." : 
+                  "Subiendo tus datos y documentos..."}
+                </p>
+              </motion.div>
+            ) : showConfirmation ? (
+              <motion.div key="confirm" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md text-center space-y-6">
+                <div className="w-20 h-20 bg-[#F6F0E6] rounded-full flex items-center justify-center mx-auto text-[#0D601E]">
+                   <FiShield size={40} />
+                </div>
+                <h2 className="text-3xl font-black text-[#1A4D2E] uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>Solicitud Recibida</h2>
+                <div className="space-y-4 text-[#1A4D2E]">
+                  <p className="font-medium text-lg">Tus datos e identificaciones se han guardado correctamente.</p>
+                  <p className="bg-gray-50 p-4 rounded-2xl text-sm italic border border-gray-100">
+                    En un plazo menor a <b>24 horas</b> confirmaremos tu identidad. Recibirás una notificación para comenzar a publicar tus tours.
+                  </p>
+                </div>
+                <button onClick={() => { onClose(); window.location.href = "/perfil"; }} className={btnPrimary}>Entendido</button>
+              </motion.div>
+            ) : (
+              <motion.div key={step} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="w-full max-w-sm md:max-w-2xl text-center">
+                <h2 className="text-[32px] md:text-[42px] text-[#8B0000] font-black uppercase leading-tight mb-2" style={{ fontFamily: 'var(--font-jockey)' }}>
+                  {step === 1 && "Tu Especialidad"}
+                  {step === 2 && "Identificación"}
+                  {step === 3 && "Datos Fiscales"}
+                  {step === 4 && "Validación"}
+                </h2>
+
+                <div className="flex justify-center gap-3 mb-8">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="relative h-1.5 w-12 bg-gray-100 rounded-full overflow-hidden">
+                      {step >= i && <motion.div initial={{ width: 0 }} animate={{ width: "100%" }} className="absolute inset-0 bg-[#0D601E]" />}
                     </div>
-                    <input name="correo" value={formData.correo} onChange={handleChange} placeholder="Correo electrónico" className={inputClass} />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <input name="password" type="password" value={formData.password} onChange={handleChange} placeholder="Contraseña" className={inputClass} />
-                      <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirmar contraseña" className={inputClass} />
-                    </div>
-                    {errorMsg && <p className="text-red-500 text-[10px] font-bold ml-4 animate-pulse">{errorMsg}</p>}
-                    <button onClick={nextStep} className="w-full bg-[#0D601E] text-white py-3 rounded-full mt-4 font-bold tracking-widest text-xs">Siguiente paso</button>
-                  </div>
-                )}
+                  ))}
+                </div>
 
                 {step === 1 && (
                   <div className="space-y-6">
+                    <p className="text-[#769C7B] text-base mb-4 font-medium italic">¿En qué áreas eres experto?</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {CATEGORIES.map(cat => (
-                        <button key={cat} onClick={() => setSelectedCats(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])} className={`py-3 px-2 rounded-2xl border text-xs font-bold transition-all ${selectedCats.includes(cat) ? 'bg-[#0D601E] border-[#0D601E] text-white' : 'border-gray-200 text-gray-500'}`}>{cat}</button>
+                        <button key={cat} onClick={() => setSelectedCats(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])} 
+                          className={`py-3 px-1 rounded-full border-2 text-[12px] md:text-sm transition-all flex items-center justify-center gap-2 ${selectedCats.includes(cat) ? 'bg-[#0D601E] border-[#0D601E] text-white' : 'bg-white border-gray-100 text-[#1A4D2E] hover:border-[#0D601E]'}`}>
+                          {cat} {selectedCats.includes(cat) && <FiCheck size={14}/>}
+                        </button>
                       ))}
                     </div>
-                    <textarea name="propuestaTour" value={formData.propuestaTour} onChange={handleChange} placeholder="Propuesta de tour..." className={inputClass + " rounded-3xl min-h-[100px] py-4 resize-none"} />
-                    {errorMsg && <p className="text-red-500 text-[10px] font-bold animate-pulse">{errorMsg}</p>}
-                    <button onClick={nextStep} className="w-full bg-[#0D601E] text-white py-3 rounded-full font-bold tracking-widest text-xs">Siguiente: Documentos</button>
+                    <button onClick={nextStep} className={`${btnPrimary} mt-6`}>Continuar</button>
                   </div>
                 )}
 
                 {step === 2 && (
-                   <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-[#769C7B]/40 rounded-[35px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all">
-                          <FiFileText className="text-[#769C7B] mb-3" size={32} />
-                          <p className="text-sm text-[#1A4D2E] font-black uppercase italic">Frente</p>
-                          <input type="file" className="hidden" />
-                        </label>
-                        <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-[#769C7B]/40 rounded-[35px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all">
-                          <FiFileText className="text-[#769C7B] mb-3" size={32} />
-                          <p className="text-sm text-[#1A4D2E] font-black uppercase italic">Reverso</p>
-                          <input type="file" className="hidden" />
-                        </label>
-                      </div>
-                      <button onClick={nextStep} className="w-full bg-[#0D601E] text-white py-4 rounded-full font-bold tracking-widest text-xs">Siguiente: Datos fiscales</button>
-                   </div>
+                  <div className="mt-6 text-center w-full max-w-xl mx-auto">
+                    <p className="text-[#769C7B] mb-8 font-medium italic text-lg">Sube una foto clara de tu identificación oficial.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10">
+                      <label htmlFor="file-frente" className={`relative border-2 border-dashed rounded-[30px] h-44 flex flex-col items-center justify-center cursor-pointer transition-all ${docsUploaded.frente ? 'border-[#0D601E] bg-[#0D601E]/5' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        {docsUploaded.frente ? <><FiCheck size={40} className="text-[#0D601E] mb-2" /><span className="text-sm font-bold text-[#0D601E]">Frente cargado</span></> : 
+                        <><FiFileText size={40} className="text-[#0D601E] mb-2 opacity-50" /><span className="text-sm font-bold text-[#1A4D2E] italic uppercase">INE Frente</span></>}
+                        <input id="file-frente" type="file" className="hidden" onChange={(e) => handleFileChange(e, 'frente')} accept="image/*" />
+                      </label>
+
+                      <label htmlFor="file-vuelta" className={`relative border-2 border-dashed rounded-[30px] h-44 flex flex-col items-center justify-center cursor-pointer transition-all ${docsUploaded.vuelta ? 'border-[#0D601E] bg-[#0D601E]/5' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        {docsUploaded.vuelta ? <><FiCheck size={40} className="text-[#0D601E] mb-2" /><span className="text-sm font-bold text-[#0D601E]">Reverso cargado</span></> : 
+                        <><FiFileText size={40} className="text-[#0D601E] mb-2 opacity-50" /><span className="text-sm font-bold text-[#1A4D2E] italic uppercase">INE Reverso</span></>}
+                        <input id="file-vuelta" type="file" className="hidden" onChange={(e) => handleFileChange(e, 'vuelta')} accept="image/*" />
+                      </label>
+                    </div>
+                    <button onClick={nextStep} disabled={!docsUploaded.frente || !docsUploaded.vuelta} className={`${btnPrimary} ${(!docsUploaded.frente || !docsUploaded.vuelta) ? 'opacity-50 cursor-not-allowed' : ''}`}>Siguiente</button>
+                  </div>
                 )}
 
                 {step === 3 && (
-                  <motion.div className="space-y-6">
-                    <div className="bg-[#F6F0E6]/20 p-6 rounded-[35px] border border-[#1A4D2E]/10">
-                      <h4 className="font-bold uppercase text-xs text-[#0D601E] mb-4">Información Fiscal</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input placeholder="RFC" value={rfc} onChange={(e) => setRfc(e.target.value.toUpperCase())} onBlur={(e) => {const r= /^[A-Z&Ñ]{4}[0-9]{6}[A-Z0-9]{3}$/i; setRfcError(!r.test(e.target.value))}} className={`${inputClass} uppercase ${rfcError ? "border-red-500" : ""}`} maxLength={13} />
-                        <input name="codigoPostal" value={formData.codigoPostal} onChange={handleChange} placeholder="Código Postal" className={inputClass} maxLength={5} />
-                      </div>
+                  <div className="space-y-5 max-w-sm mx-auto">
+                    <p className="text-sm text-[#1A4D2E] font-medium leading-relaxed bg-[#F6F0E6] p-4 rounded-[25px] border-l-4 border-[#0D601E]">
+                      Revisa tu RFC (extraído de tu INE). Puedes editarlo si es necesario.
+                    </p>
+                    <div className="space-y-4">
+                      <input placeholder="RFC" value={rfc} onChange={(e) => setRfc(e.target.value.toUpperCase())} className={inputClass} />
+                      <input placeholder="Código Postal" value={formData.codigoPostal} onChange={(e) => setFormData({...formData, codigoPostal: e.target.value})} className={inputClass} />
                     </div>
-                    <div className="bg-[#F6F0E6]/20 p-6 rounded-[35px] border border-[#1A4D2E]/10">
-                      <h4 className="font-bold uppercase text-xs text-[#0D601E] mb-4">Método de Cobro</h4>
-                      <input name="clabe" value={formData.clabe} onChange={handleChange} placeholder="CLABE Interbancaria (18 dígitos)" className={inputClass} maxLength={18} />
-                    </div>
-                    {errorMsg && <p className="text-red-500 text-[10px] font-bold animate-pulse text-center">{errorMsg}</p>}
-                    <button onClick={handleFinish} className="w-full bg-[#8B0000] text-white py-4 rounded-full font-black tracking-widest text-sm shadow-xl">Finalizar afiliación</button>
-                  </motion.div>
+                    <button onClick={nextStep} className={btnPrimary}>Continuar</button>
+                  </div>
                 )}
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div key="loading" className="flex flex-col items-center justify-center py-20 text-center">
-              <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="relative w-32 h-32 mb-8">
-                <Image src={imglogo} alt="Cargando" fill className="object-contain" />
+
+                {step === 4 && (
+                  <div className="flex flex-col items-center space-y-6">
+                    <div className="relative w-64 h-64 md:w-80 md:h-80 rounded-full overflow-hidden border-4 border-[#0D601E] shadow-2xl bg-black">
+                      {!imgRostro ? (
+                        <>
+                          <Webcam
+                            audio={false}
+                            ref={webcamRef}
+                            screenshotFormat="image/jpeg"
+                            className="w-full h-full object-cover"
+                            videoConstraints={{ facingMode: "user" }}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-[80%] h-[85%] border-2 border-dashed border-white/50 rounded-[100px] shadow-[0_0_0_999px_rgba(0,0,0,0.5)]"></div>
+                          </div>
+                          <div className="absolute bottom-4 left-0 right-0 text-center">
+                            <span className="bg-black/60 text-white text-[10px] px-3 py-1 rounded-full uppercase tracking-tighter">
+                                Posiciona tus ojos dentro de la guía
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <img src={imgRostro} alt="Rostro" className="w-full h-full object-cover" />
+                      )}
+                      <div className="absolute inset-0 border-[20px] border-white/10 rounded-full pointer-events-none shadow-inner" />
+                    </div>
+
+                    <div className="text-center space-y-2">
+                      <p className="text-[#1A4D2E] font-bold">
+                        {(!imgRostro && !isDebugMode) ? "Centra tu rostro en el círculo" : "Validación lista"}
+                      </p>
+                      <p className="text-xs text-gray-500 italic px-4">
+                        {isDebugMode ? "MODO DEBUG: Validaciones omitidas" : "Esta foto se comparará con tu INE para validar tu identidad."}
+                      </p>
+                    </div>
+
+                    {(!imgRostro && !isDebugMode) ? (
+                      <button onClick={capturarFoto} className={btnPrimary}>
+                        Capturar Rostro
+                      </button>
+                    ) : (
+                      <div className="flex flex-col gap-3 w-full items-center">
+                        <button onClick={handleFinish} className={btnPrimary}>
+                          Finalizar y Enviar Revisión
+                        </button>
+                        {/* Solo mostrar repetir foto si NO estamos en debug, para no romper el flujo de prueba */}
+                        {!isDebugMode && (
+                          <button onClick={() => setImgRostro(null)} className="text-[#8B0000] text-sm font-bold uppercase italic hover:underline">
+                            Repetir foto
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </motion.div>
-              <h3 className="text-2xl font-black text-[#1A4D2E] uppercase">Procesando solicitud...</h3>
-              <p className="text-[#769C7B] italic mt-2">Estamos guardando tus datos en Pitzbol.</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {errorMsg && !isFinishing && !verifyingOCR && (
+          <div className="absolute bottom-6 left-0 right-0 text-center z-[320]">
+            <p className="text-red-500 font-bold text-xs bg-red-50 py-2 inline-block px-8 rounded-full shadow-sm">{errorMsg}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

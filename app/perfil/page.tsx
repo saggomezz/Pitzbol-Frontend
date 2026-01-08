@@ -1,22 +1,19 @@
 "use client";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { 
-  FiCamera, FiMessageSquare, FiPlus, FiX, FiUser, FiMap, FiPhone, FiGlobe, FiMail, FiTrash2, FiHeart, FiAward, FiEdit2, FiCheck 
-} from "react-icons/fi";
-import { 
-  FaPalette, FaBuilding, FaUtensils, FaFutbol, FaMusic, FaTree, FaCamera, 
-  FaMoon, FaShoppingBag, FaLandmark, FaMapMarkedAlt, FaMountain, FaChurch, FaStore 
+import { FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
+  FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
 } from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
+import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
+  FiPlus, FiShield, FiUser, FiX
+} from "react-icons/fi";
 
-// Lista de nacionalidades (adjetivos gentilicios)
 const NACIONALIDADES = [
   "Mexicana", "Argentina", "Brasileña", "Chilena", "Colombiana", "Peruana", "Uruguaya", "Venezolana",
   "Estadounidense", "Canadiense", "Española", "Francesa", "Alemana", "Italiana", "Inglesa", "Portuguesa",
   "Japonesa", "China", "Coreana", "India", "Australiana", "Rusa", "Otra"
 ];
 
-// Lista de códigos LADA internacionales
 const LADAS = [
   { code: "+1", country: "USA/Canadá" },
   { code: "+52", country: "México" },
@@ -41,7 +38,6 @@ const LADAS = [
   { code: "+7", country: "Rusia" },
 ];
 
-// Lista de intereses/especialidades disponibles con iconos y colores
 const INTERESES_DISPONIBLES = [
   { nombre: "Arte e Historia", icono: FaPalette, color: "from-purple-500 to-pink-500" },
   { nombre: "Arquitectura", icono: FaBuilding, color: "from-gray-600 to-gray-800" },
@@ -60,7 +56,6 @@ const INTERESES_DISPONIBLES = [
   { nombre: "Mercados Locales", icono: FaStore, color: "from-yellow-600 to-orange-600" }
 ];
 
-// Función helper para obtener datos de un interés
 const getInteresData = (nombre: string) => {
   return INTERESES_DISPONIBLES.find(i => i.nombre === nombre) || INTERESES_DISPONIBLES[0];
 };
@@ -72,137 +67,95 @@ export default function PerfilDetallado() {
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [especialidades, setEspecialidades] = useState<string[]>([]);
-  
-  // Estados para edición de nacionalidad
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false); 
+
   const [editandoNacionalidad, setEditandoNacionalidad] = useState(false);
   const [nacionalidadTemp, setNacionalidadTemp] = useState("");
   const [errorNacionalidad, setErrorNacionalidad] = useState("");
   
-  // Estados para edición de teléfono
   const [editandoTelefono, setEditandoTelefono] = useState(false);
   const [ladaTemp, setLadaTemp] = useState("+52");
   const [numeroTemp, setNumeroTemp] = useState("");
   const [errorTelefono, setErrorTelefono] = useState("");
   
-  // Estados para edición de especialidades
   const [editandoEspecialidades, setEditandoEspecialidades] = useState(false);
   const [especialidadesTemp, setEspecialidadesTemp] = useState<string[]>([]);
   const [nuevoInteres, setNuevoInteres] = useState("");
   const [errorEspecialidades, setErrorEspecialidades] = useState("");
   
-  // Estados para manejo de guardado
   const [guardando, setGuardando] = useState(false);
   const [exito, setExito] = useState("");
 
   useEffect(() => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-    
-    const datosCargados = {
-      id: userLocal.uid || userLocal.id || "temp_id",
-      nombre: userLocal.nombre || "Usuario",
-      apellido: userLocal.apellido || "",
-      email: userLocal.email || "",
-      telefono: userLocal.telefono || "No registrado",
-      nacionalidad: userLocal.nacionalidad || "No registrado",
-      rol: userLocal.role || userLocal.rol || "turista",
-      especialidades: userLocal.especialidades || userLocal["07_especialidades"] || [],
-      fotoUrl: userLocal.fotoUrl || null 
-    };
-
-    setPerfil(datosCargados);
-    setFotoPerfil(datosCargados.fotoUrl);
-    setEspecialidades(datosCargados.especialidades);
-    setEspecialidadesTemp(datosCargados.especialidades);
-    
-    // Inicializar valores para edición
-    setNacionalidadTemp(datosCargados.nacionalidad);
-    
-    // Parsear teléfono para separar LADA y número
-    if (datosCargados.telefono && datosCargados.telefono !== "No registrado") {
-      const match = datosCargados.telefono.match(/^(\+\d+)\s*(.+)$/);
-      if (match) {
-        setLadaTemp(match[1]);
-        setNumeroTemp(match[2]);
-      } else {
-        setNumeroTemp(datosCargados.telefono);
+    const cargarDatos = async () => {
+      if (!userLocal.uid) {
+        setLoading(false);
+        return;
       }
-    }
-    
-    setLoading(false);
-  }, []);
 
-  // Función para guardar nacionalidad
-  const guardarNacionalidad = async () => {
-    setErrorNacionalidad("");
-    
-    if (!nacionalidadTemp || nacionalidadTemp === "No registrado") {
-      setErrorNacionalidad("Por favor selecciona una nacionalidad válida");
-      return;
-    }
-
-    setGuardando(true);
-    setExito("");
-
-    try {
-      const token = localStorage.getItem("pitzbol_token");
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-
-      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          uid: perfil.id,
-          nacionalidad: nacionalidadTemp,
-        }),
+      const initialEspecialidades = userLocal.especialidades || userLocal["07_especialidades"] || [];      
+      setPerfil({
+        id: userLocal.uid,
+        nombre: userLocal.nombre || userLocal["01_nombre"] || "Usuario",
+        apellido: userLocal.apellido || userLocal["02_apellido"] || "",
+        email: userLocal.email || userLocal["04_correo"] || "",
+        telefono: userLocal.telefono || userLocal["06_telefono"] || "No registrado",
+        nacionalidad: userLocal.nacionalidad || "No registrado",
+        rol: userLocal.role || userLocal["03_rol"] || "turista",
+        guide_status: userLocal.guide_status || "ninguno", 
+        especialidades: initialEspecialidades,
+        fotoUrl: userLocal.fotoUrl || userLocal["13_foto_rostro"] || null
       });
 
-      const data = await response.json();
+      setEspecialidades(initialEspecialidades);
+      setEspecialidadesTemp(initialEspecialidades);
 
-      if (!response.ok) {
-        throw new Error(data.msg || "Error al actualizar nacionalidad");
+      try {
+        const response = await fetch(`http://localhost:3001/api/guides/profile/${userLocal.uid}`);
+        if (response.ok) {
+          const dataFresca = await response.json();
+          const serverSpecs = dataFresca["07_especialidades"] || [];
+
+          setEspecialidades(serverSpecs);
+          setEspecialidadesTemp(serverSpecs);
+
+          setPerfil((prev: any) => ({
+            ...prev,
+            ...dataFresca,
+            especialidades: serverSpecs
+          }));
+
+          localStorage.setItem("pitzbol_user", JSON.stringify({
+            ...userLocal,
+            ...dataFresca,
+            especialidades: serverSpecs,
+            "07_especialidades": serverSpecs
+          }));
+          window.dispatchEvent(new Event("storage"));
+        }
+      } catch (error) {
+        console.error("Error de sincronización con Pitzbol Server:", error);
       }
+      setLoading(false);
+    };
+    cargarDatos();
+  }, []);
 
-      // Actualizar estado local y localStorage
-      const perfilActualizado = { ...perfil, nacionalidad: nacionalidadTemp };
-      setPerfil(perfilActualizado);
-      
-      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-      userLocal.nacionalidad = nacionalidadTemp;
-      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
-
-      setExito("Nacionalidad actualizada correctamente");
-      setEditandoNacionalidad(false);
-      
-      setTimeout(() => setExito(""), 3000);
-
-    } catch (err: any) {
-      setErrorNacionalidad(err.message || "Error al guardar");
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  // Función para guardar teléfono
   const guardarTelefono = async () => {
     setErrorTelefono("");
     
-    // Validar que el número no esté vacío
     if (!numeroTemp.trim()) {
       setErrorTelefono("Por favor ingresa un número de teléfono");
       return;
     }
 
-    // Validar que solo contenga números, espacios, guiones y paréntesis
     const telefonoRegex = /^[\d\s\-()]+$/;
     if (!telefonoRegex.test(numeroTemp)) {
       setErrorTelefono("El número solo puede contener números, espacios, guiones y paréntesis");
       return;
     }
 
-    // Validar longitud mínima (al menos 7 dígitos)
     const soloDigitos = numeroTemp.replace(/\D/g, "");
     if (soloDigitos.length < 7) {
       setErrorTelefono("El número debe tener al menos 7 dígitos");
@@ -240,7 +193,6 @@ export default function PerfilDetallado() {
         throw new Error(data.msg || "Error al actualizar teléfono");
       }
 
-      // Actualizar estado local y localStorage
       const perfilActualizado = { ...perfil, telefono: telefonoCompleto };
       setPerfil(perfilActualizado);
       
@@ -260,16 +212,7 @@ export default function PerfilDetallado() {
     }
   };
 
-  // Función para cancelar edición de nacionalidad
-  const cancelarNacionalidad = () => {
-    setNacionalidadTemp(perfil.nacionalidad);
-    setEditandoNacionalidad(false);
-    setErrorNacionalidad("");
-  };
-
-  // Función para cancelar edición de teléfono
   const cancelarTelefono = () => {
-    // Restaurar valores originales
     if (perfil.telefono && perfil.telefono !== "No registrado") {
       const match = perfil.telefono.match(/^(\+\d+)\s*(.+)$/);
       if (match) {
@@ -284,88 +227,61 @@ export default function PerfilDetallado() {
     setErrorTelefono("");
   };
 
-  // Función para agregar especialidad
   const agregarEspecialidad = (interes: string) => {
     setErrorEspecialidades("");
-    
     if (especialidadesTemp.includes(interes)) {
       setErrorEspecialidades("Este interés ya está agregado");
       return;
     }
-
     if (especialidadesTemp.length >= 10) {
       setErrorEspecialidades("Máximo 10 intereses permitidos");
       return;
     }
-
-    setEspecialidadesTemp([...especialidadesTemp, interes]);
+    setEspecialidadesTemp((prev: string[]) => [...prev, interes]);
   };
 
-  // Función para eliminar especialidad
   const eliminarEspecialidad = (especialidad: string) => {
-    setEspecialidadesTemp(especialidadesTemp.filter(e => e !== especialidad));
+    setEspecialidadesTemp((prev: string[]) => prev.filter(e => e !== especialidad));
     setErrorEspecialidades("");
   };
 
-  // Función para guardar especialidades
   const guardarEspecialidades = async () => {
-    setErrorEspecialidades("");
-    
-    if (especialidadesTemp.length === 0) {
-      setErrorEspecialidades("Debes tener al menos un interés");
-      return;
-    }
-
     setGuardando(true);
-    setExito("");
+    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
 
     try {
-      const token = localStorage.getItem("pitzbol_token");
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-
-      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
+      const response = await fetch('http://localhost:3001/api/guides/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          uid: perfil.id,
-          especialidades: especialidadesTemp,
-        }),
+          uid: userLocal.uid,
+          categorias: especialidadesTemp 
+        })
       });
 
-      const data = await response.json();
+      if (response.ok) {
+        setEspecialidades([...especialidadesTemp]);
+        setEditandoEspecialidades(false);
+        const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
 
-      if (!response.ok) {
-        throw new Error(data.msg || "Error al actualizar intereses");
+        const updatedUser = {
+          ...userLocal,
+          "07_especialidades": especialidadesTemp,
+          "especialidades": especialidadesTemp  
+        };
+        
+        localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
+        window.dispatchEvent(new Event("storage"));
+        setExito("Cambios guardados con éxito");
+        setTimeout(() => setExito(""), 3000);
       }
-
-      // Actualizar estado local y localStorage
-      setEspecialidades(especialidadesTemp);
-      const perfilActualizado = { ...perfil, especialidades: especialidadesTemp };
-      setPerfil(perfilActualizado);
-      
-      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-      userLocal.especialidades = especialidadesTemp;
-      if (userLocal["07_especialidades"]) {
-        userLocal["07_especialidades"] = especialidadesTemp;
-      }
-      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
-
-      setExito("Intereses actualizados correctamente");
-      setEditandoEspecialidades(false);
-      
-      setTimeout(() => setExito(""), 3000);
-
-    } catch (err: any) {
-      setErrorEspecialidades(err.message || "Error al guardar");
+    } catch (error) {
+      console.error("Error al guardar intereses");
     } finally {
       setGuardando(false);
     }
   };
 
-  // Función para cancelar edición de especialidades
   const cancelarEspecialidades = () => {
     setEspecialidadesTemp([...especialidades]);
     setNuevoInteres("");
@@ -386,25 +302,67 @@ export default function PerfilDetallado() {
     </div>
   );
 
+const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      setFotoPerfil(base64); // Cambio visual inmediato
+
+      const stored = localStorage.getItem("pitzbol_user");
+      const userLocal = stored ? JSON.parse(stored) : null;
+
+      try {
+        const response = await fetch('http://localhost:3001/api/guides/update-photo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: userLocal?.uid,
+            fotoBase64: base64
+          })
+        });
+
+        if (response.ok) {
+          setExito("Foto actualizada");
+          const updated = { ...userLocal, fotoUrl: base64 };
+          localStorage.setItem("pitzbol_user", JSON.stringify(updated));
+        }
+      } catch (err) {
+        console.error("Error al subir foto");
+      }
+    };
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F6F0E6] via-[#FDFCF9] to-white pb-20">
-      
-      {/* Mensaje de éxito */}
-      <AnimatePresence>
-        {exito && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3"
+      {esAdmin && (
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="mb-6 p-6 bg-gradient-to-r from-[#1A4D2E] to-[#0D601E] rounded-[28px] shadow-lg border-l-8 border-[#F00808] flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/10 rounded-xl text-white">
+              <FiShield size={24} />
+            </div>
+            <div>
+              <h4 className="text-white font-bold text-lg leading-tight">Panel de Control</h4>
+              <p className="text-white/60 text-xs">Tienes solicitudes pendientes de revisión</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setIsAdminModalOpen(true)}
+            className="px-6 py-2.5 bg-white text-[#1A4D2E] rounded-xl font-bold text-sm hover:bg-[#F6F0E6] transition-all shadow-sm"
           >
-            <FiCheck size={24} />
-            <span className="font-bold">{exito}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            Ver Solicitudes
+          </button>
+        </motion.div>
+      )}
       
-      {/* Header Moderno */}
+      {/* Header */}
       <div className="bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white">
         <div className="max-w-7xl mx-auto px-6 md:px-12 py-12">
           <div>
@@ -434,17 +392,22 @@ export default function PerfilDetallado() {
           >
             <div className="bg-white rounded-[32px] shadow-2xl p-8 border border-gray-100">
               <div className="flex flex-col items-center">
-                {/* Foto de perfil con animación */}
+                {/* Foto de perfil */}
                 <div className="relative mb-8 mt-4 group">
                   {!fotoPerfil && (
-                    <motion.div 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -top-16 left-1/2 -translate-x-1/2 bg-[#FF8A00] text-white text-[11px] font-black px-4 py-2 rounded-xl shadow-lg z-20 whitespace-nowrap"
+                    <motion.label 
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                      whileTap={{ scale: 0.9 }}
+                      className="absolute -bottom-2 -right-2 p-4 bg-[#F00808] text-white rounded-xl shadow-xl cursor-pointer hover:bg-[#d00707] transition-colors"
                     >
-                      ¡Sube tu foto!
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#FF8A00] rotate-45" />
-                    </motion.div>
+                      <FiCamera size={20} />
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={handleFotoChange} 
+                      />
+                    </motion.label>
                   )}
                   
                   <div className="relative w-40 h-40 md:w-48 md:h-48">
@@ -484,218 +447,79 @@ export default function PerfilDetallado() {
                   {esGuia ? "Guía Pitzbol" : "Pitzbolero"}
                 </div>
 
-                {/* Stats Cards */}
-                <div className="w-full space-y-4 mb-6">
-                  {/* Card de Nacionalidad */}
-                  <motion.div 
-                    whileHover={{ y: -2 }}
-                    className="bg-gradient-to-br from-[#E8F5E9] to-white p-5 rounded-2xl border border-[#0D601E]/10 relative"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
+                {/* Stats Cards - Solo visibles para Guías y Turistas */}
+                {!esAdmin && (
+                  <div className="w-full space-y-4 mb-6">
+                    {/* Card de Nacionalidad */}
+                    <motion.div 
+                      whileHover={{ y: -2 }}
+                      className="bg-gradient-to-br from-[#E8F5E9] to-white p-5 rounded-2xl border border-[#0D601E]/10 relative"
+                    >
+                      <div className="flex items-center gap-2 mb-3">
                         <div className="p-2 bg-[#0D601E]/10 rounded-lg">
                           <FiGlobe size={18} className="text-[#0D601E]" />
                         </div>
                         <h3 className="text-sm font-black uppercase text-[#1A4D2E] tracking-wider">Nacionalidad</h3>
                       </div>
-                      {!editandoNacionalidad && (
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setEditandoNacionalidad(true)}
-                          className="px-3 py-1.5 bg-[#0D601E] text-white rounded-lg text-xs font-bold hover:bg-[#094d18] transition-colors flex items-center gap-1.5"
-                          title="Editar nacionalidad"
-                        >
-                          <FiEdit2 size={14} />
-                          Editar
-                        </motion.button>
-                      )}
-                    </div>
-                    
-                    {editandoNacionalidad ? (
-                      <div className="space-y-3">
-                        <select
-                          value={nacionalidadTemp}
-                          onChange={(e) => {
-                            setNacionalidadTemp(e.target.value);
-                            setErrorNacionalidad("");
-                          }}
-                          className={`w-full text-sm font-semibold text-[#1A4D2E] bg-white border-2 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
-                            errorNacionalidad 
-                              ? "border-red-500 focus:ring-red-500" 
-                              : "border-[#0D601E]/20 focus:ring-[#0D601E]"
-                          }`}
-                          disabled={guardando}
-                        >
-                          <option value="">Selecciona una nacionalidad...</option>
-                          {NACIONALIDADES.map((nac) => (
-                            <option key={nac} value={nac}>{nac}</option>
-                          ))}
-                        </select>
-                        
-                        <AnimatePresence>
-                          {errorNacionalidad && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="flex items-center gap-2 text-red-600 text-sm font-semibold"
-                            >
-                              <FiX size={16} />
-                              <span>{errorNacionalidad}</span>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                        
-                        <div className="flex gap-2">
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={guardarNacionalidad}
-                            disabled={guardando}
-                            className="flex-1 bg-[#0D601E] text-white text-sm font-bold py-3 rounded-xl hover:bg-[#094d18] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                          >
-                            {guardando ? (
-                              <motion.div
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                className="w-5 h-5 border-3 border-white border-t-transparent rounded-full"
-                              />
-                            ) : (
-                              "Guardar"
-                            )}
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={cancelarNacionalidad}
-                            disabled={guardando}
-                            className="px-6 bg-gray-200 text-gray-700 text-sm font-bold py-3 rounded-xl hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Cancelar
-                          </motion.button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-base font-bold text-[#1A4D2E] pl-12">{perfil.nacionalidad}</p>
-                    )}
-                  </motion.div>
+                      <p className="text-base font-bold text-[#1A4D2E] pl-12">{perfil?.nacionalidad}</p>
+                    </motion.div>
 
-                  {/* Card de Teléfono */}
-                  <motion.div 
-                    whileHover={{ y: -2 }}
-                    className="bg-gradient-to-br from-[#FFF3E0] to-white p-5 rounded-2xl border border-[#FF8A00]/10 relative"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 bg-[#FF8A00]/10 rounded-lg">
-                          <FiPhone size={18} className="text-[#FF8A00]" />
+                    {/* Card de Teléfono */}
+                    <motion.div 
+                      whileHover={{ y: -2 }}
+                      className="bg-gradient-to-br from-[#FFF3E0] to-white p-5 rounded-2xl border border-[#FF8A00]/10 relative"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-[#FF8A00]/10 rounded-lg">
+                            <FiPhone size={18} className="text-[#FF8A00]" />
+                          </div>
+                          <h3 className="text-sm font-black uppercase text-[#1A4D2E] tracking-wider">Teléfono</h3>
                         </div>
-                        <h3 className="text-sm font-black uppercase text-[#1A4D2E] tracking-wider">Teléfono</h3>
-                      </div>
-                      {!editandoTelefono && (
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setEditandoTelefono(true)}
-                          className="px-3 py-1.5 bg-[#FF8A00] text-white rounded-lg text-xs font-bold hover:bg-[#e67d00] transition-colors flex items-center gap-1.5"
-                          title="Editar teléfono"
-                        >
-                          <FiEdit2 size={14} />
-                          Editar
-                        </motion.button>
-                      )}
-                    </div>
-                    
-                    {editandoTelefono ? (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <select
-                            value={ladaTemp}
-                            onChange={(e) => {
-                              setLadaTemp(e.target.value);
-                              setErrorTelefono("");
-                            }}
-                            className={`sm:col-span-1 text-sm font-bold text-[#1A4D2E] bg-white border-2 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
-                              errorTelefono 
-                                ? "border-red-500 focus:ring-red-500" 
-                                : "border-[#FF8A00]/20 focus:ring-[#FF8A00]"
-                            }`}
-                            disabled={guardando}
+                        {!editandoTelefono && (
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setEditandoTelefono(true)}
+                            className="px-3 py-1.5 bg-[#FF8A00] text-white rounded-lg text-xs font-bold hover:bg-[#e67d00] transition-colors flex items-center gap-1.5"
                           >
-                            {LADAS.map((lada) => (
-                              <option key={lada.code} value={lada.code}>
-                                {lada.code} - {lada.country}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            type="tel"
-                            value={numeroTemp}
-                            onChange={(e) => {
-                              setNumeroTemp(e.target.value);
-                              setErrorTelefono("");
-                            }}
-                            placeholder="Número de teléfono"
-                            className={`sm:col-span-2 text-sm font-semibold text-[#1A4D2E] bg-white border-2 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:border-transparent transition-all placeholder:text-gray-400 ${
-                              errorTelefono 
-                                ? "border-red-500 focus:ring-red-500" 
-                                : "border-[#FF8A00]/20 focus:ring-[#FF8A00]"
-                            }`}
-                            disabled={guardando}
-                          />
-                        </div>
-                        
-                        <AnimatePresence>
-                          {errorTelefono && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="flex items-center gap-2 text-red-600 text-sm font-semibold"
+                            <FiEdit2 size={14} /> Editar
+                          </motion.button>
+                        )}
+                      </div>
+                      
+                      {editandoTelefono ? (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <select
+                              value={ladaTemp}
+                              onChange={(e) => setLadaTemp(e.target.value)}
+                              className="sm:col-span-1 text-sm font-bold text-[#1A4D2E] bg-white border-2 rounded-xl px-4 py-3 focus:outline-none border-[#FF8A00]/20"
                             >
-                              <FiX size={16} />
-                              <span>{errorTelefono}</span>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                        
-                        <div className="flex gap-2">
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={guardarTelefono}
-                            disabled={guardando}
-                            className="flex-1 bg-[#FF8A00] text-white text-sm font-bold py-3 rounded-xl hover:bg-[#e67d00] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                          >
-                            {guardando ? (
-                              <motion.div
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                className="w-5 h-5 border-3 border-white border-t-transparent rounded-full"
-                              />
-                            ) : (
-                              "Guardar"
-                            )}
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={cancelarTelefono}
-                            disabled={guardando}
-                            className="px-6 bg-gray-200 text-gray-700 text-sm font-bold py-3 rounded-xl hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Cancelar
-                          </motion.button>
+                              {LADAS.map((lada) => (
+                                <option key={lada.code} value={lada.code}>{lada.code}</option>
+                              ))}
+                            </select>
+                            <input
+                              type="tel"
+                              value={numeroTemp}
+                              onChange={(e) => setNumeroTemp(e.target.value)}
+                              className="sm:col-span-2 text-sm font-semibold text-[#1A4D2E] bg-white border-2 rounded-xl px-4 py-3 focus:outline-none border-[#FF8A00]/20"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={guardarTelefono} className="flex-1 bg-[#FF8A00] text-white text-xs font-bold py-2 rounded-lg">Guardar</button>
+                            <button onClick={cancelarTelefono} className="px-4 bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-lg">X</button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <p className="text-base font-bold text-[#1A4D2E] pl-12 break-all">{perfil.telefono}</p>
-                    )}
-                  </motion.div>
-                </div>
+                      ) : (
+                        <p className="text-base font-bold text-[#1A4D2E] pl-12 break-all">{perfil?.telefono}</p>
+                      )}
+                    </motion.div>
+                  </div>
+                )}
 
-                {/* Estadística adicional */}
+                {/* Estadística  */}
                 <div className="w-full bg-gradient-to-r from-[#0D601E]/5 to-transparent rounded-2xl p-4 border border-[#0D601E]/10">
                   <div className="flex justify-between items-center">
                     <div className="text-center flex-1">
@@ -716,7 +540,7 @@ export default function PerfilDetallado() {
           {/* Contenido Principal */}
           <div className="lg:col-span-2 space-y-8">
             
-            {/* Sección de Intereses/Especialidades */}
+            {/* Sección de Interesess */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -748,7 +572,7 @@ export default function PerfilDetallado() {
                 <div className="space-y-6">
                   {/* Grid de intereses disponibles para seleccionar */}
                   <div>
-                    <p className="text-sm font-bold text-[#769C7B] mb-4 uppercase tracking-wide">Selecciona tus intereses</p>
+                    <p className="text-sm font-bold text-[#769C7B] mb-4 tracking-wide">Selecciona tus intereses</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {INTERESES_DISPONIBLES.filter(int => !especialidadesTemp.includes(int.nombre)).map((interes, i) => {
                         const Icon = interes.icono;
@@ -798,7 +622,7 @@ export default function PerfilDetallado() {
                   {/* Intereses seleccionados */}
                   {especialidadesTemp.length > 0 && (
                     <div>
-                      <p className="text-sm font-bold text-[#769C7B] mb-4 uppercase tracking-wide">
+                      <p className="text-sm font-bold text-[#769C7B] mb-4 tracking-wide">
                         Mis intereses seleccionados ({especialidadesTemp.length}/10)
                       </p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -847,7 +671,7 @@ export default function PerfilDetallado() {
                       whileTap={{ scale: 0.98 }}
                       onClick={guardarEspecialidades}
                       disabled={guardando}
-                      className="flex-1 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white text-base font-black py-4 rounded-2xl hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl uppercase tracking-wider"
+                      className="flex-1 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white text-base font-black py-4 rounded-2xl hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl tracking-wider"
                     >
                       {guardando ? (
                         <motion.div
@@ -867,7 +691,7 @@ export default function PerfilDetallado() {
                       whileTap={{ scale: 0.98 }}
                       onClick={cancelarEspecialidades}
                       disabled={guardando}
-                      className="px-8 bg-gray-200 text-gray-700 text-base font-bold py-4 rounded-2xl hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
+                      className="px-8 bg-gray-200 text-gray-700 text-base font-bold py-4 rounded-2xl hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed tracking-wider"
                     >
                       Cancelar
                     </motion.button>
@@ -902,76 +726,68 @@ export default function PerfilDetallado() {
               )}
             </motion.div>
 
-            {/* Sección de Actividades/Tours */}
+            {/* Sección de los Tours */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-[32px] shadow-xl p-8 border border-gray-100"
+              className="bg-white rounded-[32px] shadow-xl p-8 border border-gray-100 overflow-hidden"
             >
-              <div className="mb-6">
-                <h3 className="text-2xl font-black text-[#1A4D2E] mb-1" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-                  {esGuia ? "EXPERIENCIAS" : "PRÓXIMOS DESTINOS"}
-                </h3>
-                <p className="text-xs text-[#769C7B] font-semibold">
-                  {esGuia ? "Crea y gestiona tus tours" : "Tus reservaciones y favoritos"}
-                </p>
+              {/* Encabezado de la sección */}
+              <div className="mb-6 flex justify-between items-end">
+                <div>
+                  <h3 className="text-2xl font-black text-[#1A4D2E] leading-none" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    {esGuia ? "MIS EXPERIENCIAS" : "PRÓXIMOS DESTINOS"}
+                  </h3>
+                  <p className="text-[11px] text-[#769C7B] font-bold uppercase tracking-wider mt-1">
+                    {esGuia ? "Gestión de tours publicados" : "Explora tus reservaciones"}
+                  </p>
+                </div>
+                {esGuia && (
+                  <span className="text-[10px] bg-[#F6F0E6] text-[#1A4D2E] px-3 py-1 rounded-full font-bold">
+                    {tours.length} Publicados
+                  </span>
+                )}
               </div>
-              
+
+              {/* Contenido condicional por ROL */}
               {esGuia ? (
-                <motion.div 
-                  whileHover={{ scale: 1.02, y: -4 }}
-                  onClick={() => setShowTourModal(true)}
-                  className="relative overflow-hidden bg-gradient-to-br from-[#0D601E]/5 via-white to-[#F00808]/5 rounded-[28px] p-12 border-2 border-dashed border-[#0D601E]/20 hover:border-[#0D601E]/40 transition-all cursor-pointer group"
-                >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#0D601E]/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
-                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-[#F00808]/5 rounded-full -ml-12 -mb-12 group-hover:scale-150 transition-transform duration-500" />
-                  
-                  <div className="relative z-10 flex flex-col items-center text-center">
-                    <motion.div 
-                      whileHover={{ rotate: 90 }}
-                      transition={{ duration: 0.3 }}
-                      className="w-20 h-20 bg-gradient-to-br from-[#0D601E] to-[#1A4D2E] rounded-[20px] flex items-center justify-center text-white mb-6 shadow-2xl group-hover:shadow-[0_20px_40px_rgba(13,96,30,0.3)]"
-                    >
-                      <FiPlus size={36} strokeWidth={3} />
-                    </motion.div>
-                    
-                    <h4 className="text-2xl font-black text-[#1A4D2E] mb-3">Crea tu primera experiencia</h4>
-                    <p className="text-sm text-[#769C7B] max-w-md mb-6 leading-relaxed">
-                      Diseña rutas personalizadas y comparte tu pasión por Guadalajara con pitzboleros de todo el mundo
-                    </p>
-                    
-                    <div className="inline-flex items-center gap-2 px-6 py-3 bg-[#0D601E] text-white rounded-xl font-bold text-sm group-hover:bg-[#094d18] transition-colors">
-                      Comenzar ahora
-                      <motion.span
-                        animate={{ x: [0, 4, 0] }}
-                        transition={{ duration: 1, repeat: Infinity }}
-                      >
-                        →
-                      </motion.span>
+                <div className="space-y-4">
+                  {/* Botón Minimalista para crear tour */}
+                  <motion.button 
+                    whileHover={{ scale: 1.01, backgroundColor: "#f9f9f9" }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => setShowTourModal(true)} 
+                    className="w-full py-5 border-2 border-dashed border-gray-200 rounded-[24px] flex items-center justify-center gap-3 text-gray-400 hover:text-[#0D601E] hover:border-[#0D601E]/30 transition-all group"
+                  >
+                    <div className="w-8 h-8 bg-gray-100 group-hover:bg-[#0D601E] group-hover:text-white rounded-full flex items-center justify-center transition-colors">
+                      <FiPlus size={18} />
                     </div>
-                  </div>
-                </motion.div>
+                    <span className="text-sm font-bold tracking-tight">Crear nueva experiencia</span>
+                  </motion.button>
+
+                  {/* Renderizado de tours  */}
+                  {tours.length === 0 && (
+                    <p className="text-center text-[11px] text-gray-400 italic py-4">
+                      Aún no has publicado experiencias. ¡Comienza creando una!
+                    </p>
+                  )}
+                </div>
               ) : (
-                <div className="relative overflow-hidden bg-gradient-to-br from-gray-50 to-white rounded-[28px] p-16 border-2 border-dashed border-gray-200">
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-[#F00808]/5 rounded-full -mr-20 -mt-20" />
-                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#0D601E]/5 rounded-full -ml-16 -mb-16" />
-                  
-                  <div className="relative z-10 flex flex-col items-center text-center">
-                    <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-[24px] flex items-center justify-center mb-6">
-                      <FiMap size={40} className="text-gray-400" />
+                /* Vista para Turista */
+                <div className="relative group cursor-pointer" onClick={() => window.location.href = '/tours'}>
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#0D601E]/5 to-[#F00808]/5 rounded-[24px] -z-10" />
+                  <div className="py-12 flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 border border-gray-50">
+                      <FiMap size={28} className="text-[#0D601E]" />
                     </div>
-                    <h4 className="text-2xl font-black text-[#1A4D2E] mb-3">¡Hora de explorar!</h4>
-                    <p className="text-sm text-[#769C7B] max-w-md mb-6">
-                      Descubre experiencias increíbles en Guadalajara durante el Mundial 2026
+                    <h4 className="text-lg font-black text-[#1A4D2E]">¿A dónde vamos hoy?</h4>
+                    <p className="text-xs text-[#769C7B] max-w-[200px] mt-1 mb-6">
+                      Encuentra el tour perfecto para tu visita a Guadalajara.
                     </p>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="px-8 py-4 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white rounded-xl font-black text-sm uppercase tracking-wider shadow-xl hover:shadow-2xl transition-all"
-                    >
-                      Explorar Tours
-                    </motion.button>
+                    <button className="px-6 py-2 bg-[#1A4D2E] text-white rounded-full text-[11px] font-bold uppercase tracking-widest shadow-lg">
+                      Explorar ahora
+                    </button>
                   </div>
                 </div>
               )}
