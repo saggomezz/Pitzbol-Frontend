@@ -341,53 +341,52 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
                 )}
 
                 {step === 4 && (
-                  <div className="flex flex-col items-center space-y-6">
-                    <div className="relative w-64 h-64 md:w-80 md:h-80 rounded-full overflow-hidden border-4 border-[#0D601E] shadow-2xl bg-black">
+                  <div className="flex flex-col items-center w-full max-w-sm mx-auto">
+                    <div className="w-64 md:w-72 text-center mb-4 space-y-1">
+                      <p className="text-[#1A4D2E] text-sm uppercase tracking-wide">
+                        {(!imgRostro && !isDebugMode) ? "Centra tu rostro" : "Validación lista"}
+                      </p>
+                    </div>
+                    <div className="relative w-64 h-80 md:w-55 md:h-77 rounded-[150px] overflow-hidden border-2 border-[#0D601E]/30 shadow-xl bg-black">
                       {!imgRostro ? (
                         <>
                           <Webcam
                             audio={false}
                             ref={webcamRef}
-                            screenshotFormat="image/jpeg"
                             className="w-full h-full object-cover"
+                            style={{ transform: "scaleX(-1)" }} 
                             videoConstraints={{ facingMode: "user" }}
                           />
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-[80%] h-[85%] border-2 border-dashed border-white/50 rounded-[100px] shadow-[0_0_0_999px_rgba(0,0,0,0.5)]"></div>
-                          </div>
-                          <div className="absolute bottom-4 left-0 right-0 text-center">
-                            <span className="bg-black/60 text-white text-[10px] px-3 py-1 rounded-full uppercase tracking-tighter">
-                                Posiciona tus ojos dentro de la guía
-                            </span>
+                            <div className="w-[82%] h-[82%] border border-dashed border-white/40 rounded-[120px] shadow-[0_0_0_999px_rgba(0,0,0,0.5)]"></div>
                           </div>
                         </>
                       ) : (
                         <img src={imgRostro} alt="Rostro" className="w-full h-full object-cover" />
                       )}
-                      <div className="absolute inset-0 border-[20px] border-white/10 rounded-full pointer-events-none shadow-inner" />
                     </div>
-
-                    <div className="text-center space-y-2">
-                      <p className="text-[#1A4D2E] font-bold">
-                        {(!imgRostro && !isDebugMode) ? "Centra tu rostro en el círculo" : "Validación lista"}
-                      </p>
-                      <p className="text-xs text-gray-500 italic px-4">
-                        {isDebugMode ? "MODO DEBUG: Validaciones omitidas" : "Esta foto se comparará con tu INE para validar tu identidad."}
-                      </p>
-                    </div>
-
+                    {!imgRostro && !isDebugMode && (
+                      <div className="mt-4 mb-6">
+                        <span className="text-[#0D601E] text-[10px] uppercase tracking-tighter bg-[#0D601E]/5 px-3 py-1 rounded-full border border-[#0D601E]/10">
+                          La foto se comparará con tu identificación oficial
+                        </span>
+                      </div>
+                    )}
+                    {(imgRostro || isDebugMode) && <div className="h-10" />}
                     {(!imgRostro && !isDebugMode) ? (
                       <button onClick={capturarFoto} className={btnPrimary}>
                         Capturar Rostro
                       </button>
                     ) : (
-                      <div className="flex flex-col gap-3 w-full items-center">
+                      <div className="flex flex-col gap-2 w-full items-center">
                         <button onClick={handleFinish} className={btnPrimary}>
                           Finalizar y Enviar Revisión
                         </button>
-                        {/* Solo mostrar repetir foto si NO estamos en debug, para no romper el flujo de prueba */}
                         {!isDebugMode && (
-                          <button onClick={() => setImgRostro(null)} className="text-[#8B0000] text-sm font-bold uppercase italic hover:underline">
+                          <button 
+                            onClick={() => setImgRostro(null)} 
+                            className="text-[#8B0000] text-[10px] uppercase hover:underline"
+                          >
                             Repetir foto
                           </button>
                         )}
