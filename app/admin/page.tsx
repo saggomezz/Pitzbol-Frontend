@@ -128,7 +128,7 @@ export default function AdminPerfil() {
       {/* Detalle del Guía */}
       <AnimatePresence>
         {selectedGuia && (
-          <div className="fixed inset-0 z-[500] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/10 backdrop-blur-sm">
+          <div className="fixed inset-0 top-22 z-[500] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/10 backdrop-blur-sm">
             <motion.div 
               initial={{ y: "100%" }} 
               animate={{ y: 0 }} 
@@ -184,21 +184,33 @@ export default function AdminPerfil() {
                         <FiFileText /> Credencial oficial (INE)
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        {/* Frente */}
                         <div className="space-y-2">
                           <p className="text-[10px] text-gray-400 uppercase font-bold pl-2">Frente</p>
-                          <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-                            <img src={selectedGuia["11_foto_frente"]} className="w-full h-auto" alt="INE Frente" />
+                          <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50 flex items-center justify-center min-h-[150px]">
+                            {selectedGuia["11_foto_frente"] ? (
+                              <img src={selectedGuia["11_foto_frente"]} className="w-full h-auto" alt="INE Frente" />
+                            ) : (
+                              <p className="text-[10px] text-gray-400 italic">Imagen no disponible</p>
+                            )}
                           </div>
                         </div>
+
+                        {/* Reverso */}
                         <div className="space-y-2">
                           <p className="text-[10px] text-gray-400 uppercase font-bold pl-2">Reverso</p>
-                          <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-                            <img src={selectedGuia["12_foto_reverso"]} className="w-full h-auto" alt="INE Reverso" />
+                          <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50 flex items-center justify-center min-h-[150px]">
+                            {selectedGuia["12_foto_reverso"] ? (
+                              <img src={selectedGuia["12_foto_reverso"]} className="w-full h-auto" alt="INE Reverso" />
+                            ) : (
+                              <p className="text-[10px] text-gray-400 italic">Imagen no disponible</p>
+                            )}
                           </div>
                         </div>
+
                       </div>
                     </div>
-
                     {/* Información de Contacto */}
                     <div className="p-6 bg-gray-50 rounded-[28px] border border-gray-100">
                       <p className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-4">Información de Contacto</p>
