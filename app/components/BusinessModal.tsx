@@ -84,11 +84,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input placeholder="Nombre del Negocio" className={inputClass} />
                         
-                        {/* Contenedor relativo corregido para evitar errores de consola */}
                         <div className="relative">
                           <select 
                             className={inputClass + " appearance-none cursor-pointer pr-10"}
-                            defaultValue="" // ✅ Maneja la opción inicial correctamente en React
+                            defaultValue="" 
                           >
                             <option value="" disabled>Categoría de Socio</option>
                             <option value="Restaurante / Bar">Restaurante / Bar</option>

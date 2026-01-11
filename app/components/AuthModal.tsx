@@ -25,6 +25,17 @@ declare global {
     onAuthSuccessShowBusiness?: () => void;
   }
 }
+
+const ErrorMsg = ({ text }: { text: string }) => (
+  <motion.p 
+    initial={{ opacity: 0, y: -10 }} 
+    animate={{ opacity: 1, y: 0 }} 
+    className="text-[10px] text-red-500 font-bold ml-4 mt-1 text-left"
+  >
+    {text}
+  </motion.p>
+);
+
 const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: boolean; onClose: () => void; intendedRole?: "turista" | "guia" | "negocio" }) => {
   const [isLogin, setIsLogin] = useState(false);
 
@@ -38,6 +49,9 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState<any>({});
+  const [generalError, setGeneralError] = useState("");
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
   // y datos de Login
   const [loginEmail, setLoginEmail] = useState("");
@@ -52,6 +66,28 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
   }, [nacionalidad]);
 
   const handleRegister = async () => {
+    setErrors({}); 
+    setGeneralError("");
+    let newErrors: any = {};
+
+    if (!regNombre.trim()) newErrors.nombre = true;
+    if (!regApellido.trim()) newErrors.apellido = true;
+    if (!nacionalidad) newErrors.nacionalidad = true;
+    if (telefono.replace(/\s/g, "").length < 10) {
+      newErrors.telefono = "Número incompleto";
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(regEmail)) newErrors.email = "Correo no válido";
+
+    if (regPassword.length < 6) newErrors.password = "Mínimo 6 caracteres";
+    if (regPassword !== regConfirmPassword) newErrors.confirmPassword = "Las contraseñas no coinciden";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     try {
       if (!regEmail || !regPassword || !regNombre) {
         alert("Por favor completa los campos obligatorios");
@@ -70,7 +106,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
           password: regPassword,
           nombre: regNombre,
           apellido: regApellido,
-          telefono,
+          telefono: telefono.replace(/\s/g, ""),
           nacionalidad,
           role: intendedRole
         }),
@@ -86,14 +122,14 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
           telefono: telefono,
           nacionalidad: nacionalidad,
           rol: "turista", 
-        role: "turista",
+          role: "turista",
           guide_status: "pendiente",
           uid: data.user?.uid
         };
         localStorage.setItem("pitzbol_user", JSON.stringify(userData));
         window.dispatchEvent(new Event("storage"));
 
-        // LÓGICA DE REDIRECCIÓN SEGÚN ROL 
+        // LOGICA DE REDIRECCIÓN SEGÚN ROL 
         if (intendedRole === "guia") {
           alert("Cuenta creada. Ahora completa tu información para ser guía.");
           onClose();
@@ -185,7 +221,10 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         </button>
 
         {/* --- INICIAR SESION --- */}
-        <div className="w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white">
+        <form 
+          onSubmit={(e) => { e.preventDefault(); handleLogin(); }}
+          className="w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white"
+        >
           <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-8 font-black text-center" style={{ fontFamily: 'var(--font-jockey)' }}>
             INICIAR SESIÓN
           </h2>
@@ -207,6 +246,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
                 />
                 <button
                   type="button"
+                  tabIndex={-1}
                   onClick={() => setShowLoginPassword(!showLoginPassword)}
                   className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E] transition-colors"
                 >
@@ -217,73 +257,155 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
                 <Link href="/forgot-password" onClick={onClose} className="text-[11px] md:text-[13px] text-gray-500 hover:text-[#0D601E] transition-colors italic">¿Olvidaste tu contraseña?</Link>
               </div>
             </div>
-            <button onClick={handleLogin} className="w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium mt-4">Iniciar sesión</button>
+            <button type="submit" className="w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium mt-4">Iniciar sesión</button>
           </div>
-        </div>
+        </form>
 
         {/* --- CREAR CUENTA --- */}
-        <div className="hidden md:flex w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white border-l border-gray-100">
+        <form 
+          onSubmit={(e) => { e.preventDefault(); handleRegister(); }}
+          className="hidden md:flex w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white border-l border-gray-100"
+        >
           <h2 className="text-[35px] md:text-[42px] text-[#8B0000] mb-6 font-black text-center" style={{ fontFamily: 'var(--font-jockey)' }}>CREAR UNA CUENTA</h2>
-          <div className="w-full max-w-sm grid grid-cols-2 gap-3 mb-5">
-            <input placeholder="Nombre(s)" className={inputClass} value={regNombre} onChange={(e) => setRegNombre(e.target.value)} />
-            <input placeholder="Apellido(s)" className={inputClass} value={regApellido} onChange={(e) => setRegApellido(e.target.value)} />
-            <div className="relative col-span-1">
-              <select value={nacionalidad} onChange={(e) => setNacionalidad(e.target.value)} className={inputClass + " appearance-none cursor-pointer pr-10"}>
-                <option value="" disabled>Nacionalidad</option>
-                {ALL_COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-              </select>
-              <FiChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" />
-            </div>
-            <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono" className={inputClass} />
-          </div>
-          <div className="w-full max-w-sm space-y-4">
-            <div className="relative text-left">
-              <FiMail className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
-              <input placeholder="Correo electrónico:" className={`${inputClass} pl-14`} value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
-            </div>
-            <div className="relative text-left">
-              <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
-              <input 
-                type={showRegPassword ? "text" : "password"} 
-                placeholder="Contraseña:" 
-                className={`${inputClass} pl-14 pr-12`} 
-                style={{ fontFamily: 'Inter, sans-serif' }}
-                value={regPassword}
-                onChange={(e) => setRegPassword(e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={() => setShowRegPassword(!showRegPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E] transition-colors"
-              >
-                {showRegPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-              </button>
-            </div>
-            <div className="relative text-left">
-              <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
-              <input 
-                type={showRegConfirmPassword ? "text" : "password"} 
-                placeholder="Confirmar contraseña:" 
-                className={`${inputClass} pl-14 pr-12`} 
-                style={{ fontFamily: 'Inter, sans-serif' }}
-                value={regConfirmPassword}
-                onChange={(e) => setRegConfirmPassword(e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E] transition-colors"
-              >
-                {showRegConfirmPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-              </button>
-            </div>
-            <div className="w-full flex justify-center mt-2">
-              <button onClick={handleRegister} className="w-3/4 bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium">Registrar</button>
-            </div>
-          </div>
-        </div>
+          <div className="w-full max-w-sm flex flex-col gap-y-5">
+            
+            {/* Fila 1: Nombre y Apellido */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
+                <input 
+                  placeholder="Nombre(s)" 
+                  className={`${inputClass} ${errors.nombre ? 'border-red-500 bg-red-50' : ''}`} 
+                  value={regNombre} 
+                  onChange={(e) => setRegNombre(capitalize(e.target.value))} 
+                />
+                <div className="absolute -bottom-4 left-0 w-full">
+                  {errors.nombre && <ErrorMsg text={errors.nombre} />}
+                </div>
+              </div>
 
-        {/* PANEL  */}
+              <div className="relative">
+                <input 
+                  placeholder="Apellido(s)" 
+                  className={`${inputClass} ${errors.apellido ? 'border-red-500 bg-red-50' : ''}`} 
+                  value={regApellido} 
+                  onChange={(e) => setRegApellido(capitalize(e.target.value))} 
+                />
+                <div className="absolute -bottom-4 left-0 w-full">
+                  {errors.apellido && <ErrorMsg text={errors.apellido} />}
+                </div>
+              </div>
+            </div>
+
+            {/* Fila 2: Nacionalidad y Teléfono */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
+                <div className="relative">
+                  <select 
+                    value={nacionalidad} 
+                    onChange={(e) => setNacionalidad(e.target.value)} 
+                    className={`${inputClass} appearance-none cursor-pointer pr-10 ${errors.nacionalidad ? 'border-red-500 bg-red-50' : ''}`}
+                  >
+                    <option value="" disabled>Nacionalidad</option>
+                    {ALL_COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  </select>
+                  <FiChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" />
+                </div>
+                <div className="absolute -bottom-4 left-0 w-full">
+                  {errors.nacionalidad && <ErrorMsg text={errors.nacionalidad} />}
+                </div>
+              </div>
+
+              <div className="relative">
+                <input 
+                  value={telefono} 
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    const country = ALL_COUNTRIES.find(c => c.name === nacionalidad);
+                    const lada = country ? country.lada : "";
+                    if (val === "") { setTelefono(""); return; }
+                    if (lada && !val.startsWith(lada)) { val = lada + " " + val.replace(/\D/g, ""); }
+                    const parts = val.split(lada);
+                    const body = parts.length > 1 ? parts[1] : "";
+                    const onlyNums = body.replace(/\D/g, "");
+                    if (onlyNums.length <= 12) {
+                      const finalValue = onlyNums.length > 0 ? `${lada} ${onlyNums}` : `${lada} `;
+                      setTelefono(finalValue);
+                    }
+                  }} 
+                  placeholder="Teléfono" 
+                  className={`${inputClass} ${errors.telefono ? 'border-red-500 bg-red-50' : ''}`} 
+                />
+                <div className="absolute -bottom-4 left-0 w-full">
+                  {errors.telefono && <ErrorMsg text={errors.telefono} />}
+                </div>
+              </div>
+            </div>
+
+            {/* Fila 3: Correo */}
+            <div className="relative">
+              <div className="relative text-left">
+                <FiMail className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
+                <input 
+                  placeholder="Correo electrónico:" 
+                  className={`${inputClass} pl-14 ${errors.email ? 'border-red-500 bg-red-50' : ''}`} 
+                  value={regEmail} 
+                  onChange={(e) => setRegEmail(e.target.value)} 
+                />
+              </div>
+              <div className="absolute -bottom-4 left-0 w-full">
+                {errors.email && <ErrorMsg text={errors.email} />}
+              </div>
+            </div>
+
+            {/* Fila 4: Contraseña */}
+            <div className="relative">
+              <div className="relative text-left">
+                <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
+                <input 
+                  type={showRegPassword ? "text" : "password"} 
+                  placeholder="Contraseña:" 
+                  className={`${inputClass} pl-14 pr-12 ${errors.password ? 'border-red-500 bg-red-50' : ''}`} 
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                />
+                <button type="button" tabIndex={-1} onClick={() => setShowRegPassword(!showRegPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E]">
+                  {showRegPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                </button>
+              </div>
+              <div className="absolute -bottom-4 left-0 w-full">
+                {errors.password && <ErrorMsg text={errors.password} />}
+              </div>
+            </div>
+
+            {/* Fila 5: Confirmar Contraseña */}
+            <div className="relative">
+              <div className="relative text-left">
+                <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
+                <input 
+                  type={showRegConfirmPassword ? "text" : "password"} 
+                  placeholder="Confirmar contraseña:" 
+                  className={`${inputClass} pl-14 pr-12 ${errors.confirmPassword ? 'border-red-500 bg-red-50' : ''}`} 
+                  value={regConfirmPassword}
+                  onChange={(e) => setRegConfirmPassword(e.target.value)}
+                />
+                <button type="button" tabIndex={-1} onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E]">
+                  {showRegConfirmPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                </button>
+              </div>
+              <div className="absolute -bottom-4 left-0 w-full">
+                {errors.confirmPassword && <ErrorMsg text={errors.confirmPassword} />}
+              </div>
+            </div>
+
+            {/* Botón */}
+            <div className="w-full flex justify-center pt-2">
+              <button type="submit" className="w-3/4 bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium">
+                Registrar
+              </button>
+            </div>
+          </div>
+        </form>
+
         <motion.div animate={{ x: isLogin ? 0 : "100%" }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="hidden md:flex absolute top-0 left-0 w-1/2 h-full bg-[#B2C7B5] z-[205] flex flex-col items-center justify-center p-8 md:p-12 text-center">
           <h2 className="text-[40px] md:text-[54px] text-[#1A4D2E] leading-none mb-4" style={{ fontFamily: 'var(--font-jockey)' }}>BIENVENIDO</h2>
           <p className="text-[#1A4D2E] mb-8 font-medium text-sm md:text-base">{isLogin ? "¿Ya tienes una cuenta?" : "¿No te has registrado?"}</p>

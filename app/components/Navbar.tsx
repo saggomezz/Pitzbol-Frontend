@@ -77,7 +77,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             </div>
 
             {/* BUSCADOR */}
-            <div className="hidden lg:flex flex-1 max-w-md mx-8 relative">
+            <div className="hidden lg:flex flex-1 max-w-[800px] mx-8 relative">
                 <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#769C7B]" size={18} />
                 <input 
                     type="text" 
@@ -127,7 +127,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             <div className="h-[1px] bg-gray-100 my-2 mx-2" />
                             <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-3 mb-1">Explorar</p>
                             <Link href="/mapa" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
-                                <FiMapPin /> Mapa de Lugares
+                                <FiMapPin /> Mapa
                             </Link>
 
                             <div className="h-[1px] bg-gray-100 my-3 mx-2" />
