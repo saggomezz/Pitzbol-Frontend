@@ -3,7 +3,16 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { FiChevronRight, FiFileText, FiLogOut, FiShield, FiUser, FiX, FiPhone } from "react-icons/fi";
 
+
 export default function AdminPerfil() {
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    
+    if (!user.uid || user.role !== "admin") {
+      window.location.href = "/"; 
+    }
+  }, []);
+  
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGuia, setSelectedGuia] = useState<any>(null);
