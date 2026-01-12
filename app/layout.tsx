@@ -11,6 +11,8 @@ import BusinessModal from "./components/BusinessModal";
 declare global {
   interface Window {
     onAuthSuccessShowGuide?: () => void;
+    onAuthSuccessShowBusiness?: () => void;
+    onAuthSuccessByRole?: (role: string) => void;
   }
 }
 
@@ -29,16 +31,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     window.onAuthSuccessShowGuide = () => {
       setIsAuthOpen(false); 
+      setPendingRole("guia");
       setTimeout(() => {
         setIsGuideOpen(true);
-      }, 400);
+      }, 500);
     };
 
-  (window as any).onAuthSuccessShowBusiness = () => {
+    window.onAuthSuccessShowBusiness = () => {
       setIsAuthOpen(false);
+      setPendingRole("negocio");
       setTimeout(() => {
         setIsBusinessOpen(true);
-      }, 400);
+      }, 500);
+    };
+    window.onAuthSuccessByRole = (role: string) => {
+      setIsAuthOpen(false);
+      
+      setTimeout(() => {
+        if (role === "admin") {
+          window.location.href = "/admin"; 
+        } else if (role === "guia") {
+          setIsGuideOpen(true);
+        } else if (role === "negocio") {
+          setIsBusinessOpen(true);
+        } else {
+          window.location.href = "/perfil";
+        }
+      }, 500);
     };
   }, []);
 
@@ -54,7 +73,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           onOpenBusiness={() => setIsBusinessOpen(true)} 
         />
 
-        <main className="relative z-10">{children}</main>
+        <main className="relative z-10 min-h-screen">
+          {children}
+        </main>
 
         <Footer />
 
