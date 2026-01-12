@@ -5,12 +5,13 @@ import { useEffect, useState, useRef } from "react";
 import Webcam from "react-webcam"; // Librería para la cámara
 import { FiChevronLeft, FiFileText, FiX, FiCheck, FiShield, FiCamera } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
+import * as faceapi from 'face-api.js';
 
 const CATEGORIES = ["Arte", "Cultural", "Gastronómico", "Vida Nocturna", "Deportiva", "Aventura", "Arquitectura", "Naturaleza"];
 
 const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose: () => void; onOpenAuth?: () => void; }) => {
   const [userLocal, setUserLocal] = useState<any>(null);
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(1);
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
   const [isFinishing, setIsFinishing] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -23,61 +24,134 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
   const [imgFrenteBase64, setImgFrenteBase64] = useState<string | null>(null);  //para guardar las imágenes y enviarlas al final
   const [imgVueltaBase64, setImgVueltaBase64] = useState<string | null>(null);
   const [faceCaptured, setFaceCaptured] = useState<string | null>(null);
-  const webcamRef = useRef<Webcam>(null); 
+  const webcamRef = useRef<Webcam | null>(null);
   const [imgRostro, setImgRostro] = useState<string | null>(null);
-  const [isFaceAligned, setIsFaceAligned] = useState(false);
-  const [verifyingFace, setVerifyingFace] = useState(false);
-
-  // BORRAR DESPUES - FUNCION PARA SALTAR SEGURIDAD EN PRUEBAS
-  const [ineFrente, setIneFrente] = useState<string | null>(null);
-  const [ineReverso, setIneReverso] = useState<string | null>(null);
-  const [facePhoto, setFacePhoto] = useState<string | null>(null);
-  const [extractedRFC, setExtractedRFC] = useState<string>("");
-  const [isDebugMode, setIsDebugMode] = useState(false);
-
-  const handleSkipSecurity = () => {
-      // Pixel blanco para simular las imágenes
-      const fakeImage = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"; 
-      
-      setIsDebugMode(true);
-      setIneFrente(fakeImage);
-      setIneReverso(fakeImage);
-      setDocsUploaded({ frente: true, vuelta: true });
-      setImgRostro(fakeImage); 
-      setFacePhoto(fakeImage); 
-      setRfc("XAXX010101000");
-      setFormData(prev => ({ ...prev, codigoPostal: "44100" }));
-      setStep(4); 
-      
-      alert("⚡ Modo Debug: Cámara desactivada y datos cargados.");
-  };
-  // HASTA AQUI
-  
-  const capturarFoto = () => {
-    const screenshot = webcamRef.current?.getScreenshot();
-    if (screenshot) {
-      setImgRostro(screenshot);
-    }
-  };
+  const [verifyingFace, setVerifyingFace] = useState(false); 
+  const [isScannerActive, setIsScannerActive] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("Esperando inicio...");
+  const [matchingScore, setMatchingScore] = useState(0);
+  const [ineDescriptor, setIneDescriptor] = useState<any>(null);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       const stored = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
       if (stored.uid) {
         setUserLocal(stored);
-        setStep(1); 
-      } else {
-        setUserLocal(null);
-        setStep(0);
       }
+
+      setStep(1); 
+
       setIsFinishing(false);
       setShowConfirmation(false);
       setErrorMsg("");
       setDocsUploaded({ frente: false, vuelta: false });
       setImgFrenteBase64(null);
       setImgVueltaBase64(null);
+      setImgRostro(null);
+      setIsScannerActive(false);
+      setMatchingScore(0);
+      setStatusMsg("Esperando inicio...");
     }
   }, [isOpen]);
+
+  const verificarEnVivo = async () => {
+    const video = webcamRef.current?.video; 
+    
+    if (!video || video.readyState !== 4 || !isScannerActive || !modelsLoaded || imgRostro) return;
+
+    try {
+      const detection = await faceapi.detectSingleFace(
+        video, 
+        new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })
+      ).withFaceLandmarks().withFaceDescriptor();
+
+      if (detection) {
+        let score = 0;
+        if (ineDescriptor) {
+          const distance = faceapi.euclideanDistance(ineDescriptor, detection.descriptor);
+          score = Math.round(Math.max(0, (1 - (distance / 0.8)) * 100));
+        } else {
+          score = 50; 
+        }
+
+        setMatchingScore(score);
+        setStatusMsg("Analizando rostro...");
+
+        setTimeout(() => {
+          const screenshot = webcamRef.current?.getScreenshot();
+          if (screenshot && !imgRostro) {
+            setImgRostro(screenshot);
+            setIsScannerActive(false);
+            setStatusMsg("✓ Captura finalizada");
+          }
+        }, 800);
+      } else {
+        setMatchingScore(0);
+        setStatusMsg("Centra tu rostro en la guía");
+      }
+    } catch (err) {
+      console.error("Error en detección:", err);
+    }
+  };
+
+  useEffect(() => {
+    let interval: any;
+    if (step === 4 && isScannerActive && !imgRostro && modelsLoaded) {
+      interval = setInterval(() => {
+        verificarEnVivo();
+      }, 500);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [step, isScannerActive, imgRostro, modelsLoaded, ineDescriptor]);
+
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const MODEL_URL = "/models"; 
+        await faceapi.loadSsdMobilenetv1Model(MODEL_URL);
+        await faceapi.loadFaceLandmarkModel(MODEL_URL);
+        await faceapi.loadFaceRecognitionModel(MODEL_URL);
+
+        console.log("✅ Modelos cargados");
+        setModelsLoaded(true);
+        setStatusMsg("Sistema listo");
+      } catch (err) {
+        console.error("❌ Error al cargar modelos:", err);
+        setStatusMsg("Error al cargar modelos");
+      }
+    };
+    
+    if (isOpen && !modelsLoaded) {
+      loadModels();
+    }
+  }, [isOpen, modelsLoaded]);
+
+  useEffect(() => {
+    if (imgFrenteBase64 && step === 4 && modelsLoaded) {
+      const extract = async () => {
+        setVerifyingFace(true); 
+        try {
+          const img = await faceapi.fetchImage(imgFrenteBase64);
+          const detection = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+          
+          if (detection) {
+            setIneDescriptor(detection.descriptor);
+            console.log("✅ Descriptor de INE generado correctamente");
+          } else {
+            setErrorMsg("No se detectó un rostro claro en la foto de tu INE.");
+          }
+        } catch (e) { 
+          console.error("Error procesando imagen de INE:", e); 
+        } finally {
+          setVerifyingFace(false);
+        }
+      };
+      extract();
+    }
+  }, [imgFrenteBase64, step, modelsLoaded]);
 
   const nextStep = () => {
     if (step === 1 && selectedCats.length === 0) {
@@ -136,81 +210,69 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
     };
   };
 
+  interface BioResponse {
+    success: boolean;
+    confidence: string;
+    nivelPrioridad: string;
+    isMatch: boolean;
+    message: string;
+  }
+
   const handleFinish = async () => {
-      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-      setIsFinishing(true);
-      setErrorMsg("");
+    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    setIsFinishing(true);
+    setErrorMsg("");
+
+    try {
+      let bioData = { confidence: "0", nivelPrioridad: "BAJA", isMatch: false };
 
       try {
-          let bioData = { success: true, confidence: "100", message: "Saltado por Debug" };
+        const bioRes = await fetch('http://localhost:3001/api/ocr/compare-biometry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ faceBase64: imgRostro, ineBase64: imgFrenteBase64 })
+        });
+        const data = await bioRes.json();
+        if (data.success) bioData = data;
+      } catch (e) { console.error("Biometría omitida, se requiere revisión manual."); }
 
-          if (!isDebugMode) {
-              const bioRes = await fetch('http://localhost:3001/api/ocr/compare-biometry', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ 
-                      faceBase64: imgRostro, 
-                      ineBase64: imgFrenteBase64 
-                  })
-              });
-
-              const contentType = bioRes.headers.get("content-type");
-              if (!contentType || !contentType.includes("application/json")) {
-                  throw new Error("El servidor no respondió con JSON.");
-              }
-
-              bioData = await bioRes.json();
-
-              if (!bioData.success) {
-                  setErrorMsg("La validación facial falló: " + bioData.message);
-                  setIsFinishing(false);
-                  return;
-              }
+      const response = await fetch('http://localhost:3001/api/guides/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: userLocal?.uid,
+          nombre: userLocal?.nombre,
+          apellido: userLocal?.apellido,
+          email: userLocal?.email,
+          telefono: userLocal?.telefono,
+          nacionalidad: userLocal?.nacionalidad,
+          rfc,
+          codigoPostal: formData.codigoPostal,
+          categorias: selectedCats,
+          ineFrente: imgFrenteBase64,
+          ineReverso: imgVueltaBase64,
+          facePhoto: imgRostro,
+          validacion_biometrica: {
+            porcentaje: bioData.confidence || matchingScore.toString(),
+            nivel: matchingScore > 60 ? "ALTA" : "BAJA", 
+            mensaje: matchingScore > 60 
+              ? "Coincidencia probable" 
+              : "Revisión manual necesaria (Diferencias detectadas)"
           }
+        }),
+      });
 
-          const payload = {
-              uid: userLocal?.uid,
-              nombre: userLocal?.nombre,
-              apellido: userLocal?.apellido,
-              email: userLocal?.email, 
-              telefono: userLocal?.telefono,
-              nacionalidad: userLocal?.nacionalidad, 
-              rfc: rfc,
-              codigoPostal: formData.codigoPostal,
-              categorias: selectedCats,
-              ineFrente: imgFrenteBase64,
-              ineReverso: imgVueltaBase64,
-              facePhoto: imgRostro,
-              validacion_biometrica: {
-                  coincide: bioData.success,
-                  porcentaje: bioData.confidence,
-                  mensaje: bioData.message
-              }
-          };
-
-          const response = await fetch('http://localhost:3001/api/guides/register', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-          });
-
-          if (response.ok) {
-              const updatedUser = { ...userLocal, guide_status: "pendiente", "07_especialidades": selectedCats, especialidades: selectedCats };
-              localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
-              localStorage.setItem("pitzbol_guide_submitted", "true");
-              window.dispatchEvent(new Event("storage"));
-              
-              setShowConfirmation(true);
-          } else {
-              const errData = await response.json();
-              setErrorMsg(errData.msg || "Error al guardar perfil.");
-          }
-      } catch (e: any) {
-          console.error("Error detallado:", e);
-          setErrorMsg("Error de conexión: Verifica el servidor.");
-      } finally {
-          setIsFinishing(false);
+      if (response.ok) {
+        const updatedUser = { ...userLocal, guide_status: "pendiente", especialidades: selectedCats };
+        localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
+        window.dispatchEvent(new Event("storage"));
+        setShowConfirmation(true);
+      } else {
+        const err = await response.json();
+        setErrorMsg(err.msg || "Error al guardar perfil.");
       }
+    } catch (e) { setErrorMsg("Error de conexión con el servidor.");
+    } finally { setIsFinishing(false); }
   };
 
   if (!isOpen) return null;
@@ -232,22 +294,9 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
             <button onClick={onClose} className="text-gray-400 hover:text-red-500 transition-all"><FiX size={28} /></button>
           </div>
         )}
-        {/* BOTÓN TEMPORAL DE DEBUG */}
-        {!isFinishing && !showConfirmation && (
-          <button 
-            type="button"
-            onClick={(e) => {
-                e.preventDefault();
-                handleSkipSecurity();
-            }}
-            className="absolute bottom-4 right-6 z-[350]  hover:bg-yellow-400 text-[#1A4D2E] text-[9px] font-black px-3 py-1.5 rounded-full shadow-lg transition-all tracking-tighter"
-          >
-            Skip
-          </button>
-        )}
         <div className="w-full h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white relative">
           <AnimatePresence mode="wait">
-            {(isFinishing || verifyingOCR) ? (
+            {(isFinishing || verifyingOCR || verifyingFace) ? (
               <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center text-center">
                 <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="relative w-48 h-48 md:w-64 md:h-64 mb-10">
                   <Image src={imglogo} alt="Pitzbol" fill className="object-contain" />
@@ -342,56 +391,84 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
 
                 {step === 4 && (
                   <div className="flex flex-col items-center w-full max-w-sm mx-auto">
-                    <div className="w-64 md:w-72 text-center mb-4 space-y-1">
-                      <p className="text-[#1A4D2E] text-sm uppercase tracking-wide">
-                        {(!imgRostro && !isDebugMode) ? "Centra tu rostro" : "Validación lista"}
-                      </p>
-                    </div>
-                    <div className="relative w-64 h-80 md:w-55 md:h-77 rounded-[150px] overflow-hidden border-2 border-[#0D601E]/30 shadow-xl bg-black">
+                    {verifyingFace && (
+                      <div className="absolute top-20 flex items-center gap-2 bg-[#0D601E]/10 px-4 py-2 rounded-full border border-[#0D601E]/20 z-20">
+                        <div className="w-3 h-3 border-2 border-[#0D601E] border-t-transparent rounded-full animate-spin" />
+                        <span className="text-[10px] font-bold text-[#0D601E] uppercase">Analizando INE...</span>
+                      </div>
+                    )}
+                    <div className="relative w-64 h-80 md:w-72 md:h-96 rounded-[150px] overflow-hidden border-4 border-[#0D601E]/20 bg-black shadow-2xl">
                       {!imgRostro ? (
                         <>
-                          <Webcam
-                            audio={false}
-                            ref={webcamRef}
-                            className="w-full h-full object-cover"
-                            style={{ transform: "scaleX(-1)" }} 
-                            videoConstraints={{ facingMode: "user" }}
+                          <Webcam 
+                            audio={false} 
+                            ref={webcamRef} 
+                            screenshotFormat="image/jpeg" 
+                            screenshotQuality={1} 
+                            className="w-full h-full object-cover scale-x-[-1]"
+                            videoConstraints={{ width: 1280, height: 720, facingMode: "user" }}
                           />
+                        
+                          {!isScannerActive && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center p-6 text-center z-10">
+                              <p className="text-white text-sm italic">
+                                {!modelsLoaded ? "Cargando IA..." : "Presiona el botón para iniciar la validación"}
+                              </p>
+                            </div>
+                          )}
+
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-[82%] h-[82%] border border-dashed border-white/40 rounded-[120px] shadow-[0_0_0_999px_rgba(0,0,0,0.5)]"></div>
+                            <div className={`w-[85%] h-[85%] border-2 border-dashed rounded-[120px] transition-colors duration-500 ${isScannerActive && matchingScore > 50 ? 'border-[#0D601E]' : 'border-white/30'}`} />
                           </div>
                         </>
                       ) : (
                         <img src={imgRostro} alt="Rostro" className="w-full h-full object-cover" />
                       )}
                     </div>
-                    {!imgRostro && !isDebugMode && (
-                      <div className="mt-4 mb-6">
-                        <span className="text-[#0D601E] text-[10px] uppercase tracking-tighter bg-[#0D601E]/5 px-3 py-1 rounded-full border border-[#0D601E]/10">
-                          La foto se comparará con tu identificación oficial
-                        </span>
+                    <div className="mt-6 w-full text-center space-y-3">
+                      <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden mx-auto max-w-[200px]">
+                        <motion.div 
+                          className="h-full bg-[#0D601E]" 
+                          animate={{ width: `${matchingScore}%` }}
+                        />
                       </div>
-                    )}
-                    {(imgRostro || isDebugMode) && <div className="h-10" />}
-                    {(!imgRostro && !isDebugMode) ? (
-                      <button onClick={capturarFoto} className={btnPrimary}>
-                        Capturar Rostro
-                      </button>
-                    ) : (
-                      <div className="flex flex-col gap-2 w-full items-center">
-                        <button onClick={handleFinish} className={btnPrimary}>
-                          Finalizar y Enviar Revisión
+                      <div className="h-6">
+                        <p className={`text-[11px] font-black uppercase tracking-widest ${imgRostro ? 'text-[#0D601E]' : 'text-gray-500'}`}>
+                          {imgRostro ? "✓ Identidad Confirmada" : isScannerActive ? statusMsg : "Listo para escanear"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 w-full flex justify-center">
+                      {!imgRostro ? (
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setIsScannerActive(true);
+                            setStatusMsg("Buscando rostro...");
+                          }} 
+                          disabled={!modelsLoaded || isScannerActive || verifyingFace}
+                          className={`${btnPrimary} ${(!modelsLoaded || isScannerActive || verifyingFace) ? 'opacity-50 cursor-not-allowed' : 'opacity-100 hover:scale-105'}`}
+                        >
+                          {!modelsLoaded ? "Iniciando IA..." : isScannerActive ? "Escaneando..." : "Empezar Validación"}
                         </button>
-                        {!isDebugMode && (
+                      ) : (
+                        <div className="flex flex-col gap-3 w-full items-center">
+                          <button onClick={handleFinish} className={btnPrimary}>Finalizar Registro</button>
                           <button 
-                            onClick={() => setImgRostro(null)} 
-                            className="text-[#8B0000] text-[10px] uppercase hover:underline"
+                            onClick={() => { 
+                              setImgRostro(null); 
+                              setIsScannerActive(false); 
+                              setMatchingScore(0);
+                              setStatusMsg("Sistema listo"); 
+                            }} 
+                            className="text-[#8B0000] text-[10px] font-bold uppercase underline tracking-tighter"
                           >
-                            Repetir foto
+                            Repetir Escaneo
                           </button>
-                        )}
-                      </div>
-                    )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </motion.div>
