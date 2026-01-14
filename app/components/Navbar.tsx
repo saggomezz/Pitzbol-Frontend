@@ -9,6 +9,7 @@ import { FiBriefcase,FiCalendar, FiClock, FiCreditCard, FiHeart, FiHome, FiInfo,
 } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
+import NotificationsPanel from "./NotificationsPanel";
 
 interface NavbarProps {
     onOpenAuth: () => void;
@@ -99,6 +100,9 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                 <Link href="/"><FiHome size={22} className="hover:text-[#F00808] transition-colors" title="Home" /></Link>
                 <Link href="/favoritos"><FiHeart size={22} className="hover:text-[#F00808] transition-colors" title="Favoritos" /></Link>
                 <Link href="/calendario"><FiCalendar size={22} className="hover:text-[#F00808] transition-colors" title="Calendario" /></Link>
+
+                {/* Panel de Notificaciones */}
+                {user && <NotificationsPanel userId={user.uid} />}
 
                 <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 z-[110] bg-white/40 rounded-full hover:bg-white transition-all shadow-sm">
                     {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
