@@ -224,7 +224,7 @@ if (!isOpen) return null;
         animate={{ 
           y: 0,
           height: typeof window !== 'undefined' && window.innerWidth < 768 
-            ? (isLogin ? "55vh" : "85vh") 
+            ? (isLogin ? "75vh" : "85vh") 
             : "600px" 
         }}
         exit={{ y: "100%" }}
@@ -234,10 +234,12 @@ if (!isOpen) return null;
         {/* Barra de arrastre visual solo móvil */}
         <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-4 md:hidden mb-2" />
 
-        <button onClick={onClose} className="absolute top-4 md:top-6 right-6 md:right-8 z-[210] text-gray-400 hover:text-red-500 transition-all">
+        <button 
+          onClick={onClose} 
+          className="absolute top-4 md:top-6 right-6 md:right-8 z-[210] text-gray-400 hover:text-red-500 transition-all"
+        >
           <FiX size={28} />
         </button>
-
         {/* --- LADO IZQUIERDO: INICIAR SESIÓN --- */}
         <form 
           onSubmit={(e) => { e.preventDefault(); handleLogin(); }}
@@ -272,9 +274,9 @@ if (!isOpen) return null;
             </div>
             <button type="submit" className="w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium mt-4">Iniciar sesión</button>
             
-            {/* Alternar a Registro en móvil - Texto en minúsculas y enlace en rojo */}
-            <div className="md:hidden mt-8">
-               <p className="text-gray-500 text-xs">¿No te has registrado? <button type="button" onClick={() => setIsLogin(false)} className="text-[#8B0000] font-bold underline italic">crear cuenta</button></p>
+            {/* Alternar a Registro en móvil*/}
+            <div className="md:hidden mt-8 ">
+               <p className="text-gray-500 text-xs">¿No te has registrado? <button type="button" onClick={() => setIsLogin(false)} className="text-[#8B0000] font-bold underline italic">Crear cuenta</button></p>
             </div>
           </div>
         </form>
@@ -298,12 +300,58 @@ if (!isOpen) return null;
               <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono" className={inputClass} />
             </div>
             <input placeholder="Correo electrónico" className={inputClass} value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
-            <input type="password" placeholder="Contraseña" className={inputClass} value={regPassword} onChange={(e) => setRegPassword(e.target.value)} />
-            <input type="password" placeholder="Confirmar contraseña" className={inputClass} value={regConfirmPassword} onChange={(e) => setRegConfirmPassword(e.target.value)} />
-            
+            {/* Fila 4: Contraseña */}
+            <div className="relative">
+              <div className="relative text-left">
+                <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
+                <input 
+                  type={showRegPassword ? "text" : "password"} 
+                  placeholder="Contraseña:" 
+                  className={`${inputClass} pl-14 pr-12 ${errors.password ? 'border-red-500 bg-red-50' : ''}`} 
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                />
+                <button 
+                  type="button" 
+                  tabIndex={-1} 
+                  onClick={() => setShowRegPassword(!showRegPassword)} 
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E]"
+                >
+                  {showRegPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                </button>
+              </div>
+              <div className="absolute -bottom-4 left-0 w-full">
+                {errors.password && <ErrorMsg text={errors.password} />}
+              </div>
+            </div>
+
+            {/* Fila 5: Confirmar Contraseña */}
+            <div className="relative">
+              <div className="relative text-left">
+                <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
+                <input 
+                  type={showRegConfirmPassword ? "text" : "password"} 
+                  placeholder="Confirmar contraseña:" 
+                  className={`${inputClass} pl-14 pr-12 ${errors.confirmPassword ? 'border-red-500 bg-red-50' : ''}`} 
+                  value={regConfirmPassword}
+                  onChange={(e) => setRegConfirmPassword(e.target.value)}
+                />
+                <button 
+                  type="button" 
+                  tabIndex={-1} 
+                  onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)} 
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E]"
+                >
+                  {showRegConfirmPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                </button>
+              </div>
+              <div className="absolute -bottom-4 left-0 w-full">
+                {errors.confirmPassword && <ErrorMsg text={errors.confirmPassword} />}
+              </div>
+            </div>
             <button type="submit" className="w-full bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium">Registrar</button>
             
-            {/* Alternar a Login en móvil - Texto en minúsculas y enlace en rojo */}
+            {/* Alternar a Login en móvil */}
             <div className="md:hidden text-center mt-4 pb-4">
                <p className="text-gray-500 text-xs">¿Ya tienes cuenta? <button type="button" onClick={() => setIsLogin(true)} className="text-[#8B0000] font-bold underline italic">iniciar sesión</button></p>
             </div>
