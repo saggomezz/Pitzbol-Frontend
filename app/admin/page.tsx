@@ -1,8 +1,12 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { FiChevronRight, FiFileText, FiLogOut, FiShield, FiUser, FiX, FiPhone } from "react-icons/fi";
+import { FiChevronRight, FiFileText, FiLogOut, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle } from "react-icons/fi";
 
+type NotificationType = {
+  tipo: 'exito' | 'error' | 'info';
+  mensaje: string;
+};
 
 export default function AdminPerfil() {
   useEffect(() => {
@@ -16,6 +20,8 @@ export default function AdminPerfil() {
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGuia, setSelectedGuia] = useState<any>(null);
+  const [procesando, setProcesando] = useState(false);
+  const [notificacion, setNotificacion] = useState<NotificationType | null>(null);
 
   useEffect(() => {
     fetchSolicitudes();
@@ -23,7 +29,12 @@ export default function AdminPerfil() {
 
   const fetchSolicitudes = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/admin/solicitudes-pendientes');
+      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const token = localStorage.getItem('pitzbol_token');
+      const response = await fetch(`${API_BASE}/api/admin/solicitudes-pendientes`, {
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
+      });
       
       if (!response.ok) {
         console.error("Error en respuesta:", response.status);
@@ -39,20 +50,57 @@ export default function AdminPerfil() {
     }
   };
 
+  const mostrarNotificacion = (tipo: 'exito' | 'error' | 'info', mensaje: string) => {
+    setNotificacion({ tipo, mensaje });
+    setTimeout(() => setNotificacion(null), 5000);
+  };
+
   const handleDecision = async (uid: string, accion: 'aprobar' | 'rechazar') => {
+    setProcesando(true);
+    
+    console.log('🔍 Procesando solicitud:', { uid, accion });
+    
     try {
-      const response = await fetch('http://localhost:3001/api/admin/gestionar-guia', {
+      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const token = localStorage.getItem('pitzbol_token');
+      const response = await fetch(`${API_BASE}/api/admin/gestionar-guia`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
         body: JSON.stringify({ uid, accion })
       });
 
-      if (response.ok) {
+      const data = await response.json();
+      console.log('📦 Respuesta del servidor:', { status: response.status, data });
+
+      if (response.ok && data.success) {
+        // Remover de la lista local
         setSolicitudes(prev => prev.filter(s => s.uid !== uid));
         setSelectedGuia(null);
+        
+        // Mostrar notificación de éxito
+        mostrarNotificacion(
+          'exito',
+          accion === 'aprobar' 
+            ? 'Guía aprobado exitosamente. El usuario ha sido notificado.' 
+            : 'Solicitud rechazada. El usuario permanece como turista.'
+        );
+      } else {
+        // Error del servidor
+        console.error('❌ Error del servidor:', data);
+        mostrarNotificacion('error', data.message || 'No se pudo procesar la solicitud');
+        
+        // Si la solicitud ya no existe, refrescar la lista
+        if (response.status === 404) {
+          setSelectedGuia(null);
+          await fetchSolicitudes();
+        }
       }
     } catch (error) {
-      alert("Error al procesar la solicitud");
+      console.error('💥 Error al procesar solicitud:', error);
+      mostrarNotificacion('error', 'Error de conexión. Verifica que el backend esté funcionando.');
+    } finally {
+      setProcesando(false);
     }
   };
 
@@ -243,19 +291,104 @@ export default function AdminPerfil() {
               <div className="p-8 border-t border-gray-50 flex gap-4 bg-gray-50/50">
                 <button 
                   onClick={() => handleDecision(selectedGuia.uid, 'rechazar')}
-                  className="flex-1 py-4 bg-white text-red-400 rounded-2xl text-sm font-light border border-red-50 hover:bg-red-50 transition-all"
+                  disabled={procesando}
+                  className="flex-1 py-4 bg-white text-red-400 rounded-2xl text-sm font-medium border border-red-50 hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Rechazar registro
+                  {procesando ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full"
+                      />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <FiX size={18} />
+                      Rechazar registro
+                    </>
+                  )}
                 </button>
                 <button 
                   onClick={() => handleDecision(selectedGuia.uid, 'aprobar')}
-                  className="flex-1 py-4 bg-green-600 text-white rounded-2xl text-sm font-medium shadow-sm hover:bg-green-700 transition-all"
+                  disabled={procesando}
+                  className="flex-1 py-4 bg-green-600 text-white rounded-2xl text-sm font-medium shadow-sm hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Aprobar como guía oficial
+                  {procesando ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                      />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <FiCheck size={18} />
+                      Aprobar como guía oficial
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Sistema de Notificaciones */}
+      <AnimatePresence>
+        {notificacion && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -50, scale: 0.9 }}
+            className="fixed top-8 right-8 z-[600] max-w-md"
+          >
+            <div className={`rounded-[24px] shadow-2xl p-6 border-4 border-white ${
+              notificacion.tipo === 'exito' 
+                ? 'bg-gradient-to-r from-green-500 to-green-600' 
+                : notificacion.tipo === 'error'
+                ? 'bg-gradient-to-r from-red-500 to-red-600'
+                : 'bg-gradient-to-r from-blue-500 to-blue-600'
+            }`}>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", stiffness: 200 }}
+                    className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center"
+                  >
+                    {notificacion.tipo === 'exito' ? (
+                      <FiCheck className="text-green-600" size={24} strokeWidth={3} />
+                    ) : notificacion.tipo === 'error' ? (
+                      <FiAlertCircle className="text-red-600" size={24} strokeWidth={3} />
+                    ) : (
+                      <FiShield className="text-blue-600" size={24} strokeWidth={3} />
+                    )}
+                  </motion.div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-white font-bold text-lg mb-1">
+                    {notificacion.tipo === 'exito' ? '¡Operación Exitosa!' : 
+                     notificacion.tipo === 'error' ? 'Error en la Operación' : 
+                     'Información'}
+                  </h3>
+                  <p className="text-white/90 text-sm font-medium leading-relaxed">
+                    {notificacion.mensaje}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setNotificacion(null)}
+                  className="flex-shrink-0 text-white/60 hover:text-white transition-colors"
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
