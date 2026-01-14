@@ -16,7 +16,7 @@ export default function AdminPerfil() {
       window.location.href = "/"; 
     }
   }, []);
-  
+
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGuia, setSelectedGuia] = useState<any>(null);
