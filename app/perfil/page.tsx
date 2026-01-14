@@ -74,6 +74,19 @@ export default function PerfilDetallado() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null); 
 
+  // Función para refrescar los datos del perfil desde localStorage
+  const refrescarEspecialidades = () => {
+    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    if (userLocal.especialidades) {
+      setEspecialidades(userLocal.especialidades);
+      setPerfil((prev: any) => ({
+        ...prev,
+        especialidades: userLocal.especialidades
+      }));
+      setEspecialidadesTemp(userLocal.especialidades);
+    }
+  }; 
+
   const [editandoNacionalidad, setEditandoNacionalidad] = useState(false);
   const [nacionalidadTemp, setNacionalidadTemp] = useState("");
   const [errorNacionalidad, setErrorNacionalidad] = useState("");
@@ -187,6 +200,24 @@ export default function PerfilDetallado() {
       setLoading(false);
     };
     cargarDatos();
+  }, []);
+
+  // Escuchar cambios en el localStorage (cuando se cierren modales)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      refrescarEspecialidades();
+    };
+
+    // Escuchar cambios del localStorage
+    window.addEventListener("storage", handleStorageChange);
+    
+    // También escuchar un evento personalizado para cambios en la misma pestaña
+    window.addEventListener("especialidadesActualizadas", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("especialidadesActualizadas", handleStorageChange);
+    };
   }, []);
 
   const guardarTelefono = async () => {
