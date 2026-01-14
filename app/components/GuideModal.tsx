@@ -7,7 +7,17 @@ import { FiCheck, FiChevronLeft, FiFileText, FiShield, FiX } from "react-icons/f
 import Webcam from "react-webcam"; // Librería para la cámara
 import imglogo from "./logoPitzbol.png";
 
-const CATEGORIES = ["Arte", "Cultural", "Gastronómico", "Vida Nocturna", "Deportiva", "Aventura", "Arquitectura", "Naturaleza"];
+// Intereses que coinciden exactamente con los del perfil
+const CATEGORIES = [
+  "Arte e Historia",
+  "Cultura",
+  "Gastronomía",
+  "Vida Nocturna",
+  "Deporte Fútbol",
+  "Aventura",
+  "Arquitectura",
+  "Naturaleza"
+];
 
 const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose: () => void; onOpenAuth?: () => void; }) => {
   const [userLocal, setUserLocal] = useState<any>(null);
@@ -30,16 +40,43 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
   const [isScannerActive, setIsScannerActive] = useState(false);
   const [faceapi, setFaceapi] = useState<any>(null);
 
-  // Cargar face-api.js dinámicamente solo en el cliente
-  useEffect(() => {
-    const loadFaceApi = async () => {
-      if (typeof window !== 'undefined' && !faceapi) {
-        const faceApiModule = await import('face-api.js');
-        setFaceapi(faceApiModule);
+  // Función para guardar automáticamente los intereses en la BD
+  const guardarInteresesEnBD = async (nuevosIntereses: string[]) => {
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      if (!token) {
+        console.error("No hay token disponible");
+        return;
       }
-    };
-    loadFaceApi();
-  }, []);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"}/api/auth/update-profile`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ especialidades: nuevosIntereses })
+      });
+
+      if (response.ok) {
+        // Actualizar localStorage con los nuevos intereses
+        const stored = localStorage.getItem("pitzbol_user");
+        const user = stored ? JSON.parse(stored) : {};
+        const updated = { ...user, especialidades: nuevosIntereses };
+        localStorage.setItem("pitzbol_user", JSON.stringify(updated));
+        
+        // Disparar evento personalizado para que el perfil se actualice
+        window.dispatchEvent(new Event("especialidadesActualizadas"));
+        
+        console.log("✅ Intereses guardados automáticamente:", nuevosIntereses);
+      } else {
+        console.error("Error al guardar intereses:", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error al guardar intereses en BD:", error);
+    }
+  };
   const [statusMsg, setStatusMsg] = useState("Esperando inicio...");
   const [matchingScore, setMatchingScore] = useState(0);
   const [ineDescriptor, setIneDescriptor] = useState<any>(null);
@@ -50,6 +87,9 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
       const stored = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
       if (stored.uid) {
         setUserLocal(stored);
+        // Cargar los intereses existentes del perfil
+        const especialidadesExistentes = stored.especialidades || [];
+        setSelectedCats(especialidadesExistentes);
       }
 
       setStep(1); 
@@ -411,7 +451,12 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
                     <p className="text-[#769C7B] text-sm md:text-base mb-6 font-medium italic text-center">¿En qué áreas te consideras experto?</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {CATEGORIES.map(cat => (
-                        <button key={cat} onClick={() => setSelectedCats(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])} 
+                        <button key={cat} onClick={() => {
+                          const nuevosIntereses = selectedCats.includes(cat) ? selectedCats.filter(c => c !== cat) : [...selectedCats, cat];
+                          setSelectedCats(nuevosIntereses);
+                          // Guardar automáticamente en BD
+                          guardarInteresesEnBD(nuevosIntereses);
+                        }} 
                           className={`py-3 px-1 rounded-full border-2 text-[12px] md:text-sm transition-all flex items-center justify-center gap-2 ${selectedCats.includes(cat) ? 'bg-[#0D601E] border-[#0D601E] text-white' : 'bg-white border-gray-100 text-[#1A4D2E] hover:border-[#0D601E]'}`}>
                           {cat} {selectedCats.includes(cat) && <FiCheck size={14}/>}
                         </button>
