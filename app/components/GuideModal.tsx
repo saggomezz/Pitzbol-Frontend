@@ -5,7 +5,6 @@ import { useEffect, useState, useRef } from "react";
 import Webcam from "react-webcam"; // Librería para la cámara
 import { FiChevronLeft, FiFileText, FiX, FiCheck, FiShield, FiCamera } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
-import * as faceapi from 'face-api.js';
 
 const CATEGORIES = ["Arte", "Cultural", "Gastronómico", "Vida Nocturna", "Deportiva", "Aventura", "Arquitectura", "Naturaleza"];
 
@@ -28,6 +27,18 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
   const [imgRostro, setImgRostro] = useState<string | null>(null);
   const [verifyingFace, setVerifyingFace] = useState(false); 
   const [isScannerActive, setIsScannerActive] = useState(false);
+  const [faceapi, setFaceapi] = useState<any>(null);
+
+  // Cargar face-api.js dinámicamente solo en el cliente
+  useEffect(() => {
+    const loadFaceApi = async () => {
+      if (typeof window !== 'undefined' && !faceapi) {
+        const faceApiModule = await import('face-api.js');
+        setFaceapi(faceApiModule);
+      }
+    };
+    loadFaceApi();
+  }, []);
   const [statusMsg, setStatusMsg] = useState("Esperando inicio...");
   const [matchingScore, setMatchingScore] = useState(0);
   const [ineDescriptor, setIneDescriptor] = useState<any>(null);
@@ -58,7 +69,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
   const verificarEnVivo = async () => {
     const video = webcamRef.current?.video; 
     
-    if (!video || video.readyState !== 4 || !isScannerActive || !modelsLoaded || imgRostro) return;
+    if (!video || video.readyState !== 4 || !isScannerActive || !modelsLoaded || imgRostro || !faceapi) return;
 
     try {
       const detection = await faceapi.detectSingleFace(
@@ -109,6 +120,8 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
 
   useEffect(() => {
     const loadModels = async () => {
+      if (!faceapi) return; // Esperar a que face-api.js esté cargado
+      
       try {
         const MODEL_URL = "/models"; 
         await faceapi.loadSsdMobilenetv1Model(MODEL_URL);
@@ -124,13 +137,13 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
       }
     };
     
-    if (isOpen && !modelsLoaded) {
+    if (isOpen && !modelsLoaded && faceapi) {
       loadModels();
     }
-  }, [isOpen, modelsLoaded]);
+  }, [isOpen, modelsLoaded, faceapi]);
 
   useEffect(() => {
-    if (imgFrenteBase64 && step === 4 && modelsLoaded) {
+    if (imgFrenteBase64 && step === 4 && modelsLoaded && faceapi) {
       const extract = async () => {
         setVerifyingFace(true); 
         try {
@@ -151,7 +164,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
       };
       extract();
     }
-  }, [imgFrenteBase64, step, modelsLoaded]);
+  }, [imgFrenteBase64, step, modelsLoaded, faceapi]);
 
   const nextStep = () => {
     if (step === 1 && selectedCats.length === 0) {
