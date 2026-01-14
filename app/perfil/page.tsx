@@ -375,23 +375,12 @@ export default function PerfilDetallado() {
     const stored = localStorage.getItem("pitzbol_user");
     const userLocal = stored ? JSON.parse(stored) : null;
 
-    // Obtener el ID token de Firebase
-    let token = null;
-    try {
-      const currentUser = auth.currentUser;
-      
-      if (currentUser) {
-        token = await currentUser.getIdToken();
-        console.log('🔐 Token obtenido de Firebase Auth');
-      } else {
-        console.error('❌ No hay usuario autenticado en Firebase');
-        setError('❌ Sesión expirada. Por favor, inicia sesión nuevamente.');
-        setTimeout(() => setError(""), 5000);
-        return;
-      }
-    } catch (error) {
-      console.error('❌ Error al obtener token:', error);
-      setError('❌ Error de autenticación. Por favor, inicia sesión nuevamente.');
+    // Obtener el token JWT del localStorage (no de Firebase)
+    const token = localStorage.getItem("pitzbol_token");
+    
+    if (!token || !userLocal?.uid) {
+      console.error('❌ No hay sesión activa');
+      setError('❌ Sesión expirada. Por favor, inicia sesión nuevamente.');
       setTimeout(() => setError(""), 5000);
       return;
     }
