@@ -1,13 +1,13 @@
 "use client";
 import { generarItinerarioManual, Lugar } from '@/lib/pitzbol-engine';
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Papa from 'papaparse';
 import { Suspense, useEffect, useRef, useState } from "react";
 import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
-import { GiSoccerBall } from "react-icons/gi"; // Importamos un balón de fútbol
+import { GiSoccerBall } from "react-icons/gi";
 import { construirItinerarioElegido, ordenarPorCercania } from '../lib/pitzbol-engine';
 
 type Category = { name: string; img: string; };
@@ -187,8 +187,11 @@ export default function Home() {
 
 function HomeContent() {
   const [isLogged, setIsLogged] = useState(false);
+  const [welcomeMessage, setWelcomeMessage] = useState("");
+  const [showWelcome, setShowWelcome] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const hasCheckedWelcome = useRef(false);
 
   // ESTADOS PARA LA IA
   const [itinerarioTxt, setItinerarioTxt] = useState("Cargando itinerario...");
@@ -276,8 +279,45 @@ function HomeContent() {
   };
   useEffect(() => {
     cargarItinerarioHome();
-        const authAuth = searchParams.get("auth");
-  }, [searchParams, router]);
+    
+    // Detectar si viene de un login exitoso
+    const checkWelcome = () => {
+      if (hasCheckedWelcome.current) return;
+      
+      const shouldShowWelcome = localStorage.getItem("pitzbol_showWelcome");
+      const welcomeName = localStorage.getItem("pitzbol_welcomeName");
+      
+      console.log("🔍 Verificando bienvenida en home:", { shouldShowWelcome, welcomeName });
+      
+      if (shouldShowWelcome === "true" && welcomeName) {
+        hasCheckedWelcome.current = true;
+        
+        console.log("✅ Mostrando mensaje de bienvenida");
+        
+        // Mostrar inmediatamente
+        setWelcomeMessage(welcomeName);
+        setShowWelcome(true);
+        
+        // Limpiar las flags
+        localStorage.removeItem("pitzbol_showWelcome");
+        localStorage.removeItem("pitzbol_welcomeName");
+        
+        // Ocultar después de 3 segundos
+        setTimeout(() => {
+          console.log("⏰ Ocultando mensaje");
+          setShowWelcome(false);
+        }, 3000);
+      }
+    };
+    
+    // Verificar inmediatamente
+    checkWelcome();
+    
+    // También verificar con un pequeño delay
+    const timer = setTimeout(checkWelcome, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
   
   useEffect(() => {
     if (mostrarOpciones && navigator.geolocation) {
@@ -297,6 +337,26 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
+      {/* Notificación de Bienvenida */}
+      <AnimatePresence>
+        {showWelcome && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-6 left-6 right-6 md:left-auto md:right-6 md:max-w-sm z-50"
+          >
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-[20px] shadow-xl p-4 border-l-4 border-green-300 flex items-center gap-3">
+              <div className="text-xl">✅</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold">¡Bienvenido de nuevo!</p>
+                <p className="text-xs font-medium text-white/90 truncate">{welcomeMessage}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       <CategoryCarousel categories={categories} />
       <DateSlider />
       <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 pl-4 pr-4 md:pl-22 md:pr-22 w-full">
