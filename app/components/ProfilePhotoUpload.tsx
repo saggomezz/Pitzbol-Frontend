@@ -77,9 +77,7 @@ export default function ProfilePhotoUpload({ userId, onUploadSuccess, currentPho
 
     try {
       // Obtener token de localStorage
-      const stored = localStorage.getItem('pitzbol_user');
-      const user = stored ? JSON.parse(stored) : null;
-      const token = user?.token || localStorage.getItem('token');
+      const token = localStorage.getItem('pitzbol_token');
 
       const xhr = new XMLHttpRequest();
 
@@ -94,16 +92,18 @@ export default function ProfilePhotoUpload({ userId, onUploadSuccess, currentPho
       xhr.addEventListener('load', () => {
         if (xhr.status === 200) {
           const response = JSON.parse(xhr.responseText);
-          if (response.success) {
+          if (response.fotoPerfil) {
             setError(null);
             setSuccess(true);
             
             // Actualizar localStorage
-            const updated = { ...user, fotoPerfil: response.url };
+            const stored = localStorage.getItem('pitzbol_user');
+            const user = stored ? JSON.parse(stored) : {};
+            const updated = { ...user, fotoPerfil: response.fotoPerfil };
             localStorage.setItem('pitzbol_user', JSON.stringify(updated));
             
             // Callback
-            onUploadSuccess?.(response.url);
+            onUploadSuccess?.(response.fotoPerfil);
             
             // Limpiar después de 2 segundos
             setTimeout(() => {
