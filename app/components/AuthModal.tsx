@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiLock, FiMail, FiX, FiEye, FiEyeOff } from "react-icons/fi";
 
-const BACKEND_URL = "http://localhost:3001/api/auth";
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = `${API_BASE}/api/auth`;
 
 const ALL_COUNTRIES = [
   { name: "Alemania", lada: "+49" }, { name: "Argentina", lada: "+54" },
@@ -97,10 +98,13 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         alert("Las contraseñas no coinciden.");
         return;
       }
-
+      // Paso 1: Registrar en el backend directamente
       const response = await fetch(`${BACKEND_URL}/register`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: { 
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           email: regEmail,
           password: regPassword,
@@ -108,56 +112,84 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
           apellido: regApellido,
           telefono: telefono.replace(/\s/g, ""),
           nacionalidad,
-          role: intendedRole
+          role: intendedRole,
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
-      if (response.ok) {
-        const userData = {
-          nombre: regNombre,
-          apellido: regApellido,
-          email: regEmail,
-          telefono: telefono,
-          nacionalidad: nacionalidad,
-          rol: "turista", 
-          role: "turista",
-          guide_status: "pendiente",
-          uid: data.user?.uid
-        };
-        localStorage.setItem("pitzbol_user", JSON.stringify(userData));
-        window.dispatchEvent(new Event("storage"));
-
-        // LOGICA DE REDIRECCIÓN SEGÚN ROL 
-        if (intendedRole === "guia") {
-          alert("Cuenta creada. Ahora completa tu información para ser guía.");
-          onClose();
-          window.onAuthSuccessShowGuide?.(); 
-        } 
-        else if (intendedRole === "negocio") {
-          alert("Cuenta creada. Ahora completa tu información de negocio.");
-          onClose();
-          window.onAuthSuccessShowBusiness?.(); 
-        } 
-        else {
-          alert("¡Registro exitoso! Bienvenido a Pitzbol.");
-          onClose();
-          window.location.href = "/perfil"; 
-        }
-      } else {
-        alert("Error: " + (data.msg || "Error al registrar"));
+      if (!response.ok) {
+        alert("Error: " + (data?.msg || "Error al registrar"));
+        return;
       }
-    } catch (error) {
+
+      // Paso 2: Iniciar sesión automáticamente para obtener el perfil/token
+      const loginRes = await fetch(`${BACKEND_URL}/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: regEmail, password: regPassword }),
+      });
+      const loginData = await loginRes.json().catch(() => ({}));
+
+      if (!loginRes.ok) {
+        alert("Registro completado, pero fallo al iniciar sesión.");
+        onClose();
+        return;
+      }
+
+      const userRole = loginData.user?.role || loginData.user?.rol || loginData.user?.["03_rol"] || intendedRole;
+      const especialidadesData = loginData.user?.especialidades || loginData.user?.["07_especialidades"] || [];
+
+      if (loginData.token) {
+        localStorage.setItem("pitzbol_token", loginData.token);
+      }
+
+      localStorage.setItem("pitzbol_user", JSON.stringify({ 
+        email: loginData.user?.email || regEmail, 
+        uid: loginData.user?.uid,
+        nombre: loginData.user?.nombre || regNombre,
+        apellido: loginData.user?.apellido || regApellido,
+        telefono: loginData.user?.telefono || telefono || "No registrado",
+        nacionalidad: loginData.user?.nacionalidad || nacionalidad || "No registrado",
+        especialidades: especialidadesData,
+        "07_especialidades": especialidadesData,
+        role: userRole,
+        rol: userRole,
+        guide_status: loginData.user?.guide_status || "pendiente",
+      }));
+
+      window.dispatchEvent(new Event("storage"));
+
+      // Redirección según rol deseado
+      if (intendedRole === "guia") {
+        alert("Cuenta creada. Ahora completa tu información para ser guía.");
+        onClose();
+        window.onAuthSuccessShowGuide?.();
+      } else if (intendedRole === "negocio") {
+        alert("Cuenta creada. Ahora completa tu información de negocio.");
+        onClose();
+        window.onAuthSuccessShowBusiness?.();
+      } else {
+        alert("¡Registro exitoso! Bienvenido a Pitzbol.");
+        onClose();
+        window.location.href = "/perfil";
+      }
+    } catch (error: any) {
+      console.error("Register error:", error);
       alert("Error de conexión con el servidor.");
     }
   };
   
   const handleLogin = async () => {
     try {
+      // Autenticar directamente contra el backend
       const response = await fetch(`${BACKEND_URL}/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: { 
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           email: loginEmail,
           password: loginPassword,
@@ -170,7 +202,9 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         const userRole = data.user.role || data.user.rol || data.user["03_rol"];
         const especialidadesData = data.user.especialidades || data.user["07_especialidades"] || [];
 
-        localStorage.setItem("pitzbol_token", data.token);
+        if (data.token) {
+          localStorage.setItem("pitzbol_token", data.token);
+        }
         localStorage.setItem("pitzbol_user", JSON.stringify({ 
           email: data.user.email, 
           uid: data.user.uid, 
@@ -202,9 +236,21 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
       } else {
         alert("Error: " + (data.msg || "Credenciales inválidas"));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
-      alert("Error de conexión. Revisa que el servidor esté encendido.");
+      
+      // Mensajes de error más específicos para Firebase Auth
+      if (error.code === 'auth/user-not-found') {
+        alert("No existe una cuenta con ese correo electrónico.");
+      } else if (error.code === 'auth/wrong-password') {
+        alert("Contraseña incorrecta.");
+      } else if (error.code === 'auth/invalid-email') {
+        alert("Formato de correo inválido.");
+      } else if (error.code === 'auth/too-many-requests') {
+        alert("Demasiados intentos. Por favor intenta más tarde.");
+      } else {
+        alert("Error de conexión. Revisa que el servidor esté encendido.");
+      }
     }
   };
 
