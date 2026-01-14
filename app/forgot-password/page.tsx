@@ -47,9 +47,12 @@ export default function ForgotPasswordPage() {
     try {
       // 3. LLAMADA AL BACKEND
       // Nota: Asegúrate de que el puerto 3001 sea el de tu servidor Express
-      const response = await axios.post("http://localhost:3001/api/auth/recover-password", { 
-        email: email 
-      });
+      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const response = await axios.post(
+        `${API_BASE}/api/auth/recover-password`,
+        { email },
+        { withCredentials: true }
+      );
 
       // 4. Manejo de respuesta exitosa
       // El backend ahora genera el link y Nodemailer envía el correo
