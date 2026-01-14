@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Geist, Geist_Mono, Jockey_One, JetBrains_Mono, Roboto } from "next/font/google";
+import { AnimatePresence } from "framer-motion";
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -79,22 +80,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <Footer />
 
-        <AuthModal 
-          isOpen={isAuthOpen} 
-          onClose={() => setIsAuthOpen(false)}
-          intendedRole={pendingRole}
-        />
-        
-        <GuideModal 
-          isOpen={isGuideOpen} 
-          onClose={() => setIsGuideOpen(false)} 
-          onOpenAuth={() => { setPendingRole("guia"); setIsAuthOpen(true); }}
-        />
+        <AnimatePresence>
+          {isAuthOpen && (
+            <AuthModal 
+              isOpen={isAuthOpen} 
+              onClose={() => setIsAuthOpen(false)}
+              intendedRole={pendingRole}
+            />
+          )}
 
-        <BusinessModal 
-          isOpen={isBusinessOpen} 
-          onClose={() => setIsBusinessOpen(false)} 
-        />
+          {isGuideOpen && (
+            <GuideModal 
+              isOpen={isGuideOpen} 
+              onClose={() => setIsGuideOpen(false)} 
+              onOpenAuth={() => { setPendingRole("guia"); setIsAuthOpen(true); }}
+            />
+          )}
+
+          {isBusinessOpen && (
+            <BusinessModal 
+              isOpen={isBusinessOpen} 
+              onClose={() => setIsBusinessOpen(false)} 
+            />
+          )}
+        </AnimatePresence>
       </body>
     </html>
   );

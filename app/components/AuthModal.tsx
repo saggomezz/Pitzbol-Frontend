@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiLock, FiMail, FiX, FiEye, FiEyeOff } from "react-icons/fi";
 
@@ -38,8 +38,12 @@ const ErrorMsg = ({ text }: { text: string }) => (
 );
 
 const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: boolean; onClose: () => void; intendedRole?: "turista" | "guia" | "negocio" }) => {
-  const [isLogin, setIsLogin] = useState(false);
-
+  const [isLogin, setIsLogin] = useState(() => {
+  if (typeof window !== 'undefined') {
+    return window.innerWidth < 768 ? true : false;
+  }
+  return false;
+});
   // Datos de Registro
   const [regNombre, setRegNombre] = useState("");
   const [regApellido, setRegApellido] = useState("");
@@ -254,22 +258,38 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
     }
   };
 
-  if (!isOpen) return null;
+if (!isOpen) return null;
 
   const inputClass = "w-full px-6 py-2.5 bg-transparent border border-[#1A4D2E]/20 rounded-full outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm md:text-base";
   const iconColor = "#769C7B";
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 md:p-4 bg-black/40">
-      <div className="relative bg-white w-full max-w-[500px] md:max-w-[950px] min-h-[550px] md:h-[600px] rounded-[30px] md:rounded-[50px] overflow-hidden shadow-2xl flex border border-white/20">
-        <button onClick={onClose} className="absolute top-4 md:top-6 right-6 md:right-8 z-[210] text-gray-400 hover:text-red-500 transition-all">
+    <div className="fixed inset-0 z-[300] flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm p-0 md:p-4">
+      <motion.div 
+        initial={{ y: "100%" }}
+        animate={{ 
+          y: 0,
+          height: typeof window !== 'undefined' && window.innerWidth < 768 
+            ? (isLogin ? "75vh" : "85vh") 
+            : "600px" 
+        }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        className="relative bg-white w-full max-w-[500px] md:max-w-[950px] rounded-t-[30px] md:rounded-[50px] overflow-hidden shadow-2xl flex flex-col md:flex-row border border-white/20"
+      >
+        {/* Barra de arrastre visual solo móvil */}
+        <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-4 md:hidden mb-2" />
+
+        <button 
+          onClick={onClose} 
+          className="absolute top-4 md:top-6 right-6 md:right-8 z-[210] text-gray-400 hover:text-red-500 transition-all"
+        >
           <FiX size={28} />
         </button>
-
-        {/* --- INICIAR SESION --- */}
+        {/* --- LADO IZQUIERDO: INICIAR SESIÓN --- */}
         <form 
           onSubmit={(e) => { e.preventDefault(); handleLogin(); }}
-          className="w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white"
+          className={`w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white transition-opacity duration-300 ${!isLogin && typeof window !== 'undefined' && window.innerWidth < 768 ? 'hidden opacity-0' : 'flex opacity-100'}`}
         >
           <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-8 font-black text-center" style={{ fontFamily: 'var(--font-jockey)' }}>
             INICIAR SESIÓN
@@ -290,12 +310,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                 />
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={() => setShowLoginPassword(!showLoginPassword)}
-                  className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E] transition-colors"
-                >
+                <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E]">
                   {showLoginPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                 </button>
               </div>
@@ -304,105 +319,33 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
               </div>
             </div>
             <button type="submit" className="w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium mt-4">Iniciar sesión</button>
+            
+            {/* Alternar a Registro en móvil*/}
+            <div className="md:hidden mt-8 ">
+               <p className="text-gray-500 text-xs">¿No te has registrado? <button type="button" onClick={() => setIsLogin(false)} className="text-[#8B0000] font-bold underline italic">Crear cuenta</button></p>
+            </div>
           </div>
         </form>
 
-        {/* --- CREAR CUENTA --- */}
+        {/* --- LADO DERECHO: CREAR CUENTA --- */}
         <form 
           onSubmit={(e) => { e.preventDefault(); handleRegister(); }}
-          className="hidden md:flex w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white border-l border-gray-100"
+          className={`w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white border-l border-gray-100 overflow-y-auto transition-opacity duration-300 ${isLogin && typeof window !== 'undefined' && window.innerWidth < 768 ? 'hidden opacity-0' : 'flex opacity-100'}`}
         >
-          <h2 className="text-[35px] md:text-[42px] text-[#8B0000] mb-6 font-black text-center" style={{ fontFamily: 'var(--font-jockey)' }}>CREAR UNA CUENTA</h2>
+          <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-6 font-black text-center uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>CREAR UNA CUENTA</h2>
           <div className="w-full max-w-sm flex flex-col gap-y-5">
-            
-            {/* Fila 1: Nombre y Apellido */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="relative">
-                <input 
-                  placeholder="Nombre(s)" 
-                  className={`${inputClass} ${errors.nombre ? 'border-red-500 bg-red-50' : ''}`} 
-                  value={regNombre} 
-                  onChange={(e) => setRegNombre(capitalize(e.target.value))} 
-                />
-                <div className="absolute -bottom-4 left-0 w-full">
-                  {errors.nombre && <ErrorMsg text={errors.nombre} />}
-                </div>
-              </div>
-
-              <div className="relative">
-                <input 
-                  placeholder="Apellido(s)" 
-                  className={`${inputClass} ${errors.apellido ? 'border-red-500 bg-red-50' : ''}`} 
-                  value={regApellido} 
-                  onChange={(e) => setRegApellido(capitalize(e.target.value))} 
-                />
-                <div className="absolute -bottom-4 left-0 w-full">
-                  {errors.apellido && <ErrorMsg text={errors.apellido} />}
-                </div>
-              </div>
+              <input placeholder="Nombre(s)" className={inputClass} value={regNombre} onChange={(e) => setRegNombre(capitalize(e.target.value))} />
+              <input placeholder="Apellido(s)" className={inputClass} value={regApellido} onChange={(e) => setRegApellido(capitalize(e.target.value))} />
             </div>
-
-            {/* Fila 2: Nacionalidad y Teléfono */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="relative">
-                <div className="relative">
-                  <select 
-                    value={nacionalidad} 
-                    onChange={(e) => setNacionalidad(e.target.value)} 
-                    className={`${inputClass} appearance-none cursor-pointer pr-10 ${errors.nacionalidad ? 'border-red-500 bg-red-50' : ''}`}
-                  >
-                    <option value="" disabled>Nacionalidad</option>
-                    {ALL_COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                  </select>
-                  <FiChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" />
-                </div>
-                <div className="absolute -bottom-4 left-0 w-full">
-                  {errors.nacionalidad && <ErrorMsg text={errors.nacionalidad} />}
-                </div>
-              </div>
-
-              <div className="relative">
-                <input 
-                  value={telefono} 
-                  onChange={(e) => {
-                    let val = e.target.value;
-                    const country = ALL_COUNTRIES.find(c => c.name === nacionalidad);
-                    const lada = country ? country.lada : "";
-                    if (val === "") { setTelefono(""); return; }
-                    if (lada && !val.startsWith(lada)) { val = lada + " " + val.replace(/\D/g, ""); }
-                    const parts = val.split(lada);
-                    const body = parts.length > 1 ? parts[1] : "";
-                    const onlyNums = body.replace(/\D/g, "");
-                    if (onlyNums.length <= 12) {
-                      const finalValue = onlyNums.length > 0 ? `${lada} ${onlyNums}` : `${lada} `;
-                      setTelefono(finalValue);
-                    }
-                  }} 
-                  placeholder="Teléfono" 
-                  className={`${inputClass} ${errors.telefono ? 'border-red-500 bg-red-50' : ''}`} 
-                />
-                <div className="absolute -bottom-4 left-0 w-full">
-                  {errors.telefono && <ErrorMsg text={errors.telefono} />}
-                </div>
-              </div>
+              <select value={nacionalidad} onChange={(e) => setNacionalidad(e.target.value)} className={`${inputClass} appearance-none pr-10`}>
+                <option value="" disabled>Nacionalidad</option>
+                {ALL_COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+              </select>
+              <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono" className={inputClass} />
             </div>
-
-            {/* Fila 3: Correo */}
-            <div className="relative">
-              <div className="relative text-left">
-                <FiMail className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
-                <input 
-                  placeholder="Correo electrónico:" 
-                  className={`${inputClass} pl-14 ${errors.email ? 'border-red-500 bg-red-50' : ''}`} 
-                  value={regEmail} 
-                  onChange={(e) => setRegEmail(e.target.value)} 
-                />
-              </div>
-              <div className="absolute -bottom-4 left-0 w-full">
-                {errors.email && <ErrorMsg text={errors.email} />}
-              </div>
-            </div>
-
+            <input placeholder="Correo electrónico" className={inputClass} value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
             {/* Fila 4: Contraseña */}
             <div className="relative">
               <div className="relative text-left">
@@ -414,7 +357,12 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
                 />
-                <button type="button" tabIndex={-1} onClick={() => setShowRegPassword(!showRegPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E]">
+                <button 
+                  type="button" 
+                  tabIndex={-1} 
+                  onClick={() => setShowRegPassword(!showRegPassword)} 
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E]"
+                >
                   {showRegPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
                 </button>
               </div>
@@ -434,7 +382,12 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
                   value={regConfirmPassword}
                   onChange={(e) => setRegConfirmPassword(e.target.value)}
                 />
-                <button type="button" tabIndex={-1} onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E]">
+                <button 
+                  type="button" 
+                  tabIndex={-1} 
+                  onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)} 
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E]"
+                >
                   {showRegConfirmPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
                 </button>
               </div>
@@ -442,22 +395,30 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
                 {errors.confirmPassword && <ErrorMsg text={errors.confirmPassword} />}
               </div>
             </div>
-
-            {/* Botón */}
-            <div className="w-full flex justify-center pt-2">
-              <button type="submit" className="w-3/4 bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium">
-                Registrar
-              </button>
+            <button type="submit" className="w-full bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium">Registrar</button>
+            
+            {/* Alternar a Login en móvil */}
+            <div className="md:hidden text-center mt-4 pb-4">
+               <p className="text-gray-500 text-xs">¿Ya tienes cuenta? <button type="button" onClick={() => setIsLogin(true)} className="text-[#8B0000] font-bold underline italic">iniciar sesión</button></p>
             </div>
           </div>
         </form>
 
-        <motion.div animate={{ x: isLogin ? 0 : "100%" }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="hidden md:flex absolute top-0 left-0 w-1/2 h-full bg-[#B2C7B5] z-[205] flex flex-col items-center justify-center p-8 md:p-12 text-center">
-          <h2 className="text-[40px] md:text-[54px] text-[#1A4D2E] leading-none mb-4" style={{ fontFamily: 'var(--font-jockey)' }}>BIENVENIDO</h2>
-          <p className="text-[#1A4D2E] mb-8 font-medium text-sm md:text-base">{isLogin ? "¿Ya tienes una cuenta?" : "¿No te has registrado?"}</p>
-          <button onClick={() => setIsLogin(!isLogin)} className="px-8 md:px-12 py-3 border-2 border-[#8B0000] text-[#8B0000] rounded-full hover:bg-[#8B0000] hover:text-white transition-all text-[11px] md:text-[14px]">{isLogin ? "Iniciar sesión" : "Registrarme"}</button>
+        {/* PANEL VERDE DESLIZABLE (Solo Desktop) */}
+        <motion.div 
+          animate={{ x: isLogin ? 0 : "100%" }} 
+          transition={{ type: "spring", stiffness: 300, damping: 30 }} 
+          className="hidden md:flex absolute top-0 left-0 w-1/2 h-full bg-[#B2C7B5] z-[205] flex flex-col items-center justify-center p-8 md:p-12 text-center pointer-events-none"
+        >
+          <div className="pointer-events-auto">
+            <h2 className="text-[40px] md:text-[54px] text-[#1A4D2E] leading-none mb-4" style={{ fontFamily: 'var(--font-jockey)' }}>BIENVENIDO</h2>
+            <p className="text-[#1A4D2E] mb-8 font-medium text-sm md:text-base">{isLogin ? "¿Ya tienes una cuenta?" : "¿No te has registrado?"}</p>
+            <button onClick={() => setIsLogin(!isLogin)} className="px-8 md:px-12 py-3 border-2 border-[#8B0000] text-[#8B0000] rounded-full hover:bg-[#8B0000] hover:text-white transition-all text-[11px] md:text-[14px]">
+              {isLogin ? "Iniciar sesión" : "Registrarme"}
+            </button>
+          </div>
         </motion.div>
-      </div>
+      </motion.div>
     </div>
   );
 };
