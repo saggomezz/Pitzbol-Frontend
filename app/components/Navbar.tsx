@@ -11,6 +11,8 @@ import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
 import NotificationsPanel from "./NotificationsPanel";
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+
 interface NavbarProps {
     onOpenAuth: () => void;
     onOpenGuide: () => void;
@@ -38,18 +40,58 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         setUser(storedUser ? JSON.parse(storedUser) : null);
     };
 
+    // Si no hay foto en localStorage, intentar obtenerla del backend una sola vez
+    const hydrateProfilePhoto = async () => {
+        const storedUser = localStorage.getItem("pitzbol_user");
+        const token = localStorage.getItem("pitzbol_token");
+        if (!storedUser || !token) return;
+
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser.fotoPerfil) return;
+
+        try {
+            const resp = await fetch(`${BACKEND_URL}/api/perfil/foto-perfil`, {
+                headers: { Authorization: `Bearer ${token}` },
+                credentials: "include",
+            });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.fotoPerfil) {
+                const updated = { ...parsedUser, fotoPerfil: data.fotoPerfil };
+                localStorage.setItem("pitzbol_user", JSON.stringify(updated));
+                setUser(updated);
+            }
+        } catch (err) {
+            console.error("No se pudo hidratar foto de perfil", err);
+        }
+    };
+
     useEffect(() => {
+        console.log("🔧 Navbar mounted, registrando listeners...");
         checkUser();
-        window.addEventListener("storage", checkUser);
-        window.addEventListener("authStateChanged", checkUser);
+        hydrateProfilePhoto();
+        
+        const handlePhotoUpdate = (e: any) => {
+            console.log("📸 ¡EVENTO RECIBIDO! Foto actualizada en Navbar...", e.detail);
+            const storedUser = localStorage.getItem("pitzbol_user");
+            if (storedUser) {
+                const userData = JSON.parse(storedUser);
+                console.log("📸 Usuario actualizado:", userData);
+                setUser(userData);
+            }
+        };
         
         const closeMenu = (e: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false);
         };
+        
+        console.log("🔧 Agregando listener para 'fotoPerfilActualizada'...");
+        window.addEventListener("fotoPerfilActualizada", handlePhotoUpdate);
         document.addEventListener("mousedown", closeMenu);
+        
         return () => {
-            window.removeEventListener("storage", checkUser);
-            window.removeEventListener("authStateChanged", checkUser);
+            console.log("🔧 Limpiando listeners de Navbar...");
+            window.removeEventListener("fotoPerfilActualizada", handlePhotoUpdate);
             document.removeEventListener("mousedown", closeMenu);
         };
     }, []);
@@ -128,8 +170,17 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     }} 
                                     className="flex items-center gap-3 p-3 bg-[#F6F0E6]/50 rounded-2xl hover:bg-[#1A4D2E] hover:text-white transition-all group w-full text-left"
                                 >
-                                    <div className="w-10 h-10 bg-[#1A4D2E] group-hover:bg-white group-hover:text-[#1A4D2E] rounded-full flex items-center justify-center text-white text-xs font-bold uppercase transition-colors">
-                                        {user.nombre ? user.nombre[0] : 'U'}
+                                    <div className="w-10 h-10 rounded-full overflow-hidden bg-[#1A4D2E] group-hover:bg-white flex items-center justify-center text-white text-xs font-bold uppercase transition-colors">
+                                        {user.fotoPerfil ? (
+                                            <img
+                                                src={user.fotoPerfil}
+                                                alt="Foto de perfil"
+                                                className="w-full h-full object-cover"
+                                                loading="lazy"
+                                            />
+                                        ) : (
+                                            <span className="text-sm">{user.nombre ? user.nombre[0] : 'U'}</span>
+                                        )}
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="font-bold text-sm leading-none">{user.nombre}</span>

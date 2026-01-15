@@ -102,6 +102,14 @@ export default function ProfilePhotoUpload({ userId, onUploadSuccess, currentPho
             const updated = { ...user, fotoPerfil: response.fotoPerfil };
             localStorage.setItem('pitzbol_user', JSON.stringify(updated));
             
+            // Disparar evento global para actualizar Navbar
+            console.log("📸 Disparando evento fotoPerfilActualizada...");
+            const evento = new CustomEvent('fotoPerfilActualizada', { 
+              detail: { fotoPerfil: response.fotoPerfil, usuario: updated }
+            });
+            window.dispatchEvent(evento);
+            console.log("📸 Evento disparado:", evento);
+            
             // Callback
             onUploadSuccess?.(response.fotoPerfil);
             

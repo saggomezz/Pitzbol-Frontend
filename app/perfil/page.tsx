@@ -449,6 +449,12 @@ export default function PerfilDetallado() {
         // Actualizar localStorage
         const updated = { ...userLocal, fotoPerfil: data.fotoPerfil };
         localStorage.setItem("pitzbol_user", JSON.stringify(updated));
+        
+        // Disparar evento para actualizar Navbar
+        console.log("📸 Disparando evento fotoPerfilActualizada desde page.tsx...");
+        window.dispatchEvent(new CustomEvent('fotoPerfilActualizada', { 
+          detail: { fotoPerfil: data.fotoPerfil, usuario: updated }
+        }));
 
         setTimeout(() => setExito(""), 4000);
       } else {
