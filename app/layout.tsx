@@ -1,4 +1,5 @@
 "use client";
+import { ensureFaceApiReady } from "./initTF";
 import { useState, useEffect } from "react";
 import { Geist, Geist_Mono, Jockey_One, JetBrains_Mono, Roboto } from "next/font/google";
 import { AnimatePresence } from "framer-motion";
@@ -30,6 +31,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [pendingRole, setPendingRole] = useState<"turista" | "guia" | "negocio">("turista");
 
   useEffect(() => {
+    // Pre-cargar TensorFlow.js y face-api.js globalmente al cargar la página
+    ensureFaceApiReady().catch(err => {
+      console.error("Error pre-cargando librerías de reconocimiento facial:", err);
+    });
+
     window.onAuthSuccessShowGuide = () => {
       setIsAuthOpen(false); 
       setPendingRole("guia");
