@@ -9,6 +9,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi";
 import { construirItinerarioElegido, ordenarPorCercania } from '../lib/pitzbol-engine';
+import WelcomeNotification from './components/WelcomeNotification';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -214,6 +215,27 @@ function HomeContent() {
     cargarDatos();
   }, []);
 
+  // Detectar si el usuario acaba de iniciar sesión
+  useEffect(() => {
+    if (hasCheckedWelcome.current) return;
+    hasCheckedWelcome.current = true;
+
+    const userLocal = localStorage.getItem("pitzbol_user");
+    const token = localStorage.getItem("pitzbol_token");
+
+    if (userLocal && token) {
+      const user = JSON.parse(userLocal);
+      const justLoggedIn = sessionStorage.getItem("justLoggedIn");
+
+      if (justLoggedIn === "true") {
+        setWelcomeMessage(user.nombre || "Usuario");
+        setShowWelcome(true);
+        sessionStorage.removeItem("justLoggedIn");
+        setIsLogged(true);
+      }
+    }
+  }, []);
+
   const toggleLugar = (lugar: Lugar) => {
     setSeleccionados(prev => {
       const existe = prev.find(s => s.nombre === lugar.nombre);
@@ -338,24 +360,12 @@ function HomeContent() {
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
       {/* Notificación de Bienvenida */}
-      <AnimatePresence>
-        {showWelcome && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-6 left-6 right-6 md:left-auto md:right-6 md:max-w-sm z-50"
-          >
-            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-[20px] shadow-xl p-4 border-l-4 border-green-300 flex items-center gap-3">
-              <div className="text-xl">✅</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold">¡Bienvenido de nuevo!</p>
-                <p className="text-xs font-medium text-white/90 truncate">{welcomeMessage}</p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <WelcomeNotification
+        userName={welcomeMessage}
+        isVisible={showWelcome}
+        onClose={() => setShowWelcome(false)}
+        duration={5000}
+      />
       
       <CategoryCarousel categories={categories} />
       <DateSlider />
