@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "cross-env TURBOPACK=0 next dev",
+    "dev:turbo": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -11,8 +12,13 @@
   "dependencies": {
     "@stripe/react-stripe-js": "^5.4.1",
     "@stripe/stripe-js": "^8.6.1",
+    "@tensorflow/tfjs": "^4.11.0",
+    "@tensorflow/tfjs-backend-cpu": "^4.11.0",
+    "@tensorflow/tfjs-backend-webgl": "^4.11.0",
+    "@tensorflow/tfjs-converter": "^4.11.0",
+    "@tensorflow/tfjs-core": "^4.11.0",
+    "@vladmandic/face-api": "^1.7.12",
     "axios": "^1.13.2",
-    "face-api.js": "^0.20.0",
     "firebase": "^12.7.0",
     "framer-motion": "^12.23.26",
     "leaflet": "^1.9.4",
@@ -36,6 +42,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "baseline-browser-mapping": "^2.9.9",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
     "tailwindcss": "^4",
