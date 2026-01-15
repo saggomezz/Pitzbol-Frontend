@@ -3,7 +3,32 @@ import { FiTarget, FiEye, FiHeart, FiUsers, FiGlobe, FiTrendingUp, FiAward, FiMa
 import { GiSoccerBall } from "react-icons/gi";
 import styles from "./nosotros.module.css";
 
-export default function Nosotros() {
+async function getVerifiedGuidesCount(): Promise<number | null> {
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    if (!baseUrl) return null;
+    const candidates = [
+        `${baseUrl}/api/guides/verified-count`,
+        `${baseUrl}/api/guia/verified-count`,
+        `${baseUrl}/api/guides/stats`,
+    ];
+    for (const url of candidates) {
+        try {
+            const res = await fetch(url, { cache: "no-store" });
+            if (!res.ok) continue;
+            const data = await res.json();
+            const count = (data?.count ?? data?.total ?? data?.verified ?? null);
+            if (typeof count === "number") return count;
+            const parsed = Number(count);
+            if (Number.isFinite(parsed)) return parsed;
+        } catch (_) {
+            // try next candidate
+        }
+    }
+    return null;
+}
+
+export default async function Nosotros() {
+    const verifiedCount = await getVerifiedGuidesCount();
     return (
         <div className={styles.container}>
             <div className={styles.wrapper}>
@@ -169,8 +194,10 @@ export default function Nosotros() {
                             <div className={styles.statLabel}>Lugares Destacados</div>
                         </div>
                         <div className={styles.stat}>
-                            <div className={styles.statNumber}>3</div>
-                            <div className={styles.statLabel}>Países Anfitriones</div>
+                            <div className={styles.statNumber}>{
+                                verifiedCount === null ? "—" : verifiedCount.toLocaleString()
+                            }</div>
+                            <div className={styles.statLabel}>Guías verificados</div>
                         </div>
                     </div>
                 </div>
