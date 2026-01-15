@@ -4,7 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiLock, FiMail, FiX, FiEye, FiEyeOff } from "react-icons/fi";
 
-const BACKEND_URL = "http://localhost:3001/api/auth";
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = `${API_BASE}/api/auth`;
 
 const ALL_COUNTRIES = [
   { name: "Alemania", lada: "+49" }, { name: "Argentina", lada: "+54" },
@@ -55,6 +56,8 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<any>({});
   const [generalError, setGeneralError] = useState("");
+  const [showLoginSuccess, setShowLoginSuccess] = useState(false);
+  const [successUserName, setSuccessUserName] = useState("");
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
   // y datos de Login
@@ -101,10 +104,13 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         alert("Las contraseñas no coinciden.");
         return;
       }
-
+      // Paso 1: Registrar en el backend directamente
       const response = await fetch(`${BACKEND_URL}/register`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: { 
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           email: regEmail,
           password: regPassword,
@@ -112,56 +118,85 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
           apellido: regApellido,
           telefono: telefono.replace(/\s/g, ""),
           nacionalidad,
-          role: intendedRole
+          role: intendedRole,
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
-      if (response.ok) {
-        const userData = {
-          nombre: regNombre,
-          apellido: regApellido,
-          email: regEmail,
-          telefono: telefono,
-          nacionalidad: nacionalidad,
-          rol: "turista", 
-          role: "turista",
-          guide_status: "pendiente",
-          uid: data.user?.uid
-        };
-        localStorage.setItem("pitzbol_user", JSON.stringify(userData));
-        window.dispatchEvent(new Event("storage"));
-
-        // LOGICA DE REDIRECCIÓN SEGÚN ROL 
-        if (intendedRole === "guia") {
-          alert("Cuenta creada. Ahora completa tu información para ser guía.");
-          onClose();
-          window.onAuthSuccessShowGuide?.(); 
-        } 
-        else if (intendedRole === "negocio") {
-          alert("Cuenta creada. Ahora completa tu información de negocio.");
-          onClose();
-          window.onAuthSuccessShowBusiness?.(); 
-        } 
-        else {
-          alert("¡Registro exitoso! Bienvenido a Pitzbol.");
-          onClose();
-          window.location.href = "/perfil"; 
-        }
-      } else {
-        alert("Error: " + (data.msg || "Error al registrar"));
+      if (!response.ok) {
+        alert("Error: " + (data?.msg || "Error al registrar"));
+        return;
       }
-    } catch (error) {
+
+      // Paso 2: Iniciar sesión automáticamente para obtener el perfil/token
+      const loginRes = await fetch(`${BACKEND_URL}/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: regEmail, password: regPassword }),
+      });
+      const loginData = await loginRes.json().catch(() => ({}));
+
+      if (!loginRes.ok) {
+        alert("Registro completado, pero fallo al iniciar sesión.");
+        onClose();
+        return;
+      }
+
+      const userRole = loginData.user?.role || loginData.user?.rol || loginData.user?.["03_rol"] || intendedRole;
+      const especialidadesData = loginData.user?.especialidades || loginData.user?.["07_especialidades"] || [];
+
+      if (loginData.token) {
+        localStorage.setItem("pitzbol_token", loginData.token);
+      }
+
+      localStorage.setItem("pitzbol_user", JSON.stringify({ 
+        email: loginData.user?.email || regEmail, 
+        uid: loginData.user?.uid,
+        nombre: loginData.user?.nombre || regNombre,
+        apellido: loginData.user?.apellido || regApellido,
+        fotoPerfil: loginData.user?.fotoPerfil || loginData.user?.fotoPerfilCloudinary || null,
+        telefono: loginData.user?.telefono || telefono || "No registrado",
+        nacionalidad: loginData.user?.nacionalidad || nacionalidad || "No registrado",
+        especialidades: especialidadesData,
+        "07_especialidades": especialidadesData,
+        role: userRole,
+        rol: userRole,
+        guide_status: loginData.user?.guide_status || "pendiente",
+      }));
+
+      window.dispatchEvent(new Event("storage"));
+
+      // Redirección según rol deseado
+      if (intendedRole === "guia") {
+        alert("Cuenta creada. Ahora completa tu información para ser guía.");
+        onClose();
+        window.onAuthSuccessShowGuide?.();
+      } else if (intendedRole === "negocio") {
+        alert("Cuenta creada. Ahora completa tu información de negocio.");
+        onClose();
+        window.onAuthSuccessShowBusiness?.();
+      } else {
+        alert("¡Registro exitoso! Bienvenido a Pitzbol.");
+        onClose();
+        window.location.href = "/perfil";
+      }
+    } catch (error: any) {
+      console.error("Register error:", error);
       alert("Error de conexión con el servidor.");
     }
   };
   
   const handleLogin = async () => {
     try {
+      // Autenticar directamente contra el backend
       const response = await fetch(`${BACKEND_URL}/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: { 
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           email: loginEmail,
           password: loginPassword,
@@ -174,12 +209,15 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         const userRole = data.user.role || data.user.rol || data.user["03_rol"];
         const especialidadesData = data.user.especialidades || data.user["07_especialidades"] || [];
 
-        localStorage.setItem("pitzbol_token", data.token);
+        if (data.token) {
+          localStorage.setItem("pitzbol_token", data.token);
+        }
         localStorage.setItem("pitzbol_user", JSON.stringify({ 
           email: data.user.email, 
           uid: data.user.uid, 
           nombre: data.user.nombre,
           apellido: data.user.apellido,
+          fotoPerfil: data.user.fotoPerfil || data.user.fotoPerfilCloudinary || data.user.foto || null,
           telefono: data.user.telefono || "No registrado",
           nacionalidad: data.user.nacionalidad || "No registrado",
           especialidades: especialidadesData,
@@ -189,26 +227,46 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
           guide_status: data.user.guide_status || "ninguno"
         }));
         
-        alert(`¡Bienvenido de nuevo, ${data.user.nombre}!`);
+        // Flag para mostrar notificación de bienvenida en la página principal
+        sessionStorage.setItem("justLoggedIn", "true");
+        
+        // Mostrar notificación de éxito en el modal
+        setSuccessUserName(data.user.nombre);
+        setShowLoginSuccess(true);
       
         window.dispatchEvent(new Event("storage"));
         window.dispatchEvent(new Event("authStateChanged"));
         
-        onClose();
-        
-        // Redirección
-        if (userRole === "admin" || userRole === "admins") {
-          window.location.href = "/admin"; 
-        } else {
-          window.location.href = "/perfil"; 
-        }
+        // Redirigir después de mostrar la notificación (2 segundos)
+        setTimeout(() => {
+          onClose();
+          
+          // Redirección
+          if (userRole === "admin" || userRole === "admins") {
+            window.location.href = "/admin"; 
+          } else {
+            window.location.href = "/"; 
+          }
+        }, 2000);
 
       } else {
         alert("Error: " + (data.msg || "Credenciales inválidas"));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
-      alert("Error de conexión. Revisa que el servidor esté encendido.");
+      
+      // Mensajes de error más específicos para Firebase Auth
+      if (error.code === 'auth/user-not-found') {
+        alert("No existe una cuenta con ese correo electrónico.");
+      } else if (error.code === 'auth/wrong-password') {
+        alert("Contraseña incorrecta.");
+      } else if (error.code === 'auth/invalid-email') {
+        alert("Formato de correo inválido.");
+      } else if (error.code === 'auth/too-many-requests') {
+        alert("Demasiados intentos. Por favor intenta más tarde.");
+      } else {
+        alert("Error de conexión. Revisa que el servidor esté encendido.");
+      }
     }
   };
 
@@ -221,16 +279,65 @@ if (!isOpen) return null;
     <div className="fixed inset-0 z-[300] flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm p-0 md:p-4">
       <motion.div 
         initial={{ y: "100%" }}
-        animate={{ 
-          y: 0,
-          height: typeof window !== 'undefined' && window.innerWidth < 768 
-            ? (isLogin ? "75vh" : "85vh") 
-            : "600px" 
-        }}
+        animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className="relative bg-white w-full max-w-[500px] md:max-w-[950px] rounded-t-[30px] md:rounded-[50px] overflow-hidden shadow-2xl flex flex-col md:flex-row border border-white/20"
+        style={{
+          height: showLoginSuccess 
+            ? typeof window !== 'undefined' && window.innerWidth < 768 
+              ? "400px"
+              : "280px"
+            : typeof window !== 'undefined' && window.innerWidth < 768 
+              ? (isLogin ? "75vh" : "85vh") 
+              : "600px"
+        }}
       >
+        {showLoginSuccess ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="absolute inset-0 bg-gradient-to-br from-[#0D601E] to-[#0a4620] flex flex-col items-center justify-center z-50 rounded-t-[30px] md:rounded-[50px] text-center px-6"
+          >
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: 0.1, type: "spring", stiffness: 300 }}
+              className="w-16 h-16 md:w-18 md:h-18 bg-green-400 rounded-full flex items-center justify-center mb-5 shadow-lg shadow-black/20"
+            >
+              <svg className="w-9 h-9 text-[#0D601E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </motion.div>
+            <motion.h2
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-2xl md:text-3xl font-black text-white mb-2"
+              style={{ fontFamily: 'var(--font-jockey)' }}
+            >
+              ¡Bienvenido de nuevo!
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-green-100 text-lg md:text-xl font-semibold"
+            >
+              {successUserName}
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-green-200 text-sm md:text-base mt-4"
+            >
+              Redirigiendo...
+            </motion.p>
+          </motion.div>
+        ) : (
+          <>
         {/* Barra de arrastre visual solo móvil */}
         <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-4 md:hidden mb-2" />
 
@@ -372,6 +479,8 @@ if (!isOpen) return null;
             </button>
           </div>
         </motion.div>
+          </>
+        )}
       </motion.div>
     </div>
   );

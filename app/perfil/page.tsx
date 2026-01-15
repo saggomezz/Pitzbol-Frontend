@@ -1,12 +1,16 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
   FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
 } from "react-icons/fa";
 import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
   FiPlus, FiShield, FiUser, FiX
 } from "react-icons/fi";
+import { notificarAprobacionGuia, notificarRechazoGuia } from "@/lib/notificaciones";
+import { auth } from "@/lib/firebase";
+
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
 const NACIONALIDADES = [
   "Mexicana", "Argentina", "Brasileña", "Chilena", "Colombiana", "Peruana", "Uruguaya", "Venezolana",
@@ -67,7 +71,21 @@ export default function PerfilDetallado() {
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [especialidades, setEspecialidades] = useState<string[]>([]);
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false); 
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null); 
+
+  // Función para refrescar los datos del perfil desde localStorage
+  const refrescarEspecialidades = () => {
+    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    if (userLocal.especialidades) {
+      setEspecialidades(userLocal.especialidades);
+      setPerfil((prev: any) => ({
+        ...prev,
+        especialidades: userLocal.especialidades
+      }));
+      setEspecialidadesTemp(userLocal.especialidades);
+    }
+  }; 
 
   const [editandoNacionalidad, setEditandoNacionalidad] = useState(false);
   const [nacionalidadTemp, setNacionalidadTemp] = useState("");
@@ -85,6 +103,8 @@ export default function PerfilDetallado() {
   
   const [guardando, setGuardando] = useState(false);
   const [exito, setExito] = useState("");
+  const [error, setError] = useState("");
+  const [mostrarNotificacionAprobado, setMostrarNotificacionAprobado] = useState(false);
 
   useEffect(() => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
@@ -112,27 +132,67 @@ export default function PerfilDetallado() {
       setEspecialidadesTemp(initialEspecialidades);
 
       try {
-        const response = await fetch(`http://localhost:3001/api/guides/profile/${userLocal.uid}`);
-        if (response.ok) {
-          const dataFresca = await response.json();
-          const serverSpecs = dataFresca["07_especialidades"] || [];
+        // Primero verificar el estado actualizado del usuario
+        const tokenHeader = localStorage.getItem("pitzbol_token");
+        const estadoResponse = await fetch(`${API_BASE}/api/admin/verificar-estado/${userLocal.uid}`, {
+          credentials: 'include',
+          headers: tokenHeader ? { 'Authorization': `Bearer ${tokenHeader}` } : undefined,
+        });
+        
+        if (estadoResponse.ok) {
+          const estadoData = await estadoResponse.json();
+          
+          // Actualizar el rol y guide_status si cambió
+          if (estadoData.success) {
+            const nuevoRol = estadoData.rol;
+            const nuevoGuideStatus = estadoData.guide_status;
+            
+            // Si cambió el rol o el estado, actualizar localStorage
+            if (nuevoRol !== userLocal.role || nuevoGuideStatus !== userLocal.guide_status) {
+              const updatedUser = {
+                ...userLocal,
+                role: nuevoRol,
+                "03_rol": nuevoRol,
+                guide_status: nuevoGuideStatus,
+                ...estadoData.userData
+              };
+              
+              localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
+              window.dispatchEvent(new Event("storage"));
+              
+              // Actualizar el perfil con los nuevos datos
+              setPerfil((prev: any) => ({
+                ...prev,
+                rol: nuevoRol,
+                guide_status: nuevoGuideStatus
+              }));
 
-          setEspecialidades(serverSpecs);
-          setEspecialidadesTemp(serverSpecs);
+              // Si fue aprobado como guía, mostrar notificación y enviar a storage
+              if (nuevoRol === "guia" && nuevoGuideStatus === "aprobado" && userLocal.role !== "guia") {
+                notificarAprobacionGuia(userLocal.uid);
+                setMostrarNotificacionAprobado(true);
+                setTimeout(() => setMostrarNotificacionAprobado(false), 8000);
+              }
+            }
+          }
+        }
 
-          setPerfil((prev: any) => ({
-            ...prev,
-            ...dataFresca,
-            especialidades: serverSpecs
-          }));
-
-          localStorage.setItem("pitzbol_user", JSON.stringify({
-            ...userLocal,
-            ...dataFresca,
-            especialidades: serverSpecs,
-            "07_especialidades": serverSpecs
-          }));
-          window.dispatchEvent(new Event("storage"));
+        // Cargar foto de perfil desde el endpoint correcto (JWT del backend)
+        try {
+          const tokenHeader2 = localStorage.getItem("pitzbol_token");
+          const fotoResponse = await fetch(`${API_BASE}/api/perfil/foto-perfil`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: tokenHeader2 ? { 'Authorization': `Bearer ${tokenHeader2}` } : undefined,
+          });
+          if (fotoResponse.ok) {
+            const fotoData = await fotoResponse.json();
+            if (fotoData.fotoPerfil) {
+              setFotoPerfil(fotoData.fotoPerfil);
+            }
+          }
+        } catch (error) {
+          console.error('Error al cargar foto de perfil:', error);
         }
       } catch (error) {
         console.error("Error de sincronización con Pitzbol Server:", error);
@@ -140,6 +200,24 @@ export default function PerfilDetallado() {
       setLoading(false);
     };
     cargarDatos();
+  }, []);
+
+  // Escuchar cambios en el localStorage (cuando se cierren modales)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      refrescarEspecialidades();
+    };
+
+    // Escuchar cambios del localStorage
+    window.addEventListener("storage", handleStorageChange);
+    
+    // También escuchar un evento personalizado para cambios en la misma pestaña
+    window.addEventListener("especialidadesActualizadas", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("especialidadesActualizadas", handleStorageChange);
+    };
   }, []);
 
   const guardarTelefono = async () => {
@@ -177,6 +255,7 @@ export default function PerfilDetallado() {
 
       const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
         method: "PATCH",
+        credentials: 'include',
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
@@ -258,6 +337,8 @@ export default function PerfilDetallado() {
           categorias: especialidadesTemp 
         })
       });
+      
+      // TODO: backend debe proteger este endpoint; incluir credenciales y token si existe
 
       if (response.ok) {
         setEspecialidades([...especialidadesTemp]);
@@ -302,42 +383,132 @@ export default function PerfilDetallado() {
     </div>
   );
 
-const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      const base64 = reader.result as string;
-      setFotoPerfil(base64); // Cambio visual inmediato
+    // Validar tamaño (5MB)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      setError(`❌ Archivo demasiado grande. Máximo: 5MB (tu archivo: ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
 
-      const stored = localStorage.getItem("pitzbol_user");
-      const userLocal = stored ? JSON.parse(stored) : null;
+    // Validar formato
+    const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!ALLOWED_FORMATS.includes(file.type)) {
+      setError('❌ Formato no permitido. Solo: JPEG, PNG, WebP');
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
 
+    const stored = localStorage.getItem("pitzbol_user");
+    const userLocal = stored ? JSON.parse(stored) : null;
+
+    // Obtener el token JWT del localStorage (no de Firebase)
+    const token = localStorage.getItem("pitzbol_token");
+    
+    if (!token || !userLocal?.uid) {
+      console.error('❌ No hay sesión activa');
+      setError('❌ Sesión expirada. Por favor, inicia sesión nuevamente.');
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
+
+    // Crear FormData para enviar como multipart
+    const formData = new FormData();
+    formData.append('foto', file);
+
+    try {
+      console.log('📤 Enviando foto al servidor...');
+      const apiBase = API_BASE;
+      const jwt = localStorage.getItem('pitzbol_token');
+      
+      const response = await fetch(`${apiBase}/api/perfil/foto-perfil`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: jwt ? { 'Authorization': `Bearer ${jwt}` } : undefined,
+        body: formData
+      });
+
+      // Intentar parsear JSON; si falla, leer texto
+      let data: any = null;
       try {
-        const response = await fetch('http://localhost:3001/api/guides/update-photo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            uid: userLocal?.uid,
-            fotoBase64: base64
-          })
-        });
-
-        if (response.ok) {
-          setExito("Foto actualizada");
-          const updated = { ...userLocal, fotoUrl: base64 };
-          localStorage.setItem("pitzbol_user", JSON.stringify(updated));
-        }
-      } catch (err) {
-        console.error("Error al subir foto");
+        data = await response.json();
+      } catch (parseErr) {
+        const text = await response.text();
+        data = { error: text || 'Respuesta no válida del servidor' };
       }
-    };
+
+      if (response.ok) {
+        console.log('✅ Foto subida exitosamente:', data.fotoPerfil);
+        setFotoPerfil(data.fotoPerfil);
+        setExito("✅ Foto de perfil actualizada exitosamente");
+        
+        // Actualizar localStorage
+        const updated = { ...userLocal, fotoPerfil: data.fotoPerfil };
+        localStorage.setItem("pitzbol_user", JSON.stringify(updated));
+        
+        // Disparar evento para actualizar Navbar
+        console.log("📸 Disparando evento fotoPerfilActualizada desde page.tsx...");
+        window.dispatchEvent(new CustomEvent('fotoPerfilActualizada', { 
+          detail: { fotoPerfil: data.fotoPerfil, usuario: updated }
+        }));
+
+        setTimeout(() => setExito(""), 4000);
+      } else {
+        const errorMessage = data?.error || 'Error al subir foto de perfil';
+        console.error('❌ Error del servidor:', errorMessage);
+        setError(`❌ ${errorMessage}`);
+        setTimeout(() => setError(""), 5000);
+      }
+    } catch (err: any) {
+      console.error("❌ Error al subir foto:", err);
+      setError('❌ Error de conexión al subir foto. Verifica que el servidor esté activo.');
+      setTimeout(() => setError(""), 5000);
+    }
+
+    // Limpiar input para poder seleccionar la misma imagen nuevamente
+    e.target.value = '';
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F6F0E6] via-[#FDFCF9] to-white pb-20">
+      {/* Notificación de Éxito */}
+      <AnimatePresence>
+        {exito && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, x: -20 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: -20, x: -20 }}
+            className="fixed top-6 left-6 z-50 max-w-sm"
+          >
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-[20px] shadow-xl p-4 border-l-4 border-green-300 flex items-center gap-3">
+              <div className="text-xl">✅</div>
+              <p className="text-sm font-semibold">{exito}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Notificación de Error */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, x: -20 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: -20, x: -20 }}
+            className="fixed top-6 left-6 z-50 max-w-sm"
+          >
+            <div className="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-[20px] shadow-xl p-4 border-l-4 border-red-300 flex items-center gap-3">
+              <div className="text-xl">❌</div>
+              <p className="text-sm font-semibold">{error}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {esAdmin && (
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
@@ -394,22 +565,21 @@ const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
               <div className="flex flex-col items-center">
                 {/* Foto de perfil */}
                 <div className="relative mb-8 mt-4 group">
+                  {/* Botón de cámara - Solo si no hay foto */}
                   {!fotoPerfil && (
-                    <motion.label 
+                    <motion.button
                       whileHover={{ scale: 1.1, rotate: 5 }}
                       whileTap={{ scale: 0.9 }}
-                      className="absolute -bottom-2 -right-2 p-4 bg-[#F00808] text-white rounded-xl shadow-xl cursor-pointer hover:bg-[#d00707] transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute -bottom-2 -right-2 p-4 bg-[#F00808] text-white rounded-xl shadow-xl cursor-pointer hover:bg-[#d00707] transition-colors z-10"
+                      title="Cambiar foto de perfil"
+                      type="button"
                     >
                       <FiCamera size={20} />
-                      <input 
-                        type="file" 
-                        className="hidden" 
-                        accept="image/*" 
-                        onChange={handleFotoChange} 
-                      />
-                    </motion.label>
+                    </motion.button>
                   )}
                   
+                  {/* Área de foto */}
                   <div className="relative w-40 h-40 md:w-48 md:h-48">
                     <div className="absolute inset-0 bg-gradient-to-br from-[#0D601E] to-[#F00808] rounded-[28px] opacity-20 blur-xl" />
                     <div className="relative w-full h-full rounded-[28px] overflow-hidden border-4 border-white shadow-xl bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center">
@@ -421,14 +591,42 @@ const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
                     </div>
                   </div>
                   
-                  <motion.label 
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="absolute -bottom-2 -right-2 p-4 bg-[#F00808] text-white rounded-xl shadow-xl cursor-pointer hover:bg-[#d00707] transition-colors"
-                  >
-                    <FiCamera size={20} />
-                    <input type="file" className="hidden" accept="image/*" />
-                  </motion.label>
+                  {/* Botón de cámara - Si hay foto */}
+                  {fotoPerfil && (
+                    <motion.button
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute -bottom-2 -right-2 p-4 bg-[#F00808] text-white rounded-xl shadow-xl cursor-pointer hover:bg-[#d00707] transition-colors z-10"
+                      title="Cambiar foto de perfil"
+                      type="button"
+                    >
+                      <FiCamera size={20} />
+                    </motion.button>
+                  )}
+                </div>
+
+                {/* Input file hidden */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFotoChange}
+                />
+
+                {/* Mensajes inline para upload */}
+                <div className="mt-3 space-y-2">
+                  {error && (
+                    <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                      {error}
+                    </div>
+                  )}
+                  {exito && (
+                    <div className="text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                      {exito}
+                    </div>
+                  )}
                 </div>
 
                 {/* Info básica */}
@@ -795,6 +993,46 @@ const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
           </div>
         </div>
       </div>
+
+      {/* Notificación de Aprobación como Guía */}
+      <AnimatePresence>
+        {mostrarNotificacionAprobado && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className="fixed bottom-8 right-8 z-50 max-w-md"
+          >
+            <div className="bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white rounded-[28px] shadow-2xl p-6 border-4 border-white">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                    className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center"
+                  >
+                    <FiCheck className="text-[#0D601E]" size={32} strokeWidth={3} />
+                  </motion.div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-black mb-2">¡Felicidades! 🎉</h3>
+                  <p className="text-white/90 text-sm font-medium leading-relaxed">
+                    Tu solicitud ha sido aprobada. Ahora eres un <span className="font-bold">Guía Oficial Pitzbol</span>. 
+                    Puedes comenzar a crear experiencias increíbles.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setMostrarNotificacionAprobado(false)}
+                  className="flex-shrink-0 text-white/60 hover:text-white transition-colors"
+                >
+                  <FiX size={24} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
