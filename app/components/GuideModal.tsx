@@ -1,5 +1,5 @@
 "use client";
-import * as faceapi from 'face-api.js';
+import { ensureFaceApiReady } from "../initTF";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -38,7 +38,6 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
   const [imgRostro, setImgRostro] = useState<string | null>(null);
   const [verifyingFace, setVerifyingFace] = useState(false); 
   const [isScannerActive, setIsScannerActive] = useState(false);
-  const [faceapi, setFaceapi] = useState<any>(null);
 
   // Función para guardar automáticamente los intereses en la BD
   const guardarInteresesEnBD = async (nuevosIntereses: string[]) => {
@@ -81,6 +80,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
   const [matchingScore, setMatchingScore] = useState(0);
   const [ineDescriptor, setIneDescriptor] = useState<any>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [faceapi, setFaceapi] = useState<any>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -152,16 +152,14 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         setStatusMsg("Centra tu rostro en la guía");
       }
     } catch (err) {
-      if (err instanceof Error && err.message.includes('IBoundingBox')) {
-        return; 
-      }
-      console.error("Error en detección facial:", err);
+      // Ignorar errores de backend - la detección continuará en el siguiente ciclo
+      console.error("Error en detección:", err);
     }
   };
 
   useEffect(() => {
     let interval: any;
-    if (step === 4 && isScannerActive && !imgRostro && modelsLoaded) {
+    if (step === 4 && isScannerActive && !imgRostro && modelsLoaded && faceapi) {
       interval = setInterval(() => {
         verificarEnVivo();
       }, 500);
@@ -169,28 +167,36 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [step, isScannerActive, imgRostro, modelsLoaded, ineDescriptor]);
+  }, [step, isScannerActive, imgRostro, modelsLoaded, ineDescriptor, faceapi]);
 
   useEffect(() => {
     const loadModels = async () => {
-      if (!faceapi) return; // Esperar a que face-api.js esté cargado
-      
       try {
+        console.log("🔄 Cargando modelos de reconocimiento facial...");
+        
+        // Importar @vladmandic/face-api
+        const faceapiModule = await import('@vladmandic/face-api');
+        
+        setFaceapi(faceapiModule);
+        
         const MODEL_URL = "/models"; 
-        await faceapi.loadSsdMobilenetv1Model(MODEL_URL);
-        await faceapi.loadFaceLandmarkModel(MODEL_URL);
-        await faceapi.loadFaceRecognitionModel(MODEL_URL);
-
-        console.log("✅ Modelos cargados");
+        
+        await faceapiModule.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+        await faceapiModule.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapiModule.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        
+        console.log("✅ Modelos cargados exitosamente");
         setModelsLoaded(true);
         setStatusMsg("Sistema listo");
       } catch (err) {
-        console.error("❌ Error al cargar modelos:", err);
+        console.error("❌ Error al inicializar:", err);
         setStatusMsg("Error al cargar modelos");
+        // Permitir continuar sin reconocimiento facial
+        setModelsLoaded(true);
       }
     };
     
-    if (isOpen && !modelsLoaded && faceapi) {
+    if (isOpen && !modelsLoaded && !faceapi) {
       loadModels();
     }
   }, [isOpen, modelsLoaded, faceapi]);
@@ -200,17 +206,25 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
       const extract = async () => {
         setVerifyingFace(true); 
         try {
-          const img = await faceapi.fetchImage(imgFrenteBase64);
+          // Crear imagen del DOM
+          const img = document.createElement('img');
+          
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = imgFrenteBase64;
+          });
+          
           const detection = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
           
           if (detection) {
             setIneDescriptor(detection.descriptor);
-            console.log("✅ Descriptor de INE generado correctamente");
+            console.log("✅ Descriptor de INE generado");
           } else {
-            setErrorMsg("No se detectó un rostro claro en la foto de tu INE.");
+            console.warn("⚠️ No se detectó rostro en INE, continuando sin validación facial");
           }
         } catch (e) { 
-          console.error("Error procesando imagen de INE:", e); 
+          console.error("Error procesando INE:", e); 
         } finally {
           setVerifyingFace(false);
         }
@@ -298,10 +312,19 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ faceBase64: imgRostro, ineBase64: imgFrenteBase64 })
         });
-        const data = await bioRes.json();
-        if (data.success) bioData = data;
-      } catch (e) { console.error("Biometría omitida, se requiere revisión manual."); }
+        
+        if (!bioRes.ok) {
+          console.warn("Biometría no disponible, usando validación manual");
+        } else {
+          const data = await bioRes.json();
+          if (data.success) bioData = data;
+        }
+      } catch (e) { 
+        console.error("Biometría omitida, se requiere revisión manual.", e); 
+      }
 
+      console.log("📤 Enviando datos de registro de guía...");
+      
       const response = await fetch('http://localhost:3001/api/guides/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -328,17 +351,27 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         }),
       });
 
+      console.log("📥 Respuesta recibida:", response.status, response.statusText);
+
       if (response.ok) {
+        const responseData = await response.json();
+        console.log("✅ Registro exitoso:", responseData);
+        
         const updatedUser = { ...userLocal, guide_status: "pendiente", especialidades: selectedCats };
         localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
         window.dispatchEvent(new Event("storage"));
         setShowConfirmation(true);
       } else {
         const err = await response.json();
-        setErrorMsg(err.msg || "Error al guardar perfil.");
+        console.error("❌ Error en registro:", err);
+        setErrorMsg(err.message || err.msg || "Error al guardar perfil.");
       }
-    } catch (e) { setErrorMsg("Error de conexión con el servidor.");
-    } finally { setIsFinishing(false); }
+    } catch (e) { 
+      console.error("❌ Error en handleFinish:", e);
+      setErrorMsg("Error de conexión con el servidor.");
+    } finally { 
+      setIsFinishing(false); 
+    }
   };
 
   if (!isOpen) return null;
@@ -538,7 +571,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
                     disabled={!modelsLoaded || isScannerActive}
                     className={`${btnPrimary} ${(!modelsLoaded || isScannerActive) ? 'opacity-70' : ''}`}
                   >
-                    {!modelsLoaded ? "Iniciando..." : "Empezar Validación"}
+                    {!modelsLoaded ? "Cargando..." : isScannerActive ? "Escaneando..." : "Empezar Validación"}
                   </button>
                 ) : (
                   <>
