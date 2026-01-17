@@ -209,22 +209,27 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         const userRole = data.user.role || data.user.rol || data.user["03_rol"];
         const especialidadesData = data.user.especialidades || data.user["07_especialidades"] || [];
 
+        const nombre = data.user.nombre || data.user["01_nombre"] || "Usuario";
+        const apellido = data.user.apellido || data.user["02_apellido"] || "";
+        const telefono = data.user.telefono || data.user["06_telefono"] || "No registrado";
+        const nacionalidad = data.user.nacionalidad || data.user["05_nacionalidad"] || "No registrado";
+
         if (data.token) {
           localStorage.setItem("pitzbol_token", data.token);
         }
         localStorage.setItem("pitzbol_user", JSON.stringify({ 
           email: data.user.email, 
           uid: data.user.uid, 
-          nombre: data.user.nombre,
-          apellido: data.user.apellido,
+          nombre,
+          apellido,
           fotoPerfil: data.user.fotoPerfil || data.user.fotoPerfilCloudinary || data.user.foto || null,
-          telefono: data.user.telefono || "No registrado",
-          nacionalidad: data.user.nacionalidad || "No registrado",
+          telefono,
+          nacionalidad,
           especialidades: especialidadesData,
           "07_especialidades": especialidadesData,
           role: userRole,
           rol: userRole,
-          guide_status: data.user.guide_status || "ninguno"
+          guide_status: data.user.guide_status || data.user["guide_status"] || "ninguno"
         }));
         
         // Flag para mostrar notificación de bienvenida en la página principal

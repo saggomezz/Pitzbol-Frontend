@@ -25,7 +25,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
     const menuRef = useRef<HTMLDivElement>(null);
-    const isPendingVerification = user?.guideStatus === "pendiente" && localStorage.getItem("pitzbol_guide_submitted") === "true";
+    const isPendingVerification = (user?.guide_status === "pendiente") && localStorage.getItem("pitzbol_guide_submitted") === "true";
     const handleProfileNavigation = () => {
         setIsMenuOpen(false);
         if (role === "admin") {
@@ -70,28 +70,32 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         console.log("🔧 Navbar mounted, registrando listeners...");
         checkUser();
         hydrateProfilePhoto();
-        
+
+        const refreshFromStorage = () => {
+            const storedUser = localStorage.getItem("pitzbol_user");
+            setUser(storedUser ? JSON.parse(storedUser) : null);
+        };
+
         const handlePhotoUpdate = (e: any) => {
             console.log("📸 ¡EVENTO RECIBIDO! Foto actualizada en Navbar...", e.detail);
-            const storedUser = localStorage.getItem("pitzbol_user");
-            if (storedUser) {
-                const userData = JSON.parse(storedUser);
-                console.log("📸 Usuario actualizado:", userData);
-                setUser(userData);
-            }
+            refreshFromStorage();
         };
-        
+
         const closeMenu = (e: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false);
         };
-        
-        console.log("🔧 Agregando listener para 'fotoPerfilActualizada'...");
+
+        console.log("🔧 Agregando listeners para cambios de sesión y storage...");
         window.addEventListener("fotoPerfilActualizada", handlePhotoUpdate);
+        window.addEventListener("authStateChanged", refreshFromStorage);
+        window.addEventListener("storage", refreshFromStorage);
         document.addEventListener("mousedown", closeMenu);
-        
+
         return () => {
             console.log("🔧 Limpiando listeners de Navbar...");
             window.removeEventListener("fotoPerfilActualizada", handlePhotoUpdate);
+            window.removeEventListener("authStateChanged", refreshFromStorage);
+            window.removeEventListener("storage", refreshFromStorage);
             document.removeEventListener("mousedown", closeMenu);
         };
     }, []);
@@ -106,7 +110,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     
 
     // Logica de roles
-    const role = user?.role || user?.rol || "visitor";
+    const role = user?.role || user?.rol || user?.["03_rol"] || "visitor";
     const guideStatus = user?.guide_status || "ninguno"; // pendiente | aprobado
 
     return (
@@ -179,11 +183,11 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                                 loading="lazy"
                                             />
                                         ) : (
-                                            <span className="text-sm">{user.nombre ? user.nombre[0] : 'U'}</span>
+                                            <span className="text-sm">{(user.nombre || user["01_nombre"] || "U")[0]}</span>
                                         )}
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-sm leading-none">{user.nombre}</span>
+                                        <span className="font-bold text-sm leading-none">{user.nombre || user["01_nombre"] || "Usuario"}</span>
                                         <span className="text-[10px] opacity-60 uppercase mt-1">{role}</span>
                                     </div>
                                 </button>
