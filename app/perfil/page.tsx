@@ -5,10 +5,11 @@ import { FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
   FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
 } from "react-icons/fa";
 import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
-  FiPlus, FiShield, FiUser, FiX
+  FiPlus, FiShield, FiUser, FiX, FiCreditCard
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia } from "@/lib/notificaciones";
 import { auth } from "@/lib/firebase";
+import WalletModal from "@/app/components/WalletModal";
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
@@ -105,6 +106,7 @@ export default function PerfilDetallado() {
   const [exito, setExito] = useState("");
   const [error, setError] = useState("");
   const [mostrarNotificacionAprobado, setMostrarNotificacionAprobado] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
   useEffect(() => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
@@ -714,6 +716,26 @@ export default function PerfilDetallado() {
                         <p className="text-base font-bold text-[#1A4D2E] pl-12 break-all">{perfil?.telefono}</p>
                       )}
                     </motion.div>
+
+                    {/* Card de Billetera */}
+                    <motion.button 
+                      whileHover={{ y: -2 }}
+                      onClick={() => setShowWalletModal(true)}
+                      className="w-full bg-gradient-to-br from-[#E8F5E9] to-white p-5 rounded-2xl border border-[#0D601E]/10 relative text-left hover:border-[#0D601E]/20 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-[#0D601E]/10 rounded-lg">
+                            <FiCreditCard size={18} className="text-[#0D601E]" />
+                          </div>
+                          <h3 className="text-sm font-black uppercase text-[#1A4D2E] tracking-wider">Mi Billetera</h3>
+                        </div>
+                        <svg className="w-5 h-5 text-[#0D601E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-[#1A4D2E]/70 font-semibold pl-12">Gestiona tus tarjetas de pago</p>
+                    </motion.button>
                   </div>
                 )}
 
@@ -1033,6 +1055,9 @@ export default function PerfilDetallado() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Wallet Modal */}
+      <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
     </div>
   );
 }
