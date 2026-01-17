@@ -357,8 +357,22 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         const responseData = await response.json();
         console.log("✅ Registro exitoso:", responseData);
         
-        const updatedUser = { ...userLocal, guide_status: "pendiente", especialidades: selectedCats };
+        // Guardar timestamp de cuándo se envió la solicitud
+        const timestamp = new Date().toISOString();
+        const updatedUser = { 
+          ...userLocal,
+          role: "turista",  // Explícitamente mantener role como turista
+          guide_status: "pendiente", 
+          especialidades: selectedCats,
+          solicitudEnviadaEn: timestamp
+        };
         localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
+        localStorage.setItem("pitzbol_guide_submitted", "true");
+        
+        // Enviar notificación
+        const { notificarSolicitudEnviada } = await import("@/lib/notificaciones");
+        notificarSolicitudEnviada(userLocal?.uid);
+        
         window.dispatchEvent(new Event("storage"));
         setShowConfirmation(true);
       } else {
