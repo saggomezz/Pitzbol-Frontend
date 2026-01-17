@@ -98,16 +98,22 @@ export const contarNoLeidas = (userId: string): number => {
 };
 
 /**
- * Limpiar todas las notificaciones de un usuario
+ * Marcar una notificación como leída
  */
-export const limpiarNotificaciones = (userId: string) => {
+export const marcarNotificacionComoLeida = (userId: string, notificationId: string) => {
   const key = `pitzbol_notifications_${userId}`;
-  localStorage.removeItem(key);
+  const notificaciones = JSON.parse(localStorage.getItem(key) || '[]');
+  
+  const notificacionesActualizadas = notificaciones.map((notif: PitzbolNotification) =>
+    notif.id === notificationId ? { ...notif, leido: true } : notif
+  );
+  
+  localStorage.setItem(key, JSON.stringify(notificacionesActualizadas));
   
   window.dispatchEvent(
     new StorageEvent('storage', {
       key,
-      newValue: null,
+      newValue: JSON.stringify(notificacionesActualizadas),
       url: window.location.href
     })
   );

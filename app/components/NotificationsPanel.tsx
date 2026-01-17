@@ -2,6 +2,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader } from "react-icons/fi";
+import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 
 interface Notification {
   id: string;
@@ -52,11 +53,21 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
           const key = `pitzbol_notifications_${userId}`;
           const notificacionesLocal = JSON.parse(localStorage.getItem(key) || '[]');
           
+          // Crear un mapa de notificaciones locales por ID para priorizar cambios locales
+          const localMap = new Map(notificacionesLocal.map((n: Notification) => [n.id, n]));
+          
+          // Combinar: Firestore como base, pero localStorage sobrescribe si existe
+          const notificacionesCombinadas = notificacionesDelBackend.map((notif: Notification) => 
+            localMap.get(notif.id) || notif
+          );
+          
+          // Agregar notificaciones locales que no están en Firestore
           const idsBackend = new Set(notificacionesDelBackend.map((n: Notification) => n.id));
-          const notificacionesCombinadas = [
-            ...notificacionesDelBackend,
-            ...notificacionesLocal.filter((n: Notification) => !idsBackend.has(n.id))
-          ];
+          for (const localNotif of notificacionesLocal) {
+            if (!idsBackend.has(localNotif.id)) {
+              notificacionesCombinadas.push(localNotif);
+            }
+          }
 
           // Ordenar por fecha (más recientes primero)
           notificacionesCombinadas.sort((a: Notification, b: Notification) => 
@@ -136,24 +147,35 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   const marcarComoLeida = async (id: string) => {
     if (!userId) return;
 
-    const key = `pitzbol_notifications_${userId}`;
+    console.log(`📌 Marcando notificación como leída: ${id}`);
+
+    // Usar la función centralizada de notificaciones
+    marcarNotificacionComoLeida(userId, id);
+
+    // Actualizar estado local
     const actualizadas = notificaciones.map(n => 
       n.id === id ? { ...n, leido: true } : n
     );
     
-    localStorage.setItem(key, JSON.stringify(actualizadas));
     setNotificaciones(actualizadas);
     setNoLeidas(actualizadas.filter(n => !n.leido).length);
+    console.log(`✅ Notificación marcada localmente. No leídas: ${actualizadas.filter(n => !n.leido).length}`);
 
     // Actualizar en el backend
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      await fetch(`${API_BASE}/api/notifications/${id}/marcar-leida`, {
+      const response = await fetch(`${API_BASE}/api/admin/notifications/${id}/marcar-leida/${userId}`, {
         method: 'PUT',
         credentials: 'include',
       });
+      
+      if (response.ok) {
+        console.log(`✅ Notificación actualizada en el backend`);
+      } else {
+        console.warn(`⚠️ Error en la respuesta del backend:`, response.status);
+      }
     } catch (error) {
-      console.error("Error al marcar como leída en backend:", error);
+      console.error("❌ Error al marcar como leída en backend:", error);
     }
   };
 
@@ -179,25 +201,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     }
   };
 
-  const limpiarTodas = async () => {
-    if (!userId) return;
 
-    const key = `pitzbol_notifications_${userId}`;
-    localStorage.setItem(key, JSON.stringify([]));
-    setNotificaciones([]);
-    setNoLeidas(0);
-
-    // Limpiar en el backend
-    try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      await fetch(`${API_BASE}/api/notifications/usuario/${userId}/limpiar`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-    } catch (error) {
-      console.error("Error al limpiar notificaciones en backend:", error);
-    }
-  };
 
   const getIconoNotificacion = (tipo: string) => {
     switch(tipo) {
@@ -371,17 +375,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
               )}
             </div>
 
-            {/* Footer */}
-            {notificaciones.length > 0 && (
-              <div className="border-t border-gray-100 px-4 py-3 flex justify-center">
-                <button
-                  onClick={limpiarTodas}
-                  className="text-xs text-gray-500 hover:text-gray-700 font-medium"
-                >
-                  Limpiar todo
-                </button>
-              </div>
-            )}
+
           </motion.div>
         )}
       </AnimatePresence>
