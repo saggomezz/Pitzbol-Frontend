@@ -115,6 +115,9 @@ export default function PerfilDetallado() {
       }
 
       const initialEspecialidades = userLocal.especialidades || userLocal["07_especialidades"] || [];      
+      // Usar solo 'role' que viene normalizado del backend, ignorar '03_rol' que puede ser 'guia_pendiente'
+      const rolNormalizado = userLocal.role || "turista";
+      
       setPerfil({
         id: userLocal.uid,
         nombre: userLocal.nombre || userLocal["01_nombre"] || "Usuario",
@@ -122,7 +125,7 @@ export default function PerfilDetallado() {
         email: userLocal.email || userLocal["04_correo"] || "",
         telefono: userLocal.telefono || userLocal["06_telefono"] || "No registrado",
         nacionalidad: userLocal.nacionalidad || "No registrado",
-        rol: userLocal.role || userLocal["03_rol"] || "turista",
+        rol: rolNormalizado,
         guide_status: userLocal.guide_status || "ninguno", 
         especialidades: initialEspecialidades,
         fotoUrl: userLocal.fotoUrl || userLocal["13_foto_rostro"] || null
@@ -370,6 +373,7 @@ export default function PerfilDetallado() {
     setErrorEspecialidades("");
   };
 
+  // El rol ya viene normalizado del backend (turista si está pendiente, guia si está aprobado)
   const esGuia = perfil?.rol === "guia";
   const esAdmin = perfil?.rol === "admin";
 
@@ -546,7 +550,7 @@ export default function PerfilDetallado() {
               MI <span className="text-[#F00808]">PERFIL</span>
             </motion.h1>
             <p className="text-[#B2C7B5] text-sm font-semibold uppercase tracking-wider">
-              Panel de {perfil.rol} · Pitzbol
+              Panel de {perfil.rol === "guia_pendiente" || perfil.rol === "pendiente" ? "turista" : perfil.rol} · Pitzbol
             </p>
           </div>
         </div>
@@ -642,7 +646,7 @@ export default function PerfilDetallado() {
                 {/* Badge de rol */}
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white rounded-full text-xs font-bold uppercase tracking-wider mb-6">
                   <FiAward size={14} />
-                  {esGuia ? "Guía Pitzbol" : "Pitzbolero"}
+                  {perfil.rol === "guia" ? "Guía Pitzbol" : "Pitzbolero"}
                 </div>
 
                 {/* Stats Cards - Solo visibles para Guías y Turistas */}
