@@ -24,6 +24,7 @@ interface NavbarProps {
 export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpenAuthAsGuide, onOpenAuthAsBusiness }: NavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
+    const [showStatusModal, setShowStatusModal] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const isPendingVerification = (user?.guide_status === "pendiente") && localStorage.getItem("pitzbol_guide_submitted") === "true";
     const handleProfileNavigation = () => {
@@ -109,8 +110,8 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     };
     
 
-    // Logica de roles
-    const role = user?.role || user?.rol || user?.["03_rol"] || "visitor";
+    // Logica de roles - usar solo 'role' que ya viene normalizado del backend
+    const role = user?.role || "visitor";
     const guideStatus = user?.guide_status || "ninguno"; // pendiente | aprobado
 
     return (
@@ -188,7 +189,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="font-bold text-sm leading-none">{user.nombre || user["01_nombre"] || "Usuario"}</span>
-                                        <span className="text-[10px] opacity-60 uppercase mt-1">{role}</span>
+                                        <span className="text-[10px] opacity-60 uppercase mt-1">{role === "guia_pendiente" || role === "pendiente" ? "turista" : role}</span>
                                     </div>
                                 </button>
                             ) : (
@@ -234,11 +235,14 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                 <>
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">Oportunidades</p>
                                     {isPendingVerification ? (
-                                        <button className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-100 rounded-2xl w-full text-left cursor-default">
+                                        <button 
+                                            onClick={() => { setIsMenuOpen(false); setShowStatusModal(true); }}
+                                            className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-100 rounded-2xl w-full text-left cursor-pointer hover:bg-orange-100 transition-colors"
+                                        >
                                             <FiClock className="text-orange-700" />
                                             <div className="flex flex-col">
                                                 <span className="text-[11px] text-orange-700 font-bold italic">Verificando datos...</span>
-                                                <span className="text-[9px] text-orange-600/60 font-medium tracking-tight">Confirmaremos tu identidad pronto</span>
+                                                <span className="text-[9px] text-orange-600/60 font-medium tracking-tight">Click para ver estatus</span>
                                             </div>
                                         </button>
                                     ) : (
@@ -293,6 +297,94 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                     )}
                 </AnimatePresence>
             </div>
+
+            {/* MODAL DE ESTATUS DE SOLICITUD */}
+            <AnimatePresence>
+                {showStatusModal && isPendingVerification && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                        onClick={() => setShowStatusModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-[32px] shadow-2xl p-8 max-w-md w-full border border-gray-100"
+                        >
+                            <div className="flex justify-between items-start mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center">
+                                        <FiClock className="text-orange-600" size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-[#1A4D2E]">Solicitud en Revisión</h3>
+                                        <p className="text-xs text-gray-500 font-medium">Estado: Pendiente</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowStatusModal(false)}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <FiX size={24} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4 mb-6">
+                                <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4">
+                                    <p className="text-sm text-orange-800 font-semibold mb-2">
+                                        📋 Tu solicitud ha sido enviada
+                                    </p>
+                                    <p className="text-xs text-orange-700">
+                                        Estamos revisando tu información y verificando tu identidad. Te notificaremos por correo cuando hayamos terminado la revisión.
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Enviada hace</p>
+                                        <p className="text-lg font-black text-[#1A4D2E]">
+                                            {user?.solicitudEnviadaEn ? 
+                                                (() => {
+                                                    const diff = Date.now() - new Date(user.solicitudEnviadaEn).getTime();
+                                                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                                                    const days = Math.floor(hours / 24);
+                                                    if (days > 0) return `${days} día${days > 1 ? 's' : ''}`;
+                                                    if (hours > 0) return `${hours} hora${hours > 1 ? 's' : ''}`;
+                                                    return 'Menos de 1 hora';
+                                                })()
+                                                : 'Recientemente'
+                                            }
+                                        </p>
+                                    </div>
+                                    <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center animate-pulse">
+                                        <FiClock className="text-white" size={28} />
+                                    </div>
+                                </div>
+
+                                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
+                                    <p className="text-xs text-blue-800 font-semibold mb-2">
+                                        ⏱️ Tiempo estimado de revisión
+                                    </p>
+                                    <p className="text-xs text-blue-700">
+                                        Normalmente respondemos en 24-48 horas hábiles. Recibirás una notificación cuando tu solicitud sea aprobada o si necesitamos información adicional.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setShowStatusModal(false)}
+                                className="w-full bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white py-3 rounded-2xl font-bold hover:shadow-lg transition-all"
+                            >
+                                Entendido
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </nav>
     );
 }

@@ -144,8 +144,9 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         return;
       }
 
-      const userRole = loginData.user?.role || loginData.user?.rol || loginData.user?.["03_rol"] || intendedRole;
-      const especialidadesData = loginData.user?.especialidades || loginData.user?.["07_especialidades"] || [];
+      // El backend ya normaliza todos los campos
+      const userRole = loginData.user?.role || "turista";
+      const especialidadesData = loginData.user?.especialidades || [];
 
       if (loginData.token) {
         localStorage.setItem("pitzbol_token", loginData.token);
@@ -156,14 +157,12 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         uid: loginData.user?.uid,
         nombre: loginData.user?.nombre || regNombre,
         apellido: loginData.user?.apellido || regApellido,
-        fotoPerfil: loginData.user?.fotoPerfil || loginData.user?.fotoPerfilCloudinary || null,
+        fotoPerfil: loginData.user?.fotoPerfil || null,
         telefono: loginData.user?.telefono || telefono || "No registrado",
         nacionalidad: loginData.user?.nacionalidad || nacionalidad || "No registrado",
         especialidades: especialidadesData,
-        "07_especialidades": especialidadesData,
         role: userRole,
-        rol: userRole,
-        guide_status: loginData.user?.guide_status || "pendiente",
+        guide_status: loginData.user?.guide_status || "ninguno",
       }));
 
       window.dispatchEvent(new Event("storage"));
@@ -206,13 +205,14 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
       const data = await response.json();
 
       if (response.ok) {
-        const userRole = data.user.role || data.user.rol || data.user["03_rol"];
-        const especialidadesData = data.user.especialidades || data.user["07_especialidades"] || [];
+        // El backend ya normaliza todos los campos, usar directamente
+        const userRole = data.user.role || "turista";
+        const especialidadesData = data.user.especialidades || [];
 
-        const nombre = data.user.nombre || data.user["01_nombre"] || "Usuario";
-        const apellido = data.user.apellido || data.user["02_apellido"] || "";
-        const telefono = data.user.telefono || data.user["06_telefono"] || "No registrado";
-        const nacionalidad = data.user.nacionalidad || data.user["05_nacionalidad"] || "No registrado";
+        const nombre = data.user.nombre || "Usuario";
+        const apellido = data.user.apellido || "";
+        const telefono = data.user.telefono || "No registrado";
+        const nacionalidad = data.user.nacionalidad || "No registrado";
 
         if (data.token) {
           localStorage.setItem("pitzbol_token", data.token);
@@ -222,14 +222,12 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
           uid: data.user.uid, 
           nombre,
           apellido,
-          fotoPerfil: data.user.fotoPerfil || data.user.fotoPerfilCloudinary || data.user.foto || null,
+          fotoPerfil: data.user.fotoPerfil || null,
           telefono,
           nacionalidad,
           especialidades: especialidadesData,
-          "07_especialidades": especialidadesData,
           role: userRole,
-          rol: userRole,
-          guide_status: data.user.guide_status || data.user["guide_status"] || "ninguno"
+          guide_status: data.user.guide_status || "ninguno"
         }));
         
         // Flag para mostrar notificación de bienvenida en la página principal

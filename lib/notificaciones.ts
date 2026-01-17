@@ -82,6 +82,19 @@ export const notificarRechazoGuia = (userId: string) => {
 };
 
 /**
+ * Enviar notificación cuando se envía solicitud de guía
+ */
+export const notificarSolicitudEnviada = (userId: string) => {
+  return enviarNotificacion(
+    userId,
+    'info',
+    'Solicitud Enviada ✓',
+    'Tu solicitud para ser Guía Pitzbol ha sido enviada correctamente. Estamos revisando tu información y te notificaremos pronto.',
+    '/perfil'
+  );
+};
+
+/**
  * Obtener todas las notificaciones de un usuario
  */
 export const obtenerNotificaciones = (userId: string): PitzbolNotification[] => {
