@@ -1,5 +1,3 @@
-# 💳 Implementación de Billetera - Pitzbol PWA
-
 ## 📋 Resumen de cambios
 
 Se ha implementado un sistema completo de billetera para que turistas y guías turísticos puedan gestionar sus tarjetas de crédito y realizar pagos dentro de la PWA de Pitzbol.
