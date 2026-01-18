@@ -24,24 +24,32 @@ interface NavbarProps {
 export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpenAuthAsGuide, onOpenAuthAsBusiness }: NavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
-    const [showStatusModal, setShowStatusModal] = useState(false);
+    const [isPendingVerification, setIsPendingVerification] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
-    const isPendingVerification = (user?.guide_status === "pendiente") && localStorage.getItem("pitzbol_guide_submitted") === "true";
-    const handleProfileNavigation = () => {
-        setIsMenuOpen(false);
-        if (role === "admin") {
-            window.location.href = "/admin"; // Redirige al panel que compartiste
-        } else {
-            window.location.href = "/perfil"; // Redirige al perfil normal
+
+    // FUNCIÓN ÚNICA checkUser (Corregida)
+    const checkUser = () => {
+        if (typeof window !== "undefined") {
+            const storedUser = localStorage.getItem("pitzbol_user");
+            const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+            setUser(parsedUser);
+
+            if (parsedUser) {
+                const hasSubmitted = localStorage.getItem("pitzbol_guide_submitted") === "true";
+                const isPending = 
+                    parsedUser.guide_status === "pendiente" || 
+                    parsedUser.solicitudStatus === "pendiente" ||
+                    parsedUser["16_status"] === "en_revision" ||
+                    hasSubmitted;
+                
+                setIsPendingVerification(isPending);
+            } else {
+                // Si no hay usuario, forzamos a que no haya nada pendiente
+                setIsPendingVerification(false);
+            }
         }
     };
 
-    const checkUser = () => {
-        const storedUser = localStorage.getItem("pitzbol_user");
-        setUser(storedUser ? JSON.parse(storedUser) : null);
-    };
-
-    // Si no hay foto en localStorage, intentar obtenerla del backend una sola vez
     const hydrateProfilePhoto = async () => {
         const storedUser = localStorage.getItem("pitzbol_user");
         const token = localStorage.getItem("pitzbol_token");
@@ -68,32 +76,28 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     };
 
     useEffect(() => {
-        console.log("🔧 Navbar mounted, registrando listeners...");
         checkUser();
         hydrateProfilePhoto();
 
-        const refreshFromStorage = () => {
-            const storedUser = localStorage.getItem("pitzbol_user");
-            setUser(storedUser ? JSON.parse(storedUser) : null);
-        };
+        const handlePhotoUpdate = () => checkUser();
 
-        const handlePhotoUpdate = (e: any) => {
-            console.log("📸 ¡EVENTO RECIBIDO! Foto actualizada en Navbar...", e.detail);
-            refreshFromStorage();
-        };
+        window.addEventListener("storage", checkUser);
+        window.addEventListener("authStateChanged", checkUser);
+        window.addEventListener("fotoPerfilActualizada", handlePhotoUpdate);
 
         const closeMenu = (e: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false);
         };
 
         console.log("🔧 Agregando listeners para cambios de sesión y storage...");
-        window.addEventListener("fotoPerfilActualizada", handlePhotoUpdate);
-        window.addEventListener("authStateChanged", refreshFromStorage);
-        window.addEventListener("storage", refreshFromStorage);
+        window.addEventListener("storage", checkUser); // <--- Pero llamando a la función de SHAI
+        window.addEventListener("authStateChanged", checkUser); 
+        window.addEventListener("fotoPerfilActualizada", handlePhotoUpdate);      
         document.addEventListener("mousedown", closeMenu);
 
         return () => {
-            console.log("🔧 Limpiando listeners de Navbar...");
+            window.removeEventListener("storage", checkUser);
+            window.removeEventListener("authStateChanged", checkUser);
             window.removeEventListener("fotoPerfilActualizada", handlePhotoUpdate);
             window.removeEventListener("authStateChanged", refreshFromStorage);
             window.removeEventListener("storage", refreshFromStorage);
@@ -102,16 +106,19 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     }, []);
 
     const handleLogout = () => {
-        localStorage.removeItem("pitzbol_user");
-        localStorage.removeItem("pitzbol_token");
-        setUser(null);
-        setIsMenuOpen(false);
-        window.location.href = "/";
+        if (typeof window !== "undefined") {
+            localStorage.removeItem("pitzbol_user");
+            localStorage.removeItem("pitzbol_token");
+            localStorage.removeItem("pitzbol_guide_submitted");
+            setUser(null);
+            setIsPendingVerification(false); // Limpia el estado inmediatamente
+            setIsMenuOpen(false);
+            window.location.href = "/";
+        }
     };
     
-
-    // Logica de roles - usar solo 'role' que ya viene normalizado del backend
-    const role = user?.role || "visitor";
+    // Logica de roles
+    const role = user?.role || user?.rol || "visitor";
     const guideStatus = user?.guide_status || "ninguno"; // pendiente | aprobado
 
     return (
@@ -234,28 +241,32 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             ) : (
                                 <>
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">Oportunidades</p>
+                                    
                                     {isPendingVerification ? (
+                                        /* BOTÓN QUE ABRE EL MODAL DE ESTATUS (MEJOR OPCIÓN) */
                                         <button 
                                             onClick={() => { setIsMenuOpen(false); setShowStatusModal(true); }}
-                                            className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-100 rounded-2xl w-full text-left cursor-pointer hover:bg-orange-100 transition-colors"
+                                            className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-100 rounded-2xl w-full text-left cursor-pointer hover:bg-orange-100 transition-all group"
                                         >
-                                            <FiClock className="text-orange-700" />
+                                            <FiClock className="text-orange-600 animate-pulse group-hover:scale-110 transition-transform" />
                                             <div className="flex flex-col">
-                                                <span className="text-[11px] text-orange-700 font-bold italic">Verificando datos...</span>
-                                                <span className="text-[9px] text-orange-600/60 font-medium tracking-tight">Click para ver estatus</span>
+                                                <span className="text-[12px] text-[#1A4D2E] font-bold italic">Solicitud en revisión</span>
+                                                <span className="text-[10px] text-[#769C7B] font-medium tracking-tight">Click para ver detalles</span>
                                             </div>
                                         </button>
                                     ) : (
+                                        /* BOTÓN ACTIVO PARA CONVERTIRSE EN GUÍA */
                                         <button 
                                             onClick={() => { setIsMenuOpen(false); user ? onOpenGuide() : onOpenAuthAsGuide(); }} 
-                                            className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group"
+                                            className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group hover:bg-[#F6F0E6] transition-all"
                                         >
                                             <FiAward className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" /> 
                                             <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Conviértete en Guía</span>
                                         </button>
                                     )}
+                                    
                                     <button onClick={() => { setIsMenuOpen(false); user ? onOpenBusiness() : onOpenAuthAsBusiness(); }} 
-                                        className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group"
+                                        className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group hover:bg-[#F6F0E6] mt-1"
                                     >
                                         <FiBriefcase className="text-[#0D601E] group-hover:text-[#F00808]" /> 
                                         <span className="text-[#1A4D2E] group-hover:text-[#F00808]">Publica tu Negocio</span>

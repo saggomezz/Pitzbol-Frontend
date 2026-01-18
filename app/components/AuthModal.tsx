@@ -1,8 +1,8 @@
 "use client";
+import { motion } from "framer-motion";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { FiChevronDown, FiLock, FiMail, FiX, FiEye, FiEyeOff } from "react-icons/fi";
+import { FiEye, FiEyeOff, FiLock, FiMail, FiX } from "react-icons/fi";
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 const BACKEND_URL = `${API_BASE}/api/auth`;
@@ -117,7 +117,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
           nombre: regNombre,
           apellido: regApellido,
           telefono: telefono.replace(/\s/g, ""),
-          nacionalidad,
+          nacionalidad: nacionalidad,
           role: intendedRole,
         }),
       });
@@ -243,7 +243,9 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         // Redirigir después de mostrar la notificación (2 segundos)
         setTimeout(() => {
           onClose();
-          
+          const userRole = data.user.role || data.user.rol || data.user["03_rol"] || "";
+          const normalizedRole = userRole.toLowerCase();
+                  
           // Redirección
           if (userRole === "admin" || userRole === "admins") {
             window.location.href = "/admin"; 
