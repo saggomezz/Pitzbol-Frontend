@@ -7,7 +7,7 @@ import { FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
 import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
   FiPlus, FiShield, FiUser, FiX
 } from "react-icons/fi";
-import { notificarAprobacionGuia, notificarRechazoGuia } from "@/lib/notificaciones";
+import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
 import { auth } from "@/lib/firebase";
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
@@ -173,6 +173,7 @@ export default function PerfilDetallado() {
               // Si fue aprobado como guía, mostrar notificación y enviar a storage
               if (nuevoRol === "guia" && nuevoGuideStatus === "aprobado" && userLocal.role !== "guia") {
                 notificarAprobacionGuia(userLocal.uid);
+                registrarAccionSolicitud("aceptada", userLocal.nombre || userLocal["01_nombre"] || "Usuario", "Solicitud aceptada. El usuario ahora es guía.");
                 setMostrarNotificacionAprobado(true);
                 setTimeout(() => setMostrarNotificacionAprobado(false), 8000);
               }

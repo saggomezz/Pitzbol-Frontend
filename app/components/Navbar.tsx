@@ -10,6 +10,7 @@ import { FiBriefcase,FiCalendar, FiClock, FiCreditCard, FiHeart, FiHome, FiInfo,
 import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
 import NotificationsPanel from "./NotificationsPanel";
+import HistorialSolicitudesModal from "./HistorialSolicitudesModal";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
@@ -25,6 +26,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
     const [showStatusModal, setShowStatusModal] = useState(false);
+    const [showHistorialModal, setShowHistorialModal] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const isPendingVerification = (user?.guide_status === "pendiente") && localStorage.getItem("pitzbol_guide_submitted") === "true";
     const handleProfileNavigation = () => {
@@ -383,6 +385,13 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             </button>
                         </motion.div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* MODAL DE HISTORIAL DE SOLICITUDES */}
+            <AnimatePresence>
+                {showHistorialModal && (
+                    <HistorialSolicitudesModal open={showHistorialModal} onClose={() => setShowHistorialModal(false)} />
                 )}
             </AnimatePresence>
         </nav>

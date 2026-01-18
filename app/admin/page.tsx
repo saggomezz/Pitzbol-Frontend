@@ -2,6 +2,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { FiChevronRight, FiFileText, FiLogOut, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle } from "react-icons/fi";
+import AdminHistorialSolicitudesModal from "@/app/components/AdminHistorialSolicitudesModal";
 
 type NotificationType = {
   tipo: 'exito' | 'error' | 'info';
@@ -22,6 +23,7 @@ export default function AdminPerfil() {
   const [selectedGuia, setSelectedGuia] = useState<any>(null);
   const [procesando, setProcesando] = useState(false);
   const [notificacion, setNotificacion] = useState<NotificationType | null>(null);
+  const [showHistorialModal, setShowHistorialModal] = useState(false);
 
   useEffect(() => {
     fetchSolicitudes();
@@ -109,6 +111,8 @@ export default function AdminPerfil() {
     window.location.href = "/";
   };
 
+  const token = localStorage.getItem('pitzbol_token') || '';
+
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-[#FDFCF9] font-light text-gray-400 italic">
       Sincronizando panel de control...
@@ -122,8 +126,8 @@ export default function AdminPerfil() {
           <h1 className="text-2xl font-medium text-gray-800 tracking-tight">Panel de administración</h1>
           <p className="text-gray-400 text-sm font-light">Validación de nuevos perfiles Pitzbol</p>
         </div>
-        <button onClick={handleLogout} className="p-3 text-gray-300 hover:text-red-400 transition-colors">
-          <FiLogOut size={20} />
+        <button onClick={() => setShowHistorialModal(true)} className="p-3 text-[#0D601E] hover:text-[#F00808] transition-colors">
+          <FiFileText size={20} />
         </button>
       </header>
 
@@ -391,6 +395,8 @@ export default function AdminPerfil() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AdminHistorialSolicitudesModal open={showHistorialModal} onClose={() => setShowHistorialModal(false)} token={token} />
     </div>
   );
 }
