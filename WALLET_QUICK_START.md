@@ -1,5 +1,3 @@
-# 🚀 Guía Rápida - Billetera de Pitzbol
-
 ## ¿Qué se implementó?
 
 Se agregó un **sistema completo de billetera** al perfil de usuarios (turistas y guías) para que gestionen y paguen con sus tarjetas de crédito/débito dentro de la PWA.
