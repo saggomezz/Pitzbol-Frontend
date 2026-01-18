@@ -24,23 +24,32 @@ interface NavbarProps {
 export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpenAuthAsGuide, onOpenAuthAsBusiness }: NavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
+    const [isPendingVerification, setIsPendingVerification] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
-    const isPendingVerification = user?.guideStatus === "pendiente" && localStorage.getItem("pitzbol_guide_submitted") === "true";
-    const handleProfileNavigation = () => {
-        setIsMenuOpen(false);
-        if (role === "admin") {
-            window.location.href = "/admin"; // Redirige al panel que compartiste
-        } else {
-            window.location.href = "/perfil"; // Redirige al perfil normal
+
+    // FUNCIÓN ÚNICA checkUser (Corregida)
+    const checkUser = () => {
+        if (typeof window !== "undefined") {
+            const storedUser = localStorage.getItem("pitzbol_user");
+            const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+            setUser(parsedUser);
+
+            if (parsedUser) {
+                const hasSubmitted = localStorage.getItem("pitzbol_guide_submitted") === "true";
+                const isPending = 
+                    parsedUser.guide_status === "pendiente" || 
+                    parsedUser.solicitudStatus === "pendiente" ||
+                    parsedUser["16_status"] === "en_revision" ||
+                    hasSubmitted;
+                
+                setIsPendingVerification(isPending);
+            } else {
+                // Si no hay usuario, forzamos a que no haya nada pendiente
+                setIsPendingVerification(false);
+            }
         }
     };
 
-    const checkUser = () => {
-        const storedUser = localStorage.getItem("pitzbol_user");
-        setUser(storedUser ? JSON.parse(storedUser) : null);
-    };
-
-    // Si no hay foto en localStorage, intentar obtenerla del backend una sola vez
     const hydrateProfilePhoto = async () => {
         const storedUser = localStorage.getItem("pitzbol_user");
         const token = localStorage.getItem("pitzbol_token");
@@ -67,44 +76,41 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     };
 
     useEffect(() => {
-        console.log("🔧 Navbar mounted, registrando listeners...");
         checkUser();
         hydrateProfilePhoto();
-        
-        const handlePhotoUpdate = (e: any) => {
-            console.log("📸 ¡EVENTO RECIBIDO! Foto actualizada en Navbar...", e.detail);
-            const storedUser = localStorage.getItem("pitzbol_user");
-            if (storedUser) {
-                const userData = JSON.parse(storedUser);
-                console.log("📸 Usuario actualizado:", userData);
-                setUser(userData);
-            }
-        };
-        
+
+        const handlePhotoUpdate = () => checkUser();
+
+        window.addEventListener("storage", checkUser);
+        window.addEventListener("authStateChanged", checkUser);
+        window.addEventListener("fotoPerfilActualizada", handlePhotoUpdate);
+
         const closeMenu = (e: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false);
         };
         
-        console.log("🔧 Agregando listener para 'fotoPerfilActualizada'...");
-        window.addEventListener("fotoPerfilActualizada", handlePhotoUpdate);
         document.addEventListener("mousedown", closeMenu);
         
         return () => {
-            console.log("🔧 Limpiando listeners de Navbar...");
+            window.removeEventListener("storage", checkUser);
+            window.removeEventListener("authStateChanged", checkUser);
             window.removeEventListener("fotoPerfilActualizada", handlePhotoUpdate);
             document.removeEventListener("mousedown", closeMenu);
         };
     }, []);
 
     const handleLogout = () => {
-        localStorage.removeItem("pitzbol_user");
-        localStorage.removeItem("pitzbol_token");
-        setUser(null);
-        setIsMenuOpen(false);
-        window.location.href = "/";
+        if (typeof window !== "undefined") {
+            localStorage.removeItem("pitzbol_user");
+            localStorage.removeItem("pitzbol_token");
+            localStorage.removeItem("pitzbol_guide_submitted");
+            setUser(null);
+            setIsPendingVerification(false); // Limpia el estado inmediatamente
+            setIsMenuOpen(false);
+            window.location.href = "/";
+        }
     };
     
-
     // Logica de roles
     const role = user?.role || user?.rol || "visitor";
     const guideStatus = user?.guide_status || "ninguno"; // pendiente | aprobado
@@ -229,25 +235,29 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             ) : (
                                 <>
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">Oportunidades</p>
+                                    
                                     {isPendingVerification ? (
-                                        <button className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-100 rounded-2xl w-full text-left cursor-default">
-                                            <FiClock className="text-orange-700" />
+                                        /* BOTÓN DE ESTADO PENDIENTE */
+                                        <div className="flex items-center gap-3 p-3 bg-gray-50 border border-orange-100 rounded-2xl w-full cursor-not-allowed">
+                                            <FiClock className="text-orange-500 animate-pulse" />
                                             <div className="flex flex-col">
-                                                <span className="text-[11px] text-orange-700 font-bold italic">Verificando datos...</span>
-                                                <span className="text-[9px] text-orange-600/60 font-medium tracking-tight">Confirmaremos tu identidad pronto</span>
+                                                <span className="text-[12px] text-[#1A4D2E] font-bold italic">Solicitud en revisión</span>
+                                                <span className="text-[11px] text-[#769C7B] font-medium tracking-tight">Confirmaremos tu identidad pronto</span>
                                             </div>
-                                        </button>
+                                        </div>
                                     ) : (
+                                        /* BOTÓN ACTIVO PARA CONVERTIRSE EN GUÍA */
                                         <button 
                                             onClick={() => { setIsMenuOpen(false); user ? onOpenGuide() : onOpenAuthAsGuide(); }} 
-                                            className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group"
+                                            className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group hover:bg-[#F6F0E6] transition-all"
                                         >
                                             <FiAward className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" /> 
                                             <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Conviértete en Guía</span>
                                         </button>
                                     )}
+                                    
                                     <button onClick={() => { setIsMenuOpen(false); user ? onOpenBusiness() : onOpenAuthAsBusiness(); }} 
-                                        className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group"
+                                        className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group hover:bg-[#F6F0E6] mt-1"
                                     >
                                         <FiBriefcase className="text-[#0D601E] group-hover:text-[#F00808]" /> 
                                         <span className="text-[#1A4D2E] group-hover:text-[#F00808]">Publica tu Negocio</span>
