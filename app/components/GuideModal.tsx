@@ -364,20 +364,31 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
       console.log("📥 Respuesta recibida:", response.status, response.statusText);
 
       if (response.ok) {
-          const responseData = await response.json();
-          console.log("✅ Registro exitoso:", responseData);
-          
-          const updatedUser = { 
-              ...userLocal, 
-              guide_status: "pendiente",
-              solicitudStatus: "pendiente",
-              especialidades: selectedCats 
-          };
-          
-          localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
-          localStorage.setItem("pitzbol_guide_submitted", "true");
-          window.dispatchEvent(new Event("storage"));
-          setShowConfirmation(true);
+        const responseData = await response.json();
+        console.log("✅ Registro exitoso:", responseData);
+        
+        // Guardar timestamp de cuándo se envió la solicitud
+        const timestamp = new Date().toISOString();
+        const updatedUser = { 
+          ...userLocal,
+          role: "turista",  // Explícitamente mantener role como turista
+          guide_status: "pendiente", 
+          especialidades: selectedCats,
+          solicitudEnviadaEn: timestamp
+        };
+        localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
+        localStorage.setItem("pitzbol_guide_submitted", "true");
+        
+        // Enviar notificación
+        const { notificarSolicitudEnviada } = await import("@/lib/notificaciones");
+        notificarSolicitudEnviada(userLocal?.uid);
+        
+        window.dispatchEvent(new Event("storage"));
+        setShowConfirmation(true);
+      } else {
+        const err = await response.json();
+        console.error("❌ Error en registro:", err);
+        setErrorMsg(err.message || err.msg || "Error al guardar perfil.");
       }
     } catch (e) { 
       console.error("❌ Error en handleFinish:", e);
