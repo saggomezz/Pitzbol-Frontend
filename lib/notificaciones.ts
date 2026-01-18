@@ -2,6 +2,8 @@
  * Utilidades para manejar notificaciones de Pitzbol
  */
 
+import { agregarHistorialSolicitud } from "@/app/components/HistorialSolicitudesModal";
+
 export interface PitzbolNotification {
   id: string;
   tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia';
@@ -130,4 +132,17 @@ export const marcarNotificacionComoLeida = (userId: string, notificationId: stri
       url: window.location.href
     })
   );
+};
+
+/**
+ * Registrar acción en el historial de solicitudes
+ */
+export const registrarAccionSolicitud = (accion: "aceptada" | "rechazada", nombre: string, mensaje: string) => {
+  agregarHistorialSolicitud({
+    id: `solicitud_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    nombre,
+    accion,
+    fecha: new Date().toISOString(),
+    mensaje
+  });
 };
