@@ -3,7 +3,7 @@ import { ensureFaceApiReady } from "../initTF";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { FiCheck, FiChevronLeft, FiFileText, FiShield, FiX } from "react-icons/fi";
+import { FiCheck, FiChevronLeft, FiFileText, FiShield, FiX,FiAward } from "react-icons/fi";
 import Webcam from "react-webcam"; // Librería para la cámara
 import imglogo from "./logoPitzbol.png";
 
@@ -108,43 +108,44 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
   }, [isOpen]);
 
   const verificarEnVivo = async () => {
-    const video = webcamRef.current?.video; 
-    
+    const video = webcamRef.current?.video;
+
     if (!video || video.readyState !== 4 || video.videoWidth === 0 || !isScannerActive || !modelsLoaded || imgRostro || !faceapi) return;
 
     try {
       const detection = await faceapi.detectSingleFace(
-        video, 
+        video,
         new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })
       ).withFaceLandmarks().withFaceDescriptor();
 
-      if (detection && detection.detection && detection.detection.box && typeof detection.detection.box.width === 'number' && detection.detection.box.width > 0) {
-        
+      if (detection) {
         let score = 0;
         if (ineDescriptor) {
           try {
             const distance = faceapi.euclideanDistance(ineDescriptor, detection.descriptor);
+            // Mantenemos la fórmula original para el cálculo que verá el admin
             score = Math.round(Math.max(0, (1 - (distance / 0.8)) * 100));
           } catch (e) {
-            score = 50; 
+            score = 0;
           }
-        } else {
-          score = 50; 
         }
 
         setMatchingScore(score);
         setStatusMsg("Analizando rostro...");
 
+        // DAMOS 2 SEGUNDOS (2000ms) de escaneo para que el usuario se acomode bien
+        // y luego tomamos la foto automáticamente para que el admin la revise
         const timeoutId = setTimeout(() => {
           if (isScannerActive && !imgRostro && webcamRef.current) {
             const screenshot = webcamRef.current.getScreenshot();
             if (screenshot) {
               setImgRostro(screenshot);
               setIsScannerActive(false);
-              setStatusMsg("✓ Captura finalizada");
+              setStatusMsg("✓ Captura finalizada para revisión");
+              // Aquí el matchingScore actual se queda guardado para enviarse al backend
             }
           }
-        }, 800);
+        }, 2500); // 2.5 segundos es el tiempo ideal de espera
 
         return () => clearTimeout(timeoutId);
       } else {
@@ -152,7 +153,6 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         setStatusMsg("Centra tu rostro en la guía");
       }
     } catch (err) {
-      // Ignorar errores de backend - la detección continuará en el siguiente ciclo
       console.error("Error en detección:", err);
     }
   };
@@ -297,8 +297,18 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
     isMatch: boolean;
     message: string;
   }
-
+  const eliminarFoto = (tipo: 'frente' | 'vuelta') => {
+    setDocsUploaded(prev => ({ ...prev, [tipo]: false }));
+    if (tipo === 'frente') {
+      setImgFrenteBase64(null);
+      setRfc(""); // Opcional: limpiar RFC si quieres que se vuelva a extraer
+    } else {
+      setImgVueltaBase64(null);
+    }
+  };
+  
   const handleFinish = async () => {
+    const stored = localStorage.getItem("pitzbol_user");
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
     setIsFinishing(true);
     setErrorMsg("");
@@ -439,7 +449,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
             </div>
           )}
         </div>
-        {/* 2. CUERPO CON SCROLL (Contenido dinámico) */}
+
         <div className={`flex-1 ${(!isFinishing && !verifyingOCR && !verifyingFace) ? 'overflow-y-auto' : 'overflow-hidden'} px-6 md:px-12 py-0 flex flex-col items-center justify-center relative`}>
           <AnimatePresence mode="wait">
             {(isFinishing || verifyingOCR || verifyingFace) ? (
@@ -465,7 +475,6 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
                   />
                 </motion.div>
 
-                {/* Bloque de Texto: Pegado al logo con margen superior negativo */}
                 <div className="relative -mt-6 md:-mt-10 z-10">
                   <h3 className="text-xl md:text-3xl font-black text-[#1A4D2E] uppercase tracking-tighter leading-none">
                     {verifyingOCR ? "Validando INE" : verifyingFace ? "Verificando Biometría" : "Guardando Perfil"}
@@ -494,14 +503,22 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
               <motion.div key={step} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full flex flex-col items-center">
                 
                 {step === 1 && (
-                  <div className="w-full pt-4">
-                    <p className="text-[#769C7B] text-sm md:text-base mb-6 font-medium italic text-center">¿En qué áreas te consideras experto?</p>
+                  <div className="w-full pt-2">
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-center mb-8 space-y-2"
+                    >
+                      <p className="text-[#1A4D2E]/100 text-[14px] md:text-base leading-relaxed">
+                        Tus especialidades nos ayudan a conectarte con los turistas que buscan experiencias como las que tú ofreces. <br className="hidden md:block" />
+                      </p>
+                    </motion.div>
+                    <p className="text-[#1A4D2E] text-sm md:text-base mb-9  text-center font-bold italic">¿En qué áreas te consideras experto?</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {CATEGORIES.map(cat => (
                         <button key={cat} onClick={() => {
                           const nuevosIntereses = selectedCats.includes(cat) ? selectedCats.filter(c => c !== cat) : [...selectedCats, cat];
                           setSelectedCats(nuevosIntereses);
-                          // Guardar automáticamente en BD
                           guardarInteresesEnBD(nuevosIntereses);
                         }} 
                           className={`py-3 px-1 rounded-full border-2 text-[12px] md:text-sm transition-all flex items-center justify-center gap-2 ${selectedCats.includes(cat) ? 'bg-[#0D601E] border-[#0D601E] text-white' : 'bg-white border-gray-100 text-[#1A4D2E] hover:border-[#0D601E]'}`}>
@@ -509,56 +526,201 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
                         </button>
                       ))}
                     </div>
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-center mb-5 space-y-2 mt-9"
+                    >
+                        <p className="text-[#1A4D2E]/70 text-[11px] md:text-[13px] leading-relaxed">
+                          Podrás editar o añadir más intereses en cualquier momento desde tu perfil. <br className="hidden md:block" />
+                        </p>
+                    </motion.div>
                   </div>
                 )}
 
                 {step === 2 && (
                   <div className="w-full pt-4">
-                    <p className="text-[#769C7B] mb-8 font-medium italic text-base md:text-lg text-center">Sube fotos legibles de tu INE.</p>
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-center mb-8 space-y-2"
+                    >
+                      <p className="text-[#1A4D2E]/100 text-[14px] md:text-base leading-relaxed">
+                        A continuación necesitarás tener tus datos oficiales, para poder verificar que eres tú.
+                      </p>
+                      <p className="text-[#1A4D2E]/95 text-[14px] md:text-base leading-relaxed font-bold italic">
+                        Ten en mano tu INE
+                      </p>
+                    </motion.div>
+
+                    <p className="text-[#1A4D2E]/100 mb-2 font-bold italic text-xs md:text-sm text-center">
+                      Sube fotos legibles de tu identificación:
+                    </p>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-                      <label htmlFor="file-frente" className={`relative border-2 border-dashed rounded-[30px] h-36 md:h-44 flex flex-col items-center justify-center cursor-pointer transition-all ${docsUploaded.frente ? 'border-[#0D601E] bg-[#0D601E]/5' : 'border-gray-200 hover:bg-gray-50'}`}>
-                        {docsUploaded.frente ? <><FiCheck size={32} className="text-[#0D601E] mb-2" /><span className="text-xs font-bold text-[#0D601E]">Frente OK</span></> : 
-                        <><FiFileText size={32} className="text-[#0D601E] mb-2 opacity-50" /><span className="text-xs font-bold text-[#1A4D2E] italic uppercase">Frente</span></>}
-                        <input id="file-frente" type="file" className="hidden" onChange={(e) => handleFileChange(e, 'frente')} accept="image/*" />
-                      </label>
-                      <label htmlFor="file-vuelta" className={`relative border-2 border-dashed rounded-[30px] h-36 md:h-44 flex flex-col items-center justify-center cursor-pointer transition-all ${docsUploaded.vuelta ? 'border-[#0D601E] bg-[#0D601E]/5' : 'border-gray-200 hover:bg-gray-50'}`}>
-                        {docsUploaded.vuelta ? <><FiCheck size={32} className="text-[#0D601E] mb-2" /><span className="text-xs font-bold text-[#0D601E]">Reverso OK</span></> : 
-                        <><FiFileText size={32} className="text-[#0D601E] mb-2 opacity-50" /><span className="text-xs font-bold text-[#1A4D2E] italic uppercase">Reverso</span></>}
-                        <input id="file-vuelta" type="file" className="hidden" onChange={(e) => handleFileChange(e, 'vuelta')} accept="image/*" />
-                      </label>
+                      {/* CUADRO FRENTE */}
+                      <div className="relative">
+                        {docsUploaded.frente && (
+                          <button 
+                            onClick={() => eliminarFoto('frente')}
+                            className="absolute -top-2 -right-2 z-10 bg-[#909090]/400 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-colors"
+                          >
+                            <FiX size={16} />
+                          </button>
+                        )}
+                        <label htmlFor="file-frente" className={`relative border-2 border-dashed rounded-[30px] h-36 md:h-44 flex flex-col items-center justify-center cursor-pointer transition-all w-full ${docsUploaded.frente ? 'border-[#0D601E] bg-[#0D601E]/5' : 'border-gray-200 hover:bg-gray-50'}`}>
+                          {docsUploaded.frente ? (
+                            <><FiCheck size={32} className="text-[#0D601E] mb-2" /><span className="text-xs font-bold text-[#0D601E]">Frente OK</span></>
+                          ) : (
+                            <><FiFileText size={32} className="text-[#0D601E] mb-2 opacity-50" /><span className="text-xs font-bold text-[#1A4D2E] italic uppercase">Frente</span></>
+                          )}
+                          <input id="file-frente" type="file" className="hidden" onChange={(e) => handleFileChange(e, 'frente')} accept="image/*" />
+                        </label>
+                      </div>
+
+                      {/* CUADRO REVERSO */}
+                      <div className="relative">
+                        {docsUploaded.vuelta && (
+                          <button 
+                            onClick={() => eliminarFoto('vuelta')}
+                            className="absolute -top-2 -right-2 z-10 bg-[#909090]/400 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-colors"
+                          >
+                            <FiX size={16} />
+                          </button>
+                        )}
+                        <label htmlFor="file-vuelta" className={`relative border-2 border-dashed rounded-[30px] h-36 md:h-44 flex flex-col items-center justify-center cursor-pointer transition-all w-full ${docsUploaded.vuelta ? 'border-[#0D601E] bg-[#0D601E]/5' : 'border-gray-200 hover:bg-gray-50'}`}>
+                          {docsUploaded.vuelta ? (
+                            <><FiCheck size={32} className="text-[#0D601E] mb-2" /><span className="text-xs font-bold text-[#0D601E]">Reverso OK</span></>
+                          ) : (
+                            <><FiFileText size={32} className="text-[#0D601E] mb-2 opacity-50" /><span className="text-xs font-bold text-[#1A4D2E] italic uppercase">Reverso</span></>
+                          )}
+                          <input id="file-vuelta" type="file" className="hidden" onChange={(e) => handleFileChange(e, 'vuelta')} accept="image/*" />
+                        </label>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {step === 3 && (
-                  <div className="w-full pt-4 space-y-6 max-w-sm">
-                    <p className="text-xs md:text-sm text-[#1A4D2E] font-medium leading-relaxed bg-[#F6F0E6] p-4 rounded-[20px] border-l-4 border-[#0D601E]">
-                      Confirma tu RFC extraído automáticamente.
-                    </p>
-                    <div className="space-y-4">
-                      <input placeholder="RFC" value={rfc} onChange={(e) => setRfc(e.target.value.toUpperCase())} className={inputClass} />
-                      <input placeholder="Código Postal" value={formData.codigoPostal} onChange={(e) => setFormData({...formData, codigoPostal: e.target.value})} className={inputClass} />
+                  <div className="w-full pt-1 flex flex-col items-center">
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-center mb-2"
+                    >
+                      <p className="text-[#1A4D2E] text-[14px] md:text-sm italic mt-1">Asegúrate que el RFC extraído sea correcto.</p>
+                      <p className="text-[#1A4D2E] text-[14px] md:text-sm italic mt-1 font-bold ">
+                        Si no es correcto, escribe tu RFC y Código Postal tal cual aparecen en tu constancia
+                      </p>
+                    </motion.div>
+
+                    <div className="w-full max-w-sm space-y-10 mt-9">
+                      <div className="space-y-5">
+                        <div className="relative">
+                          <label className="text-[#1A4D2E]/100 font-bold italic text-xs">
+                            RFC Individual
+                          </label>
+                          <input 
+                            placeholder="RFC" 
+                            value={rfc} 
+                            onChange={(e) => setRfc(e.target.value.toUpperCase())} 
+                            className={`${inputClass} hover:border-[#0D601E]/40 transition-colors`}
+                          />
+                        </div>
+
+                        <div className="relative">
+                          <label className="text-[#1A4D2E]/100 mb-2 font-bold italic text-xs">
+                            Código Postal
+                          </label>
+                          <input 
+                            placeholder="C.P." 
+                            value={formData.codigoPostal} 
+                            onChange={(e) => setFormData({...formData, codigoPostal: e.target.value})} 
+                            className={`${inputClass} hover:border-[#0D601E]/40 transition-colors`}
+                          />
+                        </div>
+                      </div>
+
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                      >
+                        <p className="text-[12px] md:text-[13px] text-[#1A4D2E] text-center font-medium">
+                          Esto nos permite cumplir con las normativas fiscales vigentes y asegurar la <span className="text-[#0D601E] font-bold">transparencia y seguridad</span> en tus futuros cobros.
+                        </p>
+                      </motion.div>
                     </div>
                   </div>
                 )}
 
                 {step === 4 && (
-                  <div className="w-full pt-4 flex flex-col items-center">
-                    <div className="relative w-44 h-60 md:w-52 md:h-72 rounded-[110px] md:rounded-[150px] overflow-hidden border-4 border-[#0D601E]/20 bg-black shadow-xl mb-6">
-                      {!imgRostro ? (
-                        <Webcam audio={false} ref={webcamRef} screenshotFormat="image/jpeg" className="w-full h-full object-cover scale-x-[-1]" videoConstraints={{ facingMode: "user" }} />
-                      ) : (
-                        <img src={imgRostro} alt="Rostro" className="w-full h-full object-cover" />
+                  <div className="w-full pt-2 flex flex-col items-center">
+                    {!isScannerActive && !imgRostro && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="text-center mb-12 space-y-4 max-w-xs"
+                      >
+                        <div className="w-16 h-16 bg-[#F1F8F6] rounded-full flex items-center justify-center mx-auto mb-4">
+                          <FiShield className="text-[#0D601E]" size={30} />
+                        </div>
+                        <p className="text-[#1A4D2E] text-[15px] font-bold leading-relaxed">
+                          Último paso: Verificación de Identidad
+                        </p>
+                        <p className="text-[#1A4D2E] text-[14px] leading-relaxed italic">
+                          "Para tu seguridad, compararemos tu rostro con la fotografía de tu identificación oficial."
+                        </p>
+                        <div className="bg-[#FDFCF9] p-2 rounded-2xl border border-[#0D601E]/10">
+                          <p className="text-[#0D601E] text-[15px] font-bold">
+                            Instrucciones:
+                          </p>
+                          <p className="text-[#1A4D2E]/90 text-[14px]">
+                            Ubícate en un lugar iluminado y mantén tu rostro centrado en el óvalo.
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    <AnimatePresence>
+                      {(isScannerActive || imgRostro) && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="relative w-44 h-60 md:w-52 md:h-72 rounded-[110px] md:rounded-[150px] overflow-hidden border-4 border-[#0D601E]/20 bg-black shadow-xl mb-6"
+                        >
+                          {!imgRostro ? (
+                            <Webcam 
+                              audio={false} 
+                              ref={webcamRef} 
+                              screenshotFormat="image/jpeg" 
+                              className="w-full h-full object-cover scale-x-[-1]" 
+                              videoConstraints={{ facingMode: "user" }} 
+                            />
+                          ) : (
+                            <img src={imgRostro} alt="Rostro" className="w-full h-full object-cover" />
+                          )}
+                          {isScannerActive && !imgRostro && (
+                            <div className="absolute inset-0 border-[30px] border-black/40 pointer-events-none rounded-[110px] md:rounded-[150px]" />
+                          )}
+                        </motion.div>
                       )}
-                    </div>
-                    <div className="w-full max-w-[200px] space-y-2">
-                      <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <motion.div className="h-full bg-[#0D601E]" animate={{ width: `${matchingScore}%` }} />
-                      </div>
-                      <p className={`text-[11px] font-black uppercase tracking-widest ${imgRostro ? 'text-[#0D601E]' : 'text-gray-500'}`}>
-                        {imgRostro ? "✓ Identidad Lista" : statusMsg}
-                      </p>
-                    </div>
+                    </AnimatePresence>
+
+                    {(isScannerActive || imgRostro) && (
+                      <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        className="w-full max-w-[200px] space-y-2"
+                      >
+                        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                          <motion.div className="h-full bg-[#0D601E]" animate={{ width: `${matchingScore}%` }} />
+                        </div>
+                        <p className={`text-[12px] font-black text-center ${imgRostro ? 'text-[#0D601E]' : 'text-gray-500'}`}>
+                          {imgRostro ? "✓ Captura realizada con éxito" : statusMsg}
+                        </p>
+                      </motion.div>
+                    )}
                   </div>
                 )}
               </motion.div>
@@ -566,7 +728,6 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
           </AnimatePresence>
         </div>
 
-        {/* 3. FOOTER FIJO (Botones de acción) */}
         {!isFinishing && !showConfirmation && (
           <div className="w-full bg-white p-6 md:p-10 border-t border-gray-50 flex flex-col items-center">
             {step < 4 ? (
@@ -589,8 +750,8 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
                   </button>
                 ) : (
                   <>
+                    <button onClick={() => { setImgRostro(null); setIsScannerActive(false); setMatchingScore(0); }} className="text-[#8B0000] text-[12px] mb-4 font-bold underline">Repetir Escaneo</button>
                     <button onClick={handleFinish} className={btnPrimary}>Finalizar Registro</button>
-                    <button onClick={() => { setImgRostro(null); setIsScannerActive(false); setMatchingScore(0); }} className="text-[#8B0000] text-[10px] font-bold uppercase underline">Repetir Escaneo</button>
                   </>
                 )}
               </div>
