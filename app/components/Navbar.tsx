@@ -25,6 +25,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
     const [isPendingVerification, setIsPendingVerification] = useState(false);
+    const [showStatusModal, setShowStatusModal] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
     // FUNCIÓN ÚNICA checkUser (Corregida)
@@ -88,19 +89,13 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         const closeMenu = (e: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false);
         };
-
-        console.log("🔧 Agregando listeners para cambios de sesión y storage...");
-        window.addEventListener("storage", checkUser); // <--- Pero llamando a la función de SHAI
-        window.addEventListener("authStateChanged", checkUser); 
-        window.addEventListener("fotoPerfilActualizada", handlePhotoUpdate);      
+        
         document.addEventListener("mousedown", closeMenu);
-
+        
         return () => {
             window.removeEventListener("storage", checkUser);
             window.removeEventListener("authStateChanged", checkUser);
             window.removeEventListener("fotoPerfilActualizada", handlePhotoUpdate);
-            window.removeEventListener("authStateChanged", refreshFromStorage);
-            window.removeEventListener("storage", refreshFromStorage);
             document.removeEventListener("mousedown", closeMenu);
         };
     }, []);
