@@ -10,6 +10,7 @@ import { FiBriefcase,FiCalendar, FiClock, FiCreditCard, FiHeart, FiHome, FiInfo,
 import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
 import NotificationsPanel from "./NotificationsPanel";
+import HistorialSolicitudesModal from "./HistorialSolicitudesModal";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
@@ -26,6 +27,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const [user, setUser] = useState<any>(null);
     const [isPendingVerification, setIsPendingVerification] = useState(false);
     const [showStatusModal, setShowStatusModal] = useState(false);
+    const [showHistorialModal, setShowHistorialModal] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
     // FUNCIÓN ÚNICA checkUser (Corregida)
@@ -389,6 +391,13 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             </button>
                         </motion.div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* MODAL DE HISTORIAL DE SOLICITUDES */}
+            <AnimatePresence>
+                {showHistorialModal && (
+                    <HistorialSolicitudesModal open={showHistorialModal} onClose={() => setShowHistorialModal(false)} />
                 )}
             </AnimatePresence>
         </nav>
