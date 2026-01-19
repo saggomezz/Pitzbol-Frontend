@@ -1,5 +1,4 @@
 "use client";
-import { notificarAprobacionGuia } from "@/lib/notificaciones";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -81,7 +80,8 @@ export default function PerfilDetallado() {
   const [loading, setLoading] = useState(true);
   const [especialidades, setEspecialidades] = useState<string[]>([]);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null); 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
 
   // Función para refrescar los datos del perfil desde localStorage
   const refrescarEspecialidades = () => {
@@ -752,9 +752,11 @@ export default function PerfilDetallado() {
                 </div>
 
                 {/* Badge de rol */}
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#E8F5E9] text-[#2E7D32] rounded-full text-xs font-medium tracking-wide mb-6 border border-[#C8E6C9]">
-                  <FiAward size={13} />
-                  {esGuia ? "Guía" : "Guía Pitzbol}
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#F1F8F6] text-[#0D601E] rounded-full border border-[#0D601E]/10 mb-6">
+                  <FiShield size={12} className="opacity-70" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.15em]">
+                    {esGuia ? "Guía Verificado" : "Explorador"}
+                  </span>
                 </div>
 
                 {/* Stats Cards - Solo visibles para Guías y Turistas */}
@@ -861,24 +863,18 @@ export default function PerfilDetallado() {
                     </motion.div>
 
                     {/* Card de Billetera */}
-                    <motion.button 
-                      whileHover={{ y: -2 }}
-                      onClick={() => setShowWalletModal(true)}
-                      className="w-full bg-gradient-to-br from-[#E8F5E9] to-white p-5 rounded-2xl border border-[#0D601E]/10 relative text-left hover:border-[#0D601E]/20 transition-colors"
+                    <button 
+                      onClick={() => setShowWalletModal(true)} 
+                      className="w-full flex items-center gap-4 p-4 rounded-2xl border border-gray-100 hover:border-[#0D601E]/20 hover:bg-[#FDFCF9] transition-all group"
                     >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="p-2 bg-[#0D601E]/10 rounded-lg">
-                            <FiCreditCard size={18} className="text-[#0D601E]" />
-                          </div>
-                          <h3 className="text-sm font-black uppercase text-[#1A4D2E] tracking-wider">Mi Billetera</h3>
-                        </div>
-                        <svg className="w-5 h-5 text-[#0D601E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                        </svg>
+                      <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:text-[#0D601E] group-hover:bg-[#F1F8F6] transition-colors">
+                        <FiCreditCard size={20} />
                       </div>
-                      <p className="text-sm text-[#1A4D2E]/70 font-semibold pl-12">Gestiona tus tarjetas de pago</p>
-                    </motion.button>
+                      <div className="flex flex-col text-left">
+                        <span className="text-xs font-bold text-[#1A4D2E]">Métodos de Pago</span>
+                        <span className="text-[10px] text-gray-400 font-medium">Gestionar mis tarjetas</span>
+                      </div>
+                    </button>
                   </div>
                 )}
 
