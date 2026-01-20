@@ -15,7 +15,8 @@ export default function WelcomeNotification({
   isVisible,
   onClose,
   duration = 5000,
-}: WelcomeNotificationProps) {
+  isNew = false,
+}: WelcomeNotificationProps & { isNew?: boolean }) {
   const [show, setShow] = useState(isVisible);
 
   useEffect(() => {
@@ -65,9 +66,15 @@ export default function WelcomeNotification({
                 className="flex-1"
               >
                 <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-jockey)' }}>
-                  ¡Bienvenido de nuevo!
+                  {isNew ? "¡Bienvenido!" : "¡Bienvenido de nuevo!"}
                 </h3>
-                <p className="text-green-100 text-sm">Nos alegra verte, <span className="font-semibold">{userName}</span></p>
+                <p className="text-green-100 text-sm">
+                  {isNew ? (
+                    <>Tu cuenta ha sido creada exitosamente, <span className="font-semibold">{userName}</span></>
+                  ) : (
+                    <>Nos alegra verte, <span className="font-semibold">{userName}</span></>
+                  )}
+                </p>
               </motion.div>
 
               {/* Botón cerrar */}
