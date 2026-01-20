@@ -58,6 +58,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
   const [generalError, setGeneralError] = useState("");
   const [showLoginSuccess, setShowLoginSuccess] = useState(false);
   const [successUserName, setSuccessUserName] = useState("");
+  const [isNewAccount, setIsNewAccount] = useState(false);
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
   // y datos de Login
@@ -177,9 +178,14 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         onClose();
         window.onAuthSuccessShowBusiness?.();
       } else {
-        alert("¡Registro exitoso! Bienvenido a Pitzbol.");
-        onClose();
-        window.location.href = "/perfil";
+        setSuccessUserName(loginData.user?.nombre || regNombre);
+        setIsNewAccount(true);
+        setShowLoginSuccess(true);
+        setTimeout(() => {
+          onClose();
+          window.location.href = "/";
+        }, 2000);
+        sessionStorage.setItem("justRegistered", "true");
       }
     } catch (error: any) {
       console.error("Register error:", error);
@@ -235,6 +241,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         
         // Mostrar notificación de éxito en el modal
         setSuccessUserName(data.user.nombre);
+        setIsNewAccount(false);
         setShowLoginSuccess(true);
       
         window.dispatchEvent(new Event("storage"));
@@ -322,7 +329,7 @@ if (!isOpen) return null;
               className="text-2xl md:text-3xl font-black text-white mb-2"
               style={{ fontFamily: 'var(--font-jockey)' }}
             >
-              ¡Bienvenido de nuevo!
+              {isNewAccount ? "¡Bienvenido!" : "¡Bienvenido de nuevo!"}
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 14 }}
