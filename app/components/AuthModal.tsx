@@ -215,8 +215,8 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         const userRole = data.user.role || "turista";
         const especialidadesData = data.user.especialidades || [];
 
-        const nombre = data.user.nombre || "Usuario";
-        const apellido = data.user.apellido || "";
+        const nombre = data.user.nombre || data.user["01_nombre"] || "Usuario";
+        const apellido = data.user.apellido || data.user["02_apellido"] || "";
         const telefono = data.user.telefono || "No registrado";
         const nacionalidad = data.user.nacionalidad || "No registrado";
 
@@ -240,7 +240,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         sessionStorage.setItem("justLoggedIn", "true");
         
         // Mostrar notificación de éxito en el modal
-        setSuccessUserName(data.user.nombre);
+        setSuccessUserName(data.user.nombre || data.user["01_nombre"] || "Usuario");
         setIsNewAccount(false);
         setShowLoginSuccess(true);
       

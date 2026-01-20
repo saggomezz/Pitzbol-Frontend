@@ -6,11 +6,14 @@ import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 
 interface Notification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente';
   titulo: string;
   mensaje: string;
   fecha: string;
   leido: boolean;
+  enlace?: string;
+  solicitudId?: string;
+  uidSolicitante?: string;
 }
 
 interface NotificationsPanelProps {
@@ -46,7 +49,10 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
             titulo: notif.titulo,
             mensaje: notif.mensaje,
             fecha: notif.fecha,
-            leido: notif.leido || false
+            leido: notif.leido || false,
+            enlace: notif.enlace,
+            solicitudId: notif.solicitudId,
+            uidSolicitante: notif.uidSolicitante
           }));
 
           // Combinar con localStorage y eliminar duplicados
@@ -330,7 +336,6 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                         <div className="flex-shrink-0 mt-1">
                           {getIconoNotificacion(notif.tipo)}
                         </div>
-                        
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <h4 className="font-bold text-sm text-gray-800">
@@ -343,8 +348,24 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                           <p className="text-xs text-gray-600 mt-1 line-clamp-2">
                             {notif.mensaje}
                           </p>
-                          
-                          {!notif.leido && (
+                          {/* Botón para revisar solicitud de guía pendiente */}
+                          {notif.tipo === 'solicitud_guia_pendiente' && notif.enlace && (
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  marcarComoLeida(notif.id);
+                                  if (typeof notif.enlace === 'string') {
+                                    window.location.href = notif.enlace;
+                                  }
+                                }}
+                                className="text-xs px-3 py-1 bg-[#0D601E] hover:bg-[#1A4D2E] rounded text-white font-bold transition-colors"
+                              >
+                                Revisar solicitud
+                              </button>
+                            </div>
+                          )}
+                          {!notif.leido && notif.tipo !== 'solicitud_guia_pendiente' && (
                             <div className="mt-2 flex gap-2">
                               <button
                                 onClick={(e) => {
@@ -358,7 +379,6 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                             </div>
                           )}
                         </div>
-                        
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
