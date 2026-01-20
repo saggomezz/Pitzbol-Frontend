@@ -215,6 +215,8 @@ function HomeContent() {
     cargarDatos();
   }, []);
 
+  // Estado para saber si la bienvenida es de cuenta nueva
+  const [isNewWelcome, setIsNewWelcome] = useState(false);
   // Detectar si el usuario acaba de iniciar sesión
   useEffect(() => {
     if (hasCheckedWelcome.current) return;
@@ -226,11 +228,14 @@ function HomeContent() {
     if (userLocal && token) {
       const user = JSON.parse(userLocal);
       const justLoggedIn = sessionStorage.getItem("justLoggedIn");
+      const justRegistered = sessionStorage.getItem("justRegistered");
 
-      if (justLoggedIn === "true") {
+      if (justLoggedIn === "true" || justRegistered === "true") {
         setWelcomeMessage(user.nombre || "Usuario");
         setShowWelcome(true);
+        setIsNewWelcome(justRegistered === "true");
         sessionStorage.removeItem("justLoggedIn");
+        sessionStorage.removeItem("justRegistered");
         setIsLogged(true);
       }
     }
@@ -360,12 +365,13 @@ function HomeContent() {
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
       {/* Notificación de Bienvenida */}
-      <WelcomeNotification
-        userName={welcomeMessage}
-        isVisible={showWelcome}
-        onClose={() => setShowWelcome(false)}
-        duration={5000}
-      />
+       <WelcomeNotification
+         userName={welcomeMessage}
+         isVisible={showWelcome}
+         onClose={() => setShowWelcome(false)}
+         duration={5000}
+         isNew={isNewWelcome}
+       />
       
       <CategoryCarousel categories={categories} />
       <DateSlider />
