@@ -7,7 +7,7 @@ import "./globals.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthModal from "./components/AuthModal";
-import GuideModal from "./components/GuideModal";
+import BecomeGuideFlow from "./components/BecomeGuideFlow";
 import BusinessModal from "./components/BusinessModal";
 
 declare global {
@@ -95,11 +95,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
           )}
 
+
           {isGuideOpen && (
-            <GuideModal 
+            <BecomeGuideFlow 
               isOpen={isGuideOpen} 
-              onClose={() => setIsGuideOpen(false)} 
-              onOpenAuth={() => { setPendingRole("guia"); setIsAuthOpen(true); }}
+              onClose={() => setIsGuideOpen(false)}
             />
           )}
 
