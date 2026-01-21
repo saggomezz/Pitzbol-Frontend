@@ -7,8 +7,8 @@ import "./globals.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthModal from "./components/AuthModal";
-import GuideModal from "./components/GuideModal";
-import BusinessModal from "./components/BusinessModal";
+import BecomeGuideFlow from "./components/BecomeGuideFlow";
+import PublishBusinessFlow from "./components/PublishBusinessFlow";
 
 declare global {
   interface Window {
@@ -95,16 +95,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
           )}
 
+
           {isGuideOpen && (
-            <GuideModal 
+            <BecomeGuideFlow 
               isOpen={isGuideOpen} 
-              onClose={() => setIsGuideOpen(false)} 
-              onOpenAuth={() => { setPendingRole("guia"); setIsAuthOpen(true); }}
+              onClose={() => setIsGuideOpen(false)}
             />
           )}
 
           {isBusinessOpen && (
-            <BusinessModal 
+            <PublishBusinessFlow 
               isOpen={isBusinessOpen} 
               onClose={() => setIsBusinessOpen(false)} 
             />
