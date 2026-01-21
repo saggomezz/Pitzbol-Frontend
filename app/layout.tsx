@@ -8,7 +8,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthModal from "./components/AuthModal";
 import BecomeGuideFlow from "./components/BecomeGuideFlow";
-import BusinessModal from "./components/BusinessModal";
+import PublishBusinessFlow from "./components/PublishBusinessFlow";
 
 declare global {
   interface Window {
@@ -104,7 +104,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           )}
 
           {isBusinessOpen && (
-            <BusinessModal 
+            <PublishBusinessFlow 
               isOpen={isBusinessOpen} 
               onClose={() => setIsBusinessOpen(false)} 
             />
