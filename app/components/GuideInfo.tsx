@@ -1,3 +1,4 @@
+"use client";
 import React, { useRef, useEffect, useState } from "react";
 import styles from "../styles/GuideInfo.module.css";
 import { FaMapMarkedAlt, FaUserEdit, FaWallet, FaRegComments, FaStar, FaCalendarAlt, FaCheckCircle, FaUserFriends, FaIdCard, FaCamera, FaUniversity } from "react-icons/fa";
