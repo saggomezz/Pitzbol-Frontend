@@ -472,9 +472,10 @@ const AddCardForm = ({ onSuccess }: { onSuccess: () => void }) => {
       console.log(`   - Error: ${result.error?.message || 'NINGUNO'}`);
 
       if (result.error) {
-        setMessage(result.error.message || "Error al procesar tarjeta");
+        const errorMessage = result.error?.message || "Error al procesar tarjeta";
+        setMessage(errorMessage);
         setMessageType("error");
-        console.error('❌ [AddCardForm] Error en confirmación de Stripe:', result.error);
+        console.error('❌ [AddCardForm] Error en confirmación de Stripe:', errorMessage);
       } else if (result.setupIntent?.status === "succeeded" && result.setupIntent?.payment_method) {
         console.log(`✅ [AddCardForm] Tarjeta confirmada con éxito en Stripe`);
         
