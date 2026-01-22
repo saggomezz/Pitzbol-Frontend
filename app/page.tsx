@@ -381,18 +381,18 @@ function HomeContent() {
             location="CDMX"
             date="11 de Junio"
             team1="México"
-            flag1="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Mexico.svg/1024px-Flag_of_Mexico.svg.png"
+            flag1="https://flagcdn.com/mx.svg"
             team2="Sudáfrica"
-            flag2="https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Flag_of_South_Africa.svg/1200px-Flag_of_South_Africa.svg.png"
+            flag2="https://flagcdn.com/za.svg"
             time="13:00"
           />
           <MatchItem 
             location="GDL"
             date="11 de Junio"
             team1="Corea"
-            flag1="https://upload.wikimedia.org/wikipedia/commons/0/09/Flag_of_South_Korea.svg"
+            flag1="https://flagcdn.com/kr.svg"
             team2="Dinamarca"
-            flag2="https://img.freepik.com/foto-gratis/fondo-textura-bandera-nacional-dinamarca-ia-generativa_169016-29875.jpg"
+            flag2="https://flagcdn.com/dk.svg"
             time="20:00"
           />
           {/* CONTENEDOR DE ITINERARIO */}

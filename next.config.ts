@@ -26,6 +26,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'visitmexico.com' },
       { protocol: 'https', hostname: 'arquitecturaviva.com' },
       { protocol: 'https', hostname: 'A.espncdn.com' },
+      { protocol: 'https', hostname: 'flagcdn.com' },
     ],
   },
 };
