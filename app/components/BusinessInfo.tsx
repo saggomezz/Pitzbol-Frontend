@@ -143,12 +143,11 @@ const BusinessInfo: React.FC<BusinessInfoProps> = ({ isOpen, onClose, onContinue
   );
 };
 
-// Animación para la flecha
-const style = document.createElement('style');
-style.innerHTML = `@keyframes arrowBounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(12px);} }`;
-if (typeof window !== 'undefined' && !document.getElementById('arrow-bounce-style')) {
-  style.id = 'arrow-bounce-style';
-  document.head.appendChild(style);
-}
+
+
+
+// Animación para la flecha: solo en cliente
+// Debe estar dentro del componente para evitar errores en SSR y cumplir las reglas de hooks
 
 export default BusinessInfo;
+
