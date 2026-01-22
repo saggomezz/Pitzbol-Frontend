@@ -1,0 +1,154 @@
+/* Estilos para la pantalla informativa de guía */
+.guideInfoOverlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeInBg 0.4s;
+}
+
+@keyframes fadeInBg {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.guideInfoModal {
+  background: #fff;
+  border-radius: 2.5rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  max-width: 720px;
+  width: 98vw;
+  padding: 0;
+  position: relative;
+  animation: popIn 0.5s cubic-bezier(.68,-0.55,.27,1.55);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 90vh;
+}
+
+.guideInfoHeader {
+  background: linear-gradient(90deg, #3B5D50 60%, #769C7B 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2.2rem 2.5rem 1.2rem 2.5rem;
+  border-top-left-radius: 2.5rem;
+  border-top-right-radius: 2.5rem;
+  position: relative;
+}
+.guideInfoHeaderIcon {
+  background: #fff;
+  color: #3B5D50;
+  border-radius: 50%;
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  box-shadow: 0 2px 8px rgba(59,93,80,0.10);
+}
+.guideInfoHeaderTitle {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+  text-align: left;
+  line-height: 1.1;
+}
+
+.guideInfoContent {
+  padding: 2.2rem 2.5rem 2.5rem 2.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.7) translateY(60px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+
+
+.guideInfoList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+}
+
+.guideInfoList li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+  font-size: 1.08rem;
+  color: #3B5D50;
+  animation: fadeInItem 0.5s;
+}
+
+@keyframes fadeInItem {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.guideInfoNote {
+  background: #F6F8F7;
+  color: #769C7B;
+  border-left: 4px solid #3B5D50;
+  padding: 0.7rem 1rem;
+  border-radius: 0.7rem;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  animation: fadeInItem 0.7s;
+}
+
+.guideInfoActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.guideInfoBtn {
+  background: linear-gradient(90deg, #3B5D50 60%, #769C7B 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 1.2rem;
+  padding: 0.7rem 2.2rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(59,93,80,0.08);
+  transition: background 0.2s, transform 0.15s;
+  margin-left: auto;
+  margin-right: 0;
+  animation: popIn 0.6s 0.2s backwards;
+}
+.guideInfoBtn:hover {
+  background: linear-gradient(90deg, #769C7B 60%, #3B5D50 100%);
+  transform: scale(1.04);
+}
+
+@media (max-width: 900px) {
+  .guideInfoModal {
+    max-width: 99vw;
+  }
+  .guideInfoHeader, .guideInfoContent {
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+  .guideInfoHeaderTitle {
+    font-size: 1.3rem;
+  }
+  .guideInfoBtn {
+    font-size: 1rem;
+    padding: 0.6rem 1.2rem;
+  }
+}
