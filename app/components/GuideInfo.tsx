@@ -1,3 +1,4 @@
+"use client";
 import React, { useRef, useEffect, useState } from "react";
 import styles from "../styles/GuideInfo.module.css";
 import { FaMapMarkedAlt, FaUserEdit, FaWallet, FaRegComments, FaStar, FaCalendarAlt, FaCheckCircle, FaUserFriends, FaIdCard, FaCamera, FaUniversity } from "react-icons/fa";
@@ -14,7 +15,7 @@ const GuideInfo: React.FC<GuideInfoProps> = ({ isOpen, onClose, onContinue }) =>
   const [showArrow, setShowArrow] = useState(true);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (typeof window === 'undefined' || !isOpen) return;
     const handleScroll = () => {
       const el = contentRef.current;
       if (!el) return;
@@ -168,12 +169,14 @@ const GuideInfo: React.FC<GuideInfoProps> = ({ isOpen, onClose, onContinue }) =>
     </div>
   );
 };
-// Animación para la flecha
-const style = document.createElement('style');
-style.innerHTML = `@keyframes arrowBounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(12px);} }`;
-if (typeof window !== 'undefined' && !document.getElementById('arrow-bounce-style')) {
-  style.id = 'arrow-bounce-style';
-  document.head.appendChild(style);
+// Inicializar estilos de animación en el cliente
+if (typeof window !== 'undefined') {
+  const style = document.createElement('style');
+  style.innerHTML = `@keyframes arrowBounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(12px);} }`;
+  if (!document.getElementById('arrow-bounce-style')) {
+    style.id = 'arrow-bounce-style';
+    document.head.appendChild(style);
+  }
 }
 
 export default GuideInfo;
