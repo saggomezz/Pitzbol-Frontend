@@ -6,7 +6,7 @@ import { agregarHistorialSolicitud } from "@/app/components/HistorialSolicitudes
 
 export interface PitzbolNotification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia' | 'nueva_solicitud_negocio';
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -17,9 +17,9 @@ export interface PitzbolNotification {
 /**
  * Enviar notificación a un usuario
  */
-export const enviarNotificacion = (
+export const enviarNotificacion = async (
   userId: string,
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia',
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia' | 'nueva_solicitud_negocio',
   titulo: string,
   mensaje: string,
   enlace?: string
@@ -34,18 +34,37 @@ export const enviarNotificacion = (
     enlace
   };
 
+  // Lógica para enviar al backend si existe sesión
+  const token = localStorage.getItem('pitzbol_token');
+  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  if (token) {
+    try {
+      await fetch(`${API_BASE}/api/admin/notificaciones/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(notificacion)
+      });
+    } catch (e) {
+      // fallback local
+      guardarNotificacionLocal(userId, notificacion);
+    }
+  } else {
+    guardarNotificacionLocal(userId, notificacion);
+  }
+  return notificacion;
+};
+
+function guardarNotificacionLocal(userId: string, notificacion: PitzbolNotification) {
   const key = `pitzbol_notifications_${userId}`;
   const notificacionesActuales = JSON.parse(localStorage.getItem(key) || '[]');
   const notificacionesActualizadas = [notificacion, ...notificacionesActuales];
-
-  // Mantener solo las últimas 50 notificaciones
   if (notificacionesActualizadas.length > 50) {
     notificacionesActualizadas.pop();
   }
-
   localStorage.setItem(key, JSON.stringify(notificacionesActualizadas));
-
-  // Disparar evento de storage para sincronizar entre pestañas
   window.dispatchEvent(
     new StorageEvent('storage', {
       key,
@@ -53,9 +72,7 @@ export const enviarNotificacion = (
       url: window.location.href
     })
   );
-
-  return notificacion;
-};
+}
 
 /**
  * Enviar notificación de aprobación como guía

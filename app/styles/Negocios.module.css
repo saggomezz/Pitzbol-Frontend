@@ -1,0 +1,65 @@
+.negociosGrid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 768px) {
+  .negociosGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.negocioCard {
+  background: #fff;
+  border-radius: 1.2rem;
+  box-shadow: 0 2px 12px rgba(59,93,80,0.08);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+  animation: fadeInItem 0.7s;
+}
+.negocioCard:hover {
+  box-shadow: 0 6px 24px 0 #3B5D5040;
+  transform: translateY(-2px) scale(1.01);
+}
+.negocioCard .negocioImages {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.negocioCard .negocioImages img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 0.7rem;
+  border: 1.5px solid #F6F8F7;
+}
+.negocioCard .negocioStatus {
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 0.7rem;
+  padding: 0.2rem 0.8rem;
+  display: inline-block;
+  margin-bottom: 0.3rem;
+}
+.negocioCard .negocioStatus.pendiente {
+  background: #FFF8E1;
+  color: #B08B00;
+}
+.negocioCard .negocioStatus.aprobado {
+  background: #E6F7E6;
+  color: #3B5D50;
+}
+.negocioCard .negocioStatus.rechazado {
+  background: #FFEAEA;
+  color: #B90808;
+}
+.negocioCard .negocioStatus.archivado {
+  background: #F3F3F3;
+  color: #888;
+}
+@keyframes fadeInItem {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: none; }
+}

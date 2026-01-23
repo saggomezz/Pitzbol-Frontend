@@ -1,12 +1,17 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader } from "react-icons/fi";
+
+import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 
 interface Notification {
   id: string;
+<<<<<<< HEAD
   tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada';
+=======
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'nueva_solicitud_negocio';
+>>>>>>> de9fec016cba31b55082934e9cad23f9ae4e5358
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -30,6 +35,9 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   // Cargar notificaciones del backend (Firestore)
   const cargarNotificacionesDelBackend = async () => {
     if (!userId) return;
+    setCargando(true);
+    const key = `pitzbol_notifications_${userId}`;
+    const notificacionesLocal: Notification[] = JSON.parse(localStorage.getItem(key) || '[]');
 
     try {
       setCargando(true);
@@ -43,7 +51,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
       });
       
-      let notificacionesDelBackend: any[] = [];
+      let notificacionesDelBackend: Notification[] = [];
       
       if (response.ok) {
         const data = await response.json();
@@ -95,28 +103,28 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       const notificacionesLocal = JSON.parse(localStorage.getItem(key) || '[]');
       
       // Crear un mapa de notificaciones locales por ID para priorizar cambios locales
-      const localMap = new Map(notificacionesLocal.map((n: Notification) => [n.id, n]));
+      const localMap = new Map((notificacionesLocal as Notification[]).map((n: Notification) => [n.id, n]));
       
       // Combinar: Firestore como base, pero localStorage sobrescribe si existe
-      const notificacionesCombinadas = notificacionesDelBackend.map((notif: Notification) => 
+      const notificacionesCombinadas: Notification[] = notificacionesDelBackend.map((notif: Notification) => 
         localMap.get(notif.id) || notif
       );
       
       // Agregar notificaciones locales que no están en Firestore
       const idsBackend = new Set(notificacionesDelBackend.map((n: Notification) => n.id));
-      for (const localNotif of notificacionesLocal) {
+      for (const localNotif of notificacionesLocal as Notification[]) {
         if (!idsBackend.has(localNotif.id)) {
           notificacionesCombinadas.push(localNotif);
         }
       }
 
       // Ordenar por fecha (más recientes primero)
-      notificacionesCombinadas.sort((a: Notification, b: Notification) => 
+      notificacionesCombinadas.sort((a, b) => 
         new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
       );
 
       setNotificaciones(notificacionesCombinadas);
-      setNoLeidas(notificacionesCombinadas.filter((n: Notification) => !n.leido).length);
+      setNoLeidas(notificacionesCombinadas.filter((n) => !n.leido).length);
 
       // Actualizar localStorage
       localStorage.setItem(key, JSON.stringify(notificacionesCombinadas));
@@ -135,10 +143,9 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
     const key = `pitzbol_notifications_${userId}`;
     const stored = localStorage.getItem(key);
-    const notifs = stored ? JSON.parse(stored) : [];
-    
+    const notifs: Notification[] = stored ? JSON.parse(stored) : [];
     setNotificaciones(notifs);
-    setNoLeidas(notifs.filter((n: Notification) => !n.leido).length);
+    setNoLeidas(notifs.filter((n) => !n.leido).length);
   };
 
   // Efecto inicial para cargar notificaciones
@@ -150,6 +157,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     }
   }, [userId]);
 
+  // El efecto de Firestore se elimina. Solo se usa la API REST y localStorage.
   // Recargar notificaciones cuando se abre el panel
   useEffect(() => {
     if (isOpen && userId) {
@@ -260,10 +268,15 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return <FiCheck className="text-green-600" size={20} />;
       case 'rechazado':
         return <FiAlertCircle className="text-red-600" size={20} />;
+<<<<<<< HEAD
       case 'contacto':
         return <FiBell className="text-blue-600" size={20} />;
       case 'llamada':
         return <FiBell className="text-purple-600" size={20} />;
+=======
+      case 'nueva_solicitud_negocio':
+        return <FiBriefcase className="text-orange-500" size={20} />;
+>>>>>>> de9fec016cba31b55082934e9cad23f9ae4e5358
       default:
         return <FiBell className="text-blue-600" size={20} />;
     }
@@ -275,10 +288,15 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return 'bg-green-50 border-green-100';
       case 'rechazado':
         return 'bg-red-50 border-red-100';
+<<<<<<< HEAD
       case 'contacto':
         return 'bg-blue-50 border-blue-100';
       case 'llamada':
         return 'bg-purple-50 border-purple-100';
+=======
+      case 'nueva_solicitud_negocio':
+        return 'bg-orange-50 border-orange-100';
+>>>>>>> de9fec016cba31b55082934e9cad23f9ae4e5358
       default:
         return 'bg-blue-50 border-blue-100';
     }
@@ -383,7 +401,12 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                       className={`p-4 border-l-4 ${getColorNotificacion(notif.tipo)} cursor-pointer hover:bg-opacity-75 transition-colors ${
                         !notif.leido ? 'border-l-[#F00808] bg-opacity-60' : 'border-l-gray-200'
                       }`}
-                      onClick={() => marcarComoLeida(notif.id)}
+                      onClick={() => {
+                        marcarComoLeida(notif.id);
+                        if (notif.enlace) {
+                          window.location.href = notif.enlace;
+                        }
+                      }}
                     >
                       <div className="flex gap-3">
                         <div className="flex-shrink-0 mt-1">
