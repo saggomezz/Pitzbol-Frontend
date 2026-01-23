@@ -2,7 +2,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { enviarNotificacion } from "../../lib/notificaciones";
-import { FiChevronRight, FiFileText, FiLogOut, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle } from "react-icons/fi";
+import { FiChevronRight, FiFileText, FiLogOut, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle, FiMail, FiMessageSquare } from "react-icons/fi";
 import AdminHistorialSolicitudesModal from "@/app/components/AdminHistorialSolicitudesModal";
 
 type NotificationType = {
@@ -155,9 +155,29 @@ export default function AdminPerfil() {
           <h1 className="text-2xl font-medium text-gray-800 tracking-tight">Panel de administración</h1>
           <p className="text-gray-400 text-sm font-light">Validación de nuevos perfiles Pitzbol</p>
         </div>
-        <button onClick={() => setShowHistorialModal(true)} className="p-3 text-[#0D601E] hover:text-[#F00808] transition-colors">
-          <FiFileText size={20} />
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => window.location.href = '/admin/mensajes'} 
+            className="p-3 text-gray-400 hover:text-[#0D601E] transition-colors"
+            title="Mensajes de contacto"
+          >
+            <FiMail size={20} />
+          </button>
+          <button 
+            onClick={() => window.location.href = '/admin/llamadas'} 
+            className="p-3 text-gray-400 hover:text-[#0D601E] transition-colors"
+            title="Solicitudes de llamada"
+          >
+            <FiPhone size={20} />
+          </button>
+          <button 
+            onClick={() => setShowHistorialModal(true)} 
+            className="p-3 text-gray-400 hover:text-[#0D601E] transition-colors"
+            title="Historial de solicitudes"
+          >
+            <FiFileText size={20} />
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-8 pb-20">

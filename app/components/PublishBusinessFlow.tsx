@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from "react";
 import BusinessInfo from "./BusinessInfo";
 import BusinessModal from "./BusinessModal";

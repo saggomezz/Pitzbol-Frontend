@@ -39,15 +39,20 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       setCargando(true);
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
       const token = localStorage.getItem('pitzbol_token');
+      const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
+      
+      // Obtener notificaciones del usuario (siempre)
       const response = await fetch(`${API_BASE}/api/admin/notificaciones/${userId}`, {
         credentials: 'include',
         headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
       });
       
+      let notificacionesDelBackend: any[] = [];
+      
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.notificaciones) {
-          const notificacionesDelBackend = data.notificaciones.map((notif: any) => ({
+          notificacionesDelBackend = data.notificaciones.map((notif: any) => ({
             id: notif.id,
             tipo: notif.tipo,
             titulo: notif.titulo,
@@ -58,39 +63,67 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
             solicitudId: notif.solicitudId,
             uidSolicitante: notif.uidSolicitante
           }));
-
-          // Combinar con localStorage y eliminar duplicados
-          const key = `pitzbol_notifications_${userId}`;
-          const notificacionesLocal = JSON.parse(localStorage.getItem(key) || '[]');
-          
-          // Crear un mapa de notificaciones locales por ID para priorizar cambios locales
-          const localMap = new Map(notificacionesLocal.map((n: Notification) => [n.id, n]));
-          
-          // Combinar: Firestore como base, pero localStorage sobrescribe si existe
-          const notificacionesCombinadas = notificacionesDelBackend.map((notif: Notification) => 
-            localMap.get(notif.id) || notif
-          );
-          
-          // Agregar notificaciones locales que no están en Firestore
-          const idsBackend = new Set(notificacionesDelBackend.map((n: Notification) => n.id));
-          for (const localNotif of notificacionesLocal) {
-            if (!idsBackend.has(localNotif.id)) {
-              notificacionesCombinadas.push(localNotif);
-            }
-          }
-
-          // Ordenar por fecha (más recientes primero)
-          notificacionesCombinadas.sort((a: Notification, b: Notification) => 
-            new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-          );
-
-          setNotificaciones(notificacionesCombinadas);
-          setNoLeidas(notificacionesCombinadas.filter((n: Notification) => !n.leido).length);
-
-          // Actualizar localStorage
-          localStorage.setItem(key, JSON.stringify(notificacionesCombinadas));
         }
       }
+
+      // Si es admin, también cargar notificaciones de soporte
+      if (user?.role === 'admin') {
+        try {
+          const supportResponse = await fetch(`${API_BASE}/api/support/notifications`, {
+            credentials: 'include',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
+          });
+
+          if (supportResponse.ok) {
+            const supportData = await supportResponse.json();
+            if (supportData.success && supportData.notificaciones) {
+              const notificacionesSoporte = supportData.notificaciones.map((notif: any) => ({
+                id: notif.id,
+                tipo: notif.tipo,
+                titulo: notif.titulo,
+                mensaje: notif.mensaje,
+                fecha: notif.fecha,
+                leido: notif.leido || false,
+                enlace: notif.enlace,
+              }));
+              notificacionesDelBackend = [...notificacionesDelBackend, ...notificacionesSoporte];
+            }
+          }
+        } catch (error) {
+          console.error("Error al cargar notificaciones de soporte:", error);
+        }
+      }
+
+      // Combinar con localStorage y eliminar duplicados
+      const key = `pitzbol_notifications_${userId}`;
+      const notificacionesLocal = JSON.parse(localStorage.getItem(key) || '[]');
+      
+      // Crear un mapa de notificaciones locales por ID para priorizar cambios locales
+      const localMap = new Map(notificacionesLocal.map((n: Notification) => [n.id, n]));
+      
+      // Combinar: Firestore como base, pero localStorage sobrescribe si existe
+      const notificacionesCombinadas = notificacionesDelBackend.map((notif: Notification) => 
+        localMap.get(notif.id) || notif
+      );
+      
+      // Agregar notificaciones locales que no están en Firestore
+      const idsBackend = new Set(notificacionesDelBackend.map((n: Notification) => n.id));
+      for (const localNotif of notificacionesLocal) {
+        if (!idsBackend.has(localNotif.id)) {
+          notificacionesCombinadas.push(localNotif);
+        }
+      }
+
+      // Ordenar por fecha (más recientes primero)
+      notificacionesCombinadas.sort((a: Notification, b: Notification) => 
+        new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+      );
+
+      setNotificaciones(notificacionesCombinadas);
+      setNoLeidas(notificacionesCombinadas.filter((n: Notification) => !n.leido).length);
+
+      // Actualizar localStorage
+      localStorage.setItem(key, JSON.stringify(notificacionesCombinadas));
     } catch (error) {
       console.error("Error al cargar notificaciones del backend:", error);
       // Cargar solo del localStorage si el backend falla
@@ -116,10 +149,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   useEffect(() => {
     if (userId) {
       cargarNotificacionesLocal();
-      // Cargar del backend cuando se abre el panel
-      if (isOpen) {
-        cargarNotificacionesDelBackend();
-      }
+      // Cargar del backend inmediatamente al montar (para admins y badge)
+      cargarNotificacionesDelBackend();
     }
   }, [userId]);
 
@@ -130,6 +161,20 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       cargarNotificacionesDelBackend();
     }
   }, [isOpen, userId]);
+
+  // Polling ligero para admins: refresca cada 30s aunque el panel esté cerrado
+  useEffect(() => {
+    if (!userId) return;
+
+    const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
+    if (user?.role !== 'admin') return;
+
+    const interval = setInterval(() => {
+      cargarNotificacionesDelBackend();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [userId]);
 
   // Cerrar panel al hacer clic fuera
   useEffect(() => {

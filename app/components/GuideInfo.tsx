@@ -15,7 +15,7 @@ const GuideInfo: React.FC<GuideInfoProps> = ({ isOpen, onClose, onContinue }) =>
   const [showArrow, setShowArrow] = useState(true);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (typeof window === 'undefined' || !isOpen) return;
     const handleScroll = () => {
       const el = contentRef.current;
       if (!el) return;
@@ -169,7 +169,14 @@ const GuideInfo: React.FC<GuideInfoProps> = ({ isOpen, onClose, onContinue }) =>
     </div>
   );
 };
-
-
+// Inicializar estilos de animación en el cliente
+if (typeof window !== 'undefined') {
+  const style = document.createElement('style');
+  style.innerHTML = `@keyframes arrowBounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(12px);} }`;
+  if (!document.getElementById('arrow-bounce-style')) {
+    style.id = 'arrow-bounce-style';
+    document.head.appendChild(style);
+  }
+}
 
 export default GuideInfo;
