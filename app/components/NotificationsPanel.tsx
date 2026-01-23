@@ -1,12 +1,13 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader } from "react-icons/fi";
+
+import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 
 interface Notification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'nueva_solicitud_negocio';
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -30,6 +31,9 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   // Cargar notificaciones del backend (Firestore)
   const cargarNotificacionesDelBackend = async () => {
     if (!userId) return;
+    setCargando(true);
+    const key = `pitzbol_notifications_${userId}`;
+    const notificacionesLocal = JSON.parse(localStorage.getItem(key) || '[]');
 
     try {
       setCargando(true);
@@ -119,6 +123,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     }
   }, [userId]);
 
+  // El efecto de Firestore se elimina. Solo se usa la API REST y localStorage.
   // Recargar notificaciones cuando se abre el panel
   useEffect(() => {
     if (isOpen && userId) {
@@ -215,6 +220,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return <FiCheck className="text-green-600" size={20} />;
       case 'rechazado':
         return <FiAlertCircle className="text-red-600" size={20} />;
+      case 'nueva_solicitud_negocio':
+        return <FiBriefcase className="text-orange-500" size={20} />;
       default:
         return <FiBell className="text-blue-600" size={20} />;
     }
@@ -226,6 +233,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return 'bg-green-50 border-green-100';
       case 'rechazado':
         return 'bg-red-50 border-red-100';
+      case 'nueva_solicitud_negocio':
+        return 'bg-orange-50 border-orange-100';
       default:
         return 'bg-blue-50 border-blue-100';
     }
@@ -330,7 +339,12 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                       className={`p-4 border-l-4 ${getColorNotificacion(notif.tipo)} cursor-pointer hover:bg-opacity-75 transition-colors ${
                         !notif.leido ? 'border-l-[#F00808] bg-opacity-60' : 'border-l-gray-200'
                       }`}
-                      onClick={() => marcarComoLeida(notif.id)}
+                      onClick={() => {
+                        marcarComoLeida(notif.id);
+                        if (notif.enlace) {
+                          window.location.href = notif.enlace;
+                        }
+                      }}
                     >
                       <div className="flex gap-3">
                         <div className="flex-shrink-0 mt-1">
