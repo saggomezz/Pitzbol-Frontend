@@ -1,6 +1,7 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { enviarNotificacion } from "../../lib/notificaciones";
 import { FiChevronRight, FiFileText, FiLogOut, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle, FiMail, FiMessageSquare } from "react-icons/fi";
 import AdminHistorialSolicitudesModal from "@/app/components/AdminHistorialSolicitudesModal";
 
@@ -32,7 +33,10 @@ export default function AdminPerfil() {
   const fetchSolicitudes = async () => {
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      const token = localStorage.getItem('pitzbol_token');
+      let token = '';
+      if (typeof window !== 'undefined') {
+        token = localStorage.getItem('pitzbol_token') || '';
+      }
       const response = await fetch(`${API_BASE}/api/admin/solicitudes-pendientes`, {
         credentials: 'include',
         headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
@@ -44,6 +48,16 @@ export default function AdminPerfil() {
       }
 
       const data = await response.json();
+      // Notificar al admin si hay nuevas solicitudes
+      if ((data.solicitudes || []).length > solicitudes.length) {
+        enviarNotificacion(
+          'admin',
+          'info',
+          'Nueva solicitud de negocio',
+          'Ha llegado una nueva solicitud de negocio pendiente.',
+          '/admin/negocios'
+        );
+      }
       setSolicitudes(data.solicitudes || []);
     } catch (error) {
       console.error("Error de conexión:", error);
@@ -64,7 +78,10 @@ export default function AdminPerfil() {
     
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      const token = localStorage.getItem('pitzbol_token');
+      let token = '';
+      if (typeof window !== 'undefined') {
+        token = localStorage.getItem('pitzbol_token') || '';
+      }
       const response = await fetch(`${API_BASE}/api/admin/gestionar-guia`, {
         method: 'POST',
         credentials: 'include',
@@ -79,7 +96,16 @@ export default function AdminPerfil() {
         // Remover de la lista local
         setSolicitudes(prev => prev.filter(s => s.uid !== uid));
         setSelectedGuia(null);
-        
+        // Notificar al usuario
+        enviarNotificacion(
+          uid,
+          accion === 'aprobar' ? 'aprobado' : 'rechazado',
+          accion === 'aprobar' ? 'Negocio aprobado' : 'Negocio rechazado',
+          accion === 'aprobar'
+            ? '¡Tu negocio ha sido aprobado y ya es visible para los usuarios!'
+            : 'Tu solicitud de negocio fue rechazada. Puedes revisar y volver a intentarlo.',
+          '/negocio/estatus'
+        );
         // Mostrar notificación de éxito
         mostrarNotificacion(
           'exito',
@@ -111,7 +137,10 @@ export default function AdminPerfil() {
     window.location.href = "/";
   };
 
-  const token = localStorage.getItem('pitzbol_token') || '';
+  let token = '';
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem('pitzbol_token') || '';
+  }
 
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-[#FDFCF9] font-light text-gray-400 italic">
