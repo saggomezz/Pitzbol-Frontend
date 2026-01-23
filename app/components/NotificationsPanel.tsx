@@ -7,7 +7,7 @@ import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 
 interface Notification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'nueva_solicitud_negocio';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio';
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -264,6 +264,10 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return <FiCheck className="text-green-600" size={20} />;
       case 'rechazado':
         return <FiAlertCircle className="text-red-600" size={20} />;
+      case 'contacto':
+        return <FiBell className="text-blue-600" size={20} />;
+      case 'llamada':
+        return <FiBell className="text-purple-600" size={20} />;
       case 'nueva_solicitud_negocio':
         return <FiBriefcase className="text-orange-500" size={20} />;
       default:
@@ -277,6 +281,10 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return 'bg-green-50 border-green-100';
       case 'rechazado':
         return 'bg-red-50 border-red-100';
+      case 'contacto':
+        return 'bg-blue-50 border-blue-100';
+      case 'llamada':
+        return 'bg-purple-50 border-purple-100';
       case 'nueva_solicitud_negocio':
         return 'bg-orange-50 border-orange-100';
       default:
