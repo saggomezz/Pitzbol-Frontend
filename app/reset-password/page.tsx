@@ -1,21 +1,21 @@
 "use client";
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { confirmPasswordReset, getAuth } from "firebase/auth";
-import { initializeApp, getApps, getApp } from "firebase/app";
 import { FiLock, FiCheckCircle, FiAlertCircle, FiEye, FiEyeOff } from "react-icons/fi";
-import { motion } from "framer-motion";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-};
-
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense>
+      <ResetPasswordPageInner />
+    </Suspense>
+  );
+}
+import { motion } from "framer-motion";
+
+
+
+function ResetPasswordPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [newPassword, setNewPassword] = useState("");
@@ -23,7 +23,7 @@ export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [status, setStatus] = useState<{ type: 'error' | 'success' | null, msg: string }>({ type: null, msg: "" });
-  
+
   const oobCode = searchParams.get("oobCode");
 
   const handleReset = async () => {
@@ -41,23 +41,13 @@ export default function ResetPasswordPage() {
     }
 
     try {
-      console.log("Intentando reset con código:", oobCode);
-      await confirmPasswordReset(auth, oobCode, newPassword);
-      setStatus({ type: 'success', msg: "¡Contraseña actualizada! Redirigiendo..." });
-      
+      // TODO: Lógica de reseteo de contraseña vía backend
+      setStatus({ type: 'success', msg: "¡Contraseña actualizada! Redirigiendo... (simulado)" });
       // IMPORTANTE: Limpia el localStorage para forzar login nuevo
       localStorage.removeItem("pitzbol_user");
-      
       setTimeout(() => router.push("/"), 3000);
-    } catch (error: any) {
-      console.error("Error detallado de Firebase:", error.code, error.message);
-      
-      // Mensajes más claros para el usuario
-      const mensaje = error.code === 'auth/invalid-action-code' 
-        ? "El enlace ha expirado o ya fue usado." 
-        : "Error al actualizar. Intenta solicitar un nuevo enlace.";
-        
-      setStatus({ type: 'error', msg: mensaje });
+    } catch (error) {
+      setStatus({ type: 'error', msg: "Error al restablecer la contraseña." });
     }
   };
 
@@ -76,7 +66,6 @@ export default function ResetPasswordPage() {
           <div className="relative">
             <FiLock className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
             <input
-              type={showPassword ? "text" : "password"}
               placeholder="Escribe tu nueva clave"
               className="w-full pl-12 pr-12 py-3.5 bg-[#FDFCF9] border border-[#F6F0E6] rounded-full outline-none text-[#1A4D2E] focus:border-[#0D601E]"
               value={newPassword}
