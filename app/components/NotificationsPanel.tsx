@@ -145,10 +145,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   useEffect(() => {
     if (userId) {
       cargarNotificacionesLocal();
-      // Cargar del backend cuando se abre el panel
-      if (isOpen) {
-        cargarNotificacionesDelBackend();
-      }
+      // Cargar del backend inmediatamente al montar (para admins y badge)
+      cargarNotificacionesDelBackend();
     }
   }, [userId]);
 
@@ -158,6 +156,20 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       cargarNotificacionesDelBackend();
     }
   }, [isOpen, userId]);
+
+  // Polling ligero para admins: refresca cada 30s aunque el panel esté cerrado
+  useEffect(() => {
+    if (!userId) return;
+
+    const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
+    if (user?.role !== 'admin') return;
+
+    const interval = setInterval(() => {
+      cargarNotificacionesDelBackend();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [userId]);
 
   // Cerrar panel al hacer clic fuera
   useEffect(() => {
