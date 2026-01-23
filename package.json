@@ -23,6 +23,7 @@
     "framer-motion": "^12.23.26",
     "leaflet": "^1.9.4",
     "next": "^16.0.10",
+    "next-intl": "^4.7.0",
     "papaparse": "^5.5.3",
     "react": "19.2.0",
     "react-dom": "19.2.0",
@@ -45,6 +46,7 @@
     "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
+    "i18next-parser": "^9.0.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

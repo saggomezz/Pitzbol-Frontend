@@ -117,13 +117,30 @@ export default function SoportePage() {
             return;
         }
 
-        // Simular envío (reemplazar con tu endpoint real)
-        setTimeout(() => {
+        try {
+            const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+            const response = await fetch(`${API_BASE}/api/support/contact-form`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(formData),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.msg || "Error al enviar el formulario");
+            }
+
+            const data = await response.json();
             setIsSubmitted(true);
             setFormData({ name: "", email: "", countryCode: "+52", phone: "", category: "", subject: "", message: "" });
             setSelectedCategory("");
+        } catch (err: any) {
+            setError(err.message || "Error al enviar el formulario. Por favor, intenta de nuevo.");
+        } finally {
             setIsLoading(false);
-        }, 1500);
+        }
     };
 
     const handleCallRequest = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -138,12 +155,29 @@ export default function SoportePage() {
             return;
         }
 
-        // Simular envío (reemplazar con tu endpoint real)
-        setTimeout(() => {
+        try {
+            const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+            const response = await fetch(`${API_BASE}/api/support/call-request`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(callRequestData),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.msg || "Error al enviar la solicitud");
+            }
+
+            const data = await response.json();
             setIsCallSubmitted(true);
             setCallRequestData({ name: "", countryCode: "+52", phone: "", reason: "" });
+        } catch (err: any) {
+            setCallError(err.message || "Error al enviar la solicitud de llamada. Por favor, intenta de nuevo.");
+        } finally {
             setIsCallLoading(false);
-        }, 1500);
+        }
     };
 
     return (
