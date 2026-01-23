@@ -33,7 +33,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     if (!userId) return;
     setCargando(true);
     const key = `pitzbol_notifications_${userId}`;
-    const notificacionesLocal = JSON.parse(localStorage.getItem(key) || '[]');
+    const notificacionesLocal: Notification[] = JSON.parse(localStorage.getItem(key) || '[]');
 
     try {
       setCargando(true);
@@ -47,7 +47,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
       });
       
-      let notificacionesDelBackend: any[] = [];
+      let notificacionesDelBackend: Notification[] = [];
       
       if (response.ok) {
         const data = await response.json();
@@ -99,28 +99,28 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       const notificacionesLocal = JSON.parse(localStorage.getItem(key) || '[]');
       
       // Crear un mapa de notificaciones locales por ID para priorizar cambios locales
-      const localMap = new Map(notificacionesLocal.map((n: Notification) => [n.id, n]));
+      const localMap = new Map((notificacionesLocal as Notification[]).map((n: Notification) => [n.id, n]));
       
       // Combinar: Firestore como base, pero localStorage sobrescribe si existe
-      const notificacionesCombinadas = notificacionesDelBackend.map((notif: Notification) => 
+      const notificacionesCombinadas: Notification[] = notificacionesDelBackend.map((notif: Notification) => 
         localMap.get(notif.id) || notif
       );
       
       // Agregar notificaciones locales que no están en Firestore
       const idsBackend = new Set(notificacionesDelBackend.map((n: Notification) => n.id));
-      for (const localNotif of notificacionesLocal) {
+      for (const localNotif of notificacionesLocal as Notification[]) {
         if (!idsBackend.has(localNotif.id)) {
           notificacionesCombinadas.push(localNotif);
         }
       }
 
       // Ordenar por fecha (más recientes primero)
-      notificacionesCombinadas.sort((a: Notification, b: Notification) => 
+      notificacionesCombinadas.sort((a, b) => 
         new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
       );
 
       setNotificaciones(notificacionesCombinadas);
-      setNoLeidas(notificacionesCombinadas.filter((n: Notification) => !n.leido).length);
+      setNoLeidas(notificacionesCombinadas.filter((n) => !n.leido).length);
 
       // Actualizar localStorage
       localStorage.setItem(key, JSON.stringify(notificacionesCombinadas));
@@ -139,10 +139,9 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
     const key = `pitzbol_notifications_${userId}`;
     const stored = localStorage.getItem(key);
-    const notifs = stored ? JSON.parse(stored) : [];
-    
+    const notifs: Notification[] = stored ? JSON.parse(stored) : [];
     setNotificaciones(notifs);
-    setNoLeidas(notifs.filter((n: Notification) => !n.leido).length);
+    setNoLeidas(notifs.filter((n) => !n.leido).length);
   };
 
   // Efecto inicial para cargar notificaciones
