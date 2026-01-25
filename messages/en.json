@@ -8,6 +8,7 @@
     "login": "Sign In",
     "explore": "Explore",
     "map": "Map",
+    "tours": "Tours",
     "administration": "Administration",
     "guideRequests": "Guide Requests",
     "managePlaces": "Manage Places",
@@ -712,6 +713,27 @@
       "crafts": "Crafts / Souvenirs",
       "nightlife": "Nightlife / Club"
     }
+  },
+  "tours": {
+    "title": "Tour Guides",
+    "subtitle": "Connect with expert local guides",
+    "searchPlaceholder": "Search by name, language or specialty...",
+    "noGuides": "No guides found",
+    "noGuidesDescription": "There are no registered guides on the platform yet.",
+    "loading": "Loading guides...",
+    "filterByLanguage": "Filter by language",
+    "filterBySpecialty": "Filter by specialty",
+    "allLanguages": "All languages",
+    "allSpecialties": "All specialties",
+    "verified": "Verified",
+    "hourlyRate": "per hour",
+    "languages": "Languages",
+    "specialties": "Specialties",
+    "contactGuide": "Contact Guide",
+    "viewProfile": "View Profile",
+    "noBio": "This guide hasn't added a biography yet.",
+    "guidesFound": "guides found",
+    "guideFound": "guide found"
   }
 }
 

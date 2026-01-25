@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import {
     FiBriefcase, FiCalendar, FiClock, FiCreditCard, FiHeart, FiHome, FiInfo,
     FiLogOut, FiMapPin, FiMenu, FiMessageSquare, FiPlusCircle, FiSearch, FiShield, FiUser,
-    FiX, FiAward, FiFileText
+    FiX, FiAward, FiFileText, FiCompass
 } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
@@ -188,6 +188,11 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             <Link href="/mapa" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
                                 <FiMapPin /> {t('map')}
                             </Link>
+                            {role === "turista" && (
+                                <Link href="/tours" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
+                                    <FiCompass /> {t('tours')}
+                                </Link>
+                            )}
                             <div className="h-[1px] bg-gray-100 my-3 mx-2" />
                             {/* SECCIÓN DINÁMICA POR ROL */}
                             {role === "admin" ? (

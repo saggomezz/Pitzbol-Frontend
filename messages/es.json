@@ -8,6 +8,7 @@
     "login": "Identificarse",
     "explore": "Explorar",
     "map": "Mapa",
+    "tours": "Tours",
     "administration": "Administración",
     "guideRequests": "Solicitudes de Guías",
     "managePlaces": "Gestionar Lugares",
@@ -712,6 +713,27 @@
       "crafts": "Artesanías / Souvenirs",
       "nightlife": "Vida Nocturna / Club"
     }
+  },
+  "tours": {
+    "title": "Guías Turísticos",
+    "subtitle": "Conecta con guías locales expertos",
+    "searchPlaceholder": "Buscar por nombre, idioma o especialidad...",
+    "noGuides": "No se encontraron guías",
+    "noGuidesDescription": "Aún no hay guías registrados en la plataforma.",
+    "loading": "Cargando guías...",
+    "filterByLanguage": "Filtrar por idioma",
+    "filterBySpecialty": "Filtrar por especialidad",
+    "allLanguages": "Todos los idiomas",
+    "allSpecialties": "Todas las especialidades",
+    "verified": "Verificado",
+    "hourlyRate": "por hora",
+    "languages": "Idiomas",
+    "specialties": "Especialidades",
+    "contactGuide": "Contactar Guía",
+    "viewProfile": "Ver Perfil",
+    "noBio": "Este guía aún no ha agregado una biografía.",
+    "guidesFound": "guías encontrados",
+    "guideFound": "guía encontrado"
   }
 }
 
