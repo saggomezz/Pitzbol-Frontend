@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 interface FormState {
   nombre: string;
   categoria: string;
@@ -22,6 +23,9 @@ import Image from "next/image";
 import imglogo from "./logoPitzbol.png";
 
 const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  const t = useTranslations('businessModal');
+  const tCommon = useTranslations('common');
+  
   const [step, setStep] = useState(0);
   const [isFinishing, setIsFinishing] = useState(false);
 
@@ -182,7 +186,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
               
               {step > 0 && (
                 <button onClick={() => setStep(step - 1)} className="absolute top-8 left-10 text-[#769C7B] hover:text-[#0D601E] flex items-center gap-1 text-xs font-bold uppercase transition-all">
-                  <FiChevronLeft size={20} /> Atrás
+                  <FiChevronLeft size={20} /> {t('back')}
                 </button>
               )}
 
@@ -193,29 +197,29 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
               )}
               <div className="text-center mb-10">
                 <h2 className="text-[32px] md:text-[42px] text-[#8B0000] font-black uppercase leading-none" style={{ fontFamily: 'var(--font-jockey)' }}>
-                  {step === 0 ? "Alianza Comercial" : step === 1 ? "Imagen del Negocio" : step === 2 ? "Galería del Local" : "Información Fiscal"}
+                  {step === 0 ? t('step1Title') : step === 1 ? t('step2Title') : step === 2 ? t('step3Title') : t('step4Title')}
                 </h2>
-                <p className="text-[#1A4D2E] text-sm italic mt-1">Paso {step + 1} de 4</p>
+                <p className="text-[#1A4D2E] text-sm italic mt-1">{t('stepProgress', { current: step + 1, total: 4 })}</p>
               </div>
 
               <div className="max-w-2xl mx-auto space-y-6">
                 {step === 0 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                     <div className={cardClass}>
-                      <span className={labelClass}>Identidad de Marca</span>
+                      <span className={labelClass}>{t('brandIdentity')}</span>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="relative">
                           <input 
-                            placeholder="Nombre del Negocio" 
+                            placeholder={t('businessName')} 
                             className={inputClass + (nombreError ? " border-red-500 bg-red-50/50" : "")} 
                             value={form.nombre} 
                             onChange={e => {
                               setForm((f: FormState) => ({ ...f, nombre: e.target.value }));
-                              if (!e.target.value.trim()) setNombreError("El nombre es obligatorio");
+                              if (!e.target.value.trim()) setNombreError(t('nameRequired'));
                               else setNombreError("");
                             }}
                             onBlur={e => {
-                              if (!e.target.value.trim()) setNombreError("El nombre es obligatorio");
+                              if (!e.target.value.trim()) setNombreError(t('nameRequired'));
                               else setNombreError("");
                             }}
                           />
@@ -227,22 +231,22 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             value={form.categoria}
                             onChange={e => {
                               setForm((f: FormState) => ({ ...f, categoria: e.target.value }));
-                              if (!e.target.value.trim()) setCategoriaError("Selecciona una categoría");
+                              if (!e.target.value.trim()) setCategoriaError(t('categoryRequired'));
                               else setCategoriaError("");
                             }}
                             onBlur={e => {
-                              if (!e.target.value.trim()) setCategoriaError("Selecciona una categoría");
+                              if (!e.target.value.trim()) setCategoriaError(t('categoryRequired'));
                               else setCategoriaError("");
                             }}
                           >
-                            <option value="" disabled>Categoría de Socio</option>
-                            <option value="Restaurante / Bar">Restaurante / Bar</option>
-                            <option value="Cafetería / Desayunos">Cafetería / Desayunos</option>
-                            <option value="Hotelería / Hostal / Airbnb">Hotelería / Hostal / Airbnb</option>
-                            <option value="Transporte / Traslados">Transporte / Traslados</option>
-                            <option value="Renta de Equipo Deportivo">Renta de Equipo Deportivo</option>
-                            <option value="Artesanías / Souvenirs">Artesanías / Souvenirs</option>
-                            <option value="Vida Nocturna / Club">Vida Nocturna / Club</option>
+                            <option value="" disabled>{t('partnerCategory')}</option>
+                            <option value="Restaurante / Bar">{t('categories.restaurant')}</option>
+                            <option value="Cafetería / Desayunos">{t('categories.cafe')}</option>
+                            <option value="Hotelería / Hostal / Airbnb">{t('categories.hotel')}</option>
+                            <option value="Transporte / Traslados">{t('categories.transport')}</option>
+                            <option value="Renta de Equipo Deportivo">{t('categories.equipment')}</option>
+                            <option value="Artesanías / Souvenirs">{t('categories.crafts')}</option>
+                            <option value="Vida Nocturna / Club">{t('categories.nightlife')}</option>
                           </select>
                           <FiChevronDown 
                             className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" 
@@ -253,30 +257,30 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                       </div>
                     </div>
                     <div className={cardClass}>
-                      <span className={labelClass}>Contacto Oficial</span>
+                      <span className={labelClass}>{t('officialContact')}</span>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="relative">
                           <input 
-                            placeholder="Correo de Negocios" 
+                            placeholder={t('businessEmail')} 
                             className={inputClass + (emailError ? " border-red-500 bg-red-50/50" : "")} 
                             value={form.correo} 
                             onChange={e => {
                               setForm((f: FormState) => ({ ...f, correo: e.target.value }));
-                              if (!validateEmail(e.target.value)) setEmailError("Correo inválido");
+                              if (!validateEmail(e.target.value)) setEmailError(t('invalidEmail'));
                               else setEmailError("");
                             }}
                             onBlur={e => {
-                              if (!validateEmail(e.target.value)) setEmailError("Correo inválido");
+                              if (!validateEmail(e.target.value)) setEmailError(t('invalidEmail'));
                               else setEmailError("");
                             }}
                           />
                           {emailError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0">{emailError}</p>}
                         </div>
-                        <input placeholder="WhatsApp / Teléfono" className={inputClass} value={form.telefono} onChange={e => setForm((f: FormState) => ({ ...f, telefono: e.target.value }))} />
+                        <input placeholder={t('whatsappPhone')} className={inputClass} value={form.telefono} onChange={e => setForm((f: FormState) => ({ ...f, telefono: e.target.value }))} />
                       </div>
                     </div>
                     <button onClick={() => setStep(1)} className={btnPrimary}>
-                      Siguiente Paso
+                      {t('nextStep')}
                     </button>
                   </motion.div>
                 )}
@@ -286,7 +290,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <label className="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-[#769C7B]/40 rounded-[35px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all">
                         <FiImage size={32} className="text-[#769C7B] mb-2"/>
-                        <p className="text-sm font-black text-[#1A4D2E] uppercase">Logo del Negocio</p>
+                        <p className="text-sm font-black text-[#1A4D2E] uppercase">{t('businessLogo')}</p>
                         <input type="file" className="hidden" accept="image/*" ref={el => { logoInput.current = el; }} onChange={e => {
                           const file = e.target.files?.[0];
                           if (file) {
@@ -297,18 +301,18 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                       <div className="space-y-4">
                         <div className="relative">
                           <FiMapPin className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
-                          <input placeholder="Ubicación Google Maps" className={inputClass + " pl-14"} value={form.ubicacion} onChange={e => setForm((f: FormState) => ({ ...f, ubicacion: e.target.value }))} />
+                          <input placeholder={t('googleMapsLocation')} className={inputClass + " pl-14"} value={form.ubicacion} onChange={e => setForm((f: FormState) => ({ ...f, ubicacion: e.target.value }))} />
                         </div>
                         <div className="relative">
                           <FiGlobe className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
-                          <input placeholder="Sitio Web / Redes" className={inputClass + " pl-14"} value={form.sitioWeb} onChange={e => setForm((f: FormState) => ({ ...f, sitioWeb: e.target.value }))} />
+                          <input placeholder={t('websiteSocial')} className={inputClass + " pl-14"} value={form.sitioWeb} onChange={e => setForm((f: FormState) => ({ ...f, sitioWeb: e.target.value }))} />
                         </div>
                         <div className="p-4 bg-[#0D601E]/5 rounded-2xl border border-[#0D601E]/10 italic text-[10px] text-gray-500">
-                           <FiInfo className="inline mr-1"/> Esta información ayudará a los turistas a encontrarte fácilmente en el mapa.
+                           <FiInfo className="inline mr-1"/> {t('locationHelp')}
                         </div>
                       </div>
                     </div>
-                    <button onClick={() => setStep(2)} className={btnPrimary}>Siguiente: Fotos</button>
+                    <button onClick={() => setStep(2)} className={btnPrimary}>{t('nextPhotos')}</button>
                   </motion.div>
                 )}
 
@@ -351,12 +355,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                     <div className={cardClass}>
                       <div className="flex items-center gap-2 mb-4 text-[#0D601E]">
                         <FiUser size={20} />
-                        <h4 className="font-bold uppercase text-xs tracking-tighter">Facturación</h4>
+                        <h4 className="font-bold uppercase text-xs tracking-tighter">{t('billing')}</h4>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="relative">
                           <input 
-                            placeholder="RFC de la Empresa" 
+                            placeholder={t('companyRFC')} 
                             className={`${inputClass} uppercase ${rfcError ? "border-red-500 bg-red-50/50" : ""}`}
                             value={form.rfc}
                             onChange={e => {
@@ -370,11 +374,11 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             }}
                             maxLength={13}
                           />
-                          {rfcError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic">RFC inválido (13 caracteres)</p>}
+                          {rfcError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic">{t('rfcInvalid')}</p>}
                         </div>
                         <div className="relative">
                           <input 
-                            placeholder="C.P. Fiscal" 
+                            placeholder={t('fiscalPostalCode')} 
                             className={`${inputClass} ${cpError ? "border-red-500 bg-red-50/50" : ""}`}
                             value={form.cp}
                             onChange={e => {
@@ -389,11 +393,11 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             }}
                             maxLength={5}
                           />
-                          {cpError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic">C.P. inválido (5 números)</p>}
+                          {cpError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic">{t('cpInvalid')}</p>}
                         </div>
                       </div>
                     </div>
-                    <button onClick={handleFinish} className={btnFinish}>Finalizar Alianza</button>
+                    <button onClick={handleFinish} className={btnFinish}>{t('finalizeAlliance')}</button>
                   </motion.div>
                 )}
               </div>
@@ -403,8 +407,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
               <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="relative w-32 h-32 md:w-48 md:h-48 mb-8">
                 <Image src={imglogo} alt="Cargando" fill className="object-contain" />
               </motion.div>
-              <h3 className="text-2xl md:text-3xl font-black text-[#1A4D2E] uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>Validando Empresa...</h3>
-              <p className="text-[#769C7B] italic mt-2">Estamos revisando tu perfil para conectar con miles de turistas.</p>
+              <h3 className="text-2xl md:text-3xl font-black text-[#1A4D2E] uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>{t('validatingCompany')}</h3>
+              <p className="text-[#769C7B] italic mt-2">{t('reviewingProfile')}</p>
             </motion.div>
           )}
         </AnimatePresence>

@@ -2,6 +2,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { enviarNotificacion } from "../../lib/notificaciones";
+import { useTranslations } from 'next-intl';
 import { FiChevronRight, FiFileText, FiLogOut, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle, FiMail, FiMessageSquare } from "react-icons/fi";
 import AdminHistorialSolicitudesModal from "@/app/components/AdminHistorialSolicitudesModal";
 
@@ -11,6 +12,9 @@ type NotificationType = {
 };
 
 export default function AdminPerfil() {
+  const t = useTranslations('admin');
+  const tCommon = useTranslations('common');
+  
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
     
@@ -144,7 +148,7 @@ export default function AdminPerfil() {
 
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-[#FDFCF9] font-light text-gray-400 italic">
-      Sincronizando panel de control...
+      {t('loading')}
     </div>
   );
 
@@ -152,28 +156,28 @@ export default function AdminPerfil() {
     <div className="min-h-screen bg-[#FDFCF9] flex flex-col">
       <header className="px-8 py-10 max-w-6xl mx-auto w-full flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-medium text-gray-800 tracking-tight">Panel de administración</h1>
-          <p className="text-gray-400 text-sm font-light">Validación de nuevos perfiles Pitzbol</p>
+          <h1 className="text-2xl font-medium text-gray-800 tracking-tight">{t('title')}</h1>
+          <p className="text-gray-400 text-sm font-light">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           <button 
             onClick={() => window.location.href = '/admin/mensajes'} 
             className="p-3 text-gray-400 hover:text-[#0D601E] transition-colors"
-            title="Mensajes de contacto"
+            title={t('messages')}
           >
             <FiMail size={20} />
           </button>
           <button 
             onClick={() => window.location.href = '/admin/llamadas'} 
             className="p-3 text-gray-400 hover:text-[#0D601E] transition-colors"
-            title="Solicitudes de llamada"
+            title={t('calls')}
           >
             <FiPhone size={20} />
           </button>
           <button 
             onClick={() => setShowHistorialModal(true)} 
             className="p-3 text-gray-400 hover:text-[#0D601E] transition-colors"
-            title="Historial de solicitudes"
+            title={t('history')}
           >
             <FiFileText size={20} />
           </button>
@@ -188,13 +192,13 @@ export default function AdminPerfil() {
               <span className="w-8 h-8 rounded-full bg-orange-50 text-orange-400 flex items-center justify-center text-xs font-bold">
                 {solicitudes.length}
               </span>
-              <h2 className="text-gray-500 text-sm font-medium uppercase tracking-widest">Solicitudes en espera</h2>
+              <h2 className="text-gray-500 text-sm font-medium uppercase tracking-widest">{t('pendingRequests')}</h2>
             </div>
 
             {solicitudes.length === 0 ? (
               <div className="bg-white rounded-[35px] border border-gray-100 p-20 text-center">
                 <FiShield className="mx-auto text-gray-100 mb-4" size={48} />
-                <p className="text-gray-300 font-light italic">No hay guías pendientes por el momento.</p>
+                <p className="text-gray-300 font-light italic">{t('noRequests')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -219,10 +223,10 @@ export default function AdminPerfil() {
                       </div>
                       <div>
                         <h3 className="text-gray-700 font-medium">
-                          {(sol["01_nombre"] || "Sin nombre")} {(sol["02_apellido"] || "")}
+                          {(sol["01_nombre"] || t('noName'))} {(sol["02_apellido"] || "")}
                         </h3>
                         <p className="text-[11px] text-gray-400 font-light italic">
-                          {sol["04_correo"] || "Sin correo registrado"}
+                          {sol["04_correo"] || t('noEmail')}
                         </p>
                       </div>
                     </div>
@@ -247,10 +251,10 @@ export default function AdminPerfil() {
             >
               <div className="p-8 border-b border-gray-50 flex justify-between items-center">
                 <button onClick={() => setSelectedGuia(null)} className="text-gray-400 hover:text-gray-800 flex items-center gap-2 text-sm font-light">
-                  <FiX /> Cerrar revisión
+                  <FiX /> {t('closeReview')}
                 </button>
                 <div className="text-right">
-                  <span className="text-[10px] text-orange-500 font-bold uppercase tracking-widest bg-orange-50 px-3 py-1 rounded-full">Revisión pendiente</span>
+                  <span className="text-[10px] text-orange-500 font-bold uppercase tracking-widest bg-orange-50 px-3 py-1 rounded-full">{t('pendingReview')}</span>
                 </div>
               </div>
 
@@ -277,12 +281,12 @@ export default function AdminPerfil() {
                           <FiShield size={24} />
                         </div>
                         <div>
-                          <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Análisis de Identidad</p>
+                          <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{t('identityAnalysis')}</p>
                           <h4 className={`text-lg font-bold ${selectedGuia.validacion_biometrica?.coincide ? 'text-green-700' : 'text-red-700'}`}>
-                            {selectedGuia.validacion_biometrica?.coincide ? 'Identidad Confirmada' : 'Posible Suplantación'}
+                            {selectedGuia.validacion_biometrica?.coincide ? t('identityConfirmed') : t('possibleImpersonation')}
                           </h4>
                           <p className="text-xs text-gray-500 italic">
-                            Coincidencia facial del {selectedGuia.validacion_biometrica?.porcentaje || "0"}%
+                            {t('facialMatch', { percentage: selectedGuia.validacion_biometrica?.porcentaje || "0" })}
                           </p>
                         </div>
                       </div>
@@ -291,30 +295,30 @@ export default function AdminPerfil() {
                     {/* Fotos de Identificación */}
                     <div className="space-y-4">
                       <p className="text-[11px] text-gray-300 font-bold uppercase tracking-[0.2em] flex items-center gap-2">
-                        <FiFileText /> Credencial oficial (INE)
+                        <FiFileText /> {t('officialId')}
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         
                         {/* Frente */}
                         <div className="space-y-2">
-                          <p className="text-[10px] text-gray-400 uppercase font-bold pl-2">Frente</p>
+                          <p className="text-[10px] text-gray-400 uppercase font-bold pl-2">{t('front')}</p>
                           <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50 flex items-center justify-center min-h-[150px]">
                             {selectedGuia["11_foto_frente"] ? (
                               <img src={selectedGuia["11_foto_frente"]} className="w-full h-auto" alt="INE Frente" />
                             ) : (
-                              <p className="text-[10px] text-gray-400 italic">Imagen no disponible</p>
+                              <p className="text-[10px] text-gray-400 italic">{t('imageNotAvailable')}</p>
                             )}
                           </div>
                         </div>
 
                         {/* Reverso */}
                         <div className="space-y-2">
-                          <p className="text-[10px] text-gray-400 uppercase font-bold pl-2">Reverso</p>
+                          <p className="text-[10px] text-gray-400 uppercase font-bold pl-2">{t('back')}</p>
                           <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50 flex items-center justify-center min-h-[150px]">
                             {selectedGuia["12_foto_reverso"] ? (
                               <img src={selectedGuia["12_foto_reverso"]} className="w-full h-auto" alt="INE Reverso" />
                             ) : (
-                              <p className="text-[10px] text-gray-400 italic">Imagen no disponible</p>
+                              <p className="text-[10px] text-gray-400 italic">{t('imageNotAvailable')}</p>
                             )}
                           </div>
                         </div>
@@ -323,14 +327,14 @@ export default function AdminPerfil() {
                     </div>
                     {/* Información de Contacto */}
                     <div className="p-6 bg-gray-50 rounded-[28px] border border-gray-100">
-                      <p className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-4">Información de Contacto</p>
+                      <p className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-4">{t('contactInfo')}</p>
                       <div className="grid grid-cols-1 gap-4 text-sm">
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-white rounded-lg text-gray-400">
                             <FiPhone size={16} />
                           </div>
                           <div>
-                            <p className="text-[10px] text-gray-400 uppercase font-bold">Teléfono de contacto</p>
+                            <p className="text-[10px] text-gray-400 uppercase font-bold">{t('contactPhone')}</p>
                             <p className="text-gray-700 font-medium">{selectedGuia["06_telefono"]}</p>
                           </div>
                         </div>
@@ -354,12 +358,12 @@ export default function AdminPerfil() {
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full"
                       />
-                      Procesando...
+                      {tCommon('processing')}
                     </>
                   ) : (
                     <>
                       <FiX size={18} />
-                      Rechazar registro
+                      {t('rejectRegistration')}
                     </>
                   )}
                 </button>
@@ -375,12 +379,12 @@ export default function AdminPerfil() {
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
                       />
-                      Procesando...
+                      {tCommon('processing')}
                     </>
                   ) : (
                     <>
                       <FiCheck size={18} />
-                      Aprobar como guía oficial
+                      {t('approveAsGuide')}
                     </>
                   )}
                 </button>
@@ -425,9 +429,9 @@ export default function AdminPerfil() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-white font-bold text-lg mb-1">
-                    {notificacion.tipo === 'exito' ? '¡Operación Exitosa!' : 
-                     notificacion.tipo === 'error' ? 'Error en la Operación' : 
-                     'Información'}
+                    {notificacion.tipo === 'exito' ? t('successOperation') : 
+                     notificacion.tipo === 'error' ? t('errorOperation') : 
+                     t('information')}
                   </h3>
                   <p className="text-white/90 text-sm font-medium leading-relaxed">
                     {notificacion.mensaje}

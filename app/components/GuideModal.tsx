@@ -3,6 +3,7 @@ import { ensureFaceApiReady } from "../initTF";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { FiCheck, FiChevronLeft, FiFileText, FiShield, FiX,FiAward } from "react-icons/fi";
 import Webcam from "react-webcam"; // Librería para la cámara
 import imglogo from "./logoPitzbol.png";
@@ -20,6 +21,9 @@ const CATEGORIES = [
 ];
 
 const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose: () => void; onOpenAuth?: () => void; }) => {
+  const t = useTranslations('guideModal');
+  const tCommon = useTranslations('common');
+  
   const [userLocal, setUserLocal] = useState<any>(null);
   const [step, setStep] = useState(1);
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
@@ -141,7 +145,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
             if (screenshot) {
               setImgRostro(screenshot);
               setIsScannerActive(false);
-              setStatusMsg("✓ Captura finalizada para revisión");
+              setStatusMsg(t('captureComplete'));
               // Aquí el matchingScore actual se queda guardado para enviarse al backend
             }
           }
@@ -150,7 +154,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         return () => clearTimeout(timeoutId);
       } else {
         setMatchingScore(0);
-        setStatusMsg("Centra tu rostro en la guía");
+        setStatusMsg(t('centerFace'));
       }
     } catch (err) {
       console.error("Error en detección:", err);
@@ -235,7 +239,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
 
   const nextStep = () => {
     if (step === 1 && selectedCats.length === 0) {
-        setErrorMsg("Selecciona al menos una categoría");
+        setErrorMsg(t('selectAtLeastOne'));
         return;
     }
     setErrorMsg("");
@@ -276,7 +280,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
           console.log(`✅ ${tipo} cargado exitosamente`);
         } else {
           const msg = tipo === 'vuelta' 
-            ? "No pudimos validar el reverso. Asegúrate de que se vea el código de barras/QR claramente."
+            ? t('ocrError')
             : (data.message || "Documento no válido.");
           setErrorMsg(msg);
           setDocsUploaded(prev => ({ ...prev, [tipo]: false }));
