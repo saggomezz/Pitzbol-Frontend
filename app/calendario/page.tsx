@@ -1,6 +1,7 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   FiChevronLeft, FiChevronRight, FiPlus, FiSmile, FiSun, FiX, FiZap
 } from "react-icons/fi";
@@ -9,8 +10,16 @@ export default function CalendarioPage() {
   const [currentDate, setCurrentDate] = useState(new Date(2026, 5, 1)); 
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showOptions, setShowOptions] = useState(false);
+  
+  const t = useTranslations('calendar');
+  const tMonths = useTranslations('calendar.months');
+  const tCat = useTranslations('calendar.planCategories');
 
-  const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  const months = [
+    tMonths('january'), tMonths('february'), tMonths('march'), tMonths('april'),
+    tMonths('may'), tMonths('june'), tMonths('july'), tMonths('august'),
+    tMonths('september'), tMonths('october'), tMonths('november'), tMonths('december')
+  ];
 
   const worldCupEvents: { [key: string]: string[] } = {
     "6-11": ["MÉX VS SUDAFRICA", "INAUGURAL GDL"],
@@ -20,12 +29,12 @@ export default function CalendarioPage() {
   };
 
   const planCategories = [
-    { id: 'gastro', title: 'Gastronomía', img: 'https://cdn-icons-png.flaticon.com/128/4372/4372203.png', desc: 'Sabor local' },
-    { id: 'cultura', title: 'Cultura', img: 'https://cdn-icons-png.flaticon.com/512/3659/3659831.png', desc: 'Museos y más' },
-    { id: 'noche', title: 'Fiesta', img: 'https://cdn-icons-png.flaticon.com/128/1355/1355079.png', desc: 'Vida nocturna' },
-    { id: 'guia', title: 'Guías', img: 'https://cdn-icons-png.flaticon.com/128/3284/3284649.png', desc: 'Expertos' },
-    { id: 'tequila', title: 'Tequila', img: 'https://cdn-icons-png.flaticon.com/512/920/920605.png', desc: 'Catas y ruta' },
-    { id: 'shop', title: 'Compras', img: 'https://cdn-icons-png.flaticon.com/512/3081/3081648.png', desc: 'Artesanías' }
+    { id: 'gastro', title: tCat('gastronomy'), img: 'https://cdn-icons-png.flaticon.com/128/4372/4372203.png', desc: tCat('gastronomyDesc') },
+    { id: 'cultura', title: tCat('culture'), img: 'https://cdn-icons-png.flaticon.com/512/3659/3659831.png', desc: tCat('cultureDesc') },
+    { id: 'noche', title: tCat('party'), img: 'https://cdn-icons-png.flaticon.com/128/1355/1355079.png', desc: tCat('partyDesc') },
+    { id: 'guia', title: tCat('guides'), img: 'https://cdn-icons-png.flaticon.com/128/3284/3284649.png', desc: tCat('guidesDesc') },
+    { id: 'tequila', title: tCat('tequila'), img: 'https://cdn-icons-png.flaticon.com/512/920/920605.png', desc: tCat('tequilaDesc') },
+    { id: 'shop', title: tCat('shopping'), img: 'https://cdn-icons-png.flaticon.com/512/3081/3081648.png', desc: tCat('shoppingDesc') }
   ];
 
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
@@ -38,7 +47,7 @@ export default function CalendarioPage() {
       <div className="px-8 py-6 flex justify-between items-center flex-shrink-0">
         <div className="flex flex-col">
           <h1 className="text-4xl md:text-5xl font-black text-[#1A4D2E] uppercase leading-none" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-            Calendario
+            {t('title')}
           </h1>
           <div className="flex items-center gap-2 text-[10px] md:text-xs text-[#769C7B] font-bold uppercase tracking-widest mt-2">
             <FiSun size={12} className="text-[#F00808]" /> GDL 28°C • Soleado
@@ -46,7 +55,7 @@ export default function CalendarioPage() {
         </div>
 
         <button className="bg-[#0D601E] hover:bg-[#094d18] text-white px-6 py-3 rounded-full font-bold shadow-xl transition-all flex items-center gap-3 text-xs uppercase tracking-[0.2em]">
-          <FiPlus size={16} /> Crear Plan
+          <FiPlus size={16} /> {t('createPlan')}
         </button>
       </div>
 

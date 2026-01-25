@@ -1,5 +1,6 @@
 "use client";
 import React, { useRef, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import styles from "../styles/GuideInfo.module.css";
 import { FaMapMarkedAlt, FaUserEdit, FaWallet, FaRegComments, FaStar, FaCalendarAlt, FaCheckCircle, FaUserFriends, FaIdCard, FaCamera, FaUniversity } from "react-icons/fa";
 
@@ -10,6 +11,7 @@ interface GuideInfoProps {
 }
 
 const GuideInfo: React.FC<GuideInfoProps> = ({ isOpen, onClose, onContinue }) => {
+  const t = useTranslations('guideInfo');
   const contentRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLDivElement>(null);
   const [showArrow, setShowArrow] = useState(true);
@@ -47,23 +49,23 @@ const GuideInfo: React.FC<GuideInfoProps> = ({ isOpen, onClose, onContinue }) =>
       <div className={styles.guideInfoModal}>
         <div className={styles.guideInfoHeader}>
           <div className={styles.guideInfoHeaderIcon}><FaUserFriends /></div>
-          <div className={styles.guideInfoHeaderTitle}>¡Conviértete en Guía de Pitzbol!</div>
-          <button onClick={onClose} style={{position:'absolute',top:18,right:24,fontSize:22,background:'none',border:'none',cursor:'pointer',color:'#fff'}} aria-label="Cerrar">×</button>
+          <div className={styles.guideInfoHeaderTitle}>{t('title')}</div>
+          <button onClick={onClose} style={{position:'absolute',top:18,right:24,fontSize:22,background:'none',border:'none',cursor:'pointer',color:'#fff'}} aria-label={t('close')}>×</button>
         </div>
         <div className={styles.guideInfoContent} ref={contentRef} style={{position:'relative'}}>
           <div style={{fontSize:'1.13rem',color:'#3B5D50',marginBottom:'0.7rem',textAlign:'center',lineHeight:1.6}}>
-            <b>¿Te apasiona mostrar tu ciudad?</b> <br/>
-            Convertirte en guía en Pitzbol es mucho más que solo acompañar turistas: es compartir tu historia, tu cultura y tu pasión con personas de todo el mundo.<br/><br/>
-            <b>¿Qué podrás hacer como guía?</b>
+            <b>{t('subtitle')}</b> <br/>
+            {t('description')}<br/><br/>
+            <b>{t('whatCanYouDo')}</b>
           </div>
           <ul className={styles.guideInfoList}>
-            <li><FaCheckCircle color="#769C7B" size={20}/> Publicar tus propios tours o simplemente ofrecerte como guía personal para turistas.</li>
-            <li><FaCalendarAlt color="#769C7B" size={20}/> Gestionar tus tours, horarios y disponibilidad de forma sencilla.</li>
-            <li><FaMapMarkedAlt color="#769C7B" size={20}/> Aparecer en el mapa de tours para que te encuentren fácilmente.</li>
-            <li><FaRegComments color="#769C7B" size={20}/> Chatear directamente con los clientes para resolver dudas y coordinar detalles.</li>
-            <li><FaUserEdit color="#769C7B" size={20}/> Tener un perfil público listo para personalizar y destacar tus fortalezas.</li>
-            <li><FaWallet color="#769C7B" size={20}/> Recibir pagos seguros y llevar el control de tus ingresos desde tu cartera digital.</li>
-            <li><FaStar color="#769C7B" size={20}/> Ser calificado por los usuarios y construir tu reputación como guía local.</li>
+            <li><FaCheckCircle color="#769C7B" size={20}/> {t('benefits.publishTours')}</li>
+            <li><FaCalendarAlt color="#769C7B" size={20}/> {t('benefits.manageTours')}</li>
+            <li><FaMapMarkedAlt color="#769C7B" size={20}/> {t('benefits.appearOnMap')}</li>
+            <li><FaRegComments color="#769C7B" size={20}/> {t('benefits.chatWithClients')}</li>
+            <li><FaUserEdit color="#769C7B" size={20}/> {t('benefits.publicProfile')}</li>
+            <li><FaWallet color="#769C7B" size={20}/> {t('benefits.securePayments')}</li>
+            <li><FaStar color="#769C7B" size={20}/> {t('benefits.ratings')}</li>
           </ul>
           <div style={{fontSize:'1.05rem',color:'#769C7B',background:'#F6F8F7',borderLeft:'4px solid #3B5D50',padding:'0.7rem 1rem',borderRadius:'0.7rem',marginBottom:'1rem',animation:'fadeInItem 0.7s'}}>Recuerda: <b>todos los tours que publiques serán revisados y aprobados por un administrador</b> para garantizar la mejor experiencia a los viajeros.</div>
           <div style={{
