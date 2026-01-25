@@ -20,12 +20,12 @@ locales.forEach(locale => {
   const filePath = path.join(messagesDir, `${locale}.json`);
   
   if (!fs.existsSync(filePath)) {
-    console.error(`❌ ERROR: No existe el archivo ${locale}.json`);
+    console.error(`ERROR: No existe el archivo ${locale}.json`);
     hasErrors = true;
     return;
   }
   
-  console.log(`✅ Archivo ${locale}.json encontrado`);
+  console.log(`Archivo ${locale}.json encontrado`);
   
   // Verificar que sea JSON válido
   try {
