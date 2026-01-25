@@ -92,6 +92,9 @@ export default function InformacionLugar() {
       localStorage.setItem("pitzbol_favorites", JSON.stringify(favorites));
       setIsFavorite(true);
     }
+    
+    // Disparar evento para que otras páginas sepan que cambió
+    window.dispatchEvent(new Event('favoritesChanged'));
   };
 
   const compartir = async () => {
