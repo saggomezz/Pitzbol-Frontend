@@ -6,6 +6,14 @@ export interface BusinessData {
   description: string;
   owner: string; // userId
   images: File[];
+  email: string;
+  password: string;
+  rfc: string;
+  cp: string;
+  category?: string;
+  phone?: string;
+  location?: string;
+  website?: string;
 }
 
 export async function uploadImagesToCloudinary(files: File[]): Promise<string[]> {
@@ -29,12 +37,20 @@ export async function createBusiness(business: BusinessData) {
   const imageUrls = await uploadImagesToCloudinary(business.images);
   // 2. Guardar negocio usando la API REST del backend
   const response = await axios.post(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL}/negocios`,
+    `${process.env.NEXT_PUBLIC_BACKEND_URL}/business/register`,
     {
-      name: business.name,
+      email: business.email,
+      password: business.password,
+      businessName: business.name,
+      category: business.category,
+      phone: business.phone,
+      location: business.location,
+      website: business.website,
+      rfc: business.rfc,
+      cp: business.cp,
+      images: imageUrls,
       description: business.description,
-      owner: business.owner,
-      images: imageUrls
+      owner: business.owner
     }
   );
   return response.data;
