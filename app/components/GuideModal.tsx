@@ -178,8 +178,12 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
       try {
         console.log("🔄 Cargando modelos de reconocimiento facial...");
         
-        // Importar @vladmandic/face-api
-        const faceapiModule = await import('@vladmandic/face-api');
+        // Inicializar face-api usando la función de inicialización
+        const faceapiModule = await ensureFaceApiReady();
+        
+        if (!faceapiModule) {
+          throw new Error("No se pudo inicializar face-api");
+        }
         
         setFaceapi(faceapiModule);
         
