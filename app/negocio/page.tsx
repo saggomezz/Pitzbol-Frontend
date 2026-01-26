@@ -14,6 +14,14 @@ export default function PublicarNegocioPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rfc, setRfc] = useState("");
+  const [cp, setCp] = useState("");
+  const [category, setCategory] = useState("");
+  const [phone, setPhone] = useState("");
+  const [location, setLocation] = useState("");
+  const [website, setWebsite] = useState("");
   const router = useRouter();
   const user = usePitzbolUser();
 
@@ -34,7 +42,20 @@ export default function PublicarNegocioPage() {
     }
     try {
       const owner = user.uid;
-      await createBusiness({ name, description, owner, images });
+      await createBusiness({
+        name,
+        description,
+        owner,
+        images,
+        email,
+        password,
+        rfc,
+        cp,
+        category,
+        phone,
+        location,
+        website
+      });
       await enviarNotificacion(
         user.uid,
         'info',
@@ -58,6 +79,66 @@ export default function PublicarNegocioPage() {
         {!user && (
           <div className="text-red-600 mb-4">Debes iniciar sesión para publicar un negocio.</div>
         )}
+        <label className="block mb-2 text-[#3B5D50]">Correo electrónico</label>
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          required
+          className="w-full p-2 mb-4 border rounded"
+        />
+        <label className="block mb-2 text-[#3B5D50]">Contraseña</label>
+        <input
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          required
+          className="w-full p-2 mb-4 border rounded"
+        />
+        <label className="block mb-2 text-[#3B5D50]">RFC</label>
+        <input
+          type="text"
+          value={rfc}
+          onChange={e => setRfc(e.target.value)}
+          required
+          className="w-full p-2 mb-4 border rounded"
+        />
+        <label className="block mb-2 text-[#3B5D50]">Código Postal</label>
+        <input
+          type="text"
+          value={cp}
+          onChange={e => setCp(e.target.value)}
+          required
+          className="w-full p-2 mb-4 border rounded"
+        />
+        <label className="block mb-2 text-[#3B5D50]">Categoría</label>
+        <input
+          type="text"
+          value={category}
+          onChange={e => setCategory(e.target.value)}
+          className="w-full p-2 mb-4 border rounded"
+        />
+        <label className="block mb-2 text-[#3B5D50]">Teléfono</label>
+        <input
+          type="text"
+          value={phone}
+          onChange={e => setPhone(e.target.value)}
+          className="w-full p-2 mb-4 border rounded"
+        />
+        <label className="block mb-2 text-[#3B5D50]">Ubicación</label>
+        <input
+          type="text"
+          value={location}
+          onChange={e => setLocation(e.target.value)}
+          className="w-full p-2 mb-4 border rounded"
+        />
+        <label className="block mb-2 text-[#3B5D50]">Sitio web</label>
+        <input
+          type="text"
+          value={website}
+          onChange={e => setWebsite(e.target.value)}
+          className="w-full p-2 mb-4 border rounded"
+        />
         <label className="block mb-2 text-[#3B5D50]">Nombre del negocio</label>
         <input
           type="text"
