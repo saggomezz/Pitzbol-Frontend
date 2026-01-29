@@ -9,6 +9,7 @@ import Papa from "papaparse";
 import AuthModal from "../components/AuthModal";
 import imglogo from "../components/logoPitzbol.png";
 import { getPlaceImageUrlSync } from "@/lib/placeImages";
+import { useFavoritesSync } from "@/lib/favoritesApi";
 
 interface Lugar {
   nombre: string;
@@ -27,6 +28,7 @@ export default function FavoritosPage() {
   const [loading, setLoading] = useState(true);
   const t = useTranslations('favorites');
   const tAuth = useTranslations('auth');
+  const { getFavorites, removeFavorite: removeFavoriteApi, syncLocalFavorites } = useFavoritesSync();
 
   // Verificar usuario y cargar favoritos
   useEffect(() => {
@@ -46,13 +48,15 @@ export default function FavoritosPage() {
       const loadFavorites = async () => {
         setLoading(true);
         
-        // Obtener favoritos de localStorage
-        const storedFavorites = localStorage.getItem("pitzbol_favorites");
-        const favoriteNames = storedFavorites ? JSON.parse(storedFavorites) : [];
-        setFavorites(favoriteNames);
-
-        // Cargar datos de lugares desde CSV
         try {
+          // Sincronizar favoritos locales con el backend al cargar
+          await syncLocalFavorites();
+          
+          // Obtener favoritos (desde backend si está autenticado)
+          const favoriteNames = await getFavorites();
+          setFavorites(favoriteNames);
+
+          // Cargar datos de lugares desde CSV
           const response = await fetch('/datosLugares.csv');
           const csvText = await response.text();
           
@@ -84,7 +88,7 @@ export default function FavoritosPage() {
                 favoriteNames.includes(lugar.nombre)
               );
               
-              console.log("📋 Favoritos en localStorage:", favoriteNames);
+              console.log("📋 Favoritos sincronizados:", favoriteNames);
               console.log("📋 Lugares encontrados en CSV:", allPlaces.length);
               console.log("✅ Lugares favoritos encontrados:", favPlaces.length);
               
@@ -97,21 +101,19 @@ export default function FavoritosPage() {
             }
           });
         } catch (error) {
-          console.error("Error al cargar CSV:", error);
+          console.error("Error al cargar favoritos:", error);
           setLoading(false);
         }
       };
 
       loadFavorites();
 
-      // Escuchar cambios en localStorage (cuando se agregan/eliminan favoritos)
+      // Escuchar cambios en favoritos
       const handleStorageChange = () => {
         loadFavorites();
       };
 
       window.addEventListener('storage', handleStorageChange);
-      
-      // También escuchar un evento personalizado para cambios en la misma pestaña
       window.addEventListener('favoritesChanged', handleStorageChange);
 
       return () => {
@@ -123,14 +125,20 @@ export default function FavoritosPage() {
     }
   }, [user]);
 
-  const removeFavorite = (nombreLugar: string) => {
-    const updated = favorites.filter(name => name !== nombreLugar);
-    localStorage.setItem("pitzbol_favorites", JSON.stringify(updated));
-    setFavorites(updated);
-    setFavoritePlaces(prev => prev.filter(place => place.nombre !== nombreLugar));
-    
-    // Disparar evento para que otras partes de la app sepan que cambió
-    window.dispatchEvent(new Event('favoritesChanged'));
+  const removeFavorite = async (nombreLugar: string) => {
+    try {
+      // Eliminar del backend/localStorage usando la API
+      const updated = await removeFavoriteApi(nombreLugar);
+      setFavorites(updated);
+      setFavoritePlaces(prev => prev.filter(place => place.nombre !== nombreLugar));
+    } catch (error) {
+      console.error("Error al eliminar favorito:", error);
+      // Fallback: eliminar solo localmente si falla el backend
+      const updated = favorites.filter(name => name !== nombreLugar);
+      localStorage.setItem("pitzbol_favorites", JSON.stringify(updated));
+      setFavorites(updated);
+      setFavoritePlaces(prev => prev.filter(place => place.nombre !== nombreLugar));
+    }
   };
 
   // Si no hay usuario, mostrar pantalla de login

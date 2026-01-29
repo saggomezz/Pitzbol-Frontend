@@ -63,6 +63,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import "leaflet/dist/leaflet.css";
 import styles from "./mapa.module.css";
 import { getPlaceImageUrlSync, getPlaceImageByCategory } from "@/lib/placeImages";
+import { useFavoritesSync } from "@/lib/favoritesApi";
 
 interface Lugar {
     nombre: string;
@@ -307,6 +308,8 @@ export default function MapaPage() {
     const [favoriteToastMessage, setFavoriteToastMessage] = useState("");
     const [placeImages, setPlaceImages] = useState<Record<string, string>>({});
     const [placeAllPhotos, setPlaceAllPhotos] = useState<Record<string, string[]>>({}); // Todas las fotos para el carrusel
+    
+    const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites } = useFavoritesSync();
 
     const categories = [
         { name: "Todos Los Lugares", icon: FiMapPin },
@@ -322,10 +325,23 @@ export default function MapaPage() {
     ];
 
     useEffect(() => {
-        const storedFavorites = localStorage.getItem("pitzbol_favorites");
-        if (storedFavorites) {
-            setFavorites(JSON.parse(storedFavorites));
-        }
+        const loadInitialData = async () => {
+            // Cargar favoritos sincronizados
+            try {
+                await syncLocalFavorites();
+                const favs = await getFavorites();
+                setFavorites(favs);
+            } catch (error) {
+                console.error("Error al cargar favoritos:", error);
+                // Fallback a localStorage
+                const storedFavorites = localStorage.getItem("pitzbol_favorites");
+                if (storedFavorites) {
+                    setFavorites(JSON.parse(storedFavorites));
+                }
+            }
+        };
+        
+        loadInitialData();
 
         fetch("/datosLugares.csv")
             .then((response) => response.text())
@@ -501,19 +517,33 @@ export default function MapaPage() {
         return () => window.removeEventListener("keydown", handleEscape);
     }, [selectedPlace]);
 
-    const toggleFavorite = (e: React.MouseEvent, nombre: string) => {
+    const toggleFavorite = async (e: React.MouseEvent, nombre: string) => {
         e.stopPropagation();
         const isRemoving = favorites.includes(nombre);
-        const updated = isRemoving
-            ? favorites.filter((n) => n !== nombre)
-            : [...favorites, nombre];
-        setFavorites(updated);
-        localStorage.setItem("pitzbol_favorites", JSON.stringify(updated));
         
-        // Mostrar notificación
-        setFavoriteToastMessage(isRemoving ? "Eliminado de favoritos" : "Agregado a favoritos");
-        setShowFavoriteToast(true);
-        setTimeout(() => setShowFavoriteToast(false), 2000);
+        try {
+            const updated = isRemoving
+                ? await removeFavoriteApi(nombre)
+                : await addFavorite(nombre);
+            setFavorites(updated);
+            
+            // Mostrar notificación
+            setFavoriteToastMessage(isRemoving ? "Eliminado de favoritos" : "Agregado a favoritos");
+            setShowFavoriteToast(true);
+            setTimeout(() => setShowFavoriteToast(false), 2000);
+        } catch (error) {
+            console.error("Error al actualizar favorito:", error);
+            // Fallback: actualizar solo localmente
+            const updated = isRemoving
+                ? favorites.filter((n) => n !== nombre)
+                : [...favorites, nombre];
+            setFavorites(updated);
+            localStorage.setItem("pitzbol_favorites", JSON.stringify(updated));
+            
+            setFavoriteToastMessage(isRemoving ? "Eliminado de favoritos" : "Agregado a favoritos");
+            setShowFavoriteToast(true);
+            setTimeout(() => setShowFavoriteToast(false), 2000);
+        }
     };
 
     // Manejar selección de lugar (desde lista o desde mapa)

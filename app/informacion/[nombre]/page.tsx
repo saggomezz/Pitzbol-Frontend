@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2 } from "react-icons/fi";
 import styles from "../informacion.module.css";
+import { useFavoritesSync } from "@/lib/favoritesApi";
 
 interface Lugar {
   nombre: string;
@@ -23,6 +24,8 @@ export default function InformacionLugar() {
   const [lugar, setLugar] = useState<Lugar | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
+  
+  const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites } = useFavoritesSync();
 
   useEffect(() => {
     const cargarLugar = async () => {
@@ -56,10 +59,18 @@ export default function InformacionLugar() {
         }
 
         // Verificar si está en favoritos
-        const storedFavorites = localStorage.getItem("pitzbol_favorites");
-        if (storedFavorites) {
-          const favorites = JSON.parse(storedFavorites);
+        try {
+          await syncLocalFavorites();
+          const favorites = await getFavorites();
           setIsFavorite(favorites.includes(nombreBuscado));
+        } catch (error) {
+          console.error("Error al cargar favoritos:", error);
+          // Fallback a localStorage
+          const storedFavorites = localStorage.getItem("pitzbol_favorites");
+          if (storedFavorites) {
+            const favorites = JSON.parse(storedFavorites);
+            setIsFavorite(favorites.includes(nombreBuscado));
+          }
         }
       } catch (error) {
         console.error("Error al cargar el lugar:", error);
@@ -78,23 +89,35 @@ export default function InformacionLugar() {
     }
   };
 
-  const toggleFavorite = () => {
+  const toggleFavorite = async () => {
     const nombreLugar = decodeURIComponent(params.nombre as string);
-    const storedFavorites = localStorage.getItem("pitzbol_favorites");
-    const favorites = storedFavorites ? JSON.parse(storedFavorites) : [];
     
-    if (isFavorite) {
-      const updated = favorites.filter((n: string) => n !== nombreLugar);
-      localStorage.setItem("pitzbol_favorites", JSON.stringify(updated));
-      setIsFavorite(false);
-    } else {
-      favorites.push(nombreLugar);
-      localStorage.setItem("pitzbol_favorites", JSON.stringify(favorites));
-      setIsFavorite(true);
+    try {
+      if (isFavorite) {
+        await removeFavoriteApi(nombreLugar);
+        setIsFavorite(false);
+      } else {
+        await addFavorite(nombreLugar);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error("Error al actualizar favorito:", error);
+      // Fallback: actualizar solo localmente
+      const storedFavorites = localStorage.getItem("pitzbol_favorites");
+      const favorites = storedFavorites ? JSON.parse(storedFavorites) : [];
+      
+      if (isFavorite) {
+        const updated = favorites.filter((n: string) => n !== nombreLugar);
+        localStorage.setItem("pitzbol_favorites", JSON.stringify(updated));
+        setIsFavorite(false);
+      } else {
+        favorites.push(nombreLugar);
+        localStorage.setItem("pitzbol_favorites", JSON.stringify(favorites));
+        setIsFavorite(true);
+      }
+      
+      window.dispatchEvent(new Event('favoritesChanged'));
     }
-    
-    // Disparar evento para que otras páginas sepan que cambió
-    window.dispatchEvent(new Event('favoritesChanged'));
   };
 
   const compartir = async () => {
