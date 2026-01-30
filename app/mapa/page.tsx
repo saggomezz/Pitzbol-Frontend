@@ -309,7 +309,7 @@ export default function MapaPage() {
     const [placeImages, setPlaceImages] = useState<Record<string, string>>({});
     const [placeAllPhotos, setPlaceAllPhotos] = useState<Record<string, string[]>>({}); // Todas las fotos para el carrusel
     
-    const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites } = useFavoritesSync();
+    const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
 
     const categories = [
         { name: "Todos Los Lugares", icon: FiMapPin },
@@ -326,9 +326,11 @@ export default function MapaPage() {
 
     useEffect(() => {
         const loadInitialData = async () => {
-            // Cargar favoritos sincronizados
+            // Cargar favoritos sincronizados solo si está autenticado
             try {
-                await syncLocalFavorites();
+                if (isAuthenticated()) {
+                    await syncLocalFavorites();
+                }
                 const favs = await getFavorites();
                 setFavorites(favs);
             } catch (error) {

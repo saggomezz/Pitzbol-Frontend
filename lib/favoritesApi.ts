@@ -218,28 +218,33 @@ export const useFavoritesSync = () => {
   };
 
   const syncLocalFavorites = async (): Promise<string[]> => {
-    if (isAuthenticated()) {
-      try {
-        const stored = localStorage.getItem('pitzbol_favorites');
-        const localFavorites = stored ? JSON.parse(stored) : [];
-        
-        if (localFavorites.length > 0) {
-          const synced = await sincronizarFavoritosBackend(localFavorites);
-          localStorage.setItem('pitzbol_favorites', JSON.stringify(synced));
-          window.dispatchEvent(new Event('favoritesChanged'));
-          return synced;
-        }
-        
-        // Si no hay favoritos locales, obtener del backend
-        const backendFavorites = await obtenerFavoritosBackend();
-        localStorage.setItem('pitzbol_favorites', JSON.stringify(backendFavorites));
-        return backendFavorites;
-      } catch (error) {
-        console.error('Error al sincronizar favoritos:', error);
-        throw error;
-      }
+    if (!isAuthenticated()) {
+      // Si no está autenticado, retornar favoritos locales sin sincronizar
+      const stored = localStorage.getItem('pitzbol_favorites');
+      return stored ? JSON.parse(stored) : [];
     }
-    return [];
+    
+    try {
+      const stored = localStorage.getItem('pitzbol_favorites');
+      const localFavorites = stored ? JSON.parse(stored) : [];
+      
+      if (localFavorites.length > 0) {
+        const synced = await sincronizarFavoritosBackend(localFavorites);
+        localStorage.setItem('pitzbol_favorites', JSON.stringify(synced));
+        window.dispatchEvent(new Event('favoritesChanged'));
+        return synced;
+      }
+      
+      // Si no hay favoritos locales, obtener del backend
+      const backendFavorites = await obtenerFavoritosBackend();
+      localStorage.setItem('pitzbol_favorites', JSON.stringify(backendFavorites));
+      return backendFavorites;
+    } catch (error) {
+      console.error('Error al sincronizar favoritos:', error);
+      // En caso de error, retornar favoritos locales como fallback
+      const stored = localStorage.getItem('pitzbol_favorites');
+      return stored ? JSON.parse(stored) : [];
+    }
   };
 
   return {
