@@ -28,7 +28,7 @@ export default function FavoritosPage() {
   const [loading, setLoading] = useState(true);
   const t = useTranslations('favorites');
   const tAuth = useTranslations('auth');
-  const { getFavorites, removeFavorite: removeFavoriteApi, syncLocalFavorites } = useFavoritesSync();
+  const { getFavorites, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
 
   // Verificar usuario y cargar favoritos
   useEffect(() => {
@@ -49,8 +49,10 @@ export default function FavoritosPage() {
         setLoading(true);
         
         try {
-          // Sincronizar favoritos locales con el backend al cargar
-          await syncLocalFavorites();
+          // Sincronizar favoritos locales con el backend al cargar (solo si está autenticado)
+          if (isAuthenticated()) {
+            await syncLocalFavorites();
+          }
           
           // Obtener favoritos (desde backend si está autenticado)
           const favoriteNames = await getFavorites();
@@ -126,6 +128,12 @@ export default function FavoritosPage() {
   }, [user]);
 
   const removeFavorite = async (nombreLugar: string) => {
+    // Verificar si el usuario está autenticado antes de eliminar
+    if (!user || !isAuthenticated()) {
+      console.warn("No se puede eliminar favorito: usuario no autenticado");
+      return;
+    }
+    
     try {
       // Eliminar del backend/localStorage usando la API
       const updated = await removeFavoriteApi(nombreLugar);

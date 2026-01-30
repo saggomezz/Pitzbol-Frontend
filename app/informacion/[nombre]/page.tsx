@@ -25,7 +25,7 @@ export default function InformacionLugar() {
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   
-  const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites } = useFavoritesSync();
+  const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
 
   useEffect(() => {
     const cargarLugar = async () => {
@@ -60,7 +60,9 @@ export default function InformacionLugar() {
 
         // Verificar si está en favoritos
         try {
-          await syncLocalFavorites();
+          if (isAuthenticated()) {
+            await syncLocalFavorites();
+          }
           const favorites = await getFavorites();
           setIsFavorite(favorites.includes(nombreBuscado));
         } catch (error) {
