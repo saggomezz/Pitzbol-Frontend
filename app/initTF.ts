@@ -54,6 +54,9 @@ export async function ensureFaceApiReady() {
   try {
     console.log("🔄 Cargando @vladmandic/face-api...");
     
+    // Primero asegurar que TensorFlow.js esté completamente inicializado
+    await ensureTensorFlowReady();
+    
     // Importar @vladmandic/face-api que no tiene conflictos con TensorFlow
     const faceapi = await import('@vladmandic/face-api');
     

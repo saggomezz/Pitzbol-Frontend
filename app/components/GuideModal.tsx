@@ -187,7 +187,13 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         
         setFaceapi(faceapiModule);
         
-        const MODEL_URL = "/models"; 
+        const MODEL_URL = "/models";
+        
+        // Esperar a que el backend de TensorFlow esté listo antes de cargar los modelos
+        if (typeof window !== 'undefined' && (window as any).tf) {
+          await (window as any).tf.ready();
+          console.log("✅ Backend de TensorFlow listo:", (window as any).tf.getBackend());
+        }
         
         await faceapiModule.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
         await faceapiModule.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
