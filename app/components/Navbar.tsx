@@ -218,9 +218,9 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left">
                                         <FiCreditCard /> {t('myPayments')}
                                     </button>
-                                    <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left">
+                                    <Link href="/mensajes" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium">
                                         <FiMessageSquare /> {t('messages')}
-                                    </button>
+                                    </Link>
                                 </>
                             ) : (
                                 <>
