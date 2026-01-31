@@ -99,7 +99,7 @@ const AdminNegociosPage = () => {
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-3 text-[#3B5D50]">
-            <MdBusiness className="text-emerald-700" size={36} /> Administrar Negocios
+            <MdBusiness size={36} color="#047857" /> Gestionar Negocios
           </h1>
           <button
             className="flex items-center gap-2 px-5 py-2 rounded-full bg-blue-100 text-blue-800 font-bold shadow hover:bg-blue-200 transition text-base"
@@ -113,60 +113,60 @@ const AdminNegociosPage = () => {
             className={`px-6 py-2 rounded-full font-semibold shadow transition-all duration-200 ${tab === "registrados" ? "bg-emerald-700 text-white scale-105" : "bg-gray-100 text-gray-700 hover:bg-emerald-50"}`}
             onClick={() => setTab("registrados")}
           >
-            <FaArchive className="inline mr-2 -mt-1" /> Registrados
+            <FaArchive size={18} color="#3B5D50" /> Registrados
           </button>
           <button
             className={`px-6 py-2 rounded-full font-semibold shadow transition-all duration-200 ${tab === "pendientes" ? "bg-yellow-500 text-white scale-105" : "bg-gray-100 text-gray-700 hover:bg-yellow-50"}`}
             onClick={() => setTab("pendientes")}
           >
-            <FaHourglassHalf className="inline mr-2 -mt-1" /> Pendientes
+            <FaHourglassHalf size={18} color="#eab308" /> Pendientes
           </button>
           <button
             className={`px-6 py-2 rounded-full font-semibold shadow transition-all duration-200 ${tab === "archivados" ? "bg-gray-700 text-white scale-105" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
             onClick={() => setTab("archivados")}
           >
-            <FaArchive className="inline mr-2 -mt-1" /> Archivados
+            <FaArchive size={18} color="#6b7280" /> Archivados
           </button>
         </div>
         {loading ? (
           <div className="text-center py-20 text-gray-400 text-lg flex flex-col items-center gap-2">
-            <FaHourglassHalf className="animate-spin text-4xl mx-auto" />
+            <FaHourglassHalf size={36} color="#eab308" />
             Cargando negocios...
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
-            {(tab === "registrados" ? negocios : tab === "pendientes" ? pendientes : archivados).map((negocio) => (
+            {(tab === "registrados" ? negocios : tab === "pendientes" ? pendientes : archivados).map((negocio: Business) => (
               <div key={negocio.id} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col gap-3 border border-gray-100 hover:shadow-2xl transition-all relative">
                 <div className="flex items-center gap-3 mb-2">
-                  <MdBusiness className="text-emerald-700 text-2xl" />
+                  <MdBusiness size={24} color="#047857" />
                   <span className="font-bold text-lg text-[#3B5D50] truncate">{negocio.name}</span>
                 </div>
                 <div className="text-gray-700 mb-1 min-h-[40px]">{negocio.description}</div>
                 {negocio.images && negocio.images.length > 0 && (
                   <div className="flex gap-2 mb-2">
-                    {negocio.images.slice(0,3).map((img, i) => (
+                    {negocio.images.slice(0,3).map((img: string, i: number) => (
                       <Image key={i} src={img} alt="Imagen negocio" width={60} height={60} className="rounded-lg border object-cover" />
                     ))}
                   </div>
                 )}
                 <div className="flex items-center gap-2 text-xs mb-1">
-                  <MdPerson className="text-gray-400" />
+                  <MdPerson size={18} color="#9ca3af" />
                   <span className="font-semibold text-gray-600">Dueño:</span>
                   <span className="text-gray-800">{negocio.owner}</span>
                 </div>
                 <div className="flex items-center gap-2 mb-2">
-                  {negocio.status === "aprobado" && <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><FaCheckCircle />Aprobado</span>}
-                  {negocio.status === "pendiente" && <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><FaHourglassHalf />Pendiente</span>}
-                  {negocio.status === "rechazado" && <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><FaTimesCircle />Rechazado</span>}
-                  {negocio.status === "archivado" && <span className="bg-gray-200 text-gray-500 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><FaArchive />Archivado</span>}
+                  {negocio.status === "aprobado" && <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><FaCheckCircle size={14} color="#047857" />Aprobado</span>}
+                  {negocio.status === "pendiente" && <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><FaHourglassHalf size={14} color="#eab308" />Pendiente</span>}
+                  {negocio.status === "rechazado" && <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><FaTimesCircle size={14} color="#ea580c" />Rechazado</span>}
+                  {negocio.status === "archivado" && <span className="bg-gray-200 text-gray-500 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><FaArchive size={14} color="#6b7280" />Archivado</span>}
                 </div>
                 <div className="flex gap-2 mt-auto">
-                  <button className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100 transition-all text-sm"><FaEye />Ver</button>
+                  <button className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100 transition-all text-sm"><FaEye size={16} color="#1d4ed8" />Ver</button>
                   <button
                     className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-yellow-50 text-yellow-700 rounded-lg font-semibold hover:bg-yellow-100 transition-all text-sm"
                     onClick={() => abrirModalEditar(negocio)}
                   >
-                    <FaEdit />Editar
+                    <FaEdit size={16} color="#eab308" />Editar
                   </button>
                   <button
                     className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-50 text-red-700 rounded-lg font-semibold hover:bg-red-100 transition-all text-sm"
@@ -175,7 +175,7 @@ const AdminNegociosPage = () => {
                       setModalOpen(true);
                     }}
                   >
-                    <FaTrash />Eliminar
+                    <FaTrash size={16} color="#dc2626" />Eliminar
                   </button>
                 </div>
                 {tab === "pendientes" && (
@@ -224,13 +224,13 @@ const AdminNegociosPage = () => {
                       <input
                         className="w-full border rounded p-2 mb-4"
                         value={editForm.name}
-                        onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((f: typeof editForm) => ({ ...f, name: e.target.value }))}
                       />
                       <label className="block mb-2 font-semibold">Descripción</label>
                       <textarea
                         className="w-full border rounded p-2 mb-4 min-h-[60px]"
                         value={editForm.description}
-                        onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm((f: typeof editForm) => ({ ...f, description: e.target.value }))}
                       />
                       <div className="flex justify-end gap-2 mt-4">
                         <button onClick={() => setModalEditarOpen(false)} className="px-4 py-2 rounded bg-gray-200 text-gray-700">Cancelar</button>
