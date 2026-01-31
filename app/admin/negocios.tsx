@@ -19,9 +19,10 @@ export default function AdminNegociosPage() {
 
   const fetchNegocios = async () => {
     setLoading(true);
-    let endpoint = "http://localhost:3001/api/admin/negocios";
-    if (tab === 'pendientes') endpoint = "http://localhost:3001/api/admin/negocios/pendientes";
-    if (tab === 'archivados') endpoint = "http://localhost:3001/api/admin/negocios/archivados";
+    const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+    let endpoint = `${API_BASE}/admin/negocios`;
+    if (tab === 'pendientes') endpoint = `${API_BASE}/admin/negocios/pendientes`;
+    if (tab === 'archivados') endpoint = `${API_BASE}/admin/negocios/archivados`;
     try {
       const res = await fetch(endpoint, {
         credentials: "include",
@@ -45,12 +46,12 @@ export default function AdminNegociosPage() {
     if (!archivarId) return;
     // Archivar negocio vía API REST
     try {
-      const res = await fetch(`http://localhost:3001/api/admin/negocios/${archivarId}/archivar`, {
+      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const res = await fetch(`${API_BASE}/admin/negocios/${archivarId}/archivar`, {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          // Si usas JWT, agrega aquí el header Authorization
         },
         body: JSON.stringify({ motivo, adminUid: "ADMIN_UID_AQUI" }) // Reemplaza por el UID real del admin
       });
