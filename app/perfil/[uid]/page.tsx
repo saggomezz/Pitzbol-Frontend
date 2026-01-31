@@ -370,6 +370,9 @@ export default function GuidePublicProfilePage() {
           guideName={guide.nombre}
           touristId={user.uid}
           touristName={user.nombre || "Turista"}
+          currentUserType="tourist"
+          currentUserId={user.uid}
+          currentUserName={user.nombre + " " + user.apellido}
         />
       )}
     </div>

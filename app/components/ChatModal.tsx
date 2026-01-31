@@ -24,6 +24,9 @@ interface ChatModalProps {
   guideName: string;
   touristId: string;
   touristName: string;
+  currentUserType: "tourist" | "guide"; // Nuevo prop
+  currentUserId: string; // Nuevo prop
+  currentUserName: string; // Nuevo prop
 }
 
 export default function ChatModal({
@@ -33,11 +36,15 @@ export default function ChatModal({
   guideName,
   touristId,
   touristName,
+  currentUserType,
+  currentUserId,
+  currentUserName,
 }: ChatModalProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [chatId, setChatId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -51,11 +58,14 @@ export default function ChatModal({
       try {
         setLoading(true);
         
+        const token = localStorage.getItem("pitzbol_token");
+        
         // Obtener o crear chat
         const response = await fetch(`${BACKEND_URL}/api/chat/create`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
             touristId,
@@ -66,12 +76,24 @@ export default function ChatModal({
         });
 
         const data = await response.json();
+        
+        if (!response.ok) {
+          console.error("Error en la respuesta:", data);
+          setError(data.msg || "Error al crear el chat. Por favor, inicia sesión.");
+          return;
+        }
+        
         if (data.success) {
           setChatId(data.chat.id);
 
           // Cargar mensajes existentes
           const messagesResponse = await fetch(
-            `${BACKEND_URL}/api/chat/${data.chat.id}/messages`
+            `${BACKEND_URL}/api/chat/${data.chat.id}/messages`,
+            {
+              headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+            }
           );
           const messagesData = await messagesResponse.json();
           if (messagesData.success) {
@@ -79,7 +101,11 @@ export default function ChatModal({
           }
 
           // Conectar socket
-          socketRef.current = io(BACKEND_URL);
+          socketRef.current = io(BACKEND_URL, {
+            auth: {
+              token: token || "",
+            },
+          });
           
           socketRef.current.on("connect", () => {
             console.log("Conectado al chat");
@@ -87,11 +113,25 @@ export default function ChatModal({
           });
 
           socketRef.current.on("new-message", (message: Message) => {
-            setMessages((prev) => [...prev, message]);
+            setMessages((prev) => {
+              // Evitar duplicados verificando si el mensaje ya existe
+              const exists = prev.some(m => m.id === message.id);
+              if (exists) {
+                return prev;
+              }
+              
+              // Agregar el nuevo mensaje y ordenar por timestamp
+              const updatedMessages = [...prev, message];
+              return updatedMessages.sort((a, b) => {
+                const dateA = new Date(a.timestamp).getTime();
+                const dateB = new Date(b.timestamp).getTime();
+                return dateA - dateB;
+              });
+            });
           });
 
           socketRef.current.on("user-typing", ({ userName }) => {
-            if (userName !== touristName) {
+            if (userName !== currentUserName) {
               setIsTyping(true);
             }
           });
@@ -99,9 +139,12 @@ export default function ChatModal({
           socketRef.current.on("user-stop-typing", () => {
             setIsTyping(false);
           });
+        } else {
+          setError(data.msg || "No se pudo crear el chat");
         }
       } catch (error) {
         console.error("Error al inicializar chat:", error);
+        setError("Error al conectar con el servidor. Verifica tu conexión.");
       } finally {
         setLoading(false);
       }
@@ -117,7 +160,7 @@ export default function ChatModal({
         clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, [isOpen, touristId, guideId, touristName, guideName]);
+  }, [isOpen, touristId, guideId, touristName, guideName, currentUserName]);
 
   // Scroll automático al último mensaje
   useEffect(() => {
@@ -129,9 +172,9 @@ export default function ChatModal({
 
     socketRef.current.emit("send-message", {
       chatId,
-      senderId: touristId,
-      senderName: touristName,
-      senderType: "tourist",
+      senderId: currentUserId,
+      senderName: currentUserName,
+      senderType: currentUserType,
       content: newMessage.trim(),
     });
 
@@ -147,7 +190,7 @@ export default function ChatModal({
     if (!chatId || !socketRef.current) return;
 
     // Emitir evento de "escribiendo"
-    socketRef.current.emit("typing", { chatId, userName: touristName });
+    socketRef.current.emit("typing", { chatId, userName: currentUserName });
 
     // Limpiar timeout anterior
     if (typingTimeoutRef.current) {
@@ -188,9 +231,16 @@ export default function ChatModal({
   };
 
   const groupMessagesByDate = (messages: Message[]) => {
+    // Primero ordenar todos los mensajes por timestamp
+    const sortedMessages = [...messages].sort((a, b) => {
+      const dateA = new Date(a.timestamp).getTime();
+      const dateB = new Date(b.timestamp).getTime();
+      return dateA - dateB;
+    });
+
     const groups: { [key: string]: Message[] } = {};
     
-    messages.forEach((message) => {
+    sortedMessages.forEach((message) => {
       const date = new Date(message.timestamp).toLocaleDateString("es-MX", {
         day: "numeric",
         month: "long",
@@ -231,8 +281,12 @@ export default function ChatModal({
             <div className="flex items-center gap-3">
               <FiMessageCircle size={24} />
               <div>
-                <h3 className="font-bold text-lg">{guideName}</h3>
-                <p className="text-xs text-white/80">Guía Turístico</p>
+                <h3 className="font-bold text-lg">
+                  {currentUserType === "tourist" ? guideName : touristName}
+                </h3>
+                <p className="text-xs text-white/80">
+                  {currentUserType === "tourist" ? "Guía Turístico" : "Turista"}
+                </p>
               </div>
             </div>
             <button
@@ -249,6 +303,25 @@ export default function ChatModal({
               <div className="flex items-center justify-center h-full">
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#1A4D2E] border-t-transparent"></div>
               </div>
+            ) : error ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center max-w-md">
+                  <div className="text-red-500 text-4xl mb-3">⚠️</div>
+                  <h3 className="text-red-800 font-bold text-lg mb-2">Error al cargar el chat</h3>
+                  <p className="text-red-600 text-sm">{error}</p>
+                  <button
+                    onClick={() => {
+                      setError(null);
+                      setLoading(true);
+                      // Reintentar inicialización
+                      window.location.reload();
+                    }}
+                    className="mt-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              </div>
             ) : (
               <>
                 {Object.entries(groupedMessages).map(([date, msgs]) => (
@@ -261,20 +334,20 @@ export default function ChatModal({
                     </div>
 
                     {/* Messages for this date */}
-                    {msgs.map((message) => (
+                    {msgs.map((message, index) => (
                       <motion.div
-                        key={message.id}
+                        key={`${message.id}-${index}`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className={`mb-3 flex ${
-                          message.senderId === touristId
+                          message.senderId === currentUserId
                             ? "justify-end"
                             : "justify-start"
                         }`}
                       >
                         <div
                           className={`max-w-[70%] ${
-                            message.senderId === touristId
+                            message.senderId === currentUserId
                               ? "bg-[#1A4D2E] text-white"
                               : "bg-white text-gray-800 border border-gray-200"
                           } rounded-2xl px-4 py-2 shadow-sm`}
@@ -285,7 +358,7 @@ export default function ChatModal({
                           <p className="text-sm">{message.content}</p>
                           <p
                             className={`text-xs mt-1 ${
-                              message.senderId === touristId
+                              message.senderId === currentUserId
                                 ? "text-white/70"
                                 : "text-gray-500"
                             }`}
@@ -305,7 +378,9 @@ export default function ChatModal({
                       <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></span>
                       <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></span>
                     </div>
-                    <span>{guideName} está escribiendo...</span>
+                    <span>
+                      {currentUserType === "tourist" ? guideName : touristName} está escribiendo...
+                    </span>
                   </div>
                 )}
 
@@ -323,7 +398,7 @@ export default function ChatModal({
                 onChange={handleTyping}
                 onKeyPress={handleKeyPress}
                 placeholder="Escribe un mensaje..."
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent text-black"
                 disabled={!chatId}
               />
               <button
