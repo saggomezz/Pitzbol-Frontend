@@ -17,26 +17,34 @@ export default function AdminNegociosPendientesPage() {
 
   const fetchNegocios = async () => {
     setLoading(true);
+    const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/negocios?status=pendiente`);
+      const res = await fetch(`${API_BASE}/admin/negocios/pendientes`, {
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
       const data = await res.json();
-      setNegocios(data);
+      if (data.success) {
+        setNegocios(data.negocios);
+      } else {
+        setNegocios([]);
+      }
     } catch (e) {
       setNegocios([]);
     }
     setLoading(false);
   };
 
+  // Usar la función gestionarNegocioPendiente para aprobar/rechazar
+  import { gestionarNegocioPendiente } from "../../lib/gestionarNegocioApi";
+
   const handleDecision = async (aprobado: boolean) => {
     if (!selected) return;
-    await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/negocios/${selected.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        status: aprobado ? "aprobado" : "rechazado",
-        updatedAt: new Date().toISOString(),
-        history: [...(selected.history || []), { action: aprobado ? "aprobado" : "rechazado", date: new Date().toISOString(), by: "admin", reason: aprobado ? undefined : motivoRechazo }],
-      })
+    const adminUid = "ADMIN_UID_AQUI"; // Reemplaza por el UID real del admin si lo tienes
+    await gestionarNegocioPendiente({
+      negocioId: selected.id,
+      accion: aprobado ? "aprobar" : "rechazar",
+      adminUid,
     });
     enviarNotificacion(
       selected.owner,
@@ -58,29 +66,74 @@ export default function AdminNegociosPendientesPage() {
     <div className="p-8">
       <h2 className="text-2xl font-bold mb-6 text-[#3B5D50]">Negocios Pendientes</h2>
       <div className={styles.negociosGrid}>
-        {negocios.map(neg => (
-          <div key={neg.id} className={styles.negocioCard + " cursor-pointer"} onClick={() => setSelected(neg)}>
-            <div style={{flex:1}}>
-              <div className="font-bold text-lg text-[#3B5D50]">{neg.name}</div>
-              <div className="text-gray-700 mb-2">{neg.description}</div>
-              <div className={styles.negocioImages}>
-                {neg.images && neg.images.map((img: string, i: number) => (
-                  <img key={i} src={img} alt="Imagen negocio" />
-                ))}
+        {negocios.map(neg => {
+          const business = neg.business || {};
+          const logo = business.logo;
+          const images = Array.isArray(business.images) ? business.images.filter((img: string) => !!img) : [];
+          return (
+            <div key={neg.id} className={styles.negocioCard + " cursor-pointer"} onClick={() => setSelected(neg)}>
+              <div style={{flex:1}}>
+                {/* Logotipo */}
+                <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',border:'2px dashed #B0B0B0',borderRadius:12,width:64,height:64,background:'#FAFAFA'}}>
+                    {logo ? (
+                      <img src={logo} alt="Logo negocio" style={{maxWidth:48,maxHeight:48,borderRadius:8}} />
+                    ) : (
+                      <span style={{fontSize:28,opacity:0.3}}>🖼️<br/><span style={{fontSize:10}}>Logo</span></span>
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-bold text-lg text-[#3B5D50]">{business.name || "Sin nombre"}</div>
+                    <div className="text-xs text-gray-700">{neg.email || business.email || "Sin email"}</div>
+                  </div>
+                </div>
+                {/* Fecha de entrada */}
+                <div className="text-xs text-gray-500 mb-1">
+                  Fecha de entrada: {business.createdAt && business.createdAt.seconds ?
+                    new Date(business.createdAt.seconds * 1000).toLocaleDateString('es-MX') :
+                    (business.createdAt ? new Date(business.createdAt).toLocaleDateString('es-MX') : 'Sin fecha')}
+                </div>
+                <div className="text-gray-700 mb-2">{business.description || "Sin descripción"}</div>
+                <div className={styles.negocioImages} style={{display:'flex',alignItems:'center',gap:16,marginBottom:8}}>
+                  <div style={{display:'flex',gap:8}}>
+                    {[0,1,2].map(i => (
+                      <div key={i} style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',border:'2px dashed #B0B0B0',borderRadius:12,width:64,height:64,background:'#FAFAFA'}}>
+                        {images[i] ? (
+                          <img src={images[i]} alt={`Imagen galería ${i+1}`} style={{maxWidth:48,maxHeight:48,borderRadius:8}} />
+                        ) : (
+                          <span style={{fontSize:28,opacity:0.3}}>🖼️<br/><span style={{fontSize:10}}>Foto {i+1}</span></span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className={`text-xs mb-2 negocioStatus ${styles.negocioStatus} ${styles[neg.status]}`}>Dueño: {business.owner || neg.owner || "Sin dueño"} <span className={styles.pendiente}>Pendiente</span></div>
               </div>
-              <div className={`text-xs mb-2 negocioStatus ${styles.negocioStatus} ${styles[neg.status]}`}>Dueño: {neg.owner} <span className={styles.pendiente}>Pendiente</span></div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {/* Modal de vista previa y decisión */}
       {selected && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalCard + " animate-fadeIn"}>
             <h3 className="text-xl font-bold mb-4 text-[#3B5D50]">Revisar Negocio</h3>
-            <div className="mb-2"><b>Nombre:</b> {selected.name}</div>
-            <div className="mb-2"><b>Descripción:</b> {selected.description}</div>
-            <div className="mb-2"><b>Dueño:</b> {selected.owner}</div>
+            <div className="mb-2"><b>Nombre:</b> {selected.name || selected.business?.name || 'Sin nombre'}</div>
+            <div className="mb-2"><b>Descripción:</b> {selected.description || selected.business?.description || 'Sin descripción'}</div>
+            <div className="mb-2"><b>Dueño:</b> {selected.owner || selected.business?.owner || 'Sin dueño'}</div>
+            <div className="mb-2"><b>Correo:</b> {selected.email || selected.business?.email || 'Sin correo'}</div>
+            <div className="mb-2"><b>Fecha de publicación:</b> {
+              selected.createdAt ?
+                (typeof selected.createdAt === 'string' ?
+                  new Date(selected.createdAt).toLocaleDateString('es-MX') :
+                  (selected.createdAt.seconds ? new Date(selected.createdAt.seconds * 1000).toLocaleDateString('es-MX') : 'Sin fecha')
+                ) :
+              (selected.business?.createdAt ?
+                (typeof selected.business.createdAt === 'string' ?
+                  new Date(selected.business.createdAt).toLocaleDateString('es-MX') :
+                  (selected.business.createdAt.seconds ? new Date(selected.business.createdAt.seconds * 1000).toLocaleDateString('es-MX') : 'Sin fecha')
+                ) : 'Sin fecha')
+            }</div>
             <div className={styles.negocioImages} style={{marginBottom:16}}>
               {selected.images && selected.images.map((img: string, i: number) => (
                 <img key={i} src={img} alt="Imagen negocio" />
