@@ -373,12 +373,12 @@ if (!isOpen) return null;
           </h2>
           <div className="w-full max-w-sm space-y-5 text-center">
             <div className="relative text-left">
-              <FiMail color={iconColor} size={18} />
+              <FiMail color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
               <input type="email" placeholder={t('email')} className={`${inputClass} pl-14`} value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
             </div>
             <div className="text-left">
               <div className="relative">
-                <FiLock color={iconColor} size={18} />
+                <FiLock color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
                 <input 
                   type={showLoginPassword ? "text" : "password"} 
                   placeholder={t('password')} 
@@ -422,11 +422,14 @@ if (!isOpen) return null;
               </select>
               <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder={t('phone')} className={inputClass} />
             </div>
-            <input placeholder={t('email')} className={inputClass} value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
+            <div className="relative">
+              <FiMail color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
+              <input placeholder={t('email')} className={`${inputClass} pl-14`} value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
+            </div>
             {/* Fila 4: Contraseña */}
             <div className="relative">
               <div className="relative text-left">
-                <FiLock color={iconColor} size={16} />
+                <FiLock color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
                 <input 
                   type={showRegPassword ? "text" : "password"} 
                   placeholder={t('password')} 
@@ -451,7 +454,7 @@ if (!isOpen) return null;
             {/* Fila 5: Confirmar Contraseña */}
             <div className="relative">
               <div className="relative text-left">
-                <FiLock color={iconColor} size={16} />
+                <FiLock color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
                 <input 
                   type={showRegConfirmPassword ? "text" : "password"} 
                   placeholder={t('confirmPassword')} 
