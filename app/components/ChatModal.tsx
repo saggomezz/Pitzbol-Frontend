@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiSend, FiX, FiMessageCircle } from "react-icons/fi";
+import { FiSend, FiX, FiMessageCircle, FiTrash2 } from "react-icons/fi";
 import { io, Socket } from "socket.io-client";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
@@ -27,6 +27,7 @@ interface ChatModalProps {
   currentUserType: "tourist" | "guide"; // Nuevo prop
   currentUserId: string; // Nuevo prop
   currentUserName: string; // Nuevo prop
+  onChatDeleted?: () => void; // Callback cuando se elimina el chat
 }
 
 export default function ChatModal({
@@ -39,6 +40,7 @@ export default function ChatModal({
   currentUserType,
   currentUserId,
   currentUserName,
+  onChatDeleted,
 }: ChatModalProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -46,9 +48,19 @@ export default function ChatModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [currentGuideName, setCurrentGuideName] = useState(guideName);
+  const [currentTouristName, setCurrentTouristName] = useState(touristName);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Actualizar nombres cuando cambien los props
+  useEffect(() => {
+    setCurrentGuideName(guideName);
+    setCurrentTouristName(touristName);
+  }, [guideName, touristName]);
 
   // Inicializar chat y socket
   useEffect(() => {
@@ -85,6 +97,14 @@ export default function ChatModal({
         
         if (data.success) {
           setChatId(data.chat.id);
+          
+          // Actualizar nombres desde el backend si están disponibles
+          if (data.chat.guideName) {
+            setCurrentGuideName(data.chat.guideName);
+          }
+          if (data.chat.touristName) {
+            setCurrentTouristName(data.chat.touristName);
+          }
 
           // Cargar mensajes existentes
           const messagesResponse = await fetch(
@@ -111,7 +131,12 @@ export default function ChatModal({
               body: JSON.stringify({ userId: currentUserId }),
             });
             
-            console.log("Mensajes marcados como leídos");
+            console.log("✅ Mensajes marcados como leídos");
+            
+            // Emitir evento para actualizar el contador en el Navbar
+            window.dispatchEvent(new CustomEvent('messagesMarkedAsRead', { 
+              detail: { chatId: data.chat.id, userId: currentUserId }
+            }));
           } catch (err) {
             console.error("Error al marcar mensajes como leídos:", err);
           }
@@ -208,6 +233,50 @@ export default function ChatModal({
     
     // Detener indicador de "escribiendo"
     socketRef.current.emit("stop-typing", { chatId });
+  };
+
+  const handleDeleteChat = async () => {
+    if (!chatId) return;
+
+    setIsDeleting(true);
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      
+      const response = await fetch(`${BACKEND_URL}/api/chat/${chatId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log("✅ Chat eliminado correctamente");
+        
+        // Desconectar socket
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+        }
+        
+        // Notificar al componente padre
+        if (onChatDeleted) {
+          onChatDeleted();
+        }
+        
+        // Cerrar modal
+        onClose();
+      } else {
+        alert(data.msg || "Error al eliminar el chat");
+      }
+    } catch (error) {
+      console.error("Error al eliminar chat:", error);
+      alert("Error al eliminar el chat. Por favor, intenta de nuevo.");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -308,19 +377,29 @@ export default function ChatModal({
               <FiMessageCircle size={24} />
               <div>
                 <h3 className="font-bold text-lg">
-                  {currentUserType === "tourist" ? guideName : touristName}
+                  {currentUserType === "tourist" ? currentGuideName : currentTouristName}
                 </h3>
                 <p className="text-xs text-white/80">
                   {currentUserType === "tourist" ? "Guía Turístico" : "Turista"}
                 </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="hover:bg-white/20 p-2 rounded-full transition-colors"
-            >
-              <FiX size={24} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="hover:bg-white/20 p-2 rounded-full transition-colors"
+                title="Eliminar conversación"
+              >
+                <FiTrash2 size={20} />
+              </button>
+              <button
+                onClick={onClose}
+                className="hover:bg-white/20 p-2 rounded-full transition-colors"
+                title="Cerrar"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -437,6 +516,57 @@ export default function ChatModal({
             </div>
           </div>
         </motion.div>
+
+        {/* Modal de confirmación de eliminación */}
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/70 flex items-center justify-center z-10"
+            onClick={() => !isDeleting && setShowDeleteConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className="bg-white rounded-xl p-6 max-w-md mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center mb-6">
+                <div className="text-red-500 text-5xl mb-3">🗑️</div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  ¿Eliminar conversación?
+                </h3>
+                <p className="text-gray-600">
+                  Esta acción no se puede deshacer. Se eliminarán todos los mensajes de esta conversación.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteChat}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      Eliminando...
+                    </>
+                  ) : (
+                    'Eliminar'
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </motion.div>
     </AnimatePresence>
   );

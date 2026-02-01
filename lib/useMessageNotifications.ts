@@ -148,11 +148,20 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
       }
     });
 
+    // Escuchar evento personalizado del ChatModal cuando se marcan mensajes como leídos
+    const handleMessagesMarkedAsRead = () => {
+      console.log("🔔 Evento messagesMarkedAsRead recibido, actualizando contador...");
+      fetchUnreadCount();
+    };
+
+    window.addEventListener('messagesMarkedAsRead', handleMessagesMarkedAsRead);
+
     // Limpiar al desmontar
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
+      window.removeEventListener('messagesMarkedAsRead', handleMessagesMarkedAsRead);
     };
   }, [userId, userType, enabled, fetchUnreadCount]);
 
