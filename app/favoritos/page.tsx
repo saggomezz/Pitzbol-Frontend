@@ -26,6 +26,8 @@ export default function FavoritosPage() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [favoritePlaces, setFavoritePlaces] = useState<Lugar[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
   const t = useTranslations('favorites');
   const tAuth = useTranslations('auth');
   const { getFavorites, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
@@ -128,17 +130,17 @@ export default function FavoritosPage() {
   }, [user]);
 
   const removeFavorite = async (nombreLugar: string) => {
-    // Verificar si el usuario está autenticado antes de eliminar
-    if (!user || !isAuthenticated()) {
-      console.warn("No se puede eliminar favorito: usuario no autenticado");
-      return;
-    }
-    
     try {
       // Eliminar del backend/localStorage usando la API
+      // La función removeFavoriteApi ya maneja el caso de usuarios no autenticados
       const updated = await removeFavoriteApi(nombreLugar);
       setFavorites(updated);
       setFavoritePlaces(prev => prev.filter(place => place.nombre !== nombreLugar));
+      
+      // Mostrar feedback visual
+      setToastMessage(`"${nombreLugar}" eliminado de favoritos`);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
     } catch (error) {
       console.error("Error al eliminar favorito:", error);
       // Fallback: eliminar solo localmente si falla el backend
@@ -146,6 +148,11 @@ export default function FavoritosPage() {
       localStorage.setItem("pitzbol_favorites", JSON.stringify(updated));
       setFavorites(updated);
       setFavoritePlaces(prev => prev.filter(place => place.nombre !== nombreLugar));
+      
+      // Mostrar feedback incluso en fallback
+      setToastMessage(`"${nombreLugar}" eliminado de favoritos`);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
     }
   };
 
@@ -273,11 +280,15 @@ export default function FavoritosPage() {
                   
                   {/* Botón eliminar */}
                   <button
-                    onClick={() => removeFavorite(place.nombre)}
-                    className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-lg"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      removeFavorite(place.nombre);
+                    }}
+                    className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-3 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-lg hover:scale-110 active:scale-95 group/btn"
                     title="Eliminar de favoritos"
                   >
-                    <FiTrash2 size={18} />
+                    <FiTrash2 size={18} className="group-hover/btn:animate-pulse" />
                   </button>
 
                   {/* Categoría badge */}
@@ -333,6 +344,21 @@ export default function FavoritosPage() {
           </motion.div>
         )}
       </div>
+
+      {/* Toast de confirmación */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-[#1A4D2E] text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-50"
+          >
+            <FiTrash2 size={20} />
+            <span className="font-bold">{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
