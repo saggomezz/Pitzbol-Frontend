@@ -123,6 +123,12 @@ export default function PerfilDetallado() {
   const [nuevoInteres, setNuevoInteres] = useState("");
   const [errorEspecialidades, setErrorEspecialidades] = useState("");
   
+  const [editandoIdiomas, setEditandoIdiomas] = useState(false);
+  const [idiomasTemp, setIdiomasTemp] = useState<string[]>([]);
+  const [nuevoIdioma, setNuevoIdioma] = useState("");
+  const [errorIdiomas, setErrorIdiomas] = useState("");
+  const [idiomas, setIdiomas] = useState<string[]>([]);
+  
   const [guardando, setGuardando] = useState(false);
   const [exito, setExito] = useState("");
   const [error, setError] = useState("");
@@ -140,6 +146,8 @@ export default function PerfilDetallado() {
       const initialEspecialidades = userLocal.especialidades || userLocal["07_especialidades"] || [];      
       const descripcionInicial = userLocal.descripcion ? capitalizarPrimera(userLocal.descripcion) : "";
       
+      const initialIdiomas = userLocal.idiomas || userLocal["09_idiomas"] || [];
+      
       setPerfil({
         id: userLocal.uid,
         nombre: userLocal["01_nombre"] || userLocal.nombre || "Usuario",
@@ -148,6 +156,7 @@ export default function PerfilDetallado() {
         email: userLocal["04_correo"] || userLocal.email || "",
         telefono: userLocal["06_telefono"] || userLocal.telefono, 
         especialidades: userLocal["07_especialidades"] || [],
+        idiomas: initialIdiomas,
         nacionalidad: userLocal["05_nacionalidad"] || userLocal.nacionalidad,
         descripcion: userLocal["15_descripcion"] || userLocal.descripcion || "",
         fotoUrl: userLocal["14_foto_perfil"]?.url || userLocal.fotoPerfil || null,
@@ -157,6 +166,8 @@ export default function PerfilDetallado() {
 
       setEspecialidades(initialEspecialidades);
       setEspecialidadesTemp(initialEspecialidades);
+      setIdiomas(initialIdiomas);
+      setIdiomasTemp(initialIdiomas);
       setDescripcionTemp(descripcionInicial);
 
       try {
@@ -546,6 +557,111 @@ export default function PerfilDetallado() {
     setNuevoInteres("");
     setEditandoEspecialidades(false);
     setErrorEspecialidades("");
+  };
+
+  const agregarIdioma = (idioma: string) => {
+    setErrorIdiomas("");
+    const idiomaCapitalizado = idioma.charAt(0).toUpperCase() + idioma.slice(1).toLowerCase().trim();
+    
+    console.log("➕ Agregando idioma:", idiomaCapitalizado);
+    console.log("📋 Idiomas actuales en temp:", idiomasTemp);
+    
+    if (idiomasTemp.includes(idiomaCapitalizado)) {
+      setErrorIdiomas(t('languageAlreadyAdded'));
+      return;
+    }
+    if (idiomasTemp.length >= 10) {
+      setErrorIdiomas(t('maxLanguages'));
+      return;
+    }
+    setIdiomasTemp((prev: string[]) => {
+      const nuevosIdiomas = [...prev, idiomaCapitalizado];
+      console.log("✅ Nuevos idiomas en temp:", nuevosIdiomas);
+      return nuevosIdiomas;
+    });
+    setNuevoIdioma("");
+  };
+
+  const eliminarIdioma = (idioma: string) => {
+    setIdiomasTemp((prev: string[]) => prev.filter(i => i !== idioma));
+    setErrorIdiomas("");
+  };
+
+  const guardarIdiomas = async () => {
+    setGuardando(true);
+    setExito("");
+    setErrorIdiomas("");
+
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      
+      if (!token) {
+        throw new Error(t('noSession'));
+      }
+
+      console.log("📤 Guardando idiomas:", idiomasTemp);
+      console.log("🔑 Token presente:", !!token);
+      console.log("🌐 Backend URL:", backendUrl);
+
+      const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          idiomas: idiomasTemp 
+        })
+      });
+
+      const data = await response.json();
+      console.log("📥 Respuesta del servidor:", data);
+
+      if (!response.ok) {
+        throw new Error(data.error || data.msg || "Error al actualizar idiomas");
+      }
+
+      // Actualizar localStorage primero
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal.idiomas = idiomasTemp;
+      userLocal["09_idiomas"] = idiomasTemp;
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+      
+      // Actualizar estados
+      const nuevosIdiomas = [...idiomasTemp];
+      setIdiomas(nuevosIdiomas);
+      
+      // Actualizar perfil en estado
+      setPerfil((prev: any) => ({ 
+        ...prev, 
+        idiomas: nuevosIdiomas 
+      }));
+      
+      console.log("✅ Idiomas guardados exitosamente");
+      console.log("📊 Estado actualizado - idiomas:", nuevosIdiomas);
+      console.log("📊 Estado idiomas actual:", idiomas);
+      
+      setExito(t('languagesUpdated'));
+      setTimeout(() => setExito(""), 3000);
+      
+      // Cerrar modo edición
+      setEditandoIdiomas(false);
+      
+    } catch (error: any) {
+      console.error("❌ Error al guardar idiomas:", error);
+      setErrorIdiomas(error.message || t('errorSavingLanguages'));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarIdiomas = () => {
+    setIdiomasTemp([...idiomas]);
+    setNuevoIdioma("");
+    setEditandoIdiomas(false);
+    setErrorIdiomas("");
   };
 
   // El rol ya viene normalizado del backend (turista si está pendiente, guia si está aprobado)
@@ -1228,6 +1344,177 @@ export default function PerfilDetallado() {
                 </div>
               )}
             </motion.div>
+
+            {/* Sección de Idiomas */}
+            {esGuia && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
+              >
+                <div className="mb-6 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">{t('languages')}</h3>
+                    <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
+                      {t('languagesYouSpeak')}
+                    </p>
+                  </div>
+                  {!editandoIdiomas && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setEditandoIdiomas(true)}
+                      className="px-3 py-1.5 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1.5"
+                    >
+                      <FiEdit2 size={14} /> {t('edit')}
+                    </motion.button>
+                  )}
+                </div>
+                
+                {editandoIdiomas ? (
+                  <div className="space-y-6">
+                    {/* Input para agregar idioma */}
+                    <div>
+                      <p className="text-sm font-medium text-[#81C784] mb-4 tracking-wide">{t('addLanguage')}</p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={nuevoIdioma}
+                          onChange={(e) => setNuevoIdioma(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && nuevoIdioma.trim()) {
+                              agregarIdioma(nuevoIdioma);
+                            }
+                          }}
+                          placeholder={t('languagePlaceholder')}
+                          className="flex-1 px-4 py-2 border border-[#E0F2F1] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-[#1A4D2E]"
+                        />
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => nuevoIdioma.trim() && agregarIdioma(nuevoIdioma)}
+                          disabled={guardando || !nuevoIdioma.trim()}
+                          className="px-4 py-2 bg-[#3A5A40] text-white rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <FiPlus size={18} />
+                        </motion.button>
+                      </div>
+                    </div>
+
+                    <AnimatePresence>
+                      {errorIdiomas && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="flex items-center gap-2 text-red-600 text-sm font-semibold bg-red-50 px-4 py-3 rounded-xl border-2 border-red-200"
+                        >
+                          <FiX size={18} />
+                          <span>{errorIdiomas}</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Idiomas seleccionados */}
+                    {idiomasTemp.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-[#81C784] mb-4 tracking-wide">
+                          {t('selectedLanguages')} ({idiomasTemp.length})
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <AnimatePresence>
+                            {idiomasTemp.map((idioma, i) => (
+                              <motion.div 
+                                key={idioma}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.5 }}
+                                transition={{ delay: i * 0.03 }}
+                                className="group relative bg-gradient-to-br from-[#F1F8F6] to-white rounded-lg px-4 py-2 border border-[#A5D6A7] shadow-sm hover:shadow-md transition-all"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <FiGlobe size={16} className="text-[#3A5A40]" />
+                                  <span className="text-sm font-medium text-[#1A4D2E]">
+                                    {idioma}
+                                  </span>
+                                </div>
+                                <motion.button 
+                                  whileHover={{ scale: 1.1, rotate: 90 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => eliminarIdioma(idioma)}
+                                  disabled={guardando}
+                                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-400 hover:bg-red-500 rounded-full flex items-center justify-center text-white shadow-md transition-colors disabled:opacity-50"
+                                >
+                                  <FiX size={12} strokeWidth={3} />
+                                </motion.button>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Botones de acción */}
+                    <div className="flex gap-2.5 pt-4 border-t border-[#E0F2F1]">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={guardarIdiomas}
+                        disabled={guardando}
+                        className="flex-1 bg-[#3A5A40] text-white text-sm font-medium py-2.5 rounded-lg hover:bg-[#2D4630] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        {guardando ? (
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                          />
+                        ) : (
+                          <>
+                            <FiCheck size={16} />
+                            Guardar
+                          </>
+                        )}
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={cancelarIdiomas}
+                        disabled={guardando}
+                        className="px-4 bg-[#F1F8F6] text-[#81C784] text-sm font-medium py-2.5 rounded-lg hover:bg-[#E0F2F1] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {tCommon('cancel')}
+                      </motion.button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {idiomas.length > 0 ? (
+                      idiomas.map((idioma, i) => (
+                        <motion.div 
+                          key={i}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.05 }}
+                          whileHover={{ y: -2, scale: 1.05 }}
+                          className="bg-gradient-to-br from-[#F1F8F6] to-white rounded-lg px-4 py-2 border border-[#E0F2F1] hover:border-[#A5D6A7] transition-all shadow-sm hover:shadow-md"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FiGlobe size={16} className="text-[#3A5A40]" />
+                            <span className="text-sm font-medium text-[#1A4D2E]">
+                              {idioma}
+                            </span>
+                          </div>
+                        </motion.div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">{t('noLanguagesYet')}</p>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
 
             {/* Sección de los Tours */}
             <motion.div 
