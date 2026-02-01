@@ -20,7 +20,9 @@ export const obtenerFavoritosBackend = async (): Promise<string[]> => {
   try {
     const token = getAuthToken();
     if (!token) {
-      throw new Error('No hay token de autenticación');
+      // Si no hay token, retornar array vacío en lugar de lanzar error
+      console.warn('No hay token de autenticación, retornando favoritos vacíos');
+      return [];
     }
 
     const response = await fetch(`${API_URL}/favorites`, {
@@ -50,7 +52,9 @@ export const agregarFavoritoBackend = async (nombreLugar: string): Promise<strin
   try {
     const token = getAuthToken();
     if (!token) {
-      throw new Error('No hay token de autenticación');
+      // Retornar error que será capturado por addFavorite
+      console.warn('No hay token de autenticación para agregar favorito');
+      throw new Error('AUTH_TOKEN_MISSING');
     }
 
     const response = await fetch(`${API_URL}/favorites`, {
@@ -82,7 +86,9 @@ export const eliminarFavoritoBackend = async (nombreLugar: string): Promise<stri
   try {
     const token = getAuthToken();
     if (!token) {
-      throw new Error('No hay token de autenticación');
+      // Retornar error que será capturado por removeFavorite
+      console.warn('No hay token de autenticación para eliminar favorito');
+      throw new Error('AUTH_TOKEN_MISSING');
     }
 
     const response = await fetch(`${API_URL}/favorites`, {
@@ -115,7 +121,9 @@ export const sincronizarFavoritosBackend = async (favoritosLocales: string[]): P
   try {
     const token = getAuthToken();
     if (!token) {
-      throw new Error('No hay token de autenticación');
+      // Si no hay token, retornar los favoritos locales sin sincronizar
+      console.warn('No hay token de autenticación, retornando favoritos locales sin sincronizar');
+      return favoritosLocales;
     }
 
     const response = await fetch(`${API_URL}/favorites/sync`, {
@@ -148,7 +156,14 @@ export const useFavoritesSync = () => {
   const isAuthenticated = (): boolean => {
     if (typeof window === 'undefined') return false;
     const user = localStorage.getItem('pitzbol_user');
-    return !!user;
+    if (!user) return false;
+    // Verificar que también tenga un token válido
+    try {
+      const userData = JSON.parse(user);
+      return !!userData.idToken;
+    } catch {
+      return false;
+    }
   };
 
   const getFavorites = async (): Promise<string[]> => {
@@ -177,8 +192,17 @@ export const useFavoritesSync = () => {
         window.dispatchEvent(new Event('favoritesChanged'));
         return updated;
       } catch (error) {
-        console.error('Error al agregar favorito al backend:', error);
-        throw error;
+        console.error('Error al agregar favorito al backend, usando localStorage:', error);
+        // Fallback a localStorage si falla el backend
+        const stored = localStorage.getItem('pitzbol_favorites');
+        const current = stored ? JSON.parse(stored) : [];
+        if (!current.includes(nombreLugar)) {
+          const updated = [...current, nombreLugar];
+          localStorage.setItem('pitzbol_favorites', JSON.stringify(updated));
+          window.dispatchEvent(new Event('favoritesChanged'));
+          return updated;
+        }
+        return current;
       }
     } else {
       // Usuario no autenticado, usar localStorage
@@ -203,8 +227,14 @@ export const useFavoritesSync = () => {
         window.dispatchEvent(new Event('favoritesChanged'));
         return updated;
       } catch (error) {
-        console.error('Error al eliminar favorito del backend:', error);
-        throw error;
+        console.error('Error al eliminar favorito del backend, usando localStorage:', error);
+        // Fallback a localStorage si falla el backend
+        const stored = localStorage.getItem('pitzbol_favorites');
+        const current = stored ? JSON.parse(stored) : [];
+        const updated = current.filter((fav: string) => fav !== nombreLugar);
+        localStorage.setItem('pitzbol_favorites', JSON.stringify(updated));
+        window.dispatchEvent(new Event('favoritesChanged'));
+        return updated;
       }
     } else {
       // Usuario no autenticado, usar localStorage

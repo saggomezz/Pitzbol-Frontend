@@ -770,8 +770,9 @@ export default function MapaPage() {
                             }
                         }}
                     >
-                        <div className={styles.mapContainer}>
+                        <div className={styles.mapContainer} key="map-container-wrapper">
                             <MapComponent
+                                key="main-map-component"
                                 lugares={filteredLugares}
                                 selectedPlace={selectedPlace}
                                 onSelectPlace={handleSelectPlace}
