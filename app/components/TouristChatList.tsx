@@ -18,12 +18,12 @@ interface Chat {
   updatedAt: Date;
 }
 
-interface GuideChatListProps {
-  guideId: string;
+interface TouristChatListProps {
+  touristId: string;
   onSelectChat: (chat: Chat) => void;
 }
 
-export default function GuideChatList({ guideId, onSelectChat }: GuideChatListProps) {
+export default function TouristChatList({ touristId, onSelectChat }: TouristChatListProps) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,11 +36,10 @@ export default function GuideChatList({ guideId, onSelectChat }: GuideChatListPr
         setError(null);
         const token = localStorage.getItem("pitzbol_token");
         
-        console.log("Fetching chats for guide:", guideId);
-        console.log("Token exists:", !!token);
+        console.log("Fetching chats for tourist:", touristId);
         
         const response = await fetch(
-          `${BACKEND_URL}/api/chat/user/${guideId}?userType=guide`,
+          `${BACKEND_URL}/api/chat/user/${touristId}?userType=tourist`,
           {
             headers: {
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -70,7 +69,7 @@ export default function GuideChatList({ guideId, onSelectChat }: GuideChatListPr
 
           socketRef.current.on("connect", () => {
             console.log("Conectado al servidor de chat");
-            // Unirse a todos los chats del guía
+            // Unirse a todos los chats del turista
             data.chats.forEach((chat: Chat) => {
               socketRef.current?.emit("join-chat", chat.id);
             });
@@ -85,7 +84,7 @@ export default function GuideChatList({ guideId, onSelectChat }: GuideChatListPr
                     ...chat,
                     lastMessage: message.content,
                     lastMessageTime: message.timestamp,
-                    unreadCount: message.senderId !== guideId 
+                    unreadCount: message.senderId !== touristId 
                       ? (chat.unreadCount || 0) + 1 
                       : chat.unreadCount,
                     updatedAt: message.timestamp,
@@ -125,7 +124,7 @@ export default function GuideChatList({ guideId, onSelectChat }: GuideChatListPr
       }
     };
 
-    if (guideId) {
+    if (touristId) {
       fetchChats();
     }
 
@@ -135,7 +134,7 @@ export default function GuideChatList({ guideId, onSelectChat }: GuideChatListPr
         socketRef.current.disconnect();
       }
     };
-  }, [guideId]);
+  }, [touristId]);
 
   const formatTime = (date?: Date) => {
     if (!date) return "";
@@ -171,11 +170,6 @@ export default function GuideChatList({ guideId, onSelectChat }: GuideChatListPr
         <div className="text-red-500 text-4xl mb-3">⚠️</div>
         <h3 className="text-red-800 font-bold text-lg mb-2">Error</h3>
         <p className="text-red-600 text-sm mb-4">{error}</p>
-        {error.includes("Token") && (
-          <p className="text-red-500 text-xs">
-            Por favor, cierra sesión e inicia sesión nuevamente
-          </p>
-        )}
       </div>
     );
   }
@@ -184,9 +178,9 @@ export default function GuideChatList({ guideId, onSelectChat }: GuideChatListPr
     return (
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
         <FiMessageCircle className="mx-auto text-gray-400 mb-4" size={64} />
-        <h3 className="text-gray-700 font-bold text-xl mb-2">No tienes mensajes</h3>
+        <h3 className="text-gray-700 font-bold text-xl mb-2">No tienes conversaciones</h3>
         <p className="text-gray-500">
-          Cuando los turistas te contacten, sus mensajes aparecerán aquí
+          Cuando contactes a un guía, tus conversaciones aparecerán aquí
         </p>
       </div>
     );
@@ -205,7 +199,7 @@ export default function GuideChatList({ guideId, onSelectChat }: GuideChatListPr
         >
           <div className="flex items-center gap-4">
             {/* Avatar */}
-            <div className="bg-[#1A4D2E] text-white w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="bg-[#1A4D2E] text-white w-12 h-12 rounded-full flex items-center justify-center shrink-0">
               <FiUser size={24} />
             </div>
 
@@ -213,9 +207,9 @@ export default function GuideChatList({ guideId, onSelectChat }: GuideChatListPr
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
                 <h4 className="font-bold text-gray-800 truncate">
-                  {chat.touristName}
+                  {chat.guideName}
                 </h4>
-                <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                <span className="text-xs text-gray-500 shrink-0 ml-2">
                   {formatTime(chat.lastMessageTime)}
                 </span>
               </div>
@@ -226,7 +220,7 @@ export default function GuideChatList({ guideId, onSelectChat }: GuideChatListPr
 
             {/* Badge de mensajes no leídos */}
             {chat.unreadCount && chat.unreadCount > 0 && (
-              <div className="bg-[#1A4D2E] text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">
+              <div className="bg-[#1A4D2E] text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shrink-0">
                 {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
               </div>
             )}

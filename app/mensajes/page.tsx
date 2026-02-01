@@ -5,6 +5,7 @@ import { FiMessageCircle, FiArrowLeft } from "react-icons/fi";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
 import { useRouter } from "next/navigation";
 import GuideChatList from "@/app/components/GuideChatList";
+import TouristChatList from "@/app/components/TouristChatList";
 import ChatModal from "@/app/components/ChatModal";
 
 interface Chat {
@@ -19,15 +20,20 @@ interface Chat {
   updatedAt: Date;
 }
 
-export default function MensajesGuiaPage() {
+export default function MensajesPage() {
   const user = usePitzbolUser();
   const router = useRouter();
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
 
+  // Determinar si es guía o turista
+  const isGuide = user?.role === "guide" || user?.role === "guia" || user?.guide_status === "aprobado";
+  const isTourist = user?.role === "tourist" || user?.role === "turista" || (!isGuide && user);
+
   // Debug logs
   console.log("User data:", user);
   console.log("User role:", user?.role);
-  console.log("Guide status:", user?.guide_status);  console.log("Token exists:", !!localStorage.getItem("pitzbol_token"));
+  console.log("Is Guide:", isGuide);
+  console.log("Is Tourist:", isTourist);
   // Verificar autenticación y rol
   if (!user) {
     return (
@@ -45,29 +51,6 @@ export default function MensajesGuiaPage() {
             className="bg-[#1A4D2E] hover:bg-[#0D601E] text-white px-6 py-3 rounded-xl font-bold transition-all"
           >
             Iniciar Sesión
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Verificar que sea guía
-  if (user.role !== "guide" && user.role !== "guia" && user.guide_status !== "aprobado") {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-md">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            Solo para Guías
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Esta sección es exclusiva para guías turísticos aprobados
-          </p>
-          <button
-            onClick={() => router.push("/")}
-            className="bg-[#1A4D2E] hover:bg-[#0D601E] text-white px-6 py-3 rounded-xl font-bold transition-all"
-          >
-            Volver al Inicio
           </button>
         </div>
       </div>
@@ -93,7 +76,9 @@ export default function MensajesGuiaPage() {
             <div>
               <h1 className="text-4xl font-bold mb-2">Mis Mensajes</h1>
               <p className="text-white/80 text-lg">
-                Gestiona tus conversaciones con turistas
+                {isGuide 
+                  ? "Gestiona tus conversaciones con turistas"
+                  : "Tus conversaciones con guías turísticos"}
               </p>
             </div>
           </div>
@@ -112,10 +97,17 @@ export default function MensajesGuiaPage() {
             </p>
           </div>
 
-          <GuideChatList
-            guideId={user.uid}
-            onSelectChat={(chat) => setSelectedChat(chat)}
-          />
+          {isGuide ? (
+            <GuideChatList
+              guideId={user.uid}
+              onSelectChat={(chat) => setSelectedChat(chat)}
+            />
+          ) : (
+            <TouristChatList
+              touristId={user.uid}
+              onSelectChat={(chat) => setSelectedChat(chat)}
+            />
+          )}
         </div>
       </div>
 
@@ -128,7 +120,7 @@ export default function MensajesGuiaPage() {
           guideName={selectedChat.guideName}
           touristId={selectedChat.touristId}
           touristName={selectedChat.touristName}
-          currentUserType="guide"
+          currentUserType={isGuide ? "guide" : "tourist"}
           currentUserId={user.uid}
           currentUserName={user.nombre + " " + user.apellido}
         />
