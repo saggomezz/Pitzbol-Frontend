@@ -148,11 +148,27 @@ export default function PerfilDetallado() {
       
       const initialIdiomas = userLocal.idiomas || userLocal["09_idiomas"] || [];
       
+      const rol = userLocal["03_rol"] || userLocal.role || "turista";
+      const guideStatus = userLocal["16_status"] || userLocal.guide_status || "ninguno";
+      
+      console.log("👤 Estado del usuario:");
+      console.log("   - Rol:", rol);
+      console.log("   - Guide Status:", guideStatus);
+      console.log("   - UID:", userLocal.uid);
+      
+      if (rol === "guia" || guideStatus === "aprobado") {
+        console.log("✅ Usuario es guía VERIFICADO - Aparecerá en /tours");
+      } else if (guideStatus === "en_revision" || guideStatus === "pendiente") {
+        console.log("⏳ Usuario es guía EN REVISIÓN - NO aparecerá en /tours hasta ser aprobado");
+      } else {
+        console.log("ℹ️ Usuario es turista - NO aparecerá en /tours");
+      }
+      
       setPerfil({
         id: userLocal.uid,
         nombre: userLocal["01_nombre"] || userLocal.nombre || "Usuario",
         apellido: userLocal["02_apellido"] || userLocal.apellido || "",
-        rol: userLocal["03_rol"] || userLocal.role || "turista",
+        rol: rol,
         email: userLocal["04_correo"] || userLocal.email || "",
         telefono: userLocal["06_telefono"] || userLocal.telefono, 
         especialidades: userLocal["07_especialidades"] || [],
@@ -160,7 +176,7 @@ export default function PerfilDetallado() {
         nacionalidad: userLocal["05_nacionalidad"] || userLocal.nacionalidad,
         descripcion: userLocal["15_descripcion"] || userLocal.descripcion || "",
         fotoUrl: userLocal["14_foto_perfil"]?.url || userLocal.fotoPerfil || null,
-        guide_status: userLocal["16_status"] || userLocal.guide_status || "ninguno",
+        guide_status: guideStatus,
         tarifa: userLocal["17_tarifa_mxn"] || userLocal.tarifa || 0,
             });
 
@@ -373,7 +389,13 @@ export default function PerfilDetallado() {
         throw new Error(t('noSession'));
       }
 
-      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
+      console.log("📤 Enviando actualización de nombre:", {
+        nombre: nombreTemp.trim(),
+        apellido: apellidoTemp.trim(),
+        url: `${backendUrl}/api/perfil/update-profile`
+      });
+
+      const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
         method: "PATCH",
         credentials: 'include',
         headers: {
@@ -387,6 +409,7 @@ export default function PerfilDetallado() {
       });
 
       const data = await response.json();
+      console.log("📥 Respuesta del servidor:", data);
 
       if (!response.ok) {
         throw new Error(data.msg || "Error al actualizar nombre");
@@ -407,7 +430,9 @@ export default function PerfilDetallado() {
       localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
 
       // Emitir evento para actualizar otros componentes
+      console.log('📤 Emitiendo eventos: authStateChanged y guideProfileUpdated');
       window.dispatchEvent(new Event('authStateChanged'));
+      window.dispatchEvent(new Event('guideProfileUpdated'));
 
       setExito("Nombre actualizado exitosamente");
       setEditandoNombre(false);
@@ -476,6 +501,10 @@ export default function PerfilDetallado() {
       userLocal.descripcion = descripcionTemp;
       localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
 
+      // Emitir evento para actualizar lista de guías
+      console.log('📤 Emitiendo evento: guideProfileUpdated (descripción)');
+      window.dispatchEvent(new Event('guideProfileUpdated'));
+
       setExito(t('descriptionUpdated'));
       setEditandoDescripcion(false);
       
@@ -542,6 +571,11 @@ export default function PerfilDetallado() {
         
         localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
         window.dispatchEvent(new Event("storage"));
+        
+        // Emitir evento para actualizar lista de guías
+        console.log('📤 Emitiendo evento: guideProfileUpdated (especialidades)');
+        window.dispatchEvent(new Event('guideProfileUpdated'));
+        
         setExito(t('changesSaved'));
         setTimeout(() => setExito(""), 3000);
       }
@@ -642,6 +676,10 @@ export default function PerfilDetallado() {
       console.log("✅ Idiomas guardados exitosamente");
       console.log("📊 Estado actualizado - idiomas:", nuevosIdiomas);
       console.log("📊 Estado idiomas actual:", idiomas);
+      
+      // Emitir evento para actualizar lista de guías
+      console.log('📤 Emitiendo evento: guideProfileUpdated (idiomas)');
+      window.dispatchEvent(new Event('guideProfileUpdated'));
       
       setExito(t('languagesUpdated'));
       setTimeout(() => setExito(""), 3000);
@@ -750,6 +788,10 @@ export default function PerfilDetallado() {
         window.dispatchEvent(new CustomEvent('fotoPerfilActualizada', { 
           detail: { fotoPerfil: data.fotoPerfil, usuario: updated }
         }));
+        
+        // Disparar evento para actualizar lista de guías
+        console.log('📤 Emitiendo evento: guideProfileUpdated (foto perfil)');
+        window.dispatchEvent(new Event('guideProfileUpdated'));
 
         setTimeout(() => setExito(""), 4000);
       } else {

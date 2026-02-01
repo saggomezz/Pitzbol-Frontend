@@ -24,6 +24,7 @@ export default function MensajesPage() {
   const user = usePitzbolUser();
   const router = useRouter();
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Determinar si es guía o turista
   const isGuide = user?.role === "guide" || user?.role === "guia" || user?.guide_status === "aprobado";
@@ -34,6 +35,14 @@ export default function MensajesPage() {
   console.log("User role:", user?.role);
   console.log("Is Guide:", isGuide);
   console.log("Is Tourist:", isTourist);
+  
+  const handleChatDeleted = () => {
+    // Cerrar el modal
+    setSelectedChat(null);
+    // Forzar recarga de la lista
+    setRefreshKey(prev => prev + 1);
+  };
+  
   // Verificar autenticación y rol
   if (!user) {
     return (
@@ -99,11 +108,13 @@ export default function MensajesPage() {
 
           {isGuide ? (
             <GuideChatList
+              key={refreshKey}
               guideId={user.uid}
               onSelectChat={(chat) => setSelectedChat(chat)}
             />
           ) : (
             <TouristChatList
+              key={refreshKey}
               touristId={user.uid}
               onSelectChat={(chat) => setSelectedChat(chat)}
             />
@@ -123,6 +134,7 @@ export default function MensajesPage() {
           currentUserType={isGuide ? "guide" : "tourist"}
           currentUserId={user.uid}
           currentUserName={user.nombre + " " + user.apellido}
+          onChatDeleted={handleChatDeleted}
         />
       )}
     </div>

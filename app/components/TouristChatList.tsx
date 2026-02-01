@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { FiMessageCircle, FiUser } from "react-icons/fi";
 import { io, Socket } from "socket.io-client";
@@ -29,30 +29,57 @@ export default function TouristChatList({ touristId, onSelectChat }: TouristChat
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
-  useEffect(() => {
-    const fetchChats = async () => {
+  const fetchChats = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem("pitzbol_token");
+      
+      console.log("🔄 Fetching chats for tourist:", touristId);
+      console.log("Token exists:", !!token);
+      console.log("Backend URL:", BACKEND_URL);
+      
+      if (!token) {
+        console.warn("⚠️ No token found, user might not be authenticated");
+        setError("No se encontró token de autenticación");
+        setLoading(false);
+        return;
+      }
+      
+      // Cache-busting con timestamp
+      const timestamp = new Date().getTime();
+      const url = `${BACKEND_URL}/api/chat/user/${touristId}?userType=tourist&_t=${timestamp}`;
+      console.log("Fetching URL:", url);
+      
+      // Crear un timeout para la petición
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
+      
       try {
-        setLoading(true);
-        setError(null);
-        const token = localStorage.getItem("pitzbol_token");
-        
-        console.log("Fetching chats for tourist:", touristId);
-        
-        const response = await fetch(
-          `${BACKEND_URL}/api/chat/user/${touristId}?userType=tourist`,
-          {
-            headers: {
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-          }
-        );
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+          },
+          signal: controller.signal,
+        });
 
+        clearTimeout(timeoutId);
+        
         console.log("Response status:", response.status);
+        console.log("Response ok:", response.ok);
+        
         const data = await response.json();
-        console.log("Response data:", data);
+        console.log("📋 Chat data:", data);
         
         if (!response.ok) {
-          setError(data.msg || "Error al cargar los chats");
+          const errorMsg = data.msg || `Error ${response.status}: ${response.statusText}`;
+          console.error("❌ Error response:", errorMsg);
+          setError(errorMsg);
+          setLoading(false);
           return;
         }
 
@@ -114,27 +141,62 @@ export default function TouristChatList({ touristId, onSelectChat }: TouristChat
             });
           });
         } else {
-          setError(data.msg || "No se pudieron cargar los chats");
+          const errorMsg = data.msg || "No se pudieron cargar los chats";
+          console.error("❌ API error:", errorMsg);
+          setError(errorMsg);
         }
-      } catch (error) {
-        console.error("Error al cargar chats:", error);
-        setError("Error al conectar con el servidor");
-      } finally {
-        setLoading(false);
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError.name === 'AbortError') {
+          throw new Error('La petición tardó demasiado tiempo. El servidor no respondió.');
+        }
+        throw fetchError;
       }
-    };
+    } catch (error: any) {
+      console.error("❌ Error al cargar chats:", error);
+      console.error("Error name:", error?.name);
+      console.error("Error message:", error?.message);
+      
+      let errorMessage = "Error al conectar con el servidor";
+      
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage = "No se pudo conectar al servidor. Verifica que el backend esté corriendo en " + BACKEND_URL;
+      } else if (error.name === 'AbortError' || error.message?.includes('tardó demasiado')) {
+        errorMessage = "El servidor tardó demasiado en responder";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [touristId]);
 
+  useEffect(() => {
     if (touristId) {
       fetchChats();
     }
 
+    // Escuchar eventos de actualización de perfil
+    const handleProfileUpdate = () => {
+      console.log("🔔 Perfil actualizado, recargando chats...");
+      fetchChats();
+    };
+
+    window.addEventListener('guideProfileUpdated', handleProfileUpdate);
+    window.addEventListener('fotoPerfilActualizada', handleProfileUpdate);
+
     // Limpiar socket al desmontar
     return () => {
+      window.removeEventListener('guideProfileUpdated', handleProfileUpdate);
+      window.removeEventListener('fotoPerfilActualizada', handleProfileUpdate);
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
     };
-  }, [touristId]);
+  }, [touristId, fetchChats]);
 
   const formatTime = (date?: Date) => {
     if (!date) return "";
@@ -168,8 +230,14 @@ export default function TouristChatList({ touristId, onSelectChat }: TouristChat
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
         <div className="text-red-500 text-4xl mb-3">⚠️</div>
-        <h3 className="text-red-800 font-bold text-lg mb-2">Error</h3>
+        <h3 className="text-red-800 font-bold text-lg mb-2">Error de conexión</h3>
         <p className="text-red-600 text-sm mb-4">{error}</p>
+        <button
+          onClick={() => fetchChats()}
+          className="bg-[#1A4D2E] hover:bg-[#143d24] text-white px-6 py-2 rounded-lg transition-colors font-medium"
+        >
+          Reintentar
+        </button>
       </div>
     );
   }

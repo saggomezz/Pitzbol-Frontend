@@ -26,13 +26,16 @@ export default function ToursPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState<string>("all");
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>("all");
+  const [lastUpdate, setLastUpdate] = useState<string>("");
 
   // Cargar guías desde el backend
   useEffect(() => {
     const fetchGuides = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${BACKEND_URL}/api/guides/verified`);
+        // Añadir timestamp para evitar caché
+        const timestamp = new Date().getTime();
+        const response = await fetch(`${BACKEND_URL}/api/guides/verified?t=${timestamp}`);
         
         if (!response.ok) {
           console.warn(`Error al cargar guías: ${response.status} ${response.statusText}`);
@@ -41,7 +44,22 @@ export default function ToursPage() {
         }
 
         const data = await response.json();
-        setGuides(data.guides || []);
+        const ahora = new Date().toLocaleTimeString('es-MX');
+        console.log(`📋 [${ahora}] Guías cargados:`, data.guides?.length || 0);
+        if (data.guides?.length > 0) {
+          console.log('🔍 Datos completos del primer guía:', {
+            uid: data.guides[0].uid,
+            nombre: data.guides[0].nombre,
+            descripcion: data.guides[0].descripcion?.substring(0, 50),
+            idiomas: data.guides[0].idiomas,
+            especialidades: data.guides[0].especialidades,
+            fotoPerfil: data.guides[0].fotoPerfil ? 'Sí' : 'No'
+          });
+        }
+        
+        // Forzar actualización completa creando un nuevo array
+        setGuides([...data.guides || []]);
+        setLastUpdate(ahora);
       } catch (error) {
         console.error("Error fetching guides:", error);
         setGuides([]);
@@ -51,6 +69,29 @@ export default function ToursPage() {
     };
 
     fetchGuides();
+
+    // Escuchar actualizaciones del perfil para recargar guías automáticamente
+    const handleProfileUpdate = (event: Event) => {
+      const ahora = new Date().toLocaleTimeString('es-MX');
+      console.log(`🔄 [${ahora}] Evento recibido: ${event.type} - Recargando lista de guías...`);
+      // Pequeño delay para asegurar que Firebase se actualizó
+      setTimeout(() => {
+        fetchGuides();
+      }, 500);
+    };
+
+    // Escuchar eventos de actualización
+    console.log('👂 Iniciando listeners de eventos en Tours...');
+    window.addEventListener('guideProfileUpdated', handleProfileUpdate);
+    window.addEventListener('authStateChanged', handleProfileUpdate);
+    window.addEventListener('fotoPerfilActualizada', handleProfileUpdate);
+
+    return () => {
+      console.log('🔇 Removiendo listeners de eventos en Tours...');
+      window.removeEventListener('guideProfileUpdated', handleProfileUpdate);
+      window.removeEventListener('authStateChanged', handleProfileUpdate);
+      window.removeEventListener('fotoPerfilActualizada', handleProfileUpdate);
+    };
   }, []);
 
   // Extraer idiomas y especialidades únicos para los filtros
