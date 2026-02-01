@@ -104,6 +104,11 @@ export default function PerfilDetallado() {
   const [nacionalidadTemp, setNacionalidadTemp] = useState("");
   const [errorNacionalidad, setErrorNacionalidad] = useState("");
   
+  const [editandoNombre, setEditandoNombre] = useState(false);
+  const [nombreTemp, setNombreTemp] = useState("");
+  const [apellidoTemp, setApellidoTemp] = useState("");
+  const [errorNombre, setErrorNombre] = useState("");
+  
   const [editandoTelefono, setEditandoTelefono] = useState(false);
   const [ladaTemp, setLadaTemp] = useState("+52");
   const [numeroTemp, setNumeroTemp] = useState("");
@@ -331,6 +336,85 @@ export default function PerfilDetallado() {
     }
     setEditandoTelefono(false);
     setErrorTelefono("");
+  };
+
+  const guardarNombre = async () => {
+    setErrorNombre("");
+
+    if (!nombreTemp.trim()) {
+      setErrorNombre("El nombre es requerido");
+      return;
+    }
+
+    if (!apellidoTemp.trim()) {
+      setErrorNombre("El apellido es requerido");
+      return;
+    }
+
+    setGuardando(true);
+    setExito("");
+
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+
+      if (!token) {
+        throw new Error(t('noSession'));
+      }
+
+      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
+        method: "PATCH",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          nombre: nombreTemp.trim(),
+          apellido: apellidoTemp.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || "Error al actualizar nombre");
+      }
+
+      const perfilActualizado = { 
+        ...perfil, 
+        nombre: nombreTemp.trim(),
+        apellido: apellidoTemp.trim()
+      };
+      setPerfil(perfilActualizado);
+      
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal.nombre = nombreTemp.trim();
+      userLocal["01_nombre"] = nombreTemp.trim();
+      userLocal.apellido = apellidoTemp.trim();
+      userLocal["02_apellido"] = apellidoTemp.trim();
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+
+      // Emitir evento para actualizar otros componentes
+      window.dispatchEvent(new Event('authStateChanged'));
+
+      setExito("Nombre actualizado exitosamente");
+      setEditandoNombre(false);
+      
+      setTimeout(() => setExito(""), 3000);
+
+    } catch (err: any) {
+      setErrorNombre(err.message || "Error al actualizar");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarNombre = () => {
+    setNombreTemp(perfil.nombre || "");
+    setApellidoTemp(perfil.apellido || "");
+    setEditandoNombre(false);
+    setErrorNombre("");
   };
 
   const guardarDescripcion = async () => {
@@ -742,9 +826,64 @@ export default function PerfilDetallado() {
                 </div>
 
                 {/* Info básica */}
-                <h2 className="text-2xl md:text-3xl font-semibold text-[#1A4D2E] text-center mb-1">
-                  {perfil.nombre} {perfil.apellido}
-                </h2>
+                {editandoNombre ? (
+                  <div className="w-full mt-2 space-y-3">
+                    <div>
+                      <input
+                        type="text"
+                        value={nombreTemp}
+                        onChange={(e) => setNombreTemp(e.target.value)}
+                        placeholder="Nombre"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-gray-800"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={apellidoTemp}
+                        onChange={(e) => setApellidoTemp(e.target.value)}
+                        placeholder="Apellido"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-gray-800"
+                      />
+                    </div>
+                    {errorNombre && (
+                      <p className="text-red-600 text-xs">{errorNombre}</p>
+                    )}
+                    <div className="flex gap-2 justify-center">
+                      <button
+                        onClick={guardarNombre}
+                        disabled={guardando}
+                        className="flex-1 px-4 py-2 bg-[#1A4D2E] text-white rounded-lg hover:bg-[#0D601E] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                      >
+                        {guardando ? tCommon('loading') : tCommon('save')}
+                      </button>
+                      <button
+                        onClick={cancelarNombre}
+                        disabled={guardando}
+                        className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                      >
+                        {tCommon('cancel')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative group">
+                    <h2 className="text-2xl md:text-3xl font-semibold text-[#1A4D2E] text-center mb-1">
+                      {perfil.nombre} {perfil.apellido}
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setNombreTemp(perfil.nombre || "");
+                        setApellidoTemp(perfil.apellido || "");
+                        setEditandoNombre(true);
+                      }}
+                      className="absolute -right-8 top-1/2 -translate-y-1/2 p-2 text-[#1A4D2E] hover:bg-[#F6F0E6] rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                      title="Editar nombre"
+                    >
+                      <FiEdit2 size={16} />
+                    </button>
+                  </div>
+                )}
                 
                 <div className="flex items-center justify-center gap-1 text-[#81C784] text-xs mb-3">
                   <FiGlobe size={13} />
