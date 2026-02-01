@@ -100,16 +100,40 @@ export default function ChatModal({
             setMessages(messagesData.messages);
           }
 
+          // Marcar mensajes como leídos cuando se abre el chat
+          try {
+            await fetch(`${BACKEND_URL}/api/chat/${data.chat.id}/read`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: JSON.stringify({ userId: currentUserId }),
+            });
+            
+            console.log("Mensajes marcados como leídos");
+          } catch (err) {
+            console.error("Error al marcar mensajes como leídos:", err);
+          }
+
           // Conectar socket
           socketRef.current = io(BACKEND_URL, {
             auth: {
               token: token || "",
+              userId: currentUserId,
+              userType: currentUserType,
             },
           });
           
           socketRef.current.on("connect", () => {
             console.log("Conectado al chat");
             socketRef.current?.emit("join-chat", data.chat.id);
+            
+            // Emitir evento de marcar como leído vía socket
+            socketRef.current?.emit("mark-as-read", { 
+              chatId: data.chat.id, 
+              userId: currentUserId 
+            });
           });
 
           socketRef.current.on("new-message", (message: Message) => {
@@ -167,18 +191,20 @@ export default function ChatModal({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim() || !chatId || !socketRef.current) return;
 
+    const messageContent = newMessage.trim();
+    setNewMessage("");
+
+    // Enviar mensaje por socket
     socketRef.current.emit("send-message", {
       chatId,
       senderId: currentUserId,
       senderName: currentUserName,
       senderType: currentUserType,
-      content: newMessage.trim(),
+      content: messageContent,
     });
-
-    setNewMessage("");
     
     // Detener indicador de "escribiendo"
     socketRef.current.emit("stop-typing", { chatId });

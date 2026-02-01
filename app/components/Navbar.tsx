@@ -14,6 +14,7 @@ import imgPasto from "./pastoVerde.png";
 import NotificationsPanel from "./NotificationsPanel";
 import HistorialSolicitudesModal from "./HistorialSolicitudesModal";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { useMessageNotifications } from "@/lib/useMessageNotifications";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
@@ -42,6 +43,17 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const menuRef = useRef<HTMLDivElement | null>(null);
     const t = useTranslations('navbar');
     const tRoles = useTranslations('roles');
+
+    // Determinar tipo de usuario para notificaciones
+    const isGuide = user?.role === "guide" || user?.role === "guia" || user?.guide_status === "aprobado";
+    const userType = isGuide ? "guide" : "tourist";
+
+    // Hook de notificaciones de mensajes
+    const { unreadCount, newMessageNotification, clearNotification } = useMessageNotifications({
+        userId: user?.uid || '',
+        userType: userType,
+        enabled: !!user?.uid,
+    });
 
     useEffect(() => {
         const checkUser = () => {
@@ -135,6 +147,24 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                 <Link href="/"><FiHome size={22} className="hover:text-[#F00808] transition-colors" title={t('home')} /></Link>
                 <Link href="/favoritos"><FiHeart size={22} className="hover:text-[#F00808] transition-colors" title={t('favorites')} /></Link>
                 <Link href="/calendario"><FiCalendar size={22} className="hover:text-[#F00808] transition-colors" title={t('calendar')} /></Link>
+                
+                {/* Botón de Mensajes con Contador */}
+                {user && (
+                    <Link 
+                        href="/mensajes" 
+                        onClick={clearNotification}
+                        className="relative hover:text-[#F00808] transition-colors" 
+                        title={t('messages')}
+                    >
+                        <FiMessageSquare size={22} />
+                        {unreadCount > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                        )}
+                    </Link>
+                )}
+                
                 {/* Panel de Notificaciones */}
                 {user && <NotificationsPanel userId={user.uid} />}
                 {/* Selector de Idioma */}
@@ -218,13 +248,47 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left">
                                         <FiCreditCard /> {t('myPayments')}
                                     </button>
-                                    <Link href="/mensajes" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium">
-                                        <FiMessageSquare /> {t('messages')}
+                                    <Link 
+                                        href="/mensajes" 
+                                        onClick={() => {
+                                            setIsMenuOpen(false);
+                                            clearNotification();
+                                        }} 
+                                        className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium relative"
+                                    >
+                                        <FiMessageSquare /> 
+                                        <span>{t('messages')}</span>
+                                        {unreadCount > 0 && (
+                                            <span className="ml-auto bg-red-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                                                {unreadCount > 9 ? '9+' : unreadCount}
+                                            </span>
+                                        )}
                                     </Link>
                                 </>
                             ) : (
                                 <>
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('opportunities')}</p>
+                                    
+                                    {/* Mensajes para turistas */}
+                                    {user && (
+                                        <Link 
+                                            href="/mensajes" 
+                                            onClick={() => {
+                                                setIsMenuOpen(false);
+                                                clearNotification();
+                                            }} 
+                                            className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium relative"
+                                        >
+                                            <FiMessageSquare /> 
+                                            <span>{t('messages')}</span>
+                                            {unreadCount > 0 && (
+                                                <span className="ml-auto bg-red-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                                </span>
+                                            )}
+                                        </Link>
+                                    )}
+                                    
                                     {isPendingVerification ? (
                                         <button
                                             onClick={() => { setIsMenuOpen(false); setShowStatusModal(true); }}
@@ -283,6 +347,46 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                     )}
                 </AnimatePresence>
             </div>
+            
+            {/* Notificación Flotante de Nuevo Mensaje */}
+            <AnimatePresence>
+                {newMessageNotification && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -50, x: 50 }}
+                        animate={{ opacity: 1, y: 0, x: 0 }}
+                        exit={{ opacity: 0, y: -50, x: 50 }}
+                        className="fixed top-24 right-4 bg-white rounded-2xl shadow-2xl p-4 max-w-sm border-2 border-[#1A4D2E] z-[200]"
+                    >
+                        <div className="flex items-start gap-3">
+                            <div className="bg-[#1A4D2E] text-white p-2 rounded-full">
+                                <FiMessageSquare size={20} />
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                    <h4 className="font-bold text-[#1A4D2E]">{newMessageNotification.senderName}</h4>
+                                    <button 
+                                        onClick={clearNotification}
+                                        className="text-gray-400 hover:text-gray-600"
+                                    >
+                                        <FiX size={18} />
+                                    </button>
+                                </div>
+                                <p className="text-sm text-gray-600 line-clamp-2">
+                                    {newMessageNotification.message}
+                                </p>
+                                <Link 
+                                    href="/mensajes"
+                                    onClick={clearNotification}
+                                    className="text-xs text-[#0D601E] hover:underline mt-2 inline-block font-semibold"
+                                >
+                                    Ver mensaje →
+                                </Link>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            
             {/* MODAL DE ESTATUS DE SOLICITUD */}
             <AnimatePresence>
                 {showStatusModal && isPendingVerification && (
