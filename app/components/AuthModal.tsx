@@ -213,6 +213,9 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
       });
 
       const data = await response.json();
+      
+      console.log('📝 Response status:', response.status);
+      console.log('📝 Response data:', data);
 
       if (response.ok) {
         // El backend ya normaliza todos los campos, usar directamente
@@ -266,23 +269,14 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         }, 2000);
 
       } else {
-        alert("Error: " + (data.msg || "Credenciales inválidas"));
+        // Mostrar mensaje de error específico del servidor
+        console.error("❌ Error de login:", data);
+        const errorMsg = data.msg || "Credenciales inválidas. Verifica tu correo y contraseña.";
+        alert(errorMsg);
       }
     } catch (error: any) {
-      console.error("Login error:", error);
-      
-      // Mensajes de error más específicos para Firebase Auth
-      if (error.code === 'auth/user-not-found') {
-        alert("No existe una cuenta con ese correo electrónico.");
-      } else if (error.code === 'auth/wrong-password') {
-        alert("Contraseña incorrecta.");
-      } else if (error.code === 'auth/invalid-email') {
-        alert("Formato de correo inválido.");
-      } else if (error.code === 'auth/too-many-requests') {
-        alert("Demasiados intentos. Por favor intenta más tarde.");
-      } else {
-        alert("Error de conexión. Revisa que el servidor esté encendido.");
-      }
+      console.error("❌ Login error completo:", error);
+      alert("Error de conexión con el servidor. Por favor, intenta de nuevo.");
     }
   };
 
