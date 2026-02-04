@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from 'next-intl';
 import Papa from 'papaparse';
 import { Suspense, useEffect, useRef, useState } from "react";
 import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
@@ -45,26 +46,6 @@ const recommendations: Recommendation[] = [
   { name: "Tlaquepaque", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
   { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
 ];
-
-const CategoryCarousel = ({ categories }: { categories: Category[] }) => (
-  <section className="flex gap-4 p-4 md:py-6 md:px-8 overflow-x-auto md:justify-center bg-white">
-    {categories.map((category) => (
-      <Link 
-        key={category.name} 
-        href={category.name === "Fútbol" ? "/futbol" : "#"} 
-        className="flex-shrink-0"
-      >
-        <div className="relative w-40 h-24 md:w-64 md:h-34 rounded-xl overflow-hidden shadow-lg cursor-pointer group transition-transform duration-300 md:hover:scale-105">
-          <Image src={category.img} alt={category.name} fill className="object-cover" />
-          <div className="absolute inset-0 bg-black opacity-40 group-hover:opacity-20 transition-opacity duration-300"></div>
-          <div className="absolute inset-0 flex items-center justify-center p-2">
-            <span className="text-white text-xl font-bold text-center drop-shadow-md">{category.name}</span>
-          </div>
-        </div>
-      </Link>
-    ))}
-  </section>
-);
 
 const DateSlider = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false); // Estado para el modal
@@ -193,6 +174,75 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const hasCheckedWelcome = useRef(false);
+  const [isNewWelcome, setIsNewWelcome] = useState(false);
+  
+  // Traducciones
+  const tCat = useTranslations('categories');
+  const tHome = useTranslations('home');
+  const tPlaces = useTranslations('places');
+  const tCommon = useTranslations('common');
+
+  // Componentes internos que usan las traducciones
+  const CategoryCarousel = ({ categories }: { categories: Category[] }) => {
+    const getCategoryName = (name: string) => {
+      const categoryMap: { [key: string]: string } = {
+        "Fútbol": tCat('soccer'),
+        "Gastronomía": tCat('gastronomy'),
+        "Arte": tCat('art'),
+        "Cultura": tCat('culture'),
+        "Eventos": tCat('events')
+      };
+      return categoryMap[name] || name;
+    };
+
+    return (
+      <section className="flex gap-4 p-4 md:py-6 md:px-8 overflow-x-auto md:justify-center bg-white">
+        {categories.map((category) => (
+          <Link 
+            key={category.name} 
+            href={category.name === "Fútbol" ? "/futbol" : "#"} 
+            className="flex-shrink-0"
+          >
+            <div className="relative w-40 h-24 md:w-64 md:h-34 rounded-xl overflow-hidden shadow-lg cursor-pointer group transition-transform duration-300 md:hover:scale-105">
+              <Image src={category.img} alt={getCategoryName(category.name)} fill className="object-cover" />
+              <div className="absolute inset-0 bg-black opacity-40 group-hover:opacity-20 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 flex items-center justify-center p-2">
+                <span className="text-white text-xl font-bold text-center drop-shadow-md">{getCategoryName(category.name)}</span>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </section>
+    );
+  };
+
+  const RecommendationsComponent = ({ recommendations }: { recommendations: any[] }) => {
+    const getPlaceName = (name: string) => {
+      const placeMap: { [key: string]: string } = {
+        "Centro de Guadalajara": tPlaces('centralGuadalajara'),
+        "Tlaquepaque": tPlaces('tlaquepaque'),
+        "Tequila, Jalisco": tPlaces('tequila')
+      };
+      return placeMap[name] || name;
+    };
+
+    return (
+      <div className="flex flex-col w-full md:w-3/5">
+        <h2 className="text-2xl font-bold mb-4 text-[#1A4D2E]">{tHome('recommendations')}</h2>
+        <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-6">
+          {recommendations.map((place) => (
+            <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
+              <div className="w-full relative overflow-hidden pb-[56.25%] md:pb-[100%]">
+                {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={getPlaceName(place.name)} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">Sin imagen</div>}
+                <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#1A4D2E] text-white px-3 py-1 rounded-full shadow-lg">{tCommon('search')}</button></div>
+              </div>
+              <div className="p-4"><h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{getPlaceName(place.name)}</h3></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   // ESTADOS PARA LA IA
   const [itinerarioTxt, setItinerarioTxt] = useState("Cargando itinerario...");
@@ -215,8 +265,6 @@ function HomeContent() {
     cargarDatos();
   }, []);
 
-  // Estado para saber si la bienvenida es de cuenta nueva
-  const [isNewWelcome, setIsNewWelcome] = useState(false);
   // Detectar si el usuario acaba de iniciar sesión
   useEffect(() => {
     if (hasCheckedWelcome.current) return;
@@ -461,25 +509,8 @@ function HomeContent() {
           </div>
         </div>
 
-        <Recommendations recommendations={recommendations} />
+        <RecommendationsComponent recommendations={recommendations} />
       </main>
     </div>
   );
 }
-
-const Recommendations = ({ recommendations }: { recommendations: any[] }) => (
-  <div className="flex flex-col w-full md:w-3/5">
-    <h2 className="text-2xl font-bold mb-4 text-[#1A4D2E]">Recomendaciones</h2>
-    <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-6">
-      {recommendations.map((place) => (
-        <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
-          <div className="w-full relative overflow-hidden pb-[56.25%] md:pb-[100%]">
-            {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={place.name} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">Sin imagen</div>}
-            <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#1A4D2E] text-white px-3 py-1 rounded-full shadow-lg">Ubicar</button></div>
-          </div>
-          <div className="p-4"><h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3></div>
-        </div>
-      ))}
-    </div>
-  </div>
-);

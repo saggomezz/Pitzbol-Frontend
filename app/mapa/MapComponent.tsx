@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from 'next/navigation';
 import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
 import type { LatLngExpression, Icon as LeafletIcon } from "leaflet";
@@ -76,11 +76,15 @@ export default function MapComponent({
     placeImages = {},
 }: MapComponentProps) {
     const router = useRouter();
+    // Usar una key estable que solo cambia cuando es necesario reinicializar el mapa
+    const [mapKey] = useState(() => `map-${Date.now()}`);
     
     if (!redIcon) return <div>Cargando mapa...</div>;
 
-    return (
+    // Memoizar el contenido del mapa para evitar re-renderizaciones innecesarias
+    const mapContent = useMemo(() => (
         <MapContainer
+            key={`map-${mapKey}`}
             center={mapCenter as LatLngExpression}
             zoom={mapZoom}
             style={{ height: "100%", width: "100%", borderRadius: "20px" }}
@@ -192,5 +196,7 @@ export default function MapComponent({
                 );
             })}
         </MapContainer>
-    );
+    ), [mapCenter, mapZoom, lugares, selectedPlace, placeImages, mapKey]);
+
+    return mapContent;
 }

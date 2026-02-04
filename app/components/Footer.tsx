@@ -1,10 +1,12 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from 'next-intl';
 import imglogo from "./logoPitzbol.png";
 
 export default function Footer() {
     const currentYear = new Date().getFullYear();
+    const t = useTranslations('footer');
     
     return (
         <footer className="bg-[#F6F0E6] border-t border-[#1A4D2E]/10 pt-16 pb-8 px-6 md:px-20 text-[#1A4D2E]">
@@ -18,18 +20,16 @@ export default function Footer() {
                         PITZ<span className="text-[#F00808]">BOL</span>
                     </h2>
                     <p className="text-sm leading-relaxed text-[#1A4D2E]/80">
-                        Nuestra identidad nace del <strong className="text-[#0D601E]">"Pitz"</strong>, término maya que consagra el juego de pelota como un acto ritual y cosmogónico. 
-                        Más que un escudo, nuestro emblema es un diálogo visual entre el ancestral <span className="font-semibold italic">"Ollamaliztli"</span> —donde la vida y el cosmos se decidían en el campo— y la euforia del fútbol contemporáneo. 
-                        Encarnamos el movimiento perpetuo de la esfera de caucho, una herencia de honor y comunidad que hoy, bajo nuestra bandera, vuelve a unir a México con el mundo.
+                        {t('description')}
                     </p>
                 </div>
             </div>
 
             {/* LÍNEA FINAL */}
             <div className="mt-16 pt-8 border-t border-[#1A4D2E]/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#769C7B]">
-                <p>© {currentYear} PITZBOL PROJECT - CAMINO AL MUNDIAL 2026</p>
+                <p>© {currentYear} {t('copyright')}</p>
                 <div className="flex gap-6">
-                    <Link href="/politica-privacidad" className="hover:text-[#F00808] transition-colors">Política de privacidad</Link>
+                    <Link href="/politica-privacidad" className="hover:text-[#F00808] transition-colors">{t('privacyPolicy')}</Link>
                 </div>
             </div>
         </footer>

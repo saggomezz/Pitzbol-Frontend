@@ -3,15 +3,18 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, MouseEvent } from "react";
+import { useTranslations } from 'next-intl';
 import {
     FiBriefcase, FiCalendar, FiClock, FiCreditCard, FiHeart, FiHome, FiInfo,
     FiLogOut, FiMapPin, FiMenu, FiMessageSquare, FiPlusCircle, FiSearch, FiShield, FiUser,
-    FiX, FiAward, FiFileText
+    FiX, FiAward, FiFileText, FiCompass
 } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
 import NotificationsPanel from "./NotificationsPanel";
 import HistorialSolicitudesModal from "./HistorialSolicitudesModal";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useMessageNotifications } from "@/lib/useMessageNotifications";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
@@ -38,6 +41,19 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [showHistorialModal, setShowHistorialModal] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
+    const t = useTranslations('navbar');
+    const tRoles = useTranslations('roles');
+
+    // Determinar tipo de usuario para notificaciones
+    const isGuide = user?.role === "guide" || user?.role === "guia" || user?.guide_status === "aprobado";
+    const userType = isGuide ? "guide" : "tourist";
+
+    // Hook de notificaciones de mensajes
+    const { unreadCount, newMessageNotification, clearNotification } = useMessageNotifications({
+        userId: user?.uid || '',
+        userType: userType,
+        enabled: !!user?.uid,
+    });
 
     useEffect(() => {
         const checkUser = () => {
@@ -122,17 +138,37 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                 <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#769C7B]" size={18} />
                 <input
                     type="text"
-                    placeholder="Buscar tours, guías o lugares..."
+                    placeholder={t('searchPlaceholder')}
                     className="w-full pl-12 pr-4 py-2.5 bg-white/50 border border-[#1A4D2E]/10 rounded-full outline-none focus:bg-white focus:ring-2 focus:ring-[#0D601E]/10 transition-all text-sm"
                 />
             </div>
             {/* ICONOS DERECHA */}
             <div className="flex items-center gap-3 md:gap-5 relative">
-                <Link href="/"><FiHome size={22} className="hover:text-[#F00808] transition-colors" title="Home" /></Link>
-                <Link href="/favoritos"><FiHeart size={22} className="hover:text-[#F00808] transition-colors" title="Favoritos" /></Link>
-                <Link href="/calendario"><FiCalendar size={22} className="hover:text-[#F00808] transition-colors" title="Calendario" /></Link>
+                <Link href="/"><FiHome size={22} className="hover:text-[#F00808] transition-colors" title={t('home')} /></Link>
+                <Link href="/favoritos"><FiHeart size={22} className="hover:text-[#F00808] transition-colors" title={t('favorites')} /></Link>
+                <Link href="/calendario"><FiCalendar size={22} className="hover:text-[#F00808] transition-colors" title={t('calendar')} /></Link>
+                
+                {/* Botón de Mensajes con Contador */}
+                {user && (
+                    <Link 
+                        href="/mensajes" 
+                        onClick={clearNotification}
+                        className="relative hover:text-[#F00808] transition-colors" 
+                        title={t('messages')}
+                    >
+                        <FiMessageSquare size={22} />
+                        {unreadCount > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                        )}
+                    </Link>
+                )}
+                
                 {/* Panel de Notificaciones */}
                 {user && <NotificationsPanel userId={user.uid} />}
+                {/* Selector de Idioma */}
+                <LanguageSwitcher />
                 <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 z-[110] bg-white/40 rounded-full hover:bg-white transition-all shadow-sm">
                     {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
                 </button>
@@ -146,7 +182,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
                             className="absolute top-[120%] right-0 w-72 bg-white rounded-[32px] shadow-2xl border border-gray-100 p-5 flex flex-col gap-1 z-[120]"
                         >
-                            <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">Mi Cuenta</p>
+                            <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('myAccount')}</p>
                             {user ? (
                                 <button
                                     onClick={() => {
@@ -169,51 +205,90 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="font-bold text-sm leading-none">{user.nombre || user["01_nombre"] || "Usuario"}</span>
-                                        <span className="text-[10px] opacity-60 uppercase mt-1">{role === "guia_pendiente" || role === "pendiente" ? "turista" : role}</span>
+                                        <span className="text-[10px] opacity-60 uppercase mt-1">{tRoles(role === "guia_pendiente" || role === "pendiente" ? "turista" : role)}</span>
                                     </div>
                                 </button>
                             ) : (
                                 <button onClick={() => { setIsMenuOpen(false); onOpenAuth(); }} className="flex items-center gap-3 p-4 bg-gray-50 hover:bg-[#F6F0E6] rounded-2xl transition-all text-left">
-                                    <FiUser className="text-[#0D601E]" /> <span className="font-bold text-sm italic text-[#1A4D2E]">Identificarse</span>
+                                    <FiUser className="text-[#0D601E]" /> <span className="font-bold text-sm italic text-[#1A4D2E]">{t('login')}</span>
                                 </button>
                             )}
                             <div className="h-[1px] bg-gray-100 my-2 mx-2" />
-                            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-3 mb-1">Explorar</p>
+                            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-3 mb-1">{t('explore')}</p>
                             <Link href="/mapa" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
-                                <FiMapPin /> Mapa
+                                <FiMapPin /> {t('map')}
                             </Link>
+                            {(role === "turista" || role === "admin") && (
+                                <Link href="/tours" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
+                                    <FiCompass /> {t('tours')}
+                                </Link>
+                            )}
                             <div className="h-[1px] bg-gray-100 my-3 mx-2" />
                             {/* SECCIÓN DINÁMICA POR ROL */}
                             {role === "admin" ? (
                                 <>
-                                    <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">Administración</p>
+                                    <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('administration')}</p>
                                     <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium">
-                                        <FiShield className="text-red-600" /> Solicitudes de Guías
+                                        <FiShield className="text-red-600" /> {t('guideRequests')}
                                     </Link>
                                     <Link href="/admin/lugares" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium">
-                                        <FiPlusCircle className="text-blue-600" /> Gestionar Lugares
+                                        <FiPlusCircle className="text-blue-600" /> {t('managePlaces')}
                                     </Link>
                                     <Link href="/admin/negocios" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium">
-                                        <FiUser className="text-green-600" /> Administrar Negocios
+                                        <FiUser className="text-green-600" /> {t('manageBusinesses')}
                                     </Link>
                                 </>
                             ) : role === "guia" ? (
                                 <>
-                                    <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">Panel Guía</p>
+                                    <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('guidePanel')}</p>
                                     <button className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group w-full text-left">
                                         <FiClock className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
-                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Solicitudes de Tour</span>
+                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('tourRequests')}</span>
                                     </button>
                                     <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left">
-                                        <FiCreditCard /> Mis Pagos
+                                        <FiCreditCard /> {t('myPayments')}
                                     </button>
-                                    <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left">
-                                        <FiMessageSquare /> Mensajes
-                                    </button>
+                                    <Link 
+                                        href="/mensajes" 
+                                        onClick={() => {
+                                            setIsMenuOpen(false);
+                                            clearNotification();
+                                        }} 
+                                        className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium relative"
+                                    >
+                                        <FiMessageSquare /> 
+                                        <span>{t('messages')}</span>
+                                        {unreadCount > 0 && (
+                                            <span className="ml-auto bg-red-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                                                {unreadCount > 9 ? '9+' : unreadCount}
+                                            </span>
+                                        )}
+                                    </Link>
                                 </>
                             ) : (
                                 <>
-                                    <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">Oportunidades</p>
+                                    <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('opportunities')}</p>
+                                    
+                                    {/* Mensajes para turistas */}
+                                    {user && (
+                                        <Link 
+                                            href="/mensajes" 
+                                            onClick={() => {
+                                                setIsMenuOpen(false);
+                                                clearNotification();
+                                            }} 
+                                            className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium relative"
+                                        >
+                                            <FiMessageSquare /> 
+                                            <span>{t('messages')}</span>
+                                            {unreadCount > 0 && (
+                                                <span className="ml-auto bg-red-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                                </span>
+                                            )}
+                                        </Link>
+                                    )}
+                                    
                                     {isPendingVerification ? (
                                         <button
                                             onClick={() => { setIsMenuOpen(false); setShowStatusModal(true); }}
@@ -221,8 +296,8 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                         >
                                             <FiClock className="text-orange-700" />
                                             <div className="flex flex-col">
-                                                <span className="text-[11px] text-orange-700 font-bold italic">Verificando datos...</span>
-                                                <span className="text-[9px] text-orange-600/60 font-medium tracking-tight">Click para ver estatus</span>
+                                                <span className="text-[11px] text-orange-700 font-bold italic">{t('verifyingData')}</span>
+                                                <span className="text-[9px] text-orange-600/60 font-medium tracking-tight">{t('clickStatus')}</span>
                                             </div>
                                         </button>
                                     ) : (
@@ -231,30 +306,30 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                             className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group"
                                         >
                                             <FiAward className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
-                                            <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Conviértete en Guía</span>
+                                            <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('becomeGuide')}</span>
                                         </button>
                                     )}
                                     <button onClick={() => { setIsMenuOpen(false); user ? onOpenBusiness() : onOpenAuthAsBusiness(); }}
                                         className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group"
                                     >
                                         <FiBriefcase className="text-[#0D601E] group-hover:text-[#F00808]" />
-                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808]">Publica tu Negocio</span>
+                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808]">{t('publishBusiness')}</span>
                                     </button>
                                 </>
                             )}
                             <div className="h-[1px] bg-gray-100 my-3 mx-2" />
-                            <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">Pitzbol</p>
+                            <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('pitzbol')}</p>
                             <Link href="/nosotros" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group w-full text-left">
                                 <FiInfo className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
-                                <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Nosotros</span>
+                                <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('aboutUs')}</span>
                             </Link>
                             <Link href="/soporte" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group transition-colors">
                                 <FiMessageSquare className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
-                                <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Soporte y Contacto</span>
+                                <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('support')}</span>
                             </Link>
                             <Link href="/politica-privacidad" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group transition-colors">
                                 <FiShield className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
-                                <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Política de Privacidad</span>
+                                <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('privacyPolicy')}</span>
                             </Link>
                             {user && (
                                 <>
@@ -264,7 +339,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                         className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group w-full text-left transition-colors"
                                     >
                                         <FiLogOut className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
-                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Cerrar Sesión</span>
+                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('logout')}</span>
                                     </button>
                                 </>
                             )}
@@ -272,6 +347,46 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                     )}
                 </AnimatePresence>
             </div>
+            
+            {/* Notificación Flotante de Nuevo Mensaje */}
+            <AnimatePresence>
+                {newMessageNotification && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -50, x: 50 }}
+                        animate={{ opacity: 1, y: 0, x: 0 }}
+                        exit={{ opacity: 0, y: -50, x: 50 }}
+                        className="fixed top-24 right-4 bg-white rounded-2xl shadow-2xl p-4 max-w-sm border-2 border-[#1A4D2E] z-[200]"
+                    >
+                        <div className="flex items-start gap-3">
+                            <div className="bg-[#1A4D2E] text-white p-2 rounded-full">
+                                <FiMessageSquare size={20} />
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                    <h4 className="font-bold text-[#1A4D2E]">{newMessageNotification.senderName}</h4>
+                                    <button 
+                                        onClick={clearNotification}
+                                        className="text-gray-400 hover:text-gray-600"
+                                    >
+                                        <FiX size={18} />
+                                    </button>
+                                </div>
+                                <p className="text-sm text-gray-600 line-clamp-2">
+                                    {newMessageNotification.message}
+                                </p>
+                                <Link 
+                                    href="/mensajes"
+                                    onClick={clearNotification}
+                                    className="text-xs text-[#0D601E] hover:underline mt-2 inline-block font-semibold"
+                                >
+                                    Ver mensaje →
+                                </Link>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            
             {/* MODAL DE ESTATUS DE SOLICITUD */}
             <AnimatePresence>
                 {showStatusModal && isPendingVerification && (

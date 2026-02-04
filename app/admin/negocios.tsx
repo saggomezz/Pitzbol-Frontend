@@ -10,19 +10,24 @@ export default function AdminNegociosPage() {
   const [loading, setLoading] = useState(true);
   const [archivarId, setArchivarId] = useState<string | null>(null);
   const [motivo, setMotivo] = useState("");
+  const [tab, setTab] = useState<'registrados' | 'pendientes' | 'archivados'>('registrados');
 
   useEffect(() => {
     fetchNegocios();
-  }, []);
+    // eslint-disable-next-line
+  }, [tab]);
 
   const fetchNegocios = async () => {
     setLoading(true);
+    const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+    let endpoint = `${API_BASE}/admin/negocios`;
+    if (tab === 'pendientes') endpoint = `${API_BASE}/admin/negocios/pendientes`;
+    if (tab === 'archivados') endpoint = `${API_BASE}/admin/negocios/archivados`;
     try {
-      const res = await fetch("http://localhost:3001/api/admin/negocios", {
+      const res = await fetch(endpoint, {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          // Si usas JWT, agrega aquí el header Authorization
         },
       });
       const data = await res.json();
@@ -41,12 +46,12 @@ export default function AdminNegociosPage() {
     if (!archivarId) return;
     // Archivar negocio vía API REST
     try {
-      const res = await fetch(`http://localhost:3001/api/admin/negocios/${archivarId}/archivar`, {
+      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const res = await fetch(`${API_BASE}/admin/negocios/${archivarId}/archivar`, {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          // Si usas JWT, agrega aquí el header Authorization
         },
         body: JSON.stringify({ motivo, adminUid: "ADMIN_UID_AQUI" }) // Reemplaza por el UID real del admin
       });
@@ -67,25 +72,59 @@ export default function AdminNegociosPage() {
 
   return (
     <div className="p-8">
-      <h2 className="text-2xl font-bold mb-6 text-[#3B5D50]">Administrar Negocios</h2>
+      <h2 className="text-2xl font-bold mb-6 text-[#3B5D50]">Gestionar Negocios</h2>
+      <div style={{display:'flex',gap:16,marginBottom:32}}>
+        <button
+          className={tab==='registrados' ? styles.tabActive : styles.tab}
+          onClick={()=>setTab('registrados')}
+        >Registrados</button>
+        <button
+          className={tab==='pendientes' ? styles.tabActive : styles.tab}
+          onClick={()=>setTab('pendientes')}
+        >Pendientes</button>
+        <button
+          className={tab==='archivados' ? styles.tabActive : styles.tab}
+          onClick={()=>setTab('archivados')}
+        >Archivados</button>
+      </div>
       <div className={styles.negociosGrid}>
-        {negocios.map(neg => (
-          <div key={neg.id} className={styles.negocioCard}>
-            <div style={{flex:1}}>
-              <div className="font-bold text-lg text-[#3B5D50]">{neg.name}</div>
-              <div className="text-gray-700 mb-2">{neg.description}</div>
-              <div className={styles.negocioImages}>
-                {neg.images && neg.images.map((img: string, i: number) => (
-                  <img key={i} src={img} alt="Imagen negocio" />
-                ))}
+        {negocios.map(neg => {
+          const logo = neg.business?.logo;
+          const images = Array.isArray(neg.business?.images) ? neg.business.images.filter((img: string) => !!img) : [];
+          // Mostrar logo o placeholder
+          return (
+            <div key={neg.id} className={styles.negocioCard}>
+              <div style={{flex:1}}>
+                <div className="font-bold text-lg text-[#3B5D50]">{neg.business?.name}</div>
+                <div className="text-gray-700 mb-2">{neg.business?.description}</div>
+                <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:8}}>
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',border:'2px dashed #B0B0B0',borderRadius:12,width:80,height:80,background:'#FAFAFA'}}>
+                    {logo ? (
+                      <img src={logo} alt="Logo negocio" style={{maxWidth:64,maxHeight:64,borderRadius:8}} />
+                    ) : (
+                      <span style={{fontSize:32,opacity:0.3}}>🖼️<br/><span style={{fontSize:10}}>Logo</span></span>
+                    )}
+                  </div>
+                  <div style={{display:'flex',gap:8}}>
+                    {[0,1,2].map(i => (
+                      <div key={i} style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',border:'2px dashed #B0B0B0',borderRadius:12,width:80,height:80,background:'#FAFAFA'}}>
+                        {images[i] ? (
+                          <img src={images[i]} alt={`Imagen galería ${i+1}`} style={{maxWidth:64,maxHeight:64,borderRadius:8}} />
+                        ) : (
+                          <span style={{fontSize:32,opacity:0.3}}>🖼️<br/><span style={{fontSize:10}}>Foto {i+1}</span></span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className={`text-xs mb-2 negocioStatus ${styles.negocioStatus} ${styles[neg.status]}`}>{neg.status}</div>
               </div>
-              <div className={`text-xs mb-2 negocioStatus ${styles.negocioStatus} ${styles[neg.status]}`}>{neg.status}</div>
+              <div className={styles.negocioActions}>
+                <button className={styles.negocioBtn + " " + styles.deleteBtn} onClick={() => setArchivarId(neg.id)}>Archivar</button>
+              </div>
             </div>
-            <div className={styles.negocioActions}>
-              <button className={styles.negocioBtn + " " + styles.deleteBtn} onClick={() => setArchivarId(neg.id)}>Archivar</button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {/* Modal de archivado */}
       {archivarId && (
