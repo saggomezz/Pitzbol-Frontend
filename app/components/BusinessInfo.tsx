@@ -1,5 +1,6 @@
 "use client";
 import React, { useRef, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import styles from "../styles/GuideInfo.module.css";
 import { FaStore, FaMapMarkedAlt, FaWallet, FaStar, FaCalendarAlt, FaCheckCircle, FaCrown, FaListAlt, FaInfoCircle, FaImage, FaPhone, FaEnvelope, FaGlobe, FaFileSignature, FaMapPin } from "react-icons/fa";
 
@@ -10,6 +11,7 @@ interface BusinessInfoProps {
 }
 
 const BusinessInfo: React.FC<BusinessInfoProps> = ({ isOpen, onClose, onContinue }) => {
+  const t = useTranslations('businessInfo');
   const contentRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLDivElement>(null);
   const [showArrow, setShowArrow] = useState(true);
@@ -47,22 +49,22 @@ const BusinessInfo: React.FC<BusinessInfoProps> = ({ isOpen, onClose, onContinue
       <div className={styles.guideInfoModal}>
         <div className={styles.guideInfoHeader}>
           <div className={styles.guideInfoHeaderIcon}><FaStore /></div>
-          <div className={styles.guideInfoHeaderTitle}>¡Publica tu Negocio en Pitzbol!</div>
-          <button onClick={onClose} style={{position:'absolute',top:18,right:24,fontSize:22,background:'none',border:'none',cursor:'pointer',color:'#fff'}} aria-label="Cerrar">×</button>
+          <div className={styles.guideInfoHeaderTitle}>{t('title')}</div>
+          <button onClick={onClose} style={{position:'absolute',top:18,right:24,fontSize:22,background:'none',border:'none',cursor:'pointer',color:'#fff'}} aria-label={t('close')}>×</button>
         </div>
         <div className={styles.guideInfoContent} ref={contentRef} style={{position:'relative'}}>
           <div style={{fontSize:'1.13rem',color:'#3B5D50',marginBottom:'0.7rem',textAlign:'center',lineHeight:1.6}}>
-            <b>¿Quieres que tu negocio destaque ante miles de turistas?</b> <br/>
-            Publicar tu establecimiento en Pitzbol te permite llegar a más personas, gestionar tus servicios y aprovechar la tecnología de IA para atraer clientes.<br/><br/>
-            <b>¿Qué podrás hacer como negocio?</b>
+            <b>{t('subtitle')}</b> <br/>
+            {t('description')}<br/><br/>
+            <b>{t('whatCanYouDo')}</b>
           </div>
           <ul className={styles.guideInfoList}>
-            <li><FaListAlt color="#769C7B" size={20}/> Subir y administrar tus negocios o establecimientos.</li>
-            <li><FaCalendarAlt color="#769C7B" size={20}/> Gestionar tus negocios, horarios y disponibilidad.</li>
-            <li><FaMapMarkedAlt color="#769C7B" size={20}/> Aparecer en el mapa de Lugares con mayor relevancia gracias a la suscripción.</li>
-            <li><FaCrown color="#769C7B" size={20}/> Tu negocio tendrá prioridad en los itinerarios personalizados que la IA recomienda a los turistas.</li>
-            <li><FaWallet color="#769C7B" size={20}/> Cartera para pagos y cobros de la suscripción.</li>
-            <li><FaStar color="#769C7B" size={20}/> Ser calificado por los usuarios y construir tu reputación.</li>
+            <li><FaListAlt color="#769C7B" size={20}/> {t('benefits.uploadBusiness')}</li>
+            <li><FaCalendarAlt color="#769C7B" size={20}/> {t('benefits.manageBusiness')}</li>
+            <li><FaMapMarkedAlt color="#769C7B" size={20}/> {t('benefits.appearOnMap')}</li>
+            <li><FaCrown color="#769C7B" size={20}/> {t('benefits.aiPriority')}</li>
+            <li><FaWallet color="#769C7B" size={20}/> {t('benefits.wallet')}</li>
+            <li><FaStar color="#769C7B" size={20}/> {t('benefits.ratings')}</li>
           </ul>
           <div style={{
             background: 'linear-gradient(90deg, #fff 80%, #ffeaea 100%)',

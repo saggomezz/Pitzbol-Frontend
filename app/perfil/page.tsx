@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -73,6 +74,9 @@ const getInteresData = (nombre: string) => {
 };
 
 export default function PerfilDetallado() {
+  const t = useTranslations('profile');
+  const tCommon = useTranslations('common');
+  
   const [perfil, setPerfil] = useState<any>(null);
   const [tours, setTours] = useState<any[]>([]);
   const [showTourModal, setShowTourModal] = useState(false);
@@ -100,6 +104,11 @@ export default function PerfilDetallado() {
   const [nacionalidadTemp, setNacionalidadTemp] = useState("");
   const [errorNacionalidad, setErrorNacionalidad] = useState("");
   
+  const [editandoNombre, setEditandoNombre] = useState(false);
+  const [nombreTemp, setNombreTemp] = useState("");
+  const [apellidoTemp, setApellidoTemp] = useState("");
+  const [errorNombre, setErrorNombre] = useState("");
+  
   const [editandoTelefono, setEditandoTelefono] = useState(false);
   const [ladaTemp, setLadaTemp] = useState("+52");
   const [numeroTemp, setNumeroTemp] = useState("");
@@ -113,6 +122,12 @@ export default function PerfilDetallado() {
   const [especialidadesTemp, setEspecialidadesTemp] = useState<string[]>([]);
   const [nuevoInteres, setNuevoInteres] = useState("");
   const [errorEspecialidades, setErrorEspecialidades] = useState("");
+  
+  const [editandoIdiomas, setEditandoIdiomas] = useState(false);
+  const [idiomasTemp, setIdiomasTemp] = useState<string[]>([]);
+  const [nuevoIdioma, setNuevoIdioma] = useState("");
+  const [errorIdiomas, setErrorIdiomas] = useState("");
+  const [idiomas, setIdiomas] = useState<string[]>([]);
   
   const [guardando, setGuardando] = useState(false);
   const [exito, setExito] = useState("");
@@ -131,23 +146,44 @@ export default function PerfilDetallado() {
       const initialEspecialidades = userLocal.especialidades || userLocal["07_especialidades"] || [];      
       const descripcionInicial = userLocal.descripcion ? capitalizarPrimera(userLocal.descripcion) : "";
       
+      const initialIdiomas = userLocal.idiomas || userLocal["09_idiomas"] || [];
+      
+      const rol = userLocal["03_rol"] || userLocal.role || "turista";
+      const guideStatus = userLocal["16_status"] || userLocal.guide_status || "ninguno";
+      
+      console.log("👤 Estado del usuario:");
+      console.log("   - Rol:", rol);
+      console.log("   - Guide Status:", guideStatus);
+      console.log("   - UID:", userLocal.uid);
+      
+      if (rol === "guia" || guideStatus === "aprobado") {
+        console.log("✅ Usuario es guía VERIFICADO - Aparecerá en /tours");
+      } else if (guideStatus === "en_revision" || guideStatus === "pendiente") {
+        console.log("⏳ Usuario es guía EN REVISIÓN - NO aparecerá en /tours hasta ser aprobado");
+      } else {
+        console.log("ℹ️ Usuario es turista - NO aparecerá en /tours");
+      }
+      
       setPerfil({
         id: userLocal.uid,
         nombre: userLocal["01_nombre"] || userLocal.nombre || "Usuario",
         apellido: userLocal["02_apellido"] || userLocal.apellido || "",
-        rol: userLocal["03_rol"] || userLocal.role || "turista",
+        rol: rol,
         email: userLocal["04_correo"] || userLocal.email || "",
         telefono: userLocal["06_telefono"] || userLocal.telefono, 
         especialidades: userLocal["07_especialidades"] || [],
+        idiomas: initialIdiomas,
         nacionalidad: userLocal["05_nacionalidad"] || userLocal.nacionalidad,
         descripcion: userLocal["15_descripcion"] || userLocal.descripcion || "",
         fotoUrl: userLocal["14_foto_perfil"]?.url || userLocal.fotoPerfil || null,
-        guide_status: userLocal["16_status"] || userLocal.guide_status || "ninguno",
+        guide_status: guideStatus,
         tarifa: userLocal["17_tarifa_mxn"] || userLocal.tarifa || 0,
             });
 
       setEspecialidades(initialEspecialidades);
       setEspecialidadesTemp(initialEspecialidades);
+      setIdiomas(initialIdiomas);
+      setIdiomasTemp(initialIdiomas);
       setDescripcionTemp(descripcionInicial);
 
       try {
@@ -241,26 +277,26 @@ export default function PerfilDetallado() {
 
   const guardarTelefono = async () => {
     setErrorTelefono("");
-    
+
     if (!numeroTemp.trim()) {
-      setErrorTelefono("Por favor ingresa un número de teléfono");
+      setErrorTelefono(t('phoneRequired'));
       return;
     }
 
     const telefonoRegex = /^[\d\s\-()]+$/;
     if (!telefonoRegex.test(numeroTemp)) {
-      setErrorTelefono("El número solo puede contener números, espacios, guiones y paréntesis");
+      setErrorTelefono(t('phoneInvalidChars'));
       return;
     }
 
     const soloDigitos = numeroTemp.replace(/\D/g, "");
     if (soloDigitos.length < 7) {
-      setErrorTelefono("El número debe tener al menos 7 dígitos");
+      setErrorTelefono(t('phoneMinDigits'));
       return;
     }
 
     if (soloDigitos.length > 15) {
-      setErrorTelefono("El número no puede tener más de 15 dígitos");
+      setErrorTelefono(t('phoneMaxDigits'));
       return;
     }
 
@@ -273,7 +309,7 @@ export default function PerfilDetallado() {
       const telefonoCompleto = `${ladaTemp} ${numeroTemp}`;
 
       if (!token) {
-        throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
+        throw new Error(t('noSession'));
       }
 
       const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
@@ -291,7 +327,7 @@ export default function PerfilDetallado() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.msg || "Error al actualizar teléfono");
+        throw new Error(data.msg || t('errorUpdatingPhone'));
       }
 
       const perfilActualizado = { ...perfil, telefono: telefonoCompleto };
@@ -302,13 +338,13 @@ export default function PerfilDetallado() {
       userLocal["06_telefono"] = telefonoCompleto;
       localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
 
-      setExito("Teléfono actualizado correctamente");
+      setExito(t('phoneUpdated'));
       setEditandoTelefono(false);
       
       setTimeout(() => setExito(""), 3000);
 
     } catch (err: any) {
-      setErrorTelefono(err.message || "Error al guardar");
+      setErrorTelefono(err.message || t('errorUpdating'));
     } finally {
       setGuardando(false);
     }
@@ -329,11 +365,99 @@ export default function PerfilDetallado() {
     setErrorTelefono("");
   };
 
+  const guardarNombre = async () => {
+    setErrorNombre("");
+
+    if (!nombreTemp.trim()) {
+      setErrorNombre("El nombre es requerido");
+      return;
+    }
+
+    if (!apellidoTemp.trim()) {
+      setErrorNombre("El apellido es requerido");
+      return;
+    }
+
+    setGuardando(true);
+    setExito("");
+
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+
+      if (!token) {
+        throw new Error(t('noSession'));
+      }
+
+      console.log("📤 Enviando actualización de nombre:", {
+        nombre: nombreTemp.trim(),
+        apellido: apellidoTemp.trim(),
+        url: `${backendUrl}/api/perfil/update-profile`
+      });
+
+      const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+        method: "PATCH",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          nombre: nombreTemp.trim(),
+          apellido: apellidoTemp.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      console.log("📥 Respuesta del servidor:", data);
+
+      if (!response.ok) {
+        throw new Error(data.msg || "Error al actualizar nombre");
+      }
+
+      const perfilActualizado = { 
+        ...perfil, 
+        nombre: nombreTemp.trim(),
+        apellido: apellidoTemp.trim()
+      };
+      setPerfil(perfilActualizado);
+      
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal.nombre = nombreTemp.trim();
+      userLocal["01_nombre"] = nombreTemp.trim();
+      userLocal.apellido = apellidoTemp.trim();
+      userLocal["02_apellido"] = apellidoTemp.trim();
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+
+      // Emitir evento para actualizar otros componentes
+      console.log('📤 Emitiendo eventos: authStateChanged y guideProfileUpdated');
+      window.dispatchEvent(new Event('authStateChanged'));
+      window.dispatchEvent(new Event('guideProfileUpdated'));
+
+      setExito("Nombre actualizado exitosamente");
+      setEditandoNombre(false);
+      
+      setTimeout(() => setExito(""), 3000);
+
+    } catch (err: any) {
+      setErrorNombre(err.message || "Error al actualizar");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarNombre = () => {
+    setNombreTemp(perfil.nombre || "");
+    setApellidoTemp(perfil.apellido || "");
+    setEditandoNombre(false);
+    setErrorNombre("");
+  };
+
   const guardarDescripcion = async () => {
     setErrorDescripcion("");
     
     if (descripcionTemp.trim().length > 500) {
-      setErrorDescripcion("La descripción no puede exceder 500 caracteres");
+      setErrorDescripcion(t('descriptionMaxLength'));
       return;
     }
 
@@ -367,7 +491,7 @@ export default function PerfilDetallado() {
       console.log("📥 Respuesta del servidor:", { status: response.status, data });
 
       if (!response.ok) {
-        throw new Error(data.msg || `Error del servidor: ${response.statusText}`);
+        throw new Error(data.msg || `${t('errorServer')}: ${response.statusText}`);
       }
 
       const perfilActualizado = { ...perfil, descripcion: descripcionTemp };
@@ -377,7 +501,11 @@ export default function PerfilDetallado() {
       userLocal.descripcion = descripcionTemp;
       localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
 
-      setExito("Descripción actualizada correctamente");
+      // Emitir evento para actualizar lista de guías
+      console.log('📤 Emitiendo evento: guideProfileUpdated (descripción)');
+      window.dispatchEvent(new Event('guideProfileUpdated'));
+
+      setExito(t('descriptionUpdated'));
       setEditandoDescripcion(false);
       
       setTimeout(() => setExito(""), 3000);
@@ -399,11 +527,11 @@ export default function PerfilDetallado() {
   const agregarEspecialidad = (interes: string) => {
     setErrorEspecialidades("");
     if (especialidadesTemp.includes(interes)) {
-      setErrorEspecialidades("Este interés ya está agregado");
+      setErrorEspecialidades(t('interestAlreadyAdded'));
       return;
     }
     if (especialidadesTemp.length >= 10) {
-      setErrorEspecialidades("Máximo 10 intereses permitidos");
+      setErrorEspecialidades(t('maxInterests'));
       return;
     }
     setEspecialidadesTemp((prev: string[]) => [...prev, interes]);
@@ -443,7 +571,12 @@ export default function PerfilDetallado() {
         
         localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
         window.dispatchEvent(new Event("storage"));
-        setExito("Cambios guardados con éxito");
+        
+        // Emitir evento para actualizar lista de guías
+        console.log('📤 Emitiendo evento: guideProfileUpdated (especialidades)');
+        window.dispatchEvent(new Event('guideProfileUpdated'));
+        
+        setExito(t('changesSaved'));
         setTimeout(() => setExito(""), 3000);
       }
     } catch (error) {
@@ -458,6 +591,115 @@ export default function PerfilDetallado() {
     setNuevoInteres("");
     setEditandoEspecialidades(false);
     setErrorEspecialidades("");
+  };
+
+  const agregarIdioma = (idioma: string) => {
+    setErrorIdiomas("");
+    const idiomaCapitalizado = idioma.charAt(0).toUpperCase() + idioma.slice(1).toLowerCase().trim();
+    
+    console.log("➕ Agregando idioma:", idiomaCapitalizado);
+    console.log("📋 Idiomas actuales en temp:", idiomasTemp);
+    
+    if (idiomasTemp.includes(idiomaCapitalizado)) {
+      setErrorIdiomas(t('languageAlreadyAdded'));
+      return;
+    }
+    if (idiomasTemp.length >= 10) {
+      setErrorIdiomas(t('maxLanguages'));
+      return;
+    }
+    setIdiomasTemp((prev: string[]) => {
+      const nuevosIdiomas = [...prev, idiomaCapitalizado];
+      console.log("✅ Nuevos idiomas en temp:", nuevosIdiomas);
+      return nuevosIdiomas;
+    });
+    setNuevoIdioma("");
+  };
+
+  const eliminarIdioma = (idioma: string) => {
+    setIdiomasTemp((prev: string[]) => prev.filter(i => i !== idioma));
+    setErrorIdiomas("");
+  };
+
+  const guardarIdiomas = async () => {
+    setGuardando(true);
+    setExito("");
+    setErrorIdiomas("");
+
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      
+      if (!token) {
+        throw new Error(t('noSession'));
+      }
+
+      console.log("📤 Guardando idiomas:", idiomasTemp);
+      console.log("🔑 Token presente:", !!token);
+      console.log("🌐 Backend URL:", backendUrl);
+
+      const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          idiomas: idiomasTemp 
+        })
+      });
+
+      const data = await response.json();
+      console.log("📥 Respuesta del servidor:", data);
+
+      if (!response.ok) {
+        throw new Error(data.error || data.msg || "Error al actualizar idiomas");
+      }
+
+      // Actualizar localStorage primero
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal.idiomas = idiomasTemp;
+      userLocal["09_idiomas"] = idiomasTemp;
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+      
+      // Actualizar estados
+      const nuevosIdiomas = [...idiomasTemp];
+      setIdiomas(nuevosIdiomas);
+      
+      // Actualizar perfil en estado
+      setPerfil((prev: any) => ({ 
+        ...prev, 
+        idiomas: nuevosIdiomas 
+      }));
+      
+      console.log("✅ Idiomas guardados exitosamente");
+      console.log("📊 Estado actualizado - idiomas:", nuevosIdiomas);
+      console.log("📊 Estado idiomas actual:", idiomas);
+      
+      // Emitir evento para actualizar lista de guías
+      console.log('📤 Emitiendo evento: guideProfileUpdated (idiomas)');
+      window.dispatchEvent(new Event('guideProfileUpdated'));
+      
+      setExito(t('languagesUpdated'));
+      setTimeout(() => setExito(""), 3000);
+      
+      // Cerrar modo edición
+      setEditandoIdiomas(false);
+      
+    } catch (error: any) {
+      console.error("❌ Error al guardar idiomas:", error);
+      setErrorIdiomas(error.message || t('errorSavingLanguages'));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarIdiomas = () => {
+    setIdiomasTemp([...idiomas]);
+    setNuevoIdioma("");
+    setEditandoIdiomas(false);
+    setErrorIdiomas("");
   };
 
   // El rol ya viene normalizado del backend (turista si está pendiente, guia si está aprobado)
@@ -481,7 +723,7 @@ export default function PerfilDetallado() {
     // Validar tamaño (5MB)
     const MAX_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      setError(`❌ Archivo demasiado grande. Máximo: 5MB (tu archivo: ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+      setError(`❌ ${t('fileTooLarge', { size: (file.size / 1024 / 1024).toFixed(2) })}`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -489,7 +731,7 @@ export default function PerfilDetallado() {
     // Validar formato
     const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/webp'];
     if (!ALLOWED_FORMATS.includes(file.type)) {
-      setError('❌ Formato no permitido. Solo: JPEG, PNG, WebP');
+      setError(`❌ ${t('invalidFormat')}`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -502,7 +744,7 @@ export default function PerfilDetallado() {
     
     if (!token || !userLocal?.uid) {
       console.error('❌ No hay sesión activa');
-      setError('❌ Sesión expirada. Por favor, inicia sesión nuevamente.');
+      setError(`❌ ${t('sessionExpired')}`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -535,7 +777,7 @@ export default function PerfilDetallado() {
       if (response.ok) {
         console.log('✅ Foto subida exitosamente:', data.fotoPerfil);
         setFotoPerfil(data.fotoPerfil);
-        setExito("Foto de perfil actualizada exitosamente");
+        setExito(t('photoUpdated'));
         
         // Actualizar localStorage
         const updated = { ...userLocal, fotoPerfil: data.fotoPerfil };
@@ -546,6 +788,10 @@ export default function PerfilDetallado() {
         window.dispatchEvent(new CustomEvent('fotoPerfilActualizada', { 
           detail: { fotoPerfil: data.fotoPerfil, usuario: updated }
         }));
+        
+        // Disparar evento para actualizar lista de guías
+        console.log('📤 Emitiendo evento: guideProfileUpdated (foto perfil)');
+        window.dispatchEvent(new Event('guideProfileUpdated'));
 
         setTimeout(() => setExito(""), 4000);
       } else {
@@ -611,15 +857,15 @@ export default function PerfilDetallado() {
               <FiShield size={24} />
             </div>
             <div>
-              <h4 className="text-white font-bold text-lg leading-tight">Panel de Control</h4>
-              <p className="text-white/60 text-xs">Tienes solicitudes pendientes de revisión</p>
+              <h4 className="text-white font-bold text-lg leading-tight">{t('adminPanel')}</h4>
+              <p className="text-white/60 text-xs">{t('pendingRequestsReview')}</p>
             </div>
           </div>
           <button 
             onClick={() => setIsAdminModalOpen(true)}
             className="px-6 py-2.5 bg-white text-[#1A4D2E] rounded-xl font-bold text-sm hover:bg-[#F6F0E6] transition-all shadow-sm"
           >
-            Ver Solicitudes
+            {t('viewRequests')}
           </button>
         </motion.div>
       )}
@@ -634,7 +880,7 @@ export default function PerfilDetallado() {
               className="text-3xl md:text-4xl font-medium text-white mb-1"
               style={{ fontFamily: "'Jockey One', sans-serif" }}
             >
-              Mi Perfil
+              {t('title')}
             </motion.h1>
           </div>
         </div>
@@ -666,7 +912,7 @@ export default function PerfilDetallado() {
                       }}
                       className="text-sm text-[#3C590D] text-center font-semibold mb-0.5 max-w-xs"
                     >
-                      Sube una foto para completar tu perfil
+                      {t('uploadPhotoMessage')}
                     </motion.p>
                   )}
                 </AnimatePresence>
@@ -680,7 +926,7 @@ export default function PerfilDetallado() {
                       whileTap={{ scale: 0.95 }}
                       onClick={() => fileInputRef.current?.click()}
                       className="absolute -bottom-2 -right-2 p-3 bg-[#E53935] text-white rounded-full shadow-md cursor-pointer hover:bg-[#D32F2F] transition-colors z-10"
-                      title="Cambiar foto de perfil"
+                      title={t('changeProfilePhoto')}
                       type="button"
                     >
                       <FiCamera size={18} strokeWidth={2.5} />
@@ -706,7 +952,7 @@ export default function PerfilDetallado() {
                       whileTap={{ scale: 0.95 }}
                       onClick={() => fileInputRef.current?.click()}
                       className="absolute -bottom-2 -right-2 p-3 bg-[#E53935] text-white rounded-full shadow-md cursor-pointer hover:bg-[#D32F2F] transition-colors z-10"
-                      title="Cambiar foto de perfil"
+                      title={t('changeProfilePhoto')}
                       type="button"
                     >
                       <FiCamera size={18} strokeWidth={2.5} />
@@ -738,9 +984,64 @@ export default function PerfilDetallado() {
                 </div>
 
                 {/* Info básica */}
-                <h2 className="text-2xl md:text-3xl font-semibold text-[#1A4D2E] text-center mb-1">
-                  {perfil.nombre} {perfil.apellido}
-                </h2>
+                {editandoNombre ? (
+                  <div className="w-full mt-2 space-y-3">
+                    <div>
+                      <input
+                        type="text"
+                        value={nombreTemp}
+                        onChange={(e) => setNombreTemp(e.target.value)}
+                        placeholder="Nombre"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-gray-800"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={apellidoTemp}
+                        onChange={(e) => setApellidoTemp(e.target.value)}
+                        placeholder="Apellido"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-gray-800"
+                      />
+                    </div>
+                    {errorNombre && (
+                      <p className="text-red-600 text-xs">{errorNombre}</p>
+                    )}
+                    <div className="flex gap-2 justify-center">
+                      <button
+                        onClick={guardarNombre}
+                        disabled={guardando}
+                        className="flex-1 px-4 py-2 bg-[#1A4D2E] text-white rounded-lg hover:bg-[#0D601E] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                      >
+                        {guardando ? tCommon('loading') : tCommon('save')}
+                      </button>
+                      <button
+                        onClick={cancelarNombre}
+                        disabled={guardando}
+                        className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                      >
+                        {tCommon('cancel')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative group">
+                    <h2 className="text-2xl md:text-3xl font-semibold text-[#1A4D2E] text-center mb-1">
+                      {perfil.nombre} {perfil.apellido}
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setNombreTemp(perfil.nombre || "");
+                        setApellidoTemp(perfil.apellido || "");
+                        setEditandoNombre(true);
+                      }}
+                      className="absolute -right-8 top-1/2 -translate-y-1/2 p-2 text-[#1A4D2E] hover:bg-[#F6F0E6] rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                      title="Editar nombre"
+                    >
+                      <FiEdit2 size={16} />
+                    </button>
+                  </div>
+                )}
                 
                 <div className="flex items-center justify-center gap-1 text-[#81C784] text-xs mb-3">
                   <FiGlobe size={13} />
@@ -756,7 +1057,7 @@ export default function PerfilDetallado() {
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#F1F8F6] text-[#0D601E] rounded-full border border-[#0D601E]/10 mb-6">
                   <FiShield size={12} className="opacity-70" />
                   <span className="text-[10px] font-black uppercase tracking-[0.15em]">
-                    {esGuia ? "Guía Verificado" : "Explorador"}
+                    {esGuia ? t('verifiedGuide') : t('explorer')}
                   </span>
                 </div>
 
@@ -769,7 +1070,7 @@ export default function PerfilDetallado() {
                       className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xs font-medium text-[#81C784] tracking-wide">Descripción</h3>
+                        <h3 className="text-xs font-medium text-[#81C784] tracking-wide">{t('descriptionLabel')}</h3>
                         {!editandoDescripcion && (
                           <motion.button
                             whileHover={{ scale: 1.05 }}
@@ -780,7 +1081,7 @@ export default function PerfilDetallado() {
                             }}
                             className="px-2.5 py-1 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1"
                           >
-                            <FiEdit2 size={12} /> Editar
+                            <FiEdit2 size={12} /> {t('edit')}
                           </motion.button>
                         )}
                       </div>
@@ -789,7 +1090,7 @@ export default function PerfilDetallado() {
                         <div className="space-y-3">
                           <textarea
                             className="w-full bg-[#FDFCF9] border border-[#1A4D2E]/20 rounded-2xl p-4 text-[#1A4D2E] min-h-[150px] focus:ring-2 focus:ring-[#0D601E]/20 outline-none resize-none transition-all"
-                            placeholder="Cuéntanos sobre ti..."
+                            placeholder={t('descriptionPlaceholder')}
                             value={descripcionTemp} 
                             onChange={(e) => setDescripcionTemp(e.target.value)}
                             readOnly={!editandoDescripcion}
@@ -799,13 +1100,13 @@ export default function PerfilDetallado() {
                             <p className="text-xs text-red-600">{errorDescripcion}</p>
                           )}
                           <div className="flex gap-2">
-                            <button onClick={guardarDescripcion} disabled={guardando} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50">Guardar</button>
-                            <button onClick={cancelarDescripcion} disabled={guardando} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors disabled:opacity-50">Cancelar</button>
+                            <button onClick={guardarDescripcion} disabled={guardando} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50">{t('save')}</button>
+                            <button onClick={cancelarDescripcion} disabled={guardando} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors disabled:opacity-50">{tCommon('cancel')}</button>
                           </div>
                         </div>
                       ) : (
                         <p className="text-sm font-normal text-[#1A4D2E] whitespace-pre-wrap">
-                          {perfil?.descripcion || "Sin descripción aún. ¡Cuéntanos sobre ti!"}
+                          {perfil?.descripcion || t('noDescriptionYet')}
                         </p>
                       )}
                     </motion.div>
@@ -820,7 +1121,7 @@ export default function PerfilDetallado() {
                           <div className="p-2 bg-[#F1F8F6] rounded-lg">
                             <FiPhone size={16} className="text-[#66BB6A]" />
                           </div>
-                          <h3 className="text-xs font-medium text-[#81C784] tracking-wide">Teléfono</h3>
+                          <h3 className="text-xs font-medium text-[#81C784] tracking-wide">{t('phoneLabel')}</h3>
                         </div>
                         {!editandoTelefono && (
                           <motion.button
@@ -829,7 +1130,7 @@ export default function PerfilDetallado() {
                             onClick={() => setEditandoTelefono(true)}
                             className="px-2.5 py-1 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1"
                           >
-                            <FiEdit2 size={12} /> Editar
+                            <FiEdit2 size={12} /> {t('edit')}
                           </motion.button>
                         )}
                       </div>
@@ -854,8 +1155,8 @@ export default function PerfilDetallado() {
                             />
                           </div>
                           <div className="flex gap-2">
-                            <button onClick={guardarTelefono} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors">Guardar</button>
-                            <button onClick={cancelarTelefono} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors">Cancelar</button>
+                            <button onClick={guardarTelefono} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors">{t('save')}</button>
+                            <button onClick={cancelarTelefono} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors">{tCommon('cancel')}</button>
                           </div>
                         </div>
                       ) : (
@@ -872,8 +1173,8 @@ export default function PerfilDetallado() {
                         <FiCreditCard size={20} />
                       </div>
                       <div className="flex flex-col text-left">
-                        <span className="text-xs font-bold text-[#1A4D2E]">Métodos de Pago</span>
-                        <span className="text-[10px] text-gray-400 font-medium">Gestionar mis tarjetas</span>
+                        <span className="text-xs font-bold text-[#1A4D2E]">{t('paymentMethods')}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">{t('manageCards')}</span>
                       </div>
                     </button>
                   </div>
@@ -884,12 +1185,12 @@ export default function PerfilDetallado() {
                   <div className="flex justify-between items-center">
                     <div className="text-center flex-1">
                       <p className="text-xl font-semibold text-[#66BB6A]">0</p>
-                      <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wide">Tours</p>
+                      <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wide">{t('tours')}</p>
                     </div>
                     <div className="w-px h-8 bg-[#E0F2F1]" />
                     <div className="text-center flex-1">
                       <p className="text-xl font-semibold text-[#66BB6A]">0</p>
-                      <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wide">Guardados</p>
+                      <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wide">{t('saved')}</p>
                     </div>
                   </div>
                 </div>
@@ -910,10 +1211,10 @@ export default function PerfilDetallado() {
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h3 className="text-xl font-semibold text-[#1A4D2E] mb-1">
-                    {esGuia ? "Especialidades" : "Mis Intereses"}
+                    {esGuia ? t('specialties') : t('myInterests')}
                   </h3>
                   <p className="text-xs text-[#81C784] font-normal">
-                    {editandoEspecialidades ? especialidadesTemp.length : especialidades.length} {(editandoEspecialidades ? especialidadesTemp.length : especialidades.length) === 1 ? 'seleccionada' : 'seleccionadas'}
+                    {editandoEspecialidades ? especialidadesTemp.length : especialidades.length} {(editandoEspecialidades ? especialidadesTemp.length : especialidades.length) === 1 ? t('selected') : t('selectedPlural')}
                   </p>
                 </div>
                 {!editandoEspecialidades && (
@@ -923,7 +1224,7 @@ export default function PerfilDetallado() {
                     onClick={() => setEditandoEspecialidades(true)}
                     className="flex items-center gap-2 px-3.5 py-1.5 bg-[#3A5A40] text-white rounded-lg text-sm font-medium hover:bg-[#2D4630] transition-colors"
                   >
-                    <FiEdit2 size={14} /> Editar
+                    <FiEdit2 size={14} /> {t('edit')}
                   </motion.button>
                 )}
               </div>
@@ -932,7 +1233,7 @@ export default function PerfilDetallado() {
                 <div className="space-y-6">
                   {/* Grid de intereses disponibles para seleccionar */}
                   <div>
-                    <p className="text-sm font-medium text-[#81C784] mb-4 tracking-wide">Selecciona tus intereses</p>
+                    <p className="text-sm font-medium text-[#81C784] mb-4 tracking-wide">{t('selectYourInterests')}</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {INTERESES_DISPONIBLES.filter(int => !especialidadesTemp.includes(int.nombre)).map((interes, i) => {
                         const Icon = interes.icono;
@@ -983,7 +1284,7 @@ export default function PerfilDetallado() {
                   {especialidadesTemp.length > 0 && (
                     <div>
                       <p className="text-sm font-medium text-[#81C784] mb-4 tracking-wide">
-                        Seleccionadas ({especialidadesTemp.length}/10)
+                        {t('selectedCount', { count: especialidadesTemp.length })}
                       </p>
                       <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 md:grid-cols-4">
                         <AnimatePresence>
@@ -1042,7 +1343,7 @@ export default function PerfilDetallado() {
                       ) : (
                         <>
                           <FiCheck size={16} />
-                          Guardar
+                          {t('save')}
                         </>
                       )}
                     </motion.button>
@@ -1053,12 +1354,12 @@ export default function PerfilDetallado() {
                       disabled={guardando}
                       className="px-4 bg-[#F1F8F6] text-[#81C784] text-sm font-medium py-2.5 rounded-lg hover:bg-[#E0F2F1] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Cancelar
+                      {tCommon('cancel')}
                     </motion.button>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:gap-3 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {especialidades.map((esp, i) => {
                     const interesData = getInteresData(esp);
                     const Icon = interesData.icono;
@@ -1086,6 +1387,177 @@ export default function PerfilDetallado() {
               )}
             </motion.div>
 
+            {/* Sección de Idiomas */}
+            {esGuia && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
+              >
+                <div className="mb-6 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">{t('languages')}</h3>
+                    <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
+                      {t('languagesYouSpeak')}
+                    </p>
+                  </div>
+                  {!editandoIdiomas && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setEditandoIdiomas(true)}
+                      className="px-3 py-1.5 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1.5"
+                    >
+                      <FiEdit2 size={14} /> {t('edit')}
+                    </motion.button>
+                  )}
+                </div>
+                
+                {editandoIdiomas ? (
+                  <div className="space-y-6">
+                    {/* Input para agregar idioma */}
+                    <div>
+                      <p className="text-sm font-medium text-[#81C784] mb-4 tracking-wide">{t('addLanguage')}</p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={nuevoIdioma}
+                          onChange={(e) => setNuevoIdioma(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && nuevoIdioma.trim()) {
+                              agregarIdioma(nuevoIdioma);
+                            }
+                          }}
+                          placeholder={t('languagePlaceholder')}
+                          className="flex-1 px-4 py-2 border border-[#E0F2F1] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-[#1A4D2E]"
+                        />
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => nuevoIdioma.trim() && agregarIdioma(nuevoIdioma)}
+                          disabled={guardando || !nuevoIdioma.trim()}
+                          className="px-4 py-2 bg-[#3A5A40] text-white rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <FiPlus size={18} />
+                        </motion.button>
+                      </div>
+                    </div>
+
+                    <AnimatePresence>
+                      {errorIdiomas && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="flex items-center gap-2 text-red-600 text-sm font-semibold bg-red-50 px-4 py-3 rounded-xl border-2 border-red-200"
+                        >
+                          <FiX size={18} />
+                          <span>{errorIdiomas}</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Idiomas seleccionados */}
+                    {idiomasTemp.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-[#81C784] mb-4 tracking-wide">
+                          {t('selectedLanguages')} ({idiomasTemp.length})
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <AnimatePresence>
+                            {idiomasTemp.map((idioma, i) => (
+                              <motion.div 
+                                key={idioma}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.5 }}
+                                transition={{ delay: i * 0.03 }}
+                                className="group relative bg-gradient-to-br from-[#F1F8F6] to-white rounded-lg px-4 py-2 border border-[#A5D6A7] shadow-sm hover:shadow-md transition-all"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <FiGlobe size={16} className="text-[#3A5A40]" />
+                                  <span className="text-sm font-medium text-[#1A4D2E]">
+                                    {idioma}
+                                  </span>
+                                </div>
+                                <motion.button 
+                                  whileHover={{ scale: 1.1, rotate: 90 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => eliminarIdioma(idioma)}
+                                  disabled={guardando}
+                                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-400 hover:bg-red-500 rounded-full flex items-center justify-center text-white shadow-md transition-colors disabled:opacity-50"
+                                >
+                                  <FiX size={12} strokeWidth={3} />
+                                </motion.button>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Botones de acción */}
+                    <div className="flex gap-2.5 pt-4 border-t border-[#E0F2F1]">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={guardarIdiomas}
+                        disabled={guardando}
+                        className="flex-1 bg-[#3A5A40] text-white text-sm font-medium py-2.5 rounded-lg hover:bg-[#2D4630] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        {guardando ? (
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                          />
+                        ) : (
+                          <>
+                            <FiCheck size={16} />
+                            Guardar
+                          </>
+                        )}
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={cancelarIdiomas}
+                        disabled={guardando}
+                        className="px-4 bg-[#F1F8F6] text-[#81C784] text-sm font-medium py-2.5 rounded-lg hover:bg-[#E0F2F1] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {tCommon('cancel')}
+                      </motion.button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {idiomas.length > 0 ? (
+                      idiomas.map((idioma, i) => (
+                        <motion.div 
+                          key={i}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.05 }}
+                          whileHover={{ y: -2, scale: 1.05 }}
+                          className="bg-gradient-to-br from-[#F1F8F6] to-white rounded-lg px-4 py-2 border border-[#E0F2F1] hover:border-[#A5D6A7] transition-all shadow-sm hover:shadow-md"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FiGlobe size={16} className="text-[#3A5A40]" />
+                            <span className="text-sm font-medium text-[#1A4D2E]">
+                              {idioma}
+                            </span>
+                          </div>
+                        </motion.div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">{t('noLanguagesYet')}</p>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
             {/* Sección de los Tours */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -1097,15 +1569,15 @@ export default function PerfilDetallado() {
               <div className="mb-6 flex justify-between items-end">
                 <div>
                   <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">
-                    {esGuia ? "Mis Experiencias" : "Próximos Destinos"}
+                    {esGuia ? t('myExperiences') : t('upcomingDestinations')}
                   </h3>
                   <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
-                    {esGuia ? "Tours publicados" : "Reservaciones"}
+                    {esGuia ? t('toursPublished') : t('bookings')}
                   </p>
                 </div>
                 {esGuia && (
                   <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
-                    {tours.length} publicados
+                    {tours.length} {t('published')}
                   </span>
                 )}
               </div>
@@ -1123,13 +1595,13 @@ export default function PerfilDetallado() {
                     <div className="w-7 h-7 bg-[#E8F5E9] group-hover:bg-[#3A5A40] group-hover:text-white rounded-full flex items-center justify-center transition-colors">
                       <FiPlus size={16} />
                     </div>
-                    <span className="text-sm font-medium tracking-tight">Crear experiencia</span>
+                    <span className="text-sm font-medium tracking-tight">{t('createExperience')}</span>
                   </motion.button>
 
                   {/* Renderizado de tours  */}
                   {tours.length === 0 && (
                     <p className="text-center text-[11px] text-[#81C784] font-normal py-4">
-                      Aún no hay experiencias. Crea una para comenzar.
+                      {t('noExperiencesYet')}
                     </p>
                   )}
                 </div>
@@ -1141,12 +1613,12 @@ export default function PerfilDetallado() {
                     <div className="w-14 h-14 bg-[#F1F8F6] rounded-xl shadow-sm flex items-center justify-center mb-3 border border-[#E0F2F1]">
                       <FiMap size={24} className="text-[#66BB6A]" />
                     </div>
-                    <h4 className="text-base font-semibold text-[#1A4D2E]">Explora tours</h4>
+                    <h4 className="text-base font-semibold text-[#1A4D2E]">{t('exploreTours')}</h4>
                     <p className="text-xs text-[#81C784] max-w-[200px] mt-1.5 mb-5 font-normal">
-                      Encuentra el tour perfecto para ti.
+                      {t('findPerfectTour')}
                     </p>
                     <button className="px-5 py-1.5 bg-[#3A5A40] text-white rounded-lg text-xs font-medium tracking-wide shadow-md hover:bg-[#2D4630]">
-                      Explorar
+                      {t('explore')}
                     </button>
                   </div>
                 </div>
