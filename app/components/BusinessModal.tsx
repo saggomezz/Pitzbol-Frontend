@@ -9,8 +9,8 @@ interface FormState {
   sitioWeb: string;
   rfc: string;
   cp: string;
-  galeria: (string | null)[];
-  logo: string | null;
+  galeria: (File | null)[];
+  logo: File | null;
 }
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
@@ -39,7 +39,13 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     const saved = typeof window !== "undefined" ? localStorage.getItem("pitzbol_business_draft") : null;
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Los Files no se guardan, siempre empezar como null
+        return {
+          ...parsed,
+          galeria: [null, null, null],
+          logo: null
+        };
       } catch {}
     }
     return {
@@ -74,6 +80,13 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     }
     return { logoUrl: null, galeriaUrls: [null, null, null] };
   });
+  
+  // Estado separado para los archivos File (no se puede serializar en localStorage)
+  const [files, setFiles] = useState<{ logo: File | null; galeria: (File | null)[] }>({
+    logo: null,
+    galeria: [null, null, null]
+  });
+  
   const [galeriaErrors, setGaleriaErrors] = useState<string[]>(["", "", ""]);
   const [isValidating, setIsValidating] = useState(false);
   const fileInputs = useRef<(HTMLInputElement | null)[]>([]);
@@ -101,7 +114,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       const error = validateImageFile(file);
       if (error) {
         setLogoError(error);
-        setForm((f: FormState) => ({ ...f, logo: null }));
+        setFiles((f) => ({ ...f, logo: null }));
         setImagePreview(prev => ({ ...prev, logoUrl: null }));
         console.error("[Logo]", error);
         return;
@@ -110,14 +123,14 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       const reader = new FileReader();
       reader.onload = ev => {
         setImagePreview(prev => ({ ...prev, logoUrl: ev.target?.result as string }));
-        setForm((f: FormState) => ({ ...f, logo: file.name }));
+        setFiles((f) => ({ ...f, logo: file }));
         console.log("[Logo] Imagen cargada correctamente:", file.name);
       };
       reader.readAsDataURL(file);
     } else {
       setLogoError("");
       setImagePreview(prev => ({ ...prev, logoUrl: null }));
-      setForm((f: FormState) => ({ ...f, logo: null }));
+      setFiles((f) => ({ ...f, logo: null }));
     }
   };
 
@@ -137,7 +150,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
           arr[i] = error;
           return arr;
         });
-        setForm((f: FormState) => {
+        setFiles((f) => {
           const gal = [...f.galeria];
           gal[i] = null;
           return { ...f, galeria: gal };
@@ -157,9 +170,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
           arr[i] = ev.target?.result as string;
           return { ...prev, galeriaUrls: arr };
         });
-        setForm((f: FormState) => {
+        setFiles((f) => {
           const gal = [...f.galeria];
-          gal[i] = file.name;
+          gal[i] = file;
           return { ...f, galeria: gal };
         });
         setGaleriaErrors((prev: string[]) => {
@@ -171,7 +184,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       };
       reader.readAsDataURL(file);
     } else {
-      setForm((f: FormState) => {
+      setFiles((f) => {
         const gal = [...f.galeria];
         gal[i] = null;
         return { ...f, galeria: gal };
@@ -202,7 +215,18 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
   // Guardar automáticamente en localStorage cada vez que cambia form
   useEffect(() => {
-    localStorage.setItem("pitzbol_business_draft", JSON.stringify(form));
+    // No guardar Files en localStorage, solo los otros campos
+    const formToSave = {
+      nombre: form.nombre,
+      categoria: form.categoria,
+      correo: form.correo,
+      telefono: form.telefono,
+      ubicacion: form.ubicacion,
+      sitioWeb: form.sitioWeb,
+      rfc: form.rfc,
+      cp: form.cp
+    };
+    localStorage.setItem("pitzbol_business_draft", JSON.stringify(formToSave));
   }, [form]);
 
   // Guardar imágenes en localStorage
@@ -367,8 +391,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
     let hasErrors = false;
 
-    // Validar logo
-    if (!form.logo) {
+    // Validar logo (usar files.logo en lugar de form.logo)
+    if (!files.logo && !imagePreview.logoUrl) {
       setLogoError("El logo del negocio es obligatorio");
       hasErrors = true;
     }
@@ -430,6 +454,19 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     // En el paso 3 se valida la galería (opcional)
     // Si quieres hacer la galería obligatoria, puedes agregar validaciones aquí
     return true;
+  };
+
+  // Función para convertir Data URL a File
+  const dataUrlToFile = (dataUrl: string, filename: string): File => {
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const bstr = atob(arr[1]);
+    const n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      u8arr[i] = bstr.charCodeAt(i);
+    }
+    return new File([u8arr], filename, { type: mime });
   };
 
   const handleFinish = async () => {
@@ -498,33 +535,70 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     setIsFinishing(true);
     setSuccess(false);
     try {
-      const tempPassword = Math.random().toString(36).slice(-10) + "A1!";
-      const res = await fetch("http://localhost:3001/api/business/register", {
+      // Crear FormData para enviar archivos
+      const formData = new FormData();
+      formData.append("email", form.correo);
+      formData.append("businessName", form.nombre);
+      formData.append("category", form.categoria);
+      formData.append("phone", form.telefono);
+      formData.append("location", form.ubicacion);
+      formData.append("website", form.sitioWeb);
+      formData.append("rfc", form.rfc);
+      formData.append("cp", form.cp);
+      
+      // Agregar logo - convertir Data URL a File si es necesario
+      if (files.logo) {
+        formData.append("logo", files.logo);
+      } else if (imagePreview.logoUrl) {
+        // Si no hay File object pero hay una Data URL, convertir
+        const logoFile = dataUrlToFile(imagePreview.logoUrl, "logo.png");
+        formData.append("logo", logoFile);
+      }
+      
+      // Agregar imágenes de galería - convertir Data URLs a Files si es necesario
+      files.galeria.forEach((file: File | null, index: number) => {
+        if (file) {
+          formData.append("images", file);
+        } else if (imagePreview.galeriaUrls[index]) {
+          // Si no hay File object pero hay una Data URL, convertir
+          const galeriaFile = dataUrlToFile(imagePreview.galeriaUrls[index], `galeria_${index}.png`);
+          formData.append("images", galeriaFile);
+        }
+      });
+      
+      console.log("[BusinessModal] Enviando FormData:", {
+        email: form.correo,
+        businessName: form.nombre,
+        category: form.categoria,
+        phone: form.telefono,
+        location: form.ubicacion,
+        website: form.sitioWeb,
+        rfc: form.rfc,
+        cp: form.cp,
+        logo: files.logo || imagePreview.logoUrl ? "Presente" : "NO PRESENTE",
+        galeria: (files.galeria.filter(f => f).length + imagePreview.galeriaUrls.filter(u => u).length) + " archivos"
+      });
+      
+      const res = await fetch("http://localhost:3001/api/business/register-with-images", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: form.correo,
-          password: tempPassword,
-          businessName: form.nombre,
-          category: form.categoria,
-          phone: form.telefono,
-          location: form.ubicacion,
-          website: form.sitioWeb,
-          rfc: form.rfc,
-          cp: form.cp
-        })
+        body: formData
       });
       
       const data = await res.json().catch(() => ({}));
       
       if (!res.ok) {
+        console.error("[BusinessModal] Error del servidor:", data);
         setSaveError(data.message || "Error al guardar el negocio. Intenta de nuevo.");
+        if (data.missingFields) {
+          console.error("[BusinessModal] Campos faltantes:", data.missingFields);
+        }
         setIsFinishing(false);
         return;
       }
       
       localStorage.removeItem("pitzbol_business_draft");
       localStorage.removeItem("pitzbol_business_images");
+      setFiles({ logo: null, galeria: [null, null, null] });
       setSuccess(true);
       setTimeout(() => {
         setIsFinishing(false);
