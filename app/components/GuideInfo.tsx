@@ -8,9 +8,10 @@ interface GuideInfoProps {
   isOpen: boolean;
   onClose: () => void;
   onContinue: () => void;
+  isPending?: boolean;
 }
 
-const GuideInfo: React.FC<GuideInfoProps> = ({ isOpen, onClose, onContinue }) => {
+const GuideInfo: React.FC<GuideInfoProps> = ({ isOpen, onClose, onContinue, isPending = false }) => {
   const t = useTranslations('guideInfo');
   const contentRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLDivElement>(null);
@@ -133,6 +134,11 @@ const GuideInfo: React.FC<GuideInfoProps> = ({ isOpen, onClose, onContinue }) =>
             <button className={styles.guideInfoBtn} onClick={onContinue}>
               ¡Quiero convertirme en guía!
             </button>
+            {isPending && (
+              <div className={styles.guideInfoPendingNote}>
+                Tu solicitud está en revisión. Al continuar verás el estatus.
+              </div>
+            )}
           </div>
           {showArrow && (
             <button
