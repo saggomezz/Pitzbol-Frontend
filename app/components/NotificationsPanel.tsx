@@ -194,9 +194,16 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     const handleStorageChange = () => {
       cargarNotificacionesLocal();
     };
+    const handleNotificationsUpdated = (event: Event) => {
+      cargarNotificacionesLocal();
+    };
     
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
+    };
   }, [userId]);
 
   const marcarComoLeida = async (id: string) => {
