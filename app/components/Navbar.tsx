@@ -44,6 +44,12 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const t = useTranslations('navbar');
     const tRoles = useTranslations('roles');
 
+    useEffect(() => {
+        if (!isMenuOpen) return;
+        const storedUser = localStorage.getItem("pitzbol_user");
+        setUser(storedUser ? JSON.parse(storedUser) : null);
+    }, [isMenuOpen]);
+
     // Determinar tipo de usuario para notificaciones
     const isGuide = user?.role === "guide" || user?.role === "guia" || user?.guide_status === "aprobado";
     const userType = isGuide ? "guide" : "tourist";
@@ -91,15 +97,21 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         const handlePhotoUpdate = (_e: Event) => {
             refreshFromStorage();
         };
+        const handleGuideSubmission = (_e: Event) => {
+            console.log("🎯 Evento: guideSubmissionCompleted - Actualizando Navbar...");
+            refreshFromStorage();
+        };
         const closeMenu = (e: MouseEvent | globalThis.MouseEvent) => {
             if (menuRef.current && e.target instanceof Node && !menuRef.current.contains(e.target)) setIsMenuOpen(false);
         };
         window.addEventListener("fotoPerfilActualizada", handlePhotoUpdate);
+        window.addEventListener("guideSubmissionCompleted", handleGuideSubmission);
         window.addEventListener("authStateChanged", refreshFromStorage);
         window.addEventListener("storage", refreshFromStorage);
         document.addEventListener("mousedown", closeMenu);
         return () => {
             window.removeEventListener("fotoPerfilActualizada", handlePhotoUpdate);
+            window.removeEventListener("guideSubmissionCompleted", handleGuideSubmission);
             window.removeEventListener("authStateChanged", refreshFromStorage);
             window.removeEventListener("storage", refreshFromStorage);
             document.removeEventListener("mousedown", closeMenu);
@@ -108,11 +120,21 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
 
     const role = user?.role || "visitor";
     const guideStatus = user?.guide_status || "ninguno";
-    const isPendingVerification = (user?.guide_status === "pendiente") && localStorage.getItem("pitzbol_guide_submitted") === "true";
+    const guideSubmissionKey = user?.uid ? `pitzbol_guide_submitted_${user.uid}` : null;
+    const hasGuideSubmissionFlag = !!guideSubmissionKey && localStorage.getItem(guideSubmissionKey) === "true";
+    const isPendingVerification = !!user?.uid && (
+        guideStatus === "pendiente" ||
+        guideStatus === "en_revision" ||
+        hasGuideSubmissionFlag
+    );
 
     const handleLogout = () => {
         localStorage.removeItem("pitzbol_user");
         localStorage.removeItem("pitzbol_token");
+        if (user?.uid) {
+            localStorage.removeItem(`pitzbol_guide_submitted_${user.uid}`);
+        }
+        localStorage.removeItem("pitzbol_guide_submitted");
         setUser(null);
         window.location.href = "/";
     };
@@ -291,13 +313,13 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     
                                     {isPendingVerification ? (
                                         <button
-                                            onClick={() => { setIsMenuOpen(false); setShowStatusModal(true); }}
-                                            className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-100 rounded-2xl w-full text-left cursor-pointer hover:bg-orange-100 transition-colors"
+                                            onClick={() => { setIsMenuOpen(false); onOpenGuide(); }}
+                                            className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-100 rounded-2xl w-full text-left hover:bg-orange-100 transition-colors"
                                         >
-                                            <FiClock className="text-orange-700" />
+                                            <FiAward className="text-[#0D601E]" />
                                             <div className="flex flex-col">
-                                                <span className="text-[11px] text-orange-700 font-bold italic">{t('verifyingData')}</span>
-                                                <span className="text-[9px] text-orange-600/60 font-medium tracking-tight">{t('clickStatus')}</span>
+                                                <span className="text-[#1A4D2E] font-medium text-sm italic">{t('becomeGuide')}</span>
+                                                <span className="text-[10px] text-orange-700/80 font-bold italic">{t('verifyingData')}</span>
                                             </div>
                                         </button>
                                     ) : (
