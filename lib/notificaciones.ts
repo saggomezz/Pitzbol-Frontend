@@ -34,12 +34,15 @@ export const enviarNotificacion = async (
     enlace
   };
 
+  // Guardar localmente SIEMPRE para mostrar al instante
+  guardarNotificacionLocal(userId, notificacion);
+
   // Lógica para enviar al backend si existe sesión
   const token = localStorage.getItem('pitzbol_token');
   const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
   if (token) {
     try {
-      await fetch(`${API_BASE}/api/admin/notificaciones/${userId}`, {
+      const response = await fetch(`${API_BASE}/api/admin/notificaciones/${userId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -47,12 +50,12 @@ export const enviarNotificacion = async (
         },
         body: JSON.stringify(notificacion)
       });
+      if (!response.ok) {
+        throw new Error(`Backend respondió ${response.status}`);
+      }
     } catch (e) {
-      // fallback local
-      guardarNotificacionLocal(userId, notificacion);
+      // Si falla el backend, ya quedó guardada localmente
     }
-  } else {
-    guardarNotificacionLocal(userId, notificacion);
   }
   return notificacion;
 };
@@ -72,6 +75,9 @@ function guardarNotificacionLocal(userId: string, notificacion: PitzbolNotificat
       url: window.location.href
     })
   );
+  window.dispatchEvent(new CustomEvent('pitzbolNotificationsUpdated', {
+    detail: { key }
+  }));
 }
 
 /**
@@ -109,7 +115,7 @@ export const notificarSolicitudEnviada = (userId: string) => {
     'info',
     'Solicitud Enviada ✓',
     'Tu solicitud para ser Guía Pitzbol ha sido enviada correctamente. Estamos revisando tu información y te notificaremos pronto.',
-    '/perfil'
+    '/guide/estatus'
   );
 };
 
@@ -149,6 +155,9 @@ export const marcarNotificacionComoLeida = (userId: string, notificationId: stri
       url: window.location.href
     })
   );
+  window.dispatchEvent(new CustomEvent('pitzbolNotificationsUpdated', {
+    detail: { key }
+  }));
 };
 
 /**

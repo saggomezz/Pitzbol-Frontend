@@ -9,8 +9,8 @@ interface FormState {
   sitioWeb: string;
   rfc: string;
   cp: string;
-  galeria: (string | null)[];
-  logo: string | null;
+  galeria: (File | null)[];
+  logo: File | null;
 }
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
@@ -39,7 +39,13 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     const saved = typeof window !== "undefined" ? localStorage.getItem("pitzbol_business_draft") : null;
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Los Files no se guardan, siempre empezar como null
+        return {
+          ...parsed,
+          galeria: [null, null, null],
+          logo: null
+        };
       } catch {}
     }
     return {
@@ -55,15 +61,34 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       logo: null
     } as FormState;
   });
-  const [rfcError, setRfcError] = useState(false);
-  const [cpError, setCpError] = useState(false);
+  const [rfcError, setRfcError] = useState("");
+  const [cpError, setCpError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [nombreError, setNombreError] = useState("");
   const [categoriaError, setCategoriaError] = useState("");
+  const [telefonoError, setTelefonoError] = useState("");
+  const [ubicacionError, setUbicacionError] = useState("");
+  const [sitioWebError, setSitioWebError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [logoError, setLogoError] = useState("");
-  const [imagePreview, setImagePreview] = useState<ImagePreviewState>({ logoUrl: null, galeriaUrls: [null, null, null] });
-    const [galeriaErrors, setGaleriaErrors] = useState<string[]>(["", "", ""]);
+  const [imagePreview, setImagePreview] = useState<ImagePreviewState>(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("pitzbol_business_images") : null;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    return { logoUrl: null, galeriaUrls: [null, null, null] };
+  });
+  
+  // Estado separado para los archivos File (no se puede serializar en localStorage)
+  const [files, setFiles] = useState<{ logo: File | null; galeria: (File | null)[] }>({
+    logo: null,
+    galeria: [null, null, null]
+  });
+  
+  const [galeriaErrors, setGaleriaErrors] = useState<string[]>(["", "", ""]);
+  const [isValidating, setIsValidating] = useState(false);
   const fileInputs = useRef<(HTMLInputElement | null)[]>([]);
   const logoInput = useRef<HTMLInputElement | null>(null);
 
@@ -89,7 +114,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       const error = validateImageFile(file);
       if (error) {
         setLogoError(error);
-        setForm((f: FormState) => ({ ...f, logo: null }));
+        setFiles((f) => ({ ...f, logo: null }));
         setImagePreview(prev => ({ ...prev, logoUrl: null }));
         console.error("[Logo]", error);
         return;
@@ -98,14 +123,14 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       const reader = new FileReader();
       reader.onload = ev => {
         setImagePreview(prev => ({ ...prev, logoUrl: ev.target?.result as string }));
-        setForm((f: FormState) => ({ ...f, logo: file.name }));
+        setFiles((f) => ({ ...f, logo: file }));
         console.log("[Logo] Imagen cargada correctamente:", file.name);
       };
       reader.readAsDataURL(file);
     } else {
       setLogoError("");
       setImagePreview(prev => ({ ...prev, logoUrl: null }));
-      setForm((f: FormState) => ({ ...f, logo: null }));
+      setFiles((f) => ({ ...f, logo: null }));
     }
   };
 
@@ -125,7 +150,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
           arr[i] = error;
           return arr;
         });
-        setForm((f: FormState) => {
+        setFiles((f) => {
           const gal = [...f.galeria];
           gal[i] = null;
           return { ...f, galeria: gal };
@@ -145,9 +170,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
           arr[i] = ev.target?.result as string;
           return { ...prev, galeriaUrls: arr };
         });
-        setForm((f: FormState) => {
+        setFiles((f) => {
           const gal = [...f.galeria];
-          gal[i] = file.name;
+          gal[i] = file;
           return { ...f, galeria: gal };
         });
         setGaleriaErrors((prev: string[]) => {
@@ -159,7 +184,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       };
       reader.readAsDataURL(file);
     } else {
-      setForm((f: FormState) => {
+      setFiles((f) => {
         const gal = [...f.galeria];
         gal[i] = null;
         return { ...f, galeria: gal };
@@ -182,16 +207,32 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     if (isOpen) {
       setStep(0);
       setIsFinishing(false);
-      setRfcError(false);
-      setCpError(false);
+      setRfcError("");
+      setCpError("");
       setSaveError("");
     }
   }, [isOpen]);
 
   // Guardar automáticamente en localStorage cada vez que cambia form
   useEffect(() => {
-    localStorage.setItem("pitzbol_business_draft", JSON.stringify(form));
+    // No guardar Files en localStorage, solo los otros campos
+    const formToSave = {
+      nombre: form.nombre,
+      categoria: form.categoria,
+      correo: form.correo,
+      telefono: form.telefono,
+      ubicacion: form.ubicacion,
+      sitioWeb: form.sitioWeb,
+      rfc: form.rfc,
+      cp: form.cp
+    };
+    localStorage.setItem("pitzbol_business_draft", JSON.stringify(formToSave));
   }, [form]);
+
+  // Guardar imágenes en localStorage
+  useEffect(() => {
+    localStorage.setItem("pitzbol_business_images", JSON.stringify(imagePreview));
+  }, [imagePreview]);
 
 
   const validateEmail = (valor: string) => {
@@ -199,6 +240,19 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     // Regex simple para email
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor);
   };
+  
+  const validatePhone = (valor: string) => {
+    // Validar que sea un número de 10 dígitos
+    return valor !== "" && /^\d{10}$/.test(valor);
+  };
+
+  const validateURL = (valor: string) => {
+    if (!valor) return false;
+    // Regex para validar URL o dominio
+    const urlPattern = /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
+    return urlPattern.test(valor);
+  };
+  
   const validateRFC = (valor: string) => {
     const rfcRegex = /^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}$/i;
     return valor !== "" && rfcRegex.test(valor);
@@ -207,16 +261,221 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     return valor !== "" && /^\d{5}$/.test(valor);
   };
 
+  // Validar unicidad de datos en el servidor
+  const validateUniqueness = async (field: 'nombre' | 'correo' | 'telefono', value: string) => {
+    if (!value) return;
+    
+    setIsValidating(true);
+    try {
+      const body: any = {};
+      if (field === 'nombre') body.businessName = value;
+      if (field === 'correo') body.email = value;
+      if (field === 'telefono') body.phone = value;
+
+      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json();
+      
+      if (!data.valid && data.errors) {
+        if (field === 'nombre' && data.errors.businessName) {
+          setNombreError(data.errors.businessName);
+        }
+        if (field === 'correo' && data.errors.email) {
+          setEmailError(data.errors.email);
+        }
+        if (field === 'telefono' && data.errors.phone) {
+          setTelefonoError(data.errors.phone);
+        }
+      }
+    } catch (error) {
+      console.error("Error validando unicidad:", error);
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
 
   // Guardar en Firestore
   const [success, setSuccess] = useState(false);
+
+  // Función para validar el paso 1 antes de avanzar
+  const validateStep1 = async () => {
+    setNombreError("");
+    setEmailError("");
+    setTelefonoError("");
+    setCategoriaError("");
+
+    let hasErrors = false;
+
+    // Validar nombre
+    if (!form.nombre.trim()) {
+      setNombreError("El nombre del negocio es obligatorio");
+      hasErrors = true;
+    }
+
+    // Validar categoría
+    if (!form.categoria.trim()) {
+      setCategoriaError("Debes seleccionar una categoría");
+      hasErrors = true;
+    }
+
+    // Validar email
+    if (!form.correo.trim()) {
+      setEmailError("El correo electrónico es obligatorio");
+      hasErrors = true;
+    } else if (!validateEmail(form.correo)) {
+      setEmailError("El formato del correo es inválido");
+      hasErrors = true;
+    }
+
+    // Validar teléfono
+    if (!form.telefono.trim()) {
+      setTelefonoError("El teléfono es obligatorio");
+      hasErrors = true;
+    } else if (!validatePhone(form.telefono)) {
+      setTelefonoError("El teléfono debe tener 10 dígitos");
+      hasErrors = true;
+    }
+
+    if (hasErrors) return false;
+
+    // Validar unicidad en el servidor
+    setIsValidating(true);
+    try {
+      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: form.nombre,
+          email: form.correo,
+          phone: form.telefono
+        })
+      });
+
+      const data = await res.json();
+      
+      if (!data.valid && data.errors) {
+        if (data.errors.businessName) {
+          setNombreError(data.errors.businessName);
+          hasErrors = true;
+        }
+        if (data.errors.email) {
+          setEmailError(data.errors.email);
+          hasErrors = true;
+        }
+        if (data.errors.phone) {
+          setTelefonoError(data.errors.phone);
+          hasErrors = true;
+        }
+      }
+    } catch (error) {
+      console.error("Error validando unicidad:", error);
+      setSaveError("Error de red al validar los datos");
+      return false;
+    } finally {
+      setIsValidating(false);
+    }
+
+    return !hasErrors;
+  };
+
+  // Función para validar el paso 2 antes de avanzar
+  const validateStep2 = async () => {
+    setLogoError("");
+    setUbicacionError("");
+    setSitioWebError("");
+
+    let hasErrors = false;
+
+    // Validar logo (usar files.logo en lugar de form.logo)
+    if (!files.logo && !imagePreview.logoUrl) {
+      setLogoError("El logo del negocio es obligatorio");
+      hasErrors = true;
+    }
+
+    // Validar ubicación
+    if (!form.ubicacion.trim()) {
+      setUbicacionError("La ubicación es obligatoria");
+      hasErrors = true;
+    } else {
+      // Validar unicidad de ubicación
+      try {
+        const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ location: form.ubicacion })
+        });
+
+        const data = await res.json();
+        if (!data.valid && data.errors?.location) {
+          setUbicacionError(data.errors.location);
+          hasErrors = true;
+        }
+      } catch (error) {
+        console.error("Error validando ubicación:", error);
+      }
+    }
+
+    // Validar sitio web
+    if (!form.sitioWeb.trim()) {
+      setSitioWebError("El sitio web o redes sociales son obligatorios");
+      hasErrors = true;
+    } else if (!validateURL(form.sitioWeb)) {
+      setSitioWebError("URL no válida. Ejemplo: https://facebook.com/tunegocio");
+      hasErrors = true;
+    } else {
+      // Validar unicidad de sitio web
+      try {
+        const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ website: form.sitioWeb })
+        });
+
+        const data = await res.json();
+        if (!data.valid && data.errors?.website) {
+          setSitioWebError(data.errors.website);
+          hasErrors = true;
+        }
+      } catch (error) {
+        console.error("Error validando sitio web:", error);
+      }
+    }
+
+    return !hasErrors;
+  };
+
+  // Función para validar el paso 3 antes de avanzar
+  const validateStep3 = () => {
+    // En el paso 3 se valida la galería (opcional)
+    // Si quieres hacer la galería obligatoria, puedes agregar validaciones aquí
+    return true;
+  };
+
+  // Función para convertir Data URL a File
+  const dataUrlToFile = (dataUrl: string, filename: string): File => {
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const bstr = atob(arr[1]);
+    const n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      u8arr[i] = bstr.charCodeAt(i);
+    }
+    return new File([u8arr], filename, { type: mime });
+  };
+
   const handleFinish = async () => {
     setSaveError("");
     setEmailError("");
     setNombreError("");
     setCategoriaError("");
-    setRfcError(false);
-    setCpError(false);
+    setRfcError("");
+    setCpError("");
     let firstErrorStep = null;
     if (!form.nombre.trim()) {
       setNombreError("El nombre es obligatorio");
@@ -231,43 +490,115 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       if (firstErrorStep === null) firstErrorStep = 0;
     }
     if (!validateRFC(form.rfc)) {
-      setRfcError(true);
+      setRfcError("RFC inválido");
       if (firstErrorStep === null) firstErrorStep = 3;
     }
     if (!validateCP(form.cp)) {
-      setCpError(true);
+      setCpError("CP inválido");
       if (firstErrorStep === null) firstErrorStep = 3;
     }
     if (firstErrorStep !== null) {
       setStep(firstErrorStep);
       return;
     }
-    setIsFinishing(true);
-    setSuccess(false);
+
+    // Validar unicidad de RFC y CP
     try {
-      const tempPassword = Math.random().toString(36).slice(-10) + "A1!";
-      const res = await fetch("http://localhost:3001/api/business/register", {
+      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: form.correo,
-          password: tempPassword,
-          businessName: form.nombre,
-          category: form.categoria,
-          phone: form.telefono,
-          location: form.ubicacion,
-          website: form.sitioWeb,
           rfc: form.rfc,
           cp: form.cp
         })
       });
+
+      const data = await res.json();
+      if (!data.valid && data.errors) {
+        if (data.errors.rfc) {
+          setRfcError(data.errors.rfc);
+          setStep(3);
+          return;
+        }
+        if (data.errors.cp) {
+          setCpError(data.errors.cp);
+          setStep(3);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error("Error validando RFC y CP:", error);
+      setSaveError("Error al validar los datos. Intenta de nuevo.");
+      return;
+    }
+
+    setIsFinishing(true);
+    setSuccess(false);
+    try {
+      // Crear FormData para enviar archivos
+      const formData = new FormData();
+      formData.append("email", form.correo);
+      formData.append("businessName", form.nombre);
+      formData.append("category", form.categoria);
+      formData.append("phone", form.telefono);
+      formData.append("location", form.ubicacion);
+      formData.append("website", form.sitioWeb);
+      formData.append("rfc", form.rfc);
+      formData.append("cp", form.cp);
+      
+      // Agregar logo - convertir Data URL a File si es necesario
+      if (files.logo) {
+        formData.append("logo", files.logo);
+      } else if (imagePreview.logoUrl) {
+        // Si no hay File object pero hay una Data URL, convertir
+        const logoFile = dataUrlToFile(imagePreview.logoUrl, "logo.png");
+        formData.append("logo", logoFile);
+      }
+      
+      // Agregar imágenes de galería - convertir Data URLs a Files si es necesario
+      files.galeria.forEach((file: File | null, index: number) => {
+        if (file) {
+          formData.append("images", file);
+        } else if (imagePreview.galeriaUrls[index]) {
+          // Si no hay File object pero hay una Data URL, convertir
+          const galeriaFile = dataUrlToFile(imagePreview.galeriaUrls[index], `galeria_${index}.png`);
+          formData.append("images", galeriaFile);
+        }
+      });
+      
+      console.log("[BusinessModal] Enviando FormData:", {
+        email: form.correo,
+        businessName: form.nombre,
+        category: form.categoria,
+        phone: form.telefono,
+        location: form.ubicacion,
+        website: form.sitioWeb,
+        rfc: form.rfc,
+        cp: form.cp,
+        logo: files.logo || imagePreview.logoUrl ? "Presente" : "NO PRESENTE",
+        galeria: (files.galeria.filter(f => f).length + imagePreview.galeriaUrls.filter(u => u).length) + " archivos"
+      });
+      
+      const res = await fetch("http://localhost:3001/api/business/register-with-images", {
+        method: "POST",
+        body: formData
+      });
+      
+      const data = await res.json().catch(() => ({}));
+      
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        console.error("[BusinessModal] Error del servidor:", data);
         setSaveError(data.message || "Error al guardar el negocio. Intenta de nuevo.");
+        if (data.missingFields) {
+          console.error("[BusinessModal] Campos faltantes:", data.missingFields);
+        }
         setIsFinishing(false);
         return;
       }
+      
       localStorage.removeItem("pitzbol_business_draft");
+      localStorage.removeItem("pitzbol_business_images");
+      setFiles({ logo: null, galeria: [null, null, null] });
       setSuccess(true);
       setTimeout(() => {
         setIsFinishing(false);
@@ -275,7 +606,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         onClose();
       }, 3500);
     } catch (e) {
-      setSaveError("Error de red al guardar el negocio. Intenta de nuevo.");
+      console.error("Error:", e);
+      setSaveError("Error de red al guardar el negocio. Verifica tu conexión.");
       setIsFinishing(false);
     }
   };
@@ -325,34 +657,38 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                     <div className={cardClass}>
                       <span className={labelClass}>{t('brandIdentity')}</span>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="relative">
+                        <div className="relative pb-5">
                           <input 
                             placeholder={t('businessName')} 
                             className={inputClass + (nombreError ? " border-red-500 bg-red-50/50" : "")} 
                             value={form.nombre} 
                             onChange={e => {
                               setForm((f: FormState) => ({ ...f, nombre: e.target.value }));
-                              if (!e.target.value.trim()) setNombreError(t('nameRequired'));
+                              if (!e.target.value.trim()) setNombreError("El nombre es obligatorio");
                               else setNombreError("");
                             }}
                             onBlur={e => {
-                              if (!e.target.value.trim()) setNombreError(t('nameRequired'));
-                              else setNombreError("");
+                              if (!e.target.value.trim()) {
+                                setNombreError("El nombre es obligatorio");
+                              } else {
+                                setNombreError("");
+                                validateUniqueness('nombre', e.target.value);
+                              }
                             }}
                           />
-                          {nombreError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0">{nombreError}</p>}
+                          {nombreError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{nombreError}</p>}
                         </div>
-                        <div className="relative">
+                        <div className="relative pb-5">
                           <select 
                             className={inputClass + " appearance-none cursor-pointer pr-10" + (categoriaError ? " border-red-500 bg-red-50/50" : "")}
                             value={form.categoria}
                             onChange={e => {
                               setForm((f: FormState) => ({ ...f, categoria: e.target.value }));
-                              if (!e.target.value.trim()) setCategoriaError(t('categoryRequired'));
+                              if (!e.target.value.trim()) setCategoriaError("Selecciona una categoría");
                               else setCategoriaError("");
                             }}
                             onBlur={e => {
-                              if (!e.target.value.trim()) setCategoriaError(t('categoryRequired'));
+                              if (!e.target.value.trim()) setCategoriaError("Selecciona una categoría");
                               else setCategoriaError("");
                             }}
                           >
@@ -369,35 +705,74 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" 
                             size={18} 
                           />
-                          {categoriaError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0">{categoriaError}</p>}
+                          {categoriaError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{categoriaError}</p>}
                         </div>
                       </div>
                     </div>
                     <div className={cardClass}>
                       <span className={labelClass}>{t('officialContact')}</span>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="relative">
+                        <div className="relative pb-5">
                           <input 
                             placeholder={t('businessEmail')} 
                             className={inputClass + (emailError ? " border-red-500 bg-red-50/50" : "")} 
                             value={form.correo} 
                             onChange={e => {
                               setForm((f: FormState) => ({ ...f, correo: e.target.value }));
-                              if (!validateEmail(e.target.value)) setEmailError(t('invalidEmail'));
+                              if (!e.target.value.trim()) setEmailError("El correo es obligatorio");
+                              else if (!validateEmail(e.target.value)) setEmailError("Formato de correo inválido");
                               else setEmailError("");
                             }}
                             onBlur={e => {
-                              if (!validateEmail(e.target.value)) setEmailError(t('invalidEmail'));
-                              else setEmailError("");
+                              if (!e.target.value.trim()) {
+                                setEmailError("El correo es obligatorio");
+                              } else if (!validateEmail(e.target.value)) {
+                                setEmailError("Formato de correo inválido");
+                              } else {
+                                setEmailError("");
+                                validateUniqueness('correo', e.target.value);
+                              }
                             }}
                           />
-                          {emailError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0">{emailError}</p>}
+                          {emailError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{emailError}</p>}
                         </div>
-                        <input placeholder={t('whatsappPhone')} className={inputClass} value={form.telefono} onChange={e => setForm((f: FormState) => ({ ...f, telefono: e.target.value }))} />
+                        <div className="relative pb-5">
+                          <input 
+                            placeholder={t('whatsappPhone')} 
+                            className={inputClass + (telefonoError ? " border-red-500 bg-red-50/50" : "")} 
+                            value={form.telefono} 
+                            onChange={e => {
+                              const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                              setForm((f: FormState) => ({ ...f, telefono: val }));
+                              if (!val) setTelefonoError("El teléfono es obligatorio");
+                              else if (val.length !== 10) setTelefonoError("Debe tener 10 dígitos");
+                              else setTelefonoError("");
+                            }}
+                            onBlur={e => {
+                              if (!e.target.value.trim()) {
+                                setTelefonoError("El teléfono es obligatorio");
+                              } else if (!validatePhone(e.target.value)) {
+                                setTelefonoError("Debe tener 10 dígitos");
+                              } else {
+                                setTelefonoError("");
+                                validateUniqueness('telefono', e.target.value);
+                              }
+                            }}
+                            maxLength={10}
+                          />
+                          {telefonoError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{telefonoError}</p>}
+                        </div>
                       </div>
                     </div>
-                    <button onClick={() => setStep(1)} className={btnPrimary}>
-                      {t('nextStep')}
+                    <button 
+                      onClick={async () => {
+                        const isValid = await validateStep1();
+                        if (isValid) setStep(1);
+                      }} 
+                      className={btnPrimary}
+                      disabled={isValidating}
+                    >
+                      {isValidating ? "Validando..." : t('nextStep')}
                     </button>
                   </motion.div>
                 )}
@@ -412,26 +787,69 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           <>
                             <FiImage size={32} className="text-[#769C7B] mb-2"/>
                             <p className="text-sm font-black text-[#1A4D2E] uppercase">{t('businessLogo')}</p>
+                            <p className="text-[9px] text-red-500 mt-1 font-bold">* Obligatorio</p>
                           </>
                         )}
                         <input type="file" className="hidden" accept="image/*" ref={el => { logoInput.current = el; }} onChange={handleLogoChange} />
                         {logoError && <span className="text-[10px] text-red-500 mt-2 font-bold absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-white/80 px-2 rounded">{logoError}</span>}
                       </label>
                       <div className="space-y-4">
-                        <div className="relative">
+                        <div className="relative pb-5">
                           <FiMapPin className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
-                          <input placeholder={t('googleMapsLocation')} className={inputClass + " pl-14"} value={form.ubicacion} onChange={e => setForm((f: FormState) => ({ ...f, ubicacion: e.target.value }))} />
+                          <input 
+                            placeholder={t('googleMapsLocation')} 
+                            className={inputClass + " pl-14" + (ubicacionError ? " border-red-500 bg-red-50/50" : "")} 
+                            value={form.ubicacion} 
+                            onChange={e => {
+                              setForm((f: FormState) => ({ ...f, ubicacion: e.target.value }));
+                              if (!e.target.value.trim()) setUbicacionError("La ubicación es obligatoria");
+                              else setUbicacionError("");
+                            }}
+                            onBlur={e => {
+                              if (!e.target.value.trim()) setUbicacionError("La ubicación es obligatoria");
+                              else setUbicacionError("");
+                            }}
+                          />
+                          {ubicacionError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{ubicacionError}</p>}
                         </div>
-                        <div className="relative">
+                        <div className="relative pb-5">
                           <FiGlobe className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
-                          <input placeholder={t('websiteSocial')} className={inputClass + " pl-14"} value={form.sitioWeb} onChange={e => setForm((f: FormState) => ({ ...f, sitioWeb: e.target.value }))} />
+                          <input 
+                            placeholder={t('websiteSocial')} 
+                            className={inputClass + " pl-14" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")} 
+                            value={form.sitioWeb} 
+                            onChange={e => {
+                              setForm((f: FormState) => ({ ...f, sitioWeb: e.target.value }));
+                              if (!e.target.value.trim()) setSitioWebError("El sitio web es obligatorio");
+                              else if (!validateURL(e.target.value)) setSitioWebError("URL no válida");
+                              else setSitioWebError("");
+                            }}
+                            onBlur={e => {
+                              if (!e.target.value.trim()) {
+                                setSitioWebError("El sitio web o redes sociales son obligatorios");
+                              } else if (!validateURL(e.target.value)) {
+                                setSitioWebError("URL no válida. Ej: https://facebook.com/tunegocio");
+                              } else {
+                                setSitioWebError("");
+                              }
+                            }}
+                          />
+                          {sitioWebError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{sitioWebError}</p>}
                         </div>
                         <div className="p-4 bg-[#0D601E]/5 rounded-2xl border border-[#0D601E]/10 italic text-[10px] text-gray-500">
                            <FiInfo className="inline mr-1"/> {t('locationHelp')}
                         </div>
                       </div>
                     </div>
-                    <button onClick={() => setStep(2)} className={btnPrimary}>{t('nextPhotos')}</button>
+                    <button 
+                      onClick={async () => {
+                        const isValid = await validateStep2();
+                        if (isValid) setStep(2);
+                      }} 
+                      className={btnPrimary}
+                    >
+                      {t('nextPhotos')}
+                    </button>
                   </motion.div>
                 )}
 
@@ -463,7 +881,15 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         </p>
                       </div>
                     </div>
-                    <button onClick={() => setStep(3)} className={btnPrimary}>Siguiente: Datos Fiscales</button>
+                    <button 
+                      onClick={() => {
+                        const isValid = validateStep3();
+                        if (isValid) setStep(3);
+                      }} 
+                      className={btnPrimary}
+                    >
+                      Siguiente: Datos Fiscales
+                    </button>
                   </motion.div>
                 )}
 
@@ -475,25 +901,25 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         <h4 className="font-bold uppercase text-xs tracking-tighter">{t('billing')}</h4>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="relative">
+                        <div className="relative pb-5">
                           <input 
                             placeholder={t('companyRFC')} 
                             className={`${inputClass} uppercase ${rfcError ? "border-red-500 bg-red-50/50" : ""}`}
                             value={form.rfc}
                             onChange={e => {
                               setForm((f: FormState) => ({ ...f, rfc: e.target.value.toUpperCase() }));
-                              if (!validateRFC(e.target.value.toUpperCase())) setRfcError(true);
-                              else setRfcError(false);
+                              if (!validateRFC(e.target.value.toUpperCase())) setRfcError("RFC inválido");
+                              else setRfcError("");
                             }}
                             onBlur={e => {
-                              if (!validateRFC(e.target.value.toUpperCase())) setRfcError(true);
-                              else setRfcError(false);
+                              if (!validateRFC(e.target.value.toUpperCase())) setRfcError("RFC inválido");
+                              else setRfcError("");
                             }}
                             maxLength={13}
                           />
-                          {rfcError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic">{t('rfcInvalid')}</p>}
+                          {rfcError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{rfcError}</p>}
                         </div>
-                        <div className="relative">
+                        <div className="relative pb-5">
                           <input 
                             placeholder={t('fiscalPostalCode')} 
                             className={`${inputClass} ${cpError ? "border-red-500 bg-red-50/50" : ""}`}
@@ -501,16 +927,16 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             onChange={e => {
                               const val = e.target.value.replace(/\D/g, '');
                               setForm((f: FormState) => ({ ...f, cp: val }));
-                              if (!validateCP(val)) setCpError(true);
-                              else setCpError(false);
+                              if (!validateCP(val)) setCpError("CP inválido");
+                              else setCpError("");
                             }}
                             onBlur={e => {
-                              if (!validateCP(e.target.value)) setCpError(true);
-                              else setCpError(false);
+                              if (!validateCP(e.target.value)) setCpError("CP inválido");
+                              else setCpError("");
                             }}
                             maxLength={5}
                           />
-                          {cpError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic">{t('cpInvalid')}</p>}
+                          {cpError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{cpError}</p>}
                         </div>
                       </div>
                     </div>

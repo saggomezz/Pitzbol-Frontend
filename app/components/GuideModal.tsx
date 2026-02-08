@@ -391,13 +391,32 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
           solicitudEnviadaEn: timestamp
         };
         localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
-        localStorage.setItem("pitzbol_guide_submitted", "true");
+        if (userLocal?.uid) {
+          localStorage.setItem(`pitzbol_guide_submitted_${userLocal.uid}`, "true");
+        }
+        localStorage.removeItem("pitzbol_guide_submitted");
+        
+        console.log("✅ Solicitud guardada en localStorage:", updatedUser);
+        console.log("� localStorage values:", {
+          user: localStorage.getItem("pitzbol_user"),
+          submitted: localStorage.getItem("pitzbol_guide_submitted")
+        });
+        console.log("📢 Disparando evento 'guideSubmissionCompleted'");
         
         // Enviar notificación
         const { notificarSolicitudEnviada } = await import("@/lib/notificaciones");
         notificarSolicitudEnviada(userLocal?.uid);
         
+        // Disparar evento personalizado para que el Navbar se actualice
+        // Hacerlo múltiples veces para asegurar que se escuche
+        window.dispatchEvent(new Event("guideSubmissionCompleted"));
         window.dispatchEvent(new Event("storage"));
+        
+        // Hacer otro dispatch después de un pequeño delay
+        setTimeout(() => {
+          window.dispatchEvent(new Event("guideSubmissionCompleted"));
+        }, 50);
+        
         setShowConfirmation(true);
       } else {
         const err = await response.json();
@@ -511,7 +530,13 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
                   <p className="bg-gray-50 p-4 rounded-2xl text-sm italic border border-gray-100">
                     En un plazo menor a <b>24 horas</b> confirmaremos tu identidad. Recibirás una notificación para comenzar a publicar tus tours.
                   </p>
-                </div>                <button onClick={() => { onClose(); window.location.href = "/perfil"; }} className={btnPrimary}>Entendido</button>
+                </div>                <button onClick={() => { 
+                  onClose(); 
+                  // Pequeño delay para permitir que el Navbar se actualice
+                  setTimeout(() => {
+                    window.location.href = "/perfil"; 
+                  }, 100);
+                }} className={btnPrimary}>Entendido</button>
               </motion.div>
             ) : (
               <motion.div key={step} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full flex flex-col items-center">
