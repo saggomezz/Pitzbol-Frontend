@@ -68,6 +68,13 @@
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.guideInfoContent::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 @keyframes popIn {
@@ -111,8 +118,9 @@
 
 .guideInfoActions {
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
   margin-top: 1rem;
 }
 
@@ -136,6 +144,15 @@
   transform: scale(1.04);
 }
 
+.guideInfoPendingNote {
+  font-size: 0.9rem;
+  color: #B90808;
+  font-weight: 700;
+  font-style: italic;
+  text-align: right;
+  max-width: 320px;
+}
+
 @media (max-width: 900px) {
   .guideInfoModal {
     max-width: 99vw;
@@ -150,5 +167,14 @@
   .guideInfoBtn {
     font-size: 1rem;
     padding: 0.6rem 1.2rem;
+    width: 100%;
+    text-align: center;
+  }
+  .guideInfoActions {
+    align-items: stretch;
+  }
+  .guideInfoPendingNote {
+    text-align: center;
+    max-width: 100%;
   }
 }

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import styles from "../styles/Negocios.module.css";
 
 import { enviarNotificacion } from "../../lib/notificaciones";
+import { gestionarNegocioPendiente } from "../../lib/gestionarNegocioApi";
 
 export default function AdminNegociosPendientesPage() {
   const [negocios, setNegocios] = useState<any[]>([]);
@@ -34,9 +35,6 @@ export default function AdminNegociosPendientesPage() {
     }
     setLoading(false);
   };
-
-  // Usar la función gestionarNegocioPendiente para aprobar/rechazar
-  import { gestionarNegocioPendiente } from "../../lib/gestionarNegocioApi";
 
   const handleDecision = async (aprobado: boolean) => {
     if (!selected) return;
