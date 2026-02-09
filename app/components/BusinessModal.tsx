@@ -6,6 +6,16 @@ interface FormState {
   correo: string;
   telefono: string;
   ubicacion: string;
+  latitud: string;
+  longitud: string;
+  calle: string;
+  numero: string;
+  colonia: string;
+  codigoPostal: string;
+  local: string;
+  ciudad: string;
+  estado: string;
+  referencias: string;
   sitioWeb: string;
   rfc: string;
   cp: string;
@@ -21,6 +31,7 @@ import {
 } from "react-icons/fi";
 import Image from "next/image";
 import imglogo from "./logoPitzbol.png";
+import MinimapaLocationPicker from "./MinimapaLocationPicker";
   type ImagePreviewState = {
     logoUrl: string | null;
     galeriaUrls: (string | null)[];
@@ -37,29 +48,41 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   // Estado persistente para los datos del negocio, inicializando desde localStorage si existe
   const [form, setForm] = useState(() => {
     const saved = typeof window !== "undefined" ? localStorage.getItem("pitzbol_business_draft") : null;
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Los Files no se guardan, siempre empezar como null
-        return {
-          ...parsed,
-          galeria: [null, null, null],
-          logo: null
-        };
-      } catch {}
-    }
-    return {
+    const defaults: FormState = {
       nombre: "",
       categoria: "",
       correo: "",
       telefono: "",
       ubicacion: "",
+      latitud: "",
+      longitud: "",
+      calle: "",
+      numero: "",
+      colonia: "",
+      codigoPostal: "",
+      local: "",
+      ciudad: "Guadalajara",
+      estado: "Jalisco",
+      referencias: "",
       sitioWeb: "",
       rfc: "",
       cp: "",
       galeria: [null, null, null],
       logo: null
     } as FormState;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Los Files no se guardan, siempre empezar como null
+        return {
+          ...defaults,
+          ...parsed,
+          galeria: [null, null, null],
+          logo: null
+        };
+      } catch {}
+    }
+    return defaults;
   });
   const [rfcError, setRfcError] = useState("");
   const [cpError, setCpError] = useState("");
@@ -68,9 +91,16 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [categoriaError, setCategoriaError] = useState("");
   const [telefonoError, setTelefonoError] = useState("");
   const [ubicacionError, setUbicacionError] = useState("");
+  const [calleError, setCalleError] = useState("");
+  const [numeroError, setNumeroError] = useState("");
+  const [coloniaError, setColoniaError] = useState("");
+  const [codigoPostalError, setCodigoPostalError] = useState("");
+  const [ciudadError, setCiudadError] = useState("");
+  const [estadoError, setEstadoError] = useState("");
   const [sitioWebError, setSitioWebError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [logoError, setLogoError] = useState("");
+  const [buscandoCoordenadas, setBuscandoCoordenadas] = useState(false);
   const [imagePreview, setImagePreview] = useState<ImagePreviewState>(() => {
     const saved = typeof window !== "undefined" ? localStorage.getItem("pitzbol_business_images") : null;
     if (saved) {
@@ -91,6 +121,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [isValidating, setIsValidating] = useState(false);
   const fileInputs = useRef<(HTMLInputElement | null)[]>([]);
   const logoInput = useRef<HTMLInputElement | null>(null);
+  const lastGeocodeRef = useRef<string>("");
+
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
   // Validaciones de imagen
   const allowedExts = [".jpg", ".jpeg", ".png", ".webp"];
@@ -210,6 +243,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       setRfcError("");
       setCpError("");
       setSaveError("");
+      setCalleError("");
+      setNumeroError("");
+      setColoniaError("");
+      setCodigoPostalError("");
+      setCiudadError("");
+      setEstadoError("");
     }
   }, [isOpen]);
 
@@ -222,6 +261,16 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       correo: form.correo,
       telefono: form.telefono,
       ubicacion: form.ubicacion,
+      latitud: form.latitud,
+      longitud: form.longitud,
+      calle: form.calle,
+      numero: form.numero,
+      colonia: form.colonia,
+      codigoPostal: form.codigoPostal,
+      local: form.local,
+      ciudad: form.ciudad,
+      estado: form.estado,
+      referencias: form.referencias,
       sitioWeb: form.sitioWeb,
       rfc: form.rfc,
       cp: form.cp
@@ -233,6 +282,66 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   useEffect(() => {
     localStorage.setItem("pitzbol_business_images", JSON.stringify(imagePreview));
   }, [imagePreview]);
+
+  // Función para obtener coordenadas usando el endpoint del backend
+  const buscarCoordenadas = async (direccion: string) => {
+    if (!direccion.trim()) return;
+
+    setBuscandoCoordenadas(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/lugares/geocode`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ direccion: direccion.trim() })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error del servidor:', response.status, errorText);
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.latitud && data.longitud) {
+        setForm((f: FormState) => ({
+          ...f,
+          latitud: data.latitud,
+          longitud: data.longitud
+        }));
+      }
+    } catch (error: any) {
+      console.error('Error buscando coordenadas:', error);
+    } finally {
+      setBuscandoCoordenadas(false);
+    }
+  };
+
+  // Buscar coordenadas cuando cambie la dirección (con debounce)
+  useEffect(() => {
+    const direccion = composeDireccion(form);
+    if (!direccion.trim() || form.latitud || form.longitud || buscandoCoordenadas) {
+      return;
+    }
+
+    const trimmed = direccion.trim();
+    if (trimmed.length < 4) {
+      return;
+    }
+
+    if (lastGeocodeRef.current === trimmed) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      lastGeocodeRef.current = trimmed;
+      buscarCoordenadas(trimmed);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [form.calle, form.numero, form.colonia, form.codigoPostal, form.local, form.ciudad, form.estado, form.latitud, form.longitud, buscandoCoordenadas]);
 
 
   const validateEmail = (valor: string) => {
@@ -260,6 +369,27 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const validateCP = (valor: string) => {
     return valor !== "" && /^\d{5}$/.test(valor);
   };
+
+  const composeDireccion = (values: FormState) => {
+    const partes = [
+      values.calle && values.numero ? `${values.calle} ${values.numero}` : values.calle,
+      values.local ? `Local ${values.local}` : "",
+      values.colonia,
+      values.ciudad,
+      values.estado,
+      values.codigoPostal
+    ].filter(Boolean);
+
+    return partes.join(", ");
+  };
+
+  // Mantener la ubicación compuesta a partir de los campos
+  useEffect(() => {
+    const compuesta = composeDireccion(form);
+    if (compuesta !== form.ubicacion) {
+      setForm((f: FormState) => ({ ...f, ubicacion: compuesta }));
+    }
+  }, [form.calle, form.numero, form.colonia, form.codigoPostal, form.local, form.ciudad, form.estado, form.ubicacion]);
 
   // Validar unicidad de datos en el servidor
   const validateUniqueness = async (field: 'nombre' | 'correo' | 'telefono', value: string) => {
@@ -387,6 +517,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const validateStep2 = async () => {
     setLogoError("");
     setUbicacionError("");
+    setCalleError("");
+    setNumeroError("");
+    setColoniaError("");
+    setCodigoPostalError("");
+    setCiudadError("");
+    setEstadoError("");
     setSitioWebError("");
 
     let hasErrors = false;
@@ -397,8 +533,37 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       hasErrors = true;
     }
 
-    // Validar ubicación
-    if (!form.ubicacion.trim()) {
+    // Validar dirección
+    if (!form.calle.trim()) {
+      setCalleError("La calle es obligatoria");
+      hasErrors = true;
+    }
+    if (!form.numero.trim()) {
+      setNumeroError("El número es obligatorio");
+      hasErrors = true;
+    }
+    if (!form.colonia.trim()) {
+      setColoniaError("La colonia es obligatoria");
+      hasErrors = true;
+    }
+    if (!form.codigoPostal.trim()) {
+      setCodigoPostalError("El código postal es obligatorio");
+      hasErrors = true;
+    } else if (!validateCP(form.codigoPostal)) {
+      setCodigoPostalError("El código postal debe tener 5 dígitos");
+      hasErrors = true;
+    }
+    if (!form.ciudad.trim()) {
+      setCiudadError("La ciudad es obligatoria");
+      hasErrors = true;
+    }
+    if (!form.estado.trim()) {
+      setEstadoError("El estado es obligatorio");
+      hasErrors = true;
+    }
+
+    const ubicacionCompuesta = composeDireccion(form);
+    if (!ubicacionCompuesta.trim()) {
       setUbicacionError("La ubicación es obligatoria");
       hasErrors = true;
     } else {
@@ -407,7 +572,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ location: form.ubicacion })
+          body: JSON.stringify({ location: ubicacionCompuesta })
         });
 
         const data = await res.json();
@@ -541,7 +706,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       formData.append("businessName", form.nombre);
       formData.append("category", form.categoria);
       formData.append("phone", form.telefono);
-      formData.append("location", form.ubicacion);
+      const ubicacionCompuesta = composeDireccion(form);
+      formData.append("location", ubicacionCompuesta);
+      if (form.latitud) formData.append("latitud", form.latitud);
+      if (form.longitud) formData.append("longitud", form.longitud);
       formData.append("website", form.sitioWeb);
       formData.append("rfc", form.rfc);
       formData.append("cp", form.cp);
@@ -571,7 +739,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         businessName: form.nombre,
         category: form.categoria,
         phone: form.telefono,
-        location: form.ubicacion,
+        location: ubicacionCompuesta,
+        latitud: form.latitud,
+        longitud: form.longitud,
         website: form.sitioWeb,
         rfc: form.rfc,
         cp: form.cp,
@@ -624,7 +794,11 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-2 md:p-4 bg-black/40">
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-        className="relative bg-white w-full max-w-[850px] min-h-[500px] max-h-[90vh] overflow-y-auto rounded-[50px] shadow-2xl p-8 md:p-12 border border-white/20"
+        className={`relative bg-white w-full rounded-[50px] shadow-2xl border border-white/20 ${
+          step === 1
+            ? "max-w-[900px] h-[92vh] overflow-hidden p-4 md:p-6"
+            : "max-w-[850px] min-h-[500px] max-h-[90vh] overflow-y-auto p-8 md:p-12"
+        }`}
       >
         <AnimatePresence mode="wait">
           {!isFinishing ? (
@@ -644,14 +818,14 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   {saveError}
                 </div>
               )}
-              <div className="text-center mb-10">
-                <h2 className="text-[32px] md:text-[42px] text-[#8B0000] font-black uppercase leading-none" style={{ fontFamily: 'var(--font-jockey)' }}>
+              <div className={`text-center ${step === 1 ? "mb-4" : "mb-10"}`}>
+                <h2 className={`${step === 1 ? "text-[24px] md:text-[30px]" : "text-[32px] md:text-[42px]"} text-[#8B0000] font-black uppercase leading-none`} style={{ fontFamily: 'var(--font-jockey)' }}>
                   {step === 0 ? t('step1Title') : step === 1 ? t('step2Title') : step === 2 ? t('step3Title') : t('step4Title')}
                 </h2>
-                <p className="text-[#1A4D2E] text-sm italic mt-1">{t('stepProgress', { current: step + 1, total: 4 })}</p>
+                <p className={`${step === 1 ? "text-xs" : "text-sm"} text-[#1A4D2E] italic mt-1`}>{t('stepProgress', { current: step + 1, total: 4 })}</p>
               </div>
 
-              <div className="max-w-2xl mx-auto space-y-6">
+              <div className="max-w-2xl mx-auto space-y-4">
                 {step === 0 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                     <div className={cardClass}>
@@ -778,45 +952,218 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 )}
 
                 {step === 1 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <label className="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-[#769C7B]/40 rounded-[35px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all relative">
-                        {imagePreview.logoUrl ? (
-                          <img src={imagePreview.logoUrl} alt="Logo preview" className="absolute inset-0 w-full h-full object-cover rounded-[35px] z-10" style={{background: '#fff', width: '100%', height: '100%'}} />
-                        ) : (
-                          <>
-                            <FiImage size={32} className="text-[#769C7B] mb-2"/>
-                            <p className="text-sm font-black text-[#1A4D2E] uppercase">{t('businessLogo')}</p>
-                            <p className="text-[9px] text-red-500 mt-1 font-bold">* Obligatorio</p>
-                          </>
-                        )}
-                        <input type="file" className="hidden" accept="image/*" ref={el => { logoInput.current = el; }} onChange={handleLogoChange} />
-                        {logoError && <span className="text-[10px] text-red-500 mt-2 font-bold absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-white/80 px-2 rounded">{logoError}</span>}
-                      </label>
-                      <div className="space-y-4">
-                        <div className="relative pb-5">
-                          <FiMapPin className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
-                          <input 
-                            placeholder={t('googleMapsLocation')} 
-                            className={inputClass + " pl-14" + (ubicacionError ? " border-red-500 bg-red-50/50" : "")} 
-                            value={form.ubicacion} 
-                            onChange={e => {
-                              setForm((f: FormState) => ({ ...f, ubicacion: e.target.value }));
-                              if (!e.target.value.trim()) setUbicacionError("La ubicación es obligatoria");
-                              else setUbicacionError("");
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1.25fr] gap-4">
+                      <div className="flex flex-col gap-4 h-full">
+                        <div className="p-3 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[220px]">
+                          <span className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-2 mb-2">
+                            Ubicación en el mapa
+                          </span>
+                          <MinimapaLocationPicker
+                            latitud={form.latitud}
+                            longitud={form.longitud}
+                            onLocationChange={(lat, lng) => {
+                              setForm((f: FormState) => ({
+                                ...f,
+                                latitud: lat,
+                                longitud: lng
+                              }));
                             }}
-                            onBlur={e => {
-                              if (!e.target.value.trim()) setUbicacionError("La ubicación es obligatoria");
-                              else setUbicacionError("");
-                            }}
+                            height="200px"
                           />
-                          {ubicacionError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{ubicacionError}</p>}
+                        </div>
+                        <label className="flex-1 flex flex-col items-center justify-center w-full border-2 border-dashed border-[#769C7B]/40 rounded-[24px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all relative min-h-[120px]">
+                          {imagePreview.logoUrl ? (
+                            <img src={imagePreview.logoUrl} alt="Logo preview" className="absolute inset-0 w-full h-full object-cover rounded-[24px] z-10" style={{background: '#fff', width: '100%', height: '100%'}} />
+                          ) : (
+                            <>
+                              <FiImage size={32} className="text-[#769C7B] mb-2"/>
+                              <p className="text-sm font-black text-[#1A4D2E] uppercase">{t('businessLogo')}</p>
+                              <p className="text-[9px] text-red-500 mt-1 font-bold">* Obligatorio</p>
+                            </>
+                          )}
+                          <input type="file" className="hidden" accept="image/*" ref={el => { logoInput.current = el; }} onChange={handleLogoChange} />
+                          {logoError && <span className="text-[10px] text-red-500 mt-2 font-bold absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-white/80 px-2 rounded">{logoError}</span>}
+                        </label>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="relative pb-5">
+                              <input
+                                placeholder="Calle"
+                                className={inputClass + " text-[12px] py-2" + (calleError ? " border-red-500 bg-red-50/50" : "")}
+                                value={form.calle}
+                                onChange={e => {
+                                  setForm((f: FormState) => ({ ...f, calle: e.target.value, latitud: "", longitud: "" }));
+                                  if (!e.target.value.trim()) setCalleError("La calle es obligatoria");
+                                  else setCalleError("");
+                                }}
+                                onBlur={e => {
+                                  if (!e.target.value.trim()) setCalleError("La calle es obligatoria");
+                                  else setCalleError("");
+                                }}
+                              />
+                              {calleError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{calleError}</p>}
+                            </div>
+                            <div className="relative pb-5">
+                              <input
+                                placeholder="Número"
+                                className={inputClass + " text-[12px] py-2" + (numeroError ? " border-red-500 bg-red-50/50" : "")}
+                                value={form.numero}
+                                onChange={e => {
+                                  setForm((f: FormState) => ({ ...f, numero: e.target.value, latitud: "", longitud: "" }));
+                                  if (!e.target.value.trim()) setNumeroError("El número es obligatorio");
+                                  else setNumeroError("");
+                                }}
+                                onBlur={e => {
+                                  if (!e.target.value.trim()) setNumeroError("El número es obligatorio");
+                                  else setNumeroError("");
+                                }}
+                              />
+                              {numeroError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{numeroError}</p>}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="relative pb-5">
+                              <input
+                                placeholder="Colonia"
+                                className={inputClass + " text-[12px] py-2" + (coloniaError ? " border-red-500 bg-red-50/50" : "")}
+                                value={form.colonia}
+                                onChange={e => {
+                                  setForm((f: FormState) => ({ ...f, colonia: e.target.value, latitud: "", longitud: "" }));
+                                  if (!e.target.value.trim()) setColoniaError("La colonia es obligatoria");
+                                  else setColoniaError("");
+                                }}
+                                onBlur={e => {
+                                  if (!e.target.value.trim()) setColoniaError("La colonia es obligatoria");
+                                  else setColoniaError("");
+                                }}
+                              />
+                              {coloniaError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{coloniaError}</p>}
+                            </div>
+                            <div className="relative pb-5">
+                              <input
+                                placeholder="Código Postal"
+                                className={inputClass + " text-[12px] py-2" + (codigoPostalError ? " border-red-500 bg-red-50/50" : "")}
+                                value={form.codigoPostal}
+                                onChange={e => {
+                                  const val = e.target.value.replace(/\D/g, '').slice(0, 5);
+                                  setForm((f: FormState) => ({ ...f, codigoPostal: val, latitud: "", longitud: "" }));
+                                  if (!val) setCodigoPostalError("El código postal es obligatorio");
+                                  else if (!validateCP(val)) setCodigoPostalError("El código postal debe tener 5 dígitos");
+                                  else setCodigoPostalError("");
+                                }}
+                                onBlur={e => {
+                                  if (!e.target.value.trim()) setCodigoPostalError("El código postal es obligatorio");
+                                  else if (!validateCP(e.target.value)) setCodigoPostalError("El código postal debe tener 5 dígitos");
+                                  else setCodigoPostalError("");
+                                }}
+                                maxLength={5}
+                              />
+                              {codigoPostalError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{codigoPostalError}</p>}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="relative pb-5">
+                              <input
+                                placeholder="Ciudad"
+                                className={inputClass + " text-[12px] py-2" + (ciudadError ? " border-red-500 bg-red-50/50" : "")}
+                                value={form.ciudad}
+                                onChange={e => {
+                                  setForm((f: FormState) => ({ ...f, ciudad: e.target.value, latitud: "", longitud: "" }));
+                                  if (!e.target.value.trim()) setCiudadError("La ciudad es obligatoria");
+                                  else setCiudadError("");
+                                }}
+                                onBlur={e => {
+                                  if (!e.target.value.trim()) setCiudadError("La ciudad es obligatoria");
+                                  else setCiudadError("");
+                                }}
+                              />
+                              {ciudadError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{ciudadError}</p>}
+                            </div>
+                            <div className="relative pb-5">
+                              <input
+                                placeholder="Estado"
+                                className={inputClass + " text-[12px] py-2" + (estadoError ? " border-red-500 bg-red-50/50" : "")}
+                                value={form.estado}
+                                onChange={e => {
+                                  setForm((f: FormState) => ({ ...f, estado: e.target.value, latitud: "", longitud: "" }));
+                                  if (!e.target.value.trim()) setEstadoError("El estado es obligatorio");
+                                  else setEstadoError("");
+                                }}
+                                onBlur={e => {
+                                  if (!e.target.value.trim()) setEstadoError("El estado es obligatorio");
+                                  else setEstadoError("");
+                                }}
+                              />
+                              {estadoError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{estadoError}</p>}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="relative pb-5 md:col-span-2">
+                              <input
+                                placeholder="Local (opcional)"
+                                className={inputClass + " text-[12px] py-2"}
+                                value={form.local}
+                                onChange={e => setForm((f: FormState) => ({ ...f, local: e.target.value, latitud: "", longitud: "" }))}
+                              />
+                            </div>
+                            <div className="relative pb-5 md:col-span-2">
+                              <input
+                                placeholder="Referencias (opcional)"
+                                className={inputClass + " text-[12px] py-2"}
+                                value={form.referencias}
+                                onChange={e => setForm((f: FormState) => ({ ...f, referencias: e.target.value, latitud: "", longitud: "" }))}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => buscarCoordenadas(composeDireccion(form))}
+                              disabled={!(form.calle || form.numero || form.colonia || form.codigoPostal || form.ciudad || form.estado)}
+                              className="text-[10px] px-3 py-1 rounded-full bg-[#0D601E]/10 text-[#0D601E] hover:bg-[#0D601E]/20 font-bold disabled:bg-gray-100 disabled:text-gray-400"
+                            >
+                              Calcular coordenadas en el mapa
+                            </button>
+                            {buscandoCoordenadas && (
+                              <span className="text-[11px] text-[#769C7B] italic">Buscando coordenadas…</span>
+                            )}
+                          </div>
+                          {ubicacionError && (
+                            <p className="text-[9px] text-red-500 mt-1 ml-4 italic">{ubicacionError}</p>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="relative">
+                            <label className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-2">
+                              Latitud {form.latitud && <span className="text-green-600 text-[9px]">✓</span>}
+                            </label>
+                            <input
+                              placeholder="Ej: 20.6597"
+                              className={inputClass + " text-[12px] py-2" + (form.latitud ? " bg-green-50" : "")}
+                              value={form.latitud}
+                              onChange={e => setForm((f: FormState) => ({ ...f, latitud: e.target.value }))}
+                            />
+                          </div>
+                          <div className="relative">
+                            <label className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-2">
+                              Longitud {form.longitud && <span className="text-green-600 text-[9px]">✓</span>}
+                            </label>
+                            <input
+                              placeholder="Ej: -103.3496"
+                              className={inputClass + " text-[12px] py-2" + (form.longitud ? " bg-green-50" : "")}
+                              value={form.longitud}
+                              onChange={e => setForm((f: FormState) => ({ ...f, longitud: e.target.value }))}
+                            />
+                          </div>
                         </div>
                         <div className="relative pb-5">
                           <FiGlobe className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
                           <input 
                             placeholder={t('websiteSocial')} 
-                            className={inputClass + " pl-14" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")} 
+                            className={inputClass + " pl-12 text-[12px] py-2" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")} 
                             value={form.sitioWeb} 
                             onChange={e => {
                               setForm((f: FormState) => ({ ...f, sitioWeb: e.target.value }));
@@ -836,7 +1183,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           />
                           {sitioWebError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{sitioWebError}</p>}
                         </div>
-                        <div className="p-4 bg-[#0D601E]/5 rounded-2xl border border-[#0D601E]/10 italic text-[10px] text-gray-500">
+                        <div className="p-3 bg-[#ECF4EE] rounded-2xl border border-[#0D601E]/20 text-[10px] text-[#1A4D2E] font-medium">
                            <FiInfo className="inline mr-1"/> {t('locationHelp')}
                         </div>
                       </div>
