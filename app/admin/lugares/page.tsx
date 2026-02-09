@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 
 // Importar minimapa dinámicamente para evitar problemas con SSR
 const MinimapaLocationPicker = dynamic(
-  () => import("./MinimapaLocationPicker"),
+  () => import("../../components/MinimapaLocationPicker"),
   { ssr: false }
 );
 
