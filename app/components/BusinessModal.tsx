@@ -122,6 +122,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const fileInputs = useRef<(HTMLInputElement | null)[]>([]);
   const logoInput = useRef<HTMLInputElement | null>(null);
   const lastGeocodeRef = useRef<string>("");
+  const reverseGeocodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
@@ -311,11 +312,48 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
           latitud: data.latitud,
           longitud: data.longitud
         }));
+        // Realizar reverse geocoding después de obtener coordenadas
+        await obtenerCiudadEstado(data.latitud, data.longitud);
       }
     } catch (error: any) {
       console.error('Error buscando coordenadas:', error);
     } finally {
       setBuscandoCoordenadas(false);
+    }
+  };
+
+  // Función para reverse geocoding usando Nominatim
+  const obtenerCiudadEstado = async (lat: string, lng: string) => {
+    if (!lat || !lng) return;
+    
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&countrycodes=mx`
+      );
+      
+      if (!response.ok) throw new Error('Error en reverse geocoding');
+      
+      const address = await response.json();
+      console.log('📍 Reverse Geocoding Response:', address);
+      
+      // Extraer información
+      const ciudad = address.address?.city || address.address?.town || address.address?.municipality || '';
+      const estado = address.address?.state || '';
+      const colonia = address.address?.neighbourhood || address.address?.suburb || address.address?.village || address.address?.hamlet || address.address?.county || '';
+      const numero = address.address?.house_number || '';
+      const codigoPostal = address.address?.postcode || '';
+      
+      // Actualizar form con los datos extraídos
+      setForm((f: FormState) => ({
+        ...f,
+        ciudad: ciudad || f.ciudad,
+        estado: estado || f.estado,
+        colonia: colonia || f.colonia,
+        numero: numero || f.numero,
+        codigoPostal: codigoPostal || f.codigoPostal
+      }));
+    } catch (error) {
+      console.error('Error en reverse geocoding:', error);
     }
   };
 
@@ -343,6 +381,24 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     return () => clearTimeout(timer);
   }, [form.calle, form.numero, form.colonia, form.codigoPostal, form.local, form.ciudad, form.estado, form.latitud, form.longitud, buscandoCoordenadas]);
 
+  // Reverse geocoding cuando el marcador del mapa cambia (con debounce)
+  useEffect(() => {
+    if (!form.latitud || !form.longitud) return;
+
+    if (reverseGeocodeTimeoutRef.current) {
+      clearTimeout(reverseGeocodeTimeoutRef.current);
+    }
+
+    reverseGeocodeTimeoutRef.current = setTimeout(() => {
+      obtenerCiudadEstado(form.latitud, form.longitud);
+    }, 500);
+
+    return () => {
+      if (reverseGeocodeTimeoutRef.current) {
+        clearTimeout(reverseGeocodeTimeoutRef.current);
+      }
+    };
+  }, [form.latitud, form.longitud]);
 
   const validateEmail = (valor: string) => {
     if (!valor) return false;
@@ -818,7 +874,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   {saveError}
                 </div>
               )}
-              <div className={`text-center ${step === 1 ? "mb-4" : "mb-10"}`}>
+              <div className={`text-center ${step === 1 ? "mb-8" : "mb-10"}`}>
                 <h2 className={`${step === 1 ? "text-[24px] md:text-[30px]" : "text-[32px] md:text-[42px]"} text-[#8B0000] font-black uppercase leading-none`} style={{ fontFamily: 'var(--font-jockey)' }}>
                   {step === 0 ? t('step1Title') : step === 1 ? t('step2Title') : step === 2 ? t('step3Title') : t('step4Title')}
                 </h2>
@@ -1012,7 +1068,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                 className={inputClass + " text-[12px] py-2" + (numeroError ? " border-red-500 bg-red-50/50" : "")}
                                 value={form.numero}
                                 onChange={e => {
-                                  setForm((f: FormState) => ({ ...f, numero: e.target.value, latitud: "", longitud: "" }));
+                                  setForm((f: FormState) => ({ ...f, numero: e.target.value }));
                                   if (!e.target.value.trim()) setNumeroError("El número es obligatorio");
                                   else setNumeroError("");
                                 }}
@@ -1028,10 +1084,11 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             <div className="relative pb-5">
                               <input
                                 placeholder="Colonia"
-                                className={inputClass + " text-[12px] py-2" + (coloniaError ? " border-red-500 bg-red-50/50" : "")}
+                                disabled
+                                className={inputClass.replace('bg-transparent', '') + " text-[12px] py-2 bg-gray-300 text-gray-800 border-gray-400 cursor-not-allowed" + (coloniaError ? " border-red-500 bg-red-50/50" : "")}
                                 value={form.colonia}
                                 onChange={e => {
-                                  setForm((f: FormState) => ({ ...f, colonia: e.target.value, latitud: "", longitud: "" }));
+                                  setForm((f: FormState) => ({ ...f, colonia: e.target.value }));
                                   if (!e.target.value.trim()) setColoniaError("La colonia es obligatoria");
                                   else setColoniaError("");
                                 }}
@@ -1068,10 +1125,11 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             <div className="relative pb-5">
                               <input
                                 placeholder="Ciudad"
-                                className={inputClass + " text-[12px] py-2" + (ciudadError ? " border-red-500 bg-red-50/50" : "")}
+                                disabled
+                                className={inputClass.replace('bg-transparent', '') + " text-[12px] py-2 bg-gray-300 text-gray-800 border-gray-400 cursor-not-allowed" + (ciudadError ? " border-red-500 bg-red-50/50" : "")}
                                 value={form.ciudad}
                                 onChange={e => {
-                                  setForm((f: FormState) => ({ ...f, ciudad: e.target.value, latitud: "", longitud: "" }));
+                                  setForm((f: FormState) => ({ ...f, ciudad: e.target.value }));
                                   if (!e.target.value.trim()) setCiudadError("La ciudad es obligatoria");
                                   else setCiudadError("");
                                 }}
@@ -1085,10 +1143,11 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             <div className="relative pb-5">
                               <input
                                 placeholder="Estado"
-                                className={inputClass + " text-[12px] py-2" + (estadoError ? " border-red-500 bg-red-50/50" : "")}
+                                disabled
+                                className={inputClass.replace('bg-transparent', '') + " text-[12px] py-2 bg-gray-300 text-gray-800 border-gray-400 cursor-not-allowed" + (estadoError ? " border-red-500 bg-red-50/50" : "")}
                                 value={form.estado}
                                 onChange={e => {
-                                  setForm((f: FormState) => ({ ...f, estado: e.target.value, latitud: "", longitud: "" }));
+                                  setForm((f: FormState) => ({ ...f, estado: e.target.value }));
                                   if (!e.target.value.trim()) setEstadoError("El estado es obligatorio");
                                   else setEstadoError("");
                                 }}
@@ -1122,7 +1181,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             <button
                               type="button"
                               onClick={() => buscarCoordenadas(composeDireccion(form))}
-                              disabled={!(form.calle || form.numero || form.colonia || form.codigoPostal || form.ciudad || form.estado)}
+                              disabled={!(form.calle || form.colonia || form.codigoPostal)}
                               className="text-[10px] px-3 py-1 rounded-full bg-[#0D601E]/10 text-[#0D601E] hover:bg-[#0D601E]/20 font-bold disabled:bg-gray-100 disabled:text-gray-400"
                             >
                               Calcular coordenadas en el mapa
@@ -1160,7 +1219,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           </div>
                         </div>
                         <div className="relative pb-5">
-                          <FiGlobe className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
+                          <FiGlobe className="absolute left-4 top-1/2 -translate-y-1/2 text-[#769C7B]" />
                           <input 
                             placeholder={t('websiteSocial')} 
                             className={inputClass + " pl-12 text-[12px] py-2" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")} 
