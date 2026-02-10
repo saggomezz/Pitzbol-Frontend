@@ -23,7 +23,7 @@ interface FormState {
   logo: File | null;
 }
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Timestamp } from "firebase/firestore";
 import { 
   FiX, FiBriefcase, FiMapPin, FiGlobe, FiImage, 
@@ -101,6 +101,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [saveError, setSaveError] = useState("");
   const [logoError, setLogoError] = useState("");
   const [buscandoCoordenadas, setBuscandoCoordenadas] = useState(false);
+  const [geocodeError, setGeocodeError] = useState("");
   const [imagePreview, setImagePreview] = useState<ImagePreviewState>(() => {
     const saved = typeof window !== "undefined" ? localStorage.getItem("pitzbol_business_images") : null;
     if (saved) {
@@ -123,6 +124,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const logoInput = useRef<HTMLInputElement | null>(null);
   const lastGeocodeRef = useRef<string>("");
   const reverseGeocodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isManualMapChangeRef = useRef<boolean>(false);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
@@ -250,6 +252,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       setCodigoPostalError("");
       setCiudadError("");
       setEstadoError("");
+      setGeocodeError("");
     }
   }, [isOpen]);
 
@@ -289,6 +292,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     if (!direccion.trim()) return;
 
     setBuscandoCoordenadas(true);
+    setGeocodeError("");
     try {
       const response = await fetch(`${BACKEND_URL}/api/lugares/geocode`, {
         method: 'POST',
@@ -301,22 +305,31 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error del servidor:', response.status, errorText);
+        setGeocodeError(`Error al buscar: ${response.status} ${response.statusText}`);
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
 
       if (data.success && data.latitud && data.longitud) {
+        // Marcar que este cambio NO es manual (viene del geocoding automático)
+        isManualMapChangeRef.current = false;
         setForm((f: FormState) => ({
           ...f,
           latitud: data.latitud,
           longitud: data.longitud
         }));
+        setGeocodeError("");
         // Realizar reverse geocoding después de obtener coordenadas
         await obtenerCiudadEstado(data.latitud, data.longitud);
+      } else {
+        // Si no tuvo éxito, mostrar error
+        setGeocodeError(data.message || "No se encontraron coordenadas para esta dirección. Completa más campos o ajusta manualmente en el mapa.");
+        console.warn('Búsqueda sin éxito:', data.message);
       }
     } catch (error: any) {
       console.error('Error buscando coordenadas:', error);
+      setGeocodeError("No se pudo buscar las coordenadas. Intenta de nuevo o ajusta manualmente.");
     } finally {
       setBuscandoCoordenadas(false);
     }
@@ -337,15 +350,22 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       console.log('📍 Reverse Geocoding Response:', address);
       
       // Extraer información
+      const calle = address.address?.road || '';
       const ciudad = address.address?.city || address.address?.town || address.address?.municipality || '';
       const estado = address.address?.state || '';
       const colonia = address.address?.neighbourhood || address.address?.suburb || address.address?.village || address.address?.hamlet || address.address?.county || '';
       const numero = address.address?.house_number || '';
       const codigoPostal = address.address?.postcode || '';
       
+      // Solo actualizar calle si fue un cambio manual del marcador
+      const isManualChange = isManualMapChangeRef.current;
+      console.log('🔄 Cambio manual del mapa:', isManualChange);
+      
       // Actualizar form con los datos extraídos
       setForm((f: FormState) => ({
         ...f,
+        // Solo sobrescribir la calle si el usuario movió el marcador manualmente
+        calle: isManualChange ? (calle || f.calle) : f.calle,
         ciudad: ciudad || f.ciudad,
         estado: estado || f.estado,
         colonia: colonia || f.colonia,
@@ -357,14 +377,29 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     }
   };
 
-  // Buscar coordenadas cuando cambie la dirección (con debounce)
+  // Calcular si debemos hacer geocoding automático
+  const shouldAutoGeocode = useMemo(() => {
+    // Solo si tiene CALLE + (COLONIA O CÓDIGO POSTAL) y no tiene coordenadas
+    return (
+      form.calle.trim() !== "" &&
+      (form.colonia.trim() !== "" || form.codigoPostal.trim() !== "") &&
+      !form.latitud &&
+      !form.longitud
+    );
+  }, [form.calle, form.colonia, form.codigoPostal, form.latitud, form.longitud]);
+
+  // Buscar coordenadas automáticamente cuando se cumplen las condiciones (con debounce)
   useEffect(() => {
-    const direccion = composeDireccion(form);
-    if (!direccion.trim() || form.latitud || form.longitud || buscandoCoordenadas) {
+    if (!shouldAutoGeocode || buscandoCoordenadas) {
+      if (!shouldAutoGeocode) {
+        setGeocodeError("");
+      }
       return;
     }
 
+    const direccion = composeDireccion(form);
     const trimmed = direccion.trim();
+    
     if (trimmed.length < 4) {
       return;
     }
@@ -379,7 +414,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [form.calle, form.numero, form.colonia, form.codigoPostal, form.local, form.ciudad, form.estado, form.latitud, form.longitud, buscandoCoordenadas]);
+  }, [shouldAutoGeocode, buscandoCoordenadas]);
 
   // Reverse geocoding cuando el marcador del mapa cambia (con debounce)
   useEffect(() => {
@@ -852,7 +887,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
         className={`relative bg-white w-full rounded-[50px] shadow-2xl border border-white/20 ${
           step === 1
-            ? "max-w-[900px] h-[92vh] overflow-hidden p-4 md:p-6"
+            ? "max-w-[900px] max-h-[92vh] overflow-y-auto p-4 md:p-6"
             : "max-w-[850px] min-h-[500px] max-h-[90vh] overflow-y-auto p-8 md:p-12"
         }`}
       >
@@ -1008,27 +1043,29 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 )}
 
                 {step === 1 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1.25fr] gap-4">
-                      <div className="flex flex-col gap-4 h-full">
-                        <div className="p-3 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[220px]">
-                          <span className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-2 mb-2">
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1.25fr] gap-3">
+                      <div className="flex flex-col gap-3 h-full">
+                        <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[185px]">
+                          <span className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-2 mb-1">
                             Ubicación en el mapa
                           </span>
                           <MinimapaLocationPicker
                             latitud={form.latitud}
                             longitud={form.longitud}
                             onLocationChange={(lat, lng) => {
+                              // Marcar que este cambio SÍ es manual (usuario movió el marcador)
+                              isManualMapChangeRef.current = true;
                               setForm((f: FormState) => ({
                                 ...f,
                                 latitud: lat,
                                 longitud: lng
                               }));
                             }}
-                            height="200px"
+                            height="180px"
                           />
                         </div>
-                        <label className="flex-1 flex flex-col items-center justify-center w-full border-2 border-dashed border-[#769C7B]/40 rounded-[24px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all relative min-h-[120px]">
+                        <label className="flex-1 flex flex-col items-center justify-center w-full border-2 border-dashed border-[#769C7B]/40 rounded-[24px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all relative min-h-[100px]">
                           {imagePreview.logoUrl ? (
                             <img src={imagePreview.logoUrl} alt="Logo preview" className="absolute inset-0 w-full h-full object-cover rounded-[24px] z-10" style={{background: '#fff', width: '100%', height: '100%'}} />
                           ) : (
@@ -1042,10 +1079,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           {logoError && <span className="text-[10px] text-red-500 mt-2 font-bold absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-white/80 px-2 rounded">{logoError}</span>}
                         </label>
                       </div>
-                      <div className="space-y-3">
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="relative pb-5">
+                      <div className="space-y-2">
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="relative pb-4">
                               <input
                                 placeholder="Calle"
                                 className={inputClass + " text-[12px] py-2" + (calleError ? " border-red-500 bg-red-50/50" : "")}
@@ -1062,7 +1099,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               />
                               {calleError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{calleError}</p>}
                             </div>
-                            <div className="relative pb-5">
+                            <div className="relative pb-4">
                               <input
                                 placeholder="Número"
                                 className={inputClass + " text-[12px] py-2" + (numeroError ? " border-red-500 bg-red-50/50" : "")}
@@ -1080,8 +1117,24 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               {numeroError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{numeroError}</p>}
                             </div>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="relative pb-5">
+                          <div className="flex items-center gap-3 mb-2">
+                            <button
+                              type="button"
+                              onClick={() => buscarCoordenadas(composeDireccion(form))}
+                              disabled={!(form.calle || form.colonia || form.codigoPostal)}
+                              className="text-[10px] px-3 py-1 rounded-full bg-[#0D601E]/10 text-[#0D601E] hover:bg-[#0D601E]/20 font-bold disabled:bg-gray-100 disabled:text-gray-400"
+                            >
+                              Calcular coordenadas en el mapa
+                            </button>
+                            {buscandoCoordenadas && (
+                              <span className="text-[11px] text-[#769C7B] italic">Buscando coordenadas…</span>
+                            )}
+                          </div>
+                          {geocodeError && (
+                            <p className="text-[9px] text-red-500 mb-2 ml-4 italic bg-red-50 p-2 rounded border border-red-200">{geocodeError}</p>
+                          )}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="relative pb-4">
                               <input
                                 placeholder="Colonia"
                                 disabled
@@ -1099,7 +1152,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               />
                               {coloniaError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{coloniaError}</p>}
                             </div>
-                            <div className="relative pb-5">
+                            <div className="relative pb-4">
                               <input
                                 placeholder="Código Postal"
                                 className={inputClass + " text-[12px] py-2" + (codigoPostalError ? " border-red-500 bg-red-50/50" : "")}
@@ -1121,8 +1174,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               {codigoPostalError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{codigoPostalError}</p>}
                             </div>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="relative pb-5">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="relative pb-4">
                               <input
                                 placeholder="Ciudad"
                                 disabled
@@ -1140,7 +1193,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               />
                               {ciudadError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{ciudadError}</p>}
                             </div>
-                            <div className="relative pb-5">
+                            <div className="relative pb-4">
                               <input
                                 placeholder="Estado"
                                 disabled
@@ -1159,44 +1212,31 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               {estadoError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{estadoError}</p>}
                             </div>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="relative pb-5 md:col-span-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="relative pb-4 md:col-span-2">
                               <input
                                 placeholder="Local (opcional)"
                                 className={inputClass + " text-[12px] py-2"}
                                 value={form.local}
-                                onChange={e => setForm((f: FormState) => ({ ...f, local: e.target.value, latitud: "", longitud: "" }))}
+                                onChange={e => setForm((f: FormState) => ({ ...f, local: e.target.value }))}
                               />
                             </div>
-                            <div className="relative pb-5 md:col-span-2">
+                            <div className="relative pb-4 md:col-span-2">
                               <input
                                 placeholder="Referencias (opcional)"
                                 className={inputClass + " text-[12px] py-2"}
                                 value={form.referencias}
-                                onChange={e => setForm((f: FormState) => ({ ...f, referencias: e.target.value, latitud: "", longitud: "" }))}
+                                onChange={e => setForm((f: FormState) => ({ ...f, referencias: e.target.value }))}
                               />
                             </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <button
-                              type="button"
-                              onClick={() => buscarCoordenadas(composeDireccion(form))}
-                              disabled={!(form.calle || form.colonia || form.codigoPostal)}
-                              className="text-[10px] px-3 py-1 rounded-full bg-[#0D601E]/10 text-[#0D601E] hover:bg-[#0D601E]/20 font-bold disabled:bg-gray-100 disabled:text-gray-400"
-                            >
-                              Calcular coordenadas en el mapa
-                            </button>
-                            {buscandoCoordenadas && (
-                              <span className="text-[11px] text-[#769C7B] italic">Buscando coordenadas…</span>
-                            )}
                           </div>
                           {ubicacionError && (
                             <p className="text-[9px] text-red-500 mt-1 ml-4 italic">{ubicacionError}</p>
                           )}
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="relative">
-                            <label className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-2">
+                            <label className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-1">
                               Latitud {form.latitud && <span className="text-green-600 text-[9px]">✓</span>}
                             </label>
                             <input
@@ -1207,7 +1247,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             />
                           </div>
                           <div className="relative">
-                            <label className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-2">
+                            <label className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-1">
                               Longitud {form.longitud && <span className="text-green-600 text-[9px]">✓</span>}
                             </label>
                             <input
@@ -1218,11 +1258,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             />
                           </div>
                         </div>
-                        <div className="relative pb-5">
-                          <FiGlobe className="absolute left-4 top-1/2 -translate-y-1/2 text-[#769C7B]" />
+                        <div className="relative pb-4">
                           <input 
                             placeholder={t('websiteSocial')} 
-                            className={inputClass + " pl-12 text-[12px] py-2" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")} 
+                            className={inputClass + " pl-11 text-[12px] py-2.5" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")} 
                             value={form.sitioWeb} 
                             onChange={e => {
                               setForm((f: FormState) => ({ ...f, sitioWeb: e.target.value }));
@@ -1240,9 +1279,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               }
                             }}
                           />
+                          <FiGlobe className="absolute left-[22px] top-[10px] text-[#769C7B] pointer-events-none" size={16} />
                           {sitioWebError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{sitioWebError}</p>}
                         </div>
-                        <div className="p-3 bg-[#ECF4EE] rounded-2xl border border-[#0D601E]/20 text-[10px] text-[#1A4D2E] font-medium">
+                        <div className="p-2 bg-[#ECF4EE] rounded-2xl border border-[#0D601E]/20 text-[10px] text-[#1A4D2E] font-medium">
                            <FiInfo className="inline mr-1"/> {t('locationHelp')}
                         </div>
                       </div>
