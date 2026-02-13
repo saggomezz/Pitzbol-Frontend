@@ -791,6 +791,16 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     setIsFinishing(true);
     setSuccess(false);
     try {
+      let ownerUid: string | undefined;
+      try {
+        const storedUser = localStorage.getItem("pitzbol_user");
+        if (storedUser) {
+          ownerUid = JSON.parse(storedUser)?.uid;
+        }
+      } catch {
+        ownerUid = undefined;
+      }
+
       // Crear FormData para enviar archivos
       const formData = new FormData();
       formData.append("email", form.correo);
@@ -804,6 +814,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       formData.append("website", form.sitioWeb);
       formData.append("rfc", form.rfc);
       formData.append("cp", form.cp);
+      if (ownerUid) formData.append("ownerUid", ownerUid);
       
       // Agregar logo - convertir Data URL a File si es necesario
       if (files.logo) {
@@ -860,6 +871,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       localStorage.removeItem("pitzbol_business_draft");
       localStorage.removeItem("pitzbol_business_images");
       setFiles({ logo: null, galeria: [null, null, null] });
+
+      if (ownerUid) {
+        const { notificarSolicitudNegocioEnviada } = await import("@/lib/notificaciones");
+        await notificarSolicitudNegocioEnviada(ownerUid);
+      }
+
       setSuccess(true);
       setTimeout(() => {
         setIsFinishing(false);

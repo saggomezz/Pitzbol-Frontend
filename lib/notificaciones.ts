@@ -6,7 +6,7 @@ import { agregarHistorialSolicitud } from "@/app/components/HistorialSolicitudes
 
 export interface PitzbolNotification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia' | 'nueva_solicitud_negocio';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado';
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -19,7 +19,7 @@ export interface PitzbolNotification {
  */
 export const enviarNotificacion = async (
   userId: string,
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia' | 'nueva_solicitud_negocio',
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado',
   titulo: string,
   mensaje: string,
   enlace?: string
@@ -116,6 +116,19 @@ export const notificarSolicitudEnviada = (userId: string) => {
     'Solicitud Enviada ✓',
     'Tu solicitud para ser Guía Pitzbol ha sido enviada correctamente. Estamos revisando tu información y te notificaremos pronto.',
     '/guide/estatus'
+  );
+};
+
+/**
+ * Enviar notificación cuando se envía solicitud de negocio
+ */
+export const notificarSolicitudNegocioEnviada = (userId: string) => {
+  return enviarNotificacion(
+    userId,
+    'solicitud_negocio_enviada',
+    'Negocio enviado ✓',
+    'Tu solicitud de negocio fue enviada correctamente. Te avisaremos cuando sea revisada.',
+    '/negocio/estatus'
   );
 };
 
