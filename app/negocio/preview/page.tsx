@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,6 +34,8 @@ interface BusinessData {
 
 export default function BusinessPreviewPage() {
   const user = usePitzbolUser();
+  const searchParams = useSearchParams();
+  const businessId = searchParams.get("id");
   const [business, setBusiness] = useState<BusinessData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +49,11 @@ export default function BusinessPreviewPage() {
       setError(null);
       try {
         const token = localStorage.getItem("pitzbol_token");
-        const response = await fetch(`${BACKEND_URL}/api/business/my-business`, {
+        const endpoint = businessId
+          ? `${BACKEND_URL}/api/business/by-id/${businessId}`
+          : `${BACKEND_URL}/api/business/my-business`;
+
+        const response = await fetch(endpoint, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -80,7 +87,7 @@ export default function BusinessPreviewPage() {
     }
 
     fetchBusiness();
-  }, [user?.uid]);
+  }, [user?.uid, businessId]);
 
   if (!user)
     return (
