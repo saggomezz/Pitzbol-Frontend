@@ -128,7 +128,7 @@ export const notificarSolicitudNegocioEnviada = (userId: string) => {
     'solicitud_negocio_enviada',
     'Negocio enviado ✓',
     'Tu solicitud de negocio fue enviada correctamente. Te avisaremos cuando sea revisada.',
-    '/negocio/estatus'
+    '/negocio/preview'
   );
 };
 

@@ -52,17 +52,21 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.notificaciones) {
-          notificacionesDelBackend = data.notificaciones.map((notif: any) => ({
-            id: notif.id,
-            tipo: notif.tipo,
-            titulo: notif.titulo,
-            mensaje: notif.mensaje,
-            fecha: notif.fecha,
-            leido: notif.leido || false,
-            enlace: notif.enlace,
-            solicitudId: notif.solicitudId,
-            uidSolicitante: notif.uidSolicitante
-          }));
+          notificacionesDelBackend = data.notificaciones.map((notif: any) => {
+            const mapped = {
+              id: notif.id,
+              tipo: notif.tipo,
+              titulo: notif.titulo,
+              mensaje: notif.mensaje,
+              fecha: notif.fecha,
+              leido: notif.leido || false,
+              enlace: notif.enlace,
+              solicitudId: notif.solicitudId,
+              uidSolicitante: notif.uidSolicitante
+            };
+            console.log(`📩 Notificación del backend:`, mapped);
+            return mapped;
+          });
         }
       }
 
@@ -197,12 +201,19 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     const handleNotificationsUpdated = (event: Event) => {
       cargarNotificacionesLocal();
     };
+    const handleRefreshFromBackend = () => {
+      if (userId) {
+        cargarNotificacionesDelBackend();
+      }
+    };
     
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
+    window.addEventListener("refreshNotificationsFromBackend", handleRefreshFromBackend);
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
+      window.removeEventListener("refreshNotificationsFromBackend", handleRefreshFromBackend);
     };
   }, [userId]);
 
@@ -419,9 +430,14 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                         !notif.leido ? 'border-l-[#F00808] bg-opacity-60' : 'border-l-gray-200'
                       }`}
                       onClick={() => {
+                        console.log(`🔔 Clic en notificación:`, notif);
+                        console.log(`🔗 Enlace de notificación:`, notif.enlace);
                         marcarComoLeida(notif.id);
                         if (notif.enlace) {
+                          console.log(`➡️ Navegando a:`, notif.enlace);
                           window.location.href = notif.enlace;
+                        } else {
+                          console.warn(`⚠️ La notificación no tiene enlace`);
                         }
                       }}
                     >
