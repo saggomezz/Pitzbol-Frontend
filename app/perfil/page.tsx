@@ -1029,17 +1029,20 @@ export default function PerfilDetallado() {
                     <h2 className="text-2xl md:text-3xl font-semibold text-[#1A4D2E] text-center mb-1">
                       {perfil.nombre} {perfil.apellido}
                     </h2>
-                    <button
-                      onClick={() => {
-                        setNombreTemp(perfil.nombre || "");
-                        setApellidoTemp(perfil.apellido || "");
-                        setEditandoNombre(true);
-                      }}
-                      className="absolute -right-8 top-1/2 -translate-y-1/2 p-2 text-[#1A4D2E] hover:bg-[#F6F0E6] rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                      title="Editar nombre"
-                    >
-                      <FiEdit2 size={16} />
-                    </button>
+                    {/* Solo permitir editar nombre si NO es turista ni guía */}
+                    {perfil.rol !== "turista" && perfil.rol !== "guia" && (
+                      <button
+                        onClick={() => {
+                          setNombreTemp(perfil.nombre || "");
+                          setApellidoTemp(perfil.apellido || "");
+                          setEditandoNombre(true);
+                        }}
+                        className="absolute -right-8 top-1/2 -translate-y-1/2 p-2 text-[#1A4D2E] hover:bg-[#F6F0E6] rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        title="Editar nombre"
+                      >
+                        <FiEdit2 size={16} />
+                      </button>
+                    )}
                   </div>
                 )}
                 
