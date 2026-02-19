@@ -403,10 +403,6 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         });
         console.log("📢 Disparando evento 'guideSubmissionCompleted'");
         
-        // Enviar notificación
-        const { notificarSolicitudEnviada } = await import("@/lib/notificaciones");
-        notificarSolicitudEnviada(userLocal?.uid);
-        
         // Disparar evento personalizado para que el Navbar se actualice
         // Hacerlo múltiples veces para asegurar que se escuche
         window.dispatchEvent(new Event("guideSubmissionCompleted"));
@@ -415,7 +411,9 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         // Hacer otro dispatch después de un pequeño delay
         setTimeout(() => {
           window.dispatchEvent(new Event("guideSubmissionCompleted"));
-        }, 50);
+          // Recargar notificaciones desde el backend
+          window.dispatchEvent(new Event("refreshNotificationsFromBackend"));
+        }, 500);
         
         setShowConfirmation(true);
       } else {
