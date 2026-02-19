@@ -122,13 +122,14 @@ export const notificarSolicitudEnviada = (userId: string) => {
 /**
  * Enviar notificación cuando se envía solicitud de negocio
  */
-export const notificarSolicitudNegocioEnviada = (userId: string) => {
+export const notificarSolicitudNegocioEnviada = (userId: string, businessId?: string) => {
+  const enlace = businessId ? `/negocio/preview?id=${businessId}` : '/negocio/preview';
   return enviarNotificacion(
     userId,
     'solicitud_negocio_enviada',
     'Negocio enviado ✓',
     'Tu solicitud de negocio fue enviada correctamente. Te avisaremos cuando sea revisada.',
-    '/negocio/preview'
+    enlace
   );
 };
 
