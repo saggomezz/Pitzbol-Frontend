@@ -51,7 +51,9 @@
     "seeMore": "Ver más",
     "seeAll": "Ver todos",
     "filter": "Filtrar",
-    "search": "Buscar"
+    "search": "Buscar",
+    "noImage": "Sin imagen",
+    "loadingItinerary": "Cargando itinerario..."
   },
   "footer": {
     "description": "Nuestra identidad nace del \"Pitz\", término maya que consagra el juego de pelota como un acto ritual y cosmogónico. Más que un escudo, nuestro emblema es un diálogo visual entre el ancestral \"Ollamaliztli\" —donde la vida y el cosmos se decidían en el campo— y la euforia del fútbol contemporáneo. Encarnamos el movimiento perpetuo de la esfera de caucho, una herencia de honor y comunidad que hoy, bajo nuestra bandera, vuelve a unir a México con el mundo.",
@@ -115,7 +117,14 @@
     "personalizedItinerary": "Itinerario Personalizado",
     "findGuide": "Encuentra tu Guía",
     "discoverPlaces": "Descubre Lugares",
-    "viewMatch": "Ver Partido"
+    "viewMatch": "Ver Partido",
+    "nextMatchIn": "Próximo partido en",
+    "buildYourItinerary": "Arma tu Itinerario",
+    "yourChosenRoute": "Tu Ruta Elegida",
+    "pressToChoosePlaces": "Presiona para elegir lugares",
+    "generateItinerary": "Generar Itinerario",
+    "selectAtLeastOnePlace": "Selecciona al menos 1 lugar",
+    "hours": "hrs"
   },
   "categories": {
     "soccer": "Fútbol",
