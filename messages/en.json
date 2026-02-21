@@ -568,7 +568,21 @@
     "approve": "Approve",
     "reject": "Reject",
     "delete": "Delete",
-    "statistics": "Statistics"
+    "statistics": "Statistics",
+    "managedUsers": "User management",
+    "loadingManagedUsers": "Loading guides and business users...",
+    "guidesListTitle": "Active guides",
+    "businessUsersTitle": "Active business users",
+    "noGuidesToManage": "There are no guides to manage.",
+    "noBusinessesToManage": "There are no business users to manage.",
+    "managedUsersLoadError": "Could not load guides and business users.",
+    "adminAuthRequired": "Your admin session expired or you do not have permissions.",
+    "deleteUser": "Delete user",
+    "userDeletedSuccess": "User deleted successfully",
+    "userDeletedError": "Could not delete user",
+    "guideSingular": "guide",
+    "businessSingular": "business user",
+    "confirmDeleteUser": "Are you sure you want to delete the {role} {user}? This action cannot be undone."
   },
   "payment": {
     "title": "Payment",

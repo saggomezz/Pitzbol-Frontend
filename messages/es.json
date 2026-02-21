@@ -566,7 +566,21 @@
     "approve": "Aprobar",
     "reject": "Rechazar",
     "delete": "Eliminar",
-    "statistics": "Estadísticas"
+    "statistics": "Estadísticas",
+    "managedUsers": "Gestión de usuarios",
+    "loadingManagedUsers": "Cargando guías y negociantes...",
+    "guidesListTitle": "Guías activos",
+    "businessUsersTitle": "Negociantes activos",
+    "noGuidesToManage": "No hay guías para gestionar.",
+    "noBusinessesToManage": "No hay negociantes para gestionar.",
+    "managedUsersLoadError": "No se pudieron cargar guías y negociantes.",
+    "adminAuthRequired": "Tu sesión de administrador expiró o no tiene permisos.",
+    "deleteUser": "Eliminar usuario",
+    "userDeletedSuccess": "Usuario eliminado correctamente",
+    "userDeletedError": "No se pudo eliminar el usuario",
+    "guideSingular": "guía",
+    "businessSingular": "negociante",
+    "confirmDeleteUser": "¿Seguro que deseas eliminar al {role} {user}? Esta acción no se puede deshacer."
   },
   "payment": {
     "title": "Pago",
