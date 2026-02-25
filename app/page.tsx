@@ -1,12 +1,11 @@
 "use client";
 import { generarItinerarioManual, Lugar } from '@/lib/pitzbol-engine';
-import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Papa from 'papaparse';
 import { Suspense, useEffect, useRef, useState } from "react";
-import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
+import { FiChevronRight } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi";
 import { construirItinerarioElegido, ordenarPorCercania } from '../lib/pitzbol-engine';
 import WelcomeNotification from './components/WelcomeNotification';
@@ -201,6 +200,12 @@ function HomeContent() {
   const [seleccionados, setSeleccionados] = useState<Lugar[]>([]);
   const [mostrarOpciones, setMostrarOpciones] = useState(false);
   const [itinerarioFinal, setItinerarioFinal] = useState("");
+  
+  // ESTADOS PARA LA IA DEL SERVIDOR
+  const [promptIA, setPromptIA] = useState("");
+  const [loadingServerIA, setLoadingServerIA] = useState(false);
+  const [itinerarioIA, setItinerarioIA] = useState<any>(null);
+  const [errorIA, setErrorIA] = useState("");
 
   // Cargar la base de datos al inicio
   useEffect(() => {
@@ -252,6 +257,43 @@ function HomeContent() {
     const texto = construirItinerarioElegido(seleccionados);
     setItinerarioFinal(texto);
     setMostrarOpciones(false);
+  };
+
+  const generarItinerarioIA = async () => {
+    if (!promptIA.trim()) {
+      setErrorIA("Por favor, describe qué tipo de itinerario quieres");
+      return;
+    }
+
+    setLoadingServerIA(true);
+    setErrorIA("");
+    setItinerarioIA(null);
+
+    try {
+      const response = await fetch("http://69.30.204.56:3001/api/ai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt: promptIA }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al conectar con la IA");
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setItinerarioIA(data.output);
+      } else {
+        setErrorIA(data.msg || "Error generando itinerario");
+      }
+    } catch (error) {
+      setErrorIA("Error al conectar con el servidor. Intenta de nuevo.");
+      console.error(error);
+    } finally {
+      setLoadingServerIA(false);
+    }
   };
 
   const cargarItinerarioHome = async () => {
@@ -389,69 +431,129 @@ function HomeContent() {
             flag2="https://img.freepik.com/foto-gratis/fondo-textura-bandera-nacional-dinamarca-ia-generativa_169016-29875.jpg"
             time="20:00"
           />
-          {/* CONTENEDOR DE ITINERARIO */}
-          <div className="bg-[#FAF9F2] rounded-3xl p-6 shadow-sm min-h-[300px] border border-[#1A4D2E]/10 flex flex-col relative">
-            <h2 className="font-black text-[#1A4D2E] uppercase text-xs tracking-widest mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-              {itinerarioFinal ? "Tu Ruta Elegida" : "Arma tu Itinerario"}
-            </h2>
+          {/* CONTENEDOR DE ITINERARIO IA */}
+          <div className="bg-gradient-to-br from-[#0D601E] via-[#1A4D2E] to-[#0D3D15] rounded-3xl p-1 shadow-2xl min-h-[450px] relative overflow-hidden group hover:shadow-[0_0_40px_rgba(13,96,30,0.4)] transition-all duration-300">
+            {/* Animated background effect */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#F00808]/10 via-transparent to-[#769C7B]/10 animate-pulse opacity-50"></div>
+            
+            {/* Inner container */}
+            <div className="relative bg-gradient-to-br from-[#FAF9F2] to-[#F6F0E6] rounded-[22px] p-6 h-full flex flex-col">
+              {/* Header with animated icon */}
+              <div className="flex items-center justify-between mb-5 pb-3 border-b-2 border-[#1A4D2E]/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-[#F00808] to-[#D10606] rounded-xl flex items-center justify-center shadow-lg animate-bounce" style={{ animationDuration: '2s' }}>
+                    <span className="text-2xl">🤖</span>
+                  </div>
+                  <div>
+                    <h2 className="font-black text-[#1A4D2E] uppercase text-sm tracking-wider" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                      IA de Itinerarios
+                    </h2>
+                    <p className="text-[9px] text-[#769C7B] font-semibold uppercase tracking-wide">Powered by Ollama</p>
+                  </div>
+                </div>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/50"></div>
+              </div>
 
-            {!itinerarioFinal && !mostrarOpciones && (
-              <button 
-                onClick={() => setMostrarOpciones(true)}
-                className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#769C7B]/30 rounded-2xl hover:bg-[#F6F0E6] transition-all group"
-              >
-                <FiMapPin className="text-[#769C7B] group-hover:text-[#F00808] mb-2" size={24} />
-                <p className="text-[11px] font-bold text-[#769C7B] uppercase">Presiona para elegir lugares</p>
-              </button>
-            )}
-
-            {mostrarOpciones && (
-              <div className="flex-1 flex flex-col">
-                <div className="flex-1 overflow-y-auto max-h-60 mb-4 space-y-2 pr-2 custom-scrollbar">
-                  {lugaresBD.map((lugar) => (
-                    <div 
-                      key={lugar.nombre}
-                      onClick={() => toggleLugar(lugar)}
-                      className={`p-3 rounded-xl cursor-pointer border transition-all flex justify-between items-center ${
-                        seleccionados.find(s => s.nombre === lugar.nombre) 
-                        ? "bg-[#1A4D2E] border-[#1A4D2E] text-white" 
-                        : "bg-white border-[#F6F0E6] text-[#1A4D2E]"
-                      }`}
-                    >
-                      <span className="text-[11px] font-bold uppercase">{lugar.nombre}</span>
-                      <span className="text-[9px] opacity-70">{lugar.tiempoEstancia} min</span>
+              {/* Sección de Input */}
+              {!itinerarioIA && (
+                <div className="flex-1 flex flex-col gap-4">
+                  <div className="relative">
+                    <label className="block text-[10px] font-bold text-[#1A4D2E] uppercase tracking-wide mb-2">
+                      Describe tu itinerario ideal
+                    </label>
+                    <textarea
+                      value={promptIA}
+                      onChange={(e) => setPromptIA(e.target.value)}
+                      placeholder="🌎 Ejemplo: Quiero un itinerario de 2 días en Guadalajara con vida nocturna, gastronomía local y lugares históricos. Me gusta el arte y la música en vivo..."
+                      className="w-full p-4 rounded-2xl border-2 border-[#769C7B]/30 focus:border-[#F00808] focus:ring-2 focus:ring-[#F00808]/20 focus:outline-none resize-none text-[13px] font-medium bg-white/80 backdrop-blur min-h-[180px] transition-all shadow-inner"
+                      style={{ fontFamily: "var(--font-roboto)" }}
+                    />
+                    <div className="absolute bottom-3 right-3 text-[10px] text-[#769C7B] font-semibold">
+                      {promptIA.length}/500
                     </div>
-                  ))}
-                </div>
-                <button
-                  onClick={finalizarRuta}
-                  disabled={seleccionados.length === 0} 
-                  className={`w-full py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
-                    seleccionados.length > 0
-                      ? "bg-[#F00808] text-white shadow-lg active:scale-95" 
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  {seleccionados.length > 0
-                    ? `Generar Itinerario (${seleccionados.length})`
-                    : "Selecciona al menos 1 lugar"}
-                </button>
-              </div>
-            )}
+                  </div>
 
-            {itinerarioFinal && (
-              <div className="flex-1 flex flex-col">
-                <div className="text-[13px] leading-relaxed text-[#1A4D2E]/80 font-medium whitespace-pre-wrap flex-1 overflow-y-auto max-h-64">
-                  {itinerarioFinal}
+                  {errorIA && (
+                    <div className="bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-[#F00808] text-red-800 p-4 rounded-xl text-[12px] font-bold flex items-center gap-2 animate-shake">
+                      <span className="text-xl">⚠️</span>
+                      <span>{errorIA}</span>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={generarItinerarioIA}
+                    disabled={loadingServerIA || !promptIA.trim()}
+                    className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl ${
+                      loadingServerIA || !promptIA.trim()
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-gradient-to-r from-[#F00808] via-[#D10606] to-[#B90000] text-white hover:shadow-2xl hover:scale-[1.02] active:scale-95 hover:from-[#D10606] hover:via-[#B90000] hover:to-[#F00808]"
+                    }`}
+                    style={{ fontFamily: "'Jockey One', sans-serif" }}
+                  >
+                    {loadingServerIA ? (
+                      <>
+                        <span className="animate-spin text-xl">⏳</span>
+                        <span>Generando tu itinerario...</span>
+                        <span className="animate-bounce">🚀</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-lg">✨</span>
+                        <span>Crear Itinerario con IA</span>
+                        <span className="text-lg">🗺️</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Tips section */}
+                  <div className="bg-[#1A4D2E]/5 rounded-xl p-3 border border-[#1A4D2E]/10">
+                    <p className="text-[10px] text-[#1A4D2E] font-semibold uppercase mb-1.5">💡 Tips para mejores resultados:</p>
+                    <ul className="text-[9px] text-[#769C7B] space-y-0.5 font-medium">
+                      <li>• Menciona tus gustos (arte, comida, deporte, historia)</li>
+                      <li>• Indica el número de días de tu visita</li>
+                      <li>• Especifica si viajas solo, en pareja o con familia</li>
+                    </ul>
+                  </div>
                 </div>
-                <button 
-                  onClick={() => {setItinerarioFinal(""); setSeleccionados([]);}}
-                  className="mt-4 text-[10px] font-bold text-[#769C7B] uppercase hover:text-[#F00808]"
-                >
-                  Reiniciar selección
-                </button>
-              </div>
-            )}
+              )}
+
+              {/* Resultado con mejor formato */}
+              {itinerarioIA && (
+                <div className="flex-1 flex flex-col gap-4 animate-fadeIn">
+                  <div className="bg-white rounded-2xl p-5 border-2 border-[#0D601E] shadow-xl max-h-[320px] overflow-y-auto">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[#1A4D2E]/10">
+                      <span className="text-xl">📍</span>
+                      <h3 className="font-black text-[#1A4D2E] uppercase text-xs tracking-wide" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                        Tu itinerario personalizado
+                      </h3>
+                    </div>
+                    <div className="text-[12px] text-[#1A4D2E] whitespace-pre-wrap leading-relaxed font-medium" style={{ fontFamily: "var(--font-roboto)" }}>
+                      {typeof itinerarioIA === "string" ? itinerarioIA : JSON.stringify(itinerarioIA, null, 2)}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setItinerarioIA(null);
+                        setPromptIA("");
+                      }}
+                      className="flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest bg-[#1A4D2E] text-white hover:bg-[#0D3D15] transition-all shadow-lg hover:shadow-xl active:scale-95"
+                    >
+                      ← Nueva búsqueda
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(typeof itinerarioIA === "string" ? itinerarioIA : JSON.stringify(itinerarioIA, null, 2));
+                      }}
+                      className="flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest bg-gradient-to-r from-[#F00808] to-[#D10606] text-white hover:shadow-xl transition-all active:scale-95"
+                    >
+                      📋 Copiar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
