@@ -1,14 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-    webpack: (config: any) => {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        '@tensorflow/tfjs': false,
-      };
-      config.externals = [...(config.externals || []), { canvas: 'canvas' }];
-      return config;
-    },
+  turbopack: {}, // Silenciar warning de Turbopack en Next.js 16
+  webpack: (config: any) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@tensorflow/tfjs': false,
+    };
+    config.externals = [...(config.externals || []), { canvas: 'canvas' }];
+    return config;
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'micro-cdn.summapress.com' },
