@@ -412,15 +412,17 @@ function HomeContent() {
                   Abre la experiencia completa de IA que diseñaste para generar rutas personalizadas con presupuesto e intereses.
                 </p>
 
-                <Link
-                  href="/ia"
+                <a
+                  href="http://69.30.204.56:3002"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-full text-center py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl bg-gradient-to-r from-[#F00808] via-[#D10606] to-[#B90000] text-white hover:shadow-2xl hover:scale-[1.02] active:scale-95 hover:from-[#D10606] hover:via-[#B90000] hover:to-[#F00808]"
                   style={{ fontFamily: "'Jockey One', sans-serif" }}
                 >
                   <span className="text-lg">🚀</span>
                   <span>Ir a la IA de Pitzbol</span>
                   <span className="text-lg">🗺️</span>
-                </Link>
+                </a>
               </div>
             </div>
           </div>
