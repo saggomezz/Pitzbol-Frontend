@@ -388,40 +388,42 @@ function HomeContent() {
             flag2="https://img.freepik.com/foto-gratis/fondo-textura-bandera-nacional-dinamarca-ia-generativa_169016-29875.jpg"
             time="20:00"
           />
-          <div className="bg-gradient-to-br from-[#0D601E] via-[#1A4D2E] to-[#0D3D15] rounded-3xl p-1 shadow-2xl min-h-[280px] relative overflow-hidden group hover:shadow-[0_0_40px_rgba(13,96,30,0.4)] transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#F00808]/10 via-transparent to-[#769C7B]/10 animate-pulse opacity-50"></div>
-
-            <div className="relative bg-gradient-to-br from-[#FAF9F2] to-[#F6F0E6] rounded-[22px] p-6 h-full flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-5 pb-3 border-b-2 border-[#1A4D2E]/20">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#F00808] to-[#D10606] rounded-xl flex items-center justify-center shadow-lg animate-bounce" style={{ animationDuration: '2s' }}>
-                    <span className="text-2xl">🤖</span>
-                  </div>
-                  <div>
-                    <h2 className="font-black text-[#1A4D2E] uppercase text-sm tracking-wider" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-                      IA de Itinerarios
-                    </h2>
-                    <p className="text-[9px] text-[#769C7B] font-semibold uppercase tracking-wide">Tu interfaz de IA con Ollama</p>
-                  </div>
+          <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100 min-h-[280px] relative overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div className="h-full flex flex-col justify-between">
+              
+              {/* HEADER MINIMALISTA */}
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-[#1A4D2E] rounded-2xl flex items-center justify-center">
+                  <span className="text-2xl">🤖</span>
                 </div>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/50"></div>
+                <div>
+                  <h2 className="text-xl font-bold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    PitzBot
+                  </h2>
+                  <p className="text-sm text-gray-600 font-medium">Crear itinerario con IA</p>
+                </div>
               </div>
 
-              <div className="flex-1 flex flex-col justify-center gap-4">
-                <p className="text-[13px] text-[#1A4D2E] leading-relaxed font-medium" style={{ fontFamily: "var(--font-roboto)" }}>
-                  Abre la experiencia completa de IA que diseñaste para generar rutas personalizadas con presupuesto e intereses.
+              {/* DESCRIPCIÓN MINIMALISTA */}
+              <div className="flex-1 flex flex-col justify-center mb-6">
+                <p className="text-gray-700 leading-relaxed mb-2">
+                  Genera itinerarios personalizados para Guadalajara según tu presupuesto e intereses.
                 </p>
-
-                <a
-                  href="http://69.30.204.56:3003"
-                  className="w-full text-center py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl bg-gradient-to-r from-[#F00808] via-[#D10606] to-[#B90000] text-white hover:shadow-2xl hover:scale-[1.02] active:scale-95 hover:from-[#D10606] hover:via-[#B90000] hover:to-[#F00808]"
-                  style={{ fontFamily: "'Jockey One', sans-serif" }}
-                >
-                  <span className="text-lg">🚀</span>
-                  <span>Ir a la IA de Pitzbol</span>
-                  <span className="text-lg">🗺️</span>
-                </a>
+                <div className="flex items-center gap-2 text-sm text-[#769C7B]">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>IA disponible</span>
+                </div>
               </div>
+
+              {/* BOTÓN MINIMALISTA */}
+              <a
+                href="http://69.30.204.56:3003"
+                className="w-full text-center py-4 px-6 rounded-2xl font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-3 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <span className="text-lg">⚡</span>
+                <span>Crear Itinerario</span>
+                <span className="text-lg">→</span>
+              </a>
             </div>
           </div>
         </div>

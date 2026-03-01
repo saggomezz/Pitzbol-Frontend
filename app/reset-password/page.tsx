@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { getApp, getApps, initializeApp } from "firebase/app";
 import { confirmPasswordReset, getAuth } from "firebase/auth";
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { FiLock, FiCheckCircle, FiAlertCircle, FiEye, FiEyeOff } from "react-icons/fi";
 import { motion } from "framer-motion";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import { FiAlertCircle, FiCheckCircle, FiEye, FiEyeOff, FiLock } from "react-icons/fi";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
