@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2 } from "react-icons/fi";
@@ -20,6 +20,9 @@ interface Lugar {
 export default function InformacionLugar() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromItinerario = searchParams.get('from') === 'itinerario';
+  const backUrl = searchParams.get('back');
   const [lugar, setLugar] = useState<Lugar | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -139,9 +142,25 @@ export default function InformacionLugar() {
       <div className={styles.heroHeader}>
         <div className={styles.heroOverlay}></div>
         <div className={styles.heroContent}>
-          <button onClick={() => router.back()} className={styles.backBtn}>
-            <FiArrowLeft />
-          </button>
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={() => {
+                if (fromItinerario && backUrl) {
+                  window.location.href = decodeURIComponent(backUrl);
+                } else {
+                  router.back();
+                }
+              }}
+              className={styles.backBtn}
+            >
+              <FiArrowLeft />
+            </button>
+            {fromItinerario && (
+              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.85)', fontWeight: 600, letterSpacing: '0.05em', textAlign: 'center', lineHeight: 1.2 }}>
+                Itinerario
+              </span>
+            )}
+          </div>
           <div className={styles.heroActions}>
             <motion.button 
               onClick={toggleFavorite} 
@@ -233,6 +252,33 @@ export default function InformacionLugar() {
               />
             </div>
           </div>
+
+          {/* Botón de regreso al itinerario */}
+          {fromItinerario && backUrl && (
+            <div style={{ marginTop: '2rem' }}>
+              <button
+                onClick={() => { window.location.href = decodeURIComponent(backUrl); }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  width: '100%',
+                  padding: '0.875rem 1.5rem',
+                  backgroundColor: '#1A4D2E',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.75rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  justifyContent: 'center',
+                }}
+              >
+                <FiArrowLeft />
+                Volver al itinerario
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
