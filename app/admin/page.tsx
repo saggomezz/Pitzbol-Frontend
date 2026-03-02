@@ -3,12 +3,27 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { enviarNotificacion } from "../../lib/notificaciones";
 import { useTranslations } from 'next-intl';
-import { FiChevronRight, FiFileText, FiLogOut, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle, FiMail, FiMessageSquare } from "react-icons/fi";
+import { FiChevronRight, FiFileText, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle, FiMail, FiTrash2 } from "react-icons/fi";
 import AdminHistorialSolicitudesModal from "@/app/components/AdminHistorialSolicitudesModal";
 
 type NotificationType = {
   tipo: 'exito' | 'error' | 'info';
   mensaje: string;
+};
+
+type ManagedUser = {
+  uid: string;
+  nombre?: string;
+  apellido?: string;
+  correo?: string;
+  telefono?: string;
+  role: 'guia' | 'negociante';
+};
+
+const getBackendBaseUrl = () => {
+  const rawBase = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001').trim();
+  const normalized = rawBase.replace(/\/+$/, '');
+  return normalized.endsWith('/api') ? normalized.slice(0, -4) : normalized;
 };
 
 export default function AdminPerfil() {
@@ -29,9 +44,14 @@ export default function AdminPerfil() {
   const [procesando, setProcesando] = useState(false);
   const [notificacion, setNotificacion] = useState<NotificationType | null>(null);
   const [showHistorialModal, setShowHistorialModal] = useState(false);
+  const [guias, setGuias] = useState<ManagedUser[]>([]);
+  const [negociantes, setNegociantes] = useState<ManagedUser[]>([]);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(true);
+  const [eliminandoUid, setEliminandoUid] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSolicitudes();
+    fetchUsuariosGestionables();
   }, []);
 
   const fetchSolicitudes = async () => {
@@ -73,6 +93,104 @@ export default function AdminPerfil() {
   const mostrarNotificacion = (tipo: 'exito' | 'error' | 'info', mensaje: string) => {
     setNotificacion({ tipo, mensaje });
     setTimeout(() => setNotificacion(null), 5000);
+  };
+
+  const fetchUsuariosGestionables = async () => {
+    setLoadingUsuarios(true);
+    try {
+      const API_BASE = getBackendBaseUrl();
+      let token = '';
+      if (typeof window !== 'undefined') {
+        token = localStorage.getItem('pitzbol_token') || '';
+      }
+
+      const response = await fetch(`${API_BASE}/api/admin/usuarios-gestionables`, {
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          mostrarNotificacion('error', t('adminAuthRequired'));
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1200);
+          setGuias([]);
+          setNegociantes([]);
+          return;
+        }
+        const serverMessage = data?.msg || data?.message || data?.error;
+        mostrarNotificacion('error', serverMessage || t('managedUsersLoadError'));
+        setGuias([]);
+        setNegociantes([]);
+        return;
+      }
+
+      setGuias(data.guias || []);
+      setNegociantes(data.negociantes || []);
+    } catch (error) {
+      mostrarNotificacion('error', t('managedUsersLoadError'));
+      setGuias([]);
+      setNegociantes([]);
+    } finally {
+      setLoadingUsuarios(false);
+    }
+  };
+
+  const handleEliminarUsuario = async (usuario: ManagedUser) => {
+    const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || usuario.correo || usuario.uid;
+    const confirmar = window.confirm(
+      t('confirmDeleteUser', {
+        role: usuario.role === 'guia' ? t('guideSingular') : t('businessSingular'),
+        user: nombreCompleto,
+      })
+    );
+
+    if (!confirmar) return;
+
+    setEliminandoUid(usuario.uid);
+
+    try {
+      const API_BASE = getBackendBaseUrl();
+      let token = '';
+      if (typeof window !== 'undefined') {
+        token = localStorage.getItem('pitzbol_token') || '';
+      }
+
+      const response = await fetch(`${API_BASE}/api/admin/usuarios/${usuario.uid}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ role: usuario.role }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data.success) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error(t('adminAuthRequired'));
+        }
+        throw new Error(data.message || data.msg || t('userDeletedError'));
+      }
+
+      if (usuario.role === 'guia') {
+        setGuias(prev => prev.filter(item => item.uid !== usuario.uid));
+      } else {
+        setNegociantes(prev => prev.filter(item => item.uid !== usuario.uid));
+      }
+
+      mostrarNotificacion('exito', t('userDeletedSuccess'));
+    } catch (error: any) {
+      console.error('❌ Error al eliminar usuario:', error);
+      mostrarNotificacion('error', error.message || t('userDeletedError'));
+    } finally {
+      setEliminandoUid(null);
+    }
   };
 
   const handleDecision = async (uid: string, accion: 'aprobar' | 'rechazar') => {
@@ -233,6 +351,78 @@ export default function AdminPerfil() {
                     <FiChevronRight className="text-gray-200 group-hover:text-green-600 transition-all" />
                   </motion.div>
                 ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <div className="flex items-center gap-3 mb-8">
+              <h2 className="text-gray-500 text-sm font-medium uppercase tracking-widest">{t('managedUsers')}</h2>
+            </div>
+
+            {loadingUsuarios ? (
+              <div className="bg-white rounded-[35px] border border-gray-100 p-10 text-center text-gray-400 font-light italic">
+                {t('loadingManagedUsers')}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-[28px] border border-gray-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-gray-700 font-medium">{t('guidesListTitle')}</h3>
+                    <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">{guias.length}</span>
+                  </div>
+                  {guias.length === 0 ? (
+                    <p className="text-sm text-gray-400 italic">{t('noGuidesToManage')}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {guias.map((guia) => (
+                        <div key={guia.uid} className="flex items-center justify-between gap-3 border border-gray-100 rounded-2xl p-3">
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">{`${guia.nombre || ''} ${guia.apellido || ''}`.trim() || t('noName')}</p>
+                            <p className="text-xs text-gray-400">{guia.correo || guia.uid}</p>
+                          </div>
+                          <button
+                            onClick={() => handleEliminarUsuario(guia)}
+                            disabled={eliminandoUid === guia.uid}
+                            className="px-3 py-2 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 text-xs font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            <FiTrash2 size={14} />
+                            {eliminandoUid === guia.uid ? tCommon('processing') : t('deleteUser')}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-[28px] border border-gray-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-gray-700 font-medium">{t('businessUsersTitle')}</h3>
+                    <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">{negociantes.length}</span>
+                  </div>
+                  {negociantes.length === 0 ? (
+                    <p className="text-sm text-gray-400 italic">{t('noBusinessesToManage')}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {negociantes.map((negociante) => (
+                        <div key={negociante.uid} className="flex items-center justify-between gap-3 border border-gray-100 rounded-2xl p-3">
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">{`${negociante.nombre || ''} ${negociante.apellido || ''}`.trim() || t('noName')}</p>
+                            <p className="text-xs text-gray-400">{negociante.correo || negociante.uid}</p>
+                          </div>
+                          <button
+                            onClick={() => handleEliminarUsuario(negociante)}
+                            disabled={eliminandoUid === negociante.uid}
+                            className="px-3 py-2 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 text-xs font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            <FiTrash2 size={14} />
+                            {eliminandoUid === negociante.uid ? tCommon('processing') : t('deleteUser')}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </section>

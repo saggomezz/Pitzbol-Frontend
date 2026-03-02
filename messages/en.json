@@ -51,7 +51,9 @@
     "seeMore": "See more",
     "seeAll": "See all",
     "filter": "Filter",
-    "search": "Search"
+    "search": "Search",
+    "noImage": "No image",
+    "loadingItinerary": "Loading itinerary..."
   },
   "footer": {
     "description": "Our identity is born from \"Pitz\", a Mayan term that consecrates the ball game as a ritual and cosmogonic act. More than a shield, our emblem is a visual dialogue between the ancestral \"Ollamaliztli\" —where life and cosmos were decided on the field— and the euphoria of contemporary football. We embody the perpetual motion of the rubber sphere, a heritage of honor and community that today, under our banner, reunites Mexico with the world.",
@@ -115,7 +117,14 @@
     "personalizedItinerary": "Personalized Itinerary",
     "findGuide": "Find Your Guide",
     "discoverPlaces": "Discover Places",
-    "viewMatch": "View Match"
+    "viewMatch": "View Match",
+    "nextMatchIn": "Next match in",
+    "buildYourItinerary": "Build Your Itinerary",
+    "yourChosenRoute": "Your Chosen Route",
+    "pressToChoosePlaces": "Press to choose places",
+    "generateItinerary": "Generate Itinerary",
+    "selectAtLeastOnePlace": "Select at least 1 place",
+    "hours": "hrs"
   },
   "categories": {
     "soccer": "Soccer",
@@ -559,7 +568,21 @@
     "approve": "Approve",
     "reject": "Reject",
     "delete": "Delete",
-    "statistics": "Statistics"
+    "statistics": "Statistics",
+    "managedUsers": "User management",
+    "loadingManagedUsers": "Loading guides and business users...",
+    "guidesListTitle": "Active guides",
+    "businessUsersTitle": "Active business users",
+    "noGuidesToManage": "There are no guides to manage.",
+    "noBusinessesToManage": "There are no business users to manage.",
+    "managedUsersLoadError": "Could not load guides and business users.",
+    "adminAuthRequired": "Your admin session expired or you do not have permissions.",
+    "deleteUser": "Delete user",
+    "userDeletedSuccess": "User deleted successfully",
+    "userDeletedError": "Could not delete user",
+    "guideSingular": "guide",
+    "businessSingular": "business user",
+    "confirmDeleteUser": "Are you sure you want to delete the {role} {user}? This action cannot be undone."
   },
   "payment": {
     "title": "Payment",
