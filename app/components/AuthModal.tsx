@@ -2,6 +2,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { FiEye, FiEyeOff, FiLock, FiMail, FiX } from "react-icons/fi";
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
@@ -38,6 +39,9 @@ const ErrorMsg = ({ text }: { text: string }) => (
 );
 
 const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: boolean; onClose: () => void; intendedRole?: "turista" | "guia" | "negocio" }) => {
+  const t = useTranslations('auth');
+  const tCommon = useTranslations('common');
+  
   const [isLogin, setIsLogin] = useState(() => {
   if (typeof window !== 'undefined') {
     return window.innerWidth < 768 ? true : false;
@@ -58,6 +62,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
   const [generalError, setGeneralError] = useState("");
   const [showLoginSuccess, setShowLoginSuccess] = useState(false);
   const [successUserName, setSuccessUserName] = useState("");
+  const [isNewAccount, setIsNewAccount] = useState(false);
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
   // y datos de Login
@@ -81,14 +86,14 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
     if (!regApellido.trim()) newErrors.apellido = true;
     if (!nacionalidad) newErrors.nacionalidad = true;
     if (telefono.replace(/\s/g, "").length < 10) {
-      newErrors.telefono = "Número incompleto";
+      newErrors.telefono = t('incompleteNumber');
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(regEmail)) newErrors.email = "Correo no válido";
+    if (!emailRegex.test(regEmail)) newErrors.email = t('invalidEmail');
 
-    if (regPassword.length < 6) newErrors.password = "Mínimo 6 caracteres";
-    if (regPassword !== regConfirmPassword) newErrors.confirmPassword = "Las contraseñas no coinciden";
+    if (regPassword.length < 6) newErrors.password = t('minCharacters');
+    if (regPassword !== regConfirmPassword) newErrors.confirmPassword = t('passwordsNotMatch');
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -177,9 +182,14 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         onClose();
         window.onAuthSuccessShowBusiness?.();
       } else {
-        alert("¡Registro exitoso! Bienvenido a Pitzbol.");
-        onClose();
-        window.location.href = "/perfil";
+        setSuccessUserName(loginData.user?.nombre || regNombre);
+        setIsNewAccount(true);
+        setShowLoginSuccess(true);
+        setTimeout(() => {
+          onClose();
+          window.location.href = "/";
+        }, 2000);
+        sessionStorage.setItem("justRegistered", "true");
       }
     } catch (error: any) {
       console.error("Register error:", error);
@@ -202,15 +212,39 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         }),
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get("content-type");
+      
+      try {
+        // Verificar si la respuesta tiene contenido JSON
+        if (contentType && contentType.includes("application/json")) {
+          const text = await response.text();
+          if (text.trim()) {
+            data = JSON.parse(text);
+          } else {
+            data = {};
+          }
+        } else {
+          // Si no es JSON, leer como texto
+          const text = await response.text();
+          data = { message: text || "Sin respuesta del servidor" };
+        }
+      } catch (parseError) {
+        console.error("❌ Error al parsear respuesta:", parseError);
+        alert("El servidor no está respondiendo correctamente. Por favor, verifica que el servidor esté corriendo.");
+        return;
+      }
+      
+      console.log('📝 Response status:', response.status);
+      console.log('📝 Response data:', data);
 
       if (response.ok) {
         // El backend ya normaliza todos los campos, usar directamente
         const userRole = data.user.role || "turista";
         const especialidadesData = data.user.especialidades || [];
 
-        const nombre = data.user.nombre || "Usuario";
-        const apellido = data.user.apellido || "";
+        const nombre = data.user.nombre || data.user["01_nombre"] || "Usuario";
+        const apellido = data.user.apellido || data.user["02_apellido"] || "";
         const telefono = data.user.telefono || "No registrado";
         const nacionalidad = data.user.nacionalidad || "No registrado";
 
@@ -234,7 +268,8 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         sessionStorage.setItem("justLoggedIn", "true");
         
         // Mostrar notificación de éxito en el modal
-        setSuccessUserName(data.user.nombre);
+        setSuccessUserName(data.user.nombre || data.user["01_nombre"] || "Usuario");
+        setIsNewAccount(false);
         setShowLoginSuccess(true);
       
         window.dispatchEvent(new Event("storage"));
@@ -255,23 +290,36 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         }, 2000);
 
       } else {
-        alert("Error: " + (data.msg || "Credenciales inválidas"));
+        // Mostrar mensaje de error específico del servidor
+        console.error("❌ Error de login:", data);
+        console.error("❌ Status code:", response.status);
+        console.error("❌ Response headers:", Object.fromEntries(response.headers.entries()));
+        
+        // Intentar diferentes campos del error
+        let errorMsg = data?.msg || data?.message || data?.error;
+        
+        // Si no hay mensaje del servidor, usar uno basado en el status code
+        if (!errorMsg) {
+          switch (response.status) {
+            case 401:
+              errorMsg = "Credenciales inválidas. Verifica tu correo y contraseña.";
+              break;
+            case 404:
+              errorMsg = "Usuario no encontrado. Verifica tu correo electrónico.";
+              break;
+            case 500:
+              errorMsg = "Error en el servidor. Por favor, intenta más tarde.";
+              break;
+            default:
+              errorMsg = `Error al iniciar sesión (código ${response.status}). Por favor, intenta de nuevo.`;
+          }
+        }
+        
+        alert(errorMsg);
       }
     } catch (error: any) {
-      console.error("Login error:", error);
-      
-      // Mensajes de error más específicos para Firebase Auth
-      if (error.code === 'auth/user-not-found') {
-        alert("No existe una cuenta con ese correo electrónico.");
-      } else if (error.code === 'auth/wrong-password') {
-        alert("Contraseña incorrecta.");
-      } else if (error.code === 'auth/invalid-email') {
-        alert("Formato de correo inválido.");
-      } else if (error.code === 'auth/too-many-requests') {
-        alert("Demasiados intentos. Por favor intenta más tarde.");
-      } else {
-        alert("Error de conexión. Revisa que el servidor esté encendido.");
-      }
+      console.error("❌ Login error completo:", error);
+      alert("Error de conexión con el servidor. Por favor, intenta de nuevo.");
     }
   };
 
@@ -322,7 +370,7 @@ if (!isOpen) return null;
               className="text-2xl md:text-3xl font-black text-white mb-2"
               style={{ fontFamily: 'var(--font-jockey)' }}
             >
-              ¡Bienvenido de nuevo!
+              {isNewAccount ? t('accountCreated').replace('exitosamente', '').replace('successfully', '') : t('welcomeBack')}
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 14 }}
@@ -358,19 +406,19 @@ if (!isOpen) return null;
           className={`w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white transition-opacity duration-300 ${!isLogin && typeof window !== 'undefined' && window.innerWidth < 768 ? 'hidden opacity-0' : 'flex opacity-100'}`}
         >
           <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-8 font-black text-center" style={{ fontFamily: 'var(--font-jockey)' }}>
-            INICIAR SESIÓN
+            {t('loginTitle').toUpperCase()}
           </h2>
           <div className="w-full max-w-sm space-y-5 text-center">
             <div className="relative text-left">
-              <FiMail className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={18} />
-              <input type="email" placeholder="Correo electrónico" className={`${inputClass} pl-14`} value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+              <FiMail color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
+              <input type="email" placeholder={t('email')} className={`${inputClass} pl-14`} value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
             </div>
             <div className="text-left">
               <div className="relative">
-                <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={18} />
+                <FiLock color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
                 <input 
                   type={showLoginPassword ? "text" : "password"} 
-                  placeholder="Contraseña:" 
+                  placeholder={t('password')} 
                   className={`${inputClass} pl-14 pr-14`} 
                   style={{ fontFamily: 'Inter, sans-serif' }} 
                   value={loginPassword}
@@ -381,14 +429,14 @@ if (!isOpen) return null;
                 </button>
               </div>
               <div className="text-right mt-2 px-4">
-                <Link href="/forgot-password" onClick={onClose} className="text-[11px] md:text-[13px] text-gray-500 hover:text-[#0D601E] transition-colors italic">¿Olvidaste tu contraseña?</Link>
+                <Link href="/forgot-password" onClick={onClose} className="text-[11px] md:text-[13px] text-gray-500 hover:text-[#0D601E] transition-colors italic">{t('forgotPassword')}</Link>
               </div>
             </div>
-            <button type="submit" className="w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium mt-4">Iniciar sesión</button>
+            <button type="submit" className="w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium mt-4">{t('login')}</button>
             
             {/* Alternar a Registro en móvil*/}
             <div className="md:hidden mt-8 ">
-               <p className="text-gray-500 text-xs">¿No te has registrado? <button type="button" onClick={() => setIsLogin(false)} className="text-[#8B0000] font-bold underline italic">Crear cuenta</button></p>
+               <p className="text-gray-500 text-xs">{t('noAccount')} <button type="button" onClick={() => setIsLogin(false)} className="text-[#8B0000] font-bold underline italic">{t('createAccount')}</button></p>
             </div>
           </div>
         </form>
@@ -398,27 +446,30 @@ if (!isOpen) return null;
           onSubmit={(e) => { e.preventDefault(); handleRegister(); }}
           className={`w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white border-l border-gray-100 overflow-y-auto transition-opacity duration-300 ${isLogin && typeof window !== 'undefined' && window.innerWidth < 768 ? 'hidden opacity-0' : 'flex opacity-100'}`}
         >
-          <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-6 font-black text-center uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>CREAR UNA CUENTA</h2>
+          <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-6 font-black text-center uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>{t('registerTitle').toUpperCase()}</h2>
           <div className="w-full max-w-sm flex flex-col gap-y-5">
             <div className="grid grid-cols-2 gap-3">
-              <input placeholder="Nombre(s)" className={inputClass} value={regNombre} onChange={(e) => setRegNombre(capitalize(e.target.value))} />
-              <input placeholder="Apellido(s)" className={inputClass} value={regApellido} onChange={(e) => setRegApellido(capitalize(e.target.value))} />
+              <input placeholder={t('name')} className={inputClass} value={regNombre} onChange={(e) => setRegNombre(capitalize(e.target.value))} />
+              <input placeholder={t('lastName')} className={inputClass} value={regApellido} onChange={(e) => setRegApellido(capitalize(e.target.value))} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <select value={nacionalidad} onChange={(e) => setNacionalidad(e.target.value)} className={`${inputClass} appearance-none pr-10`}>
-                <option value="" disabled>Nacionalidad</option>
+                <option value="" disabled>{t('nationality')}</option>
                 {ALL_COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
               </select>
-              <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono" className={inputClass} />
+              <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder={t('phone')} className={inputClass} />
             </div>
-            <input placeholder="Correo electrónico" className={inputClass} value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
+            <div className="relative">
+              <FiMail color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
+              <input placeholder={t('email')} className={`${inputClass} pl-14`} value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
+            </div>
             {/* Fila 4: Contraseña */}
             <div className="relative">
               <div className="relative text-left">
-                <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
+                <FiLock color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
                 <input 
                   type={showRegPassword ? "text" : "password"} 
-                  placeholder="Contraseña:" 
+                  placeholder={t('password')} 
                   className={`${inputClass} pl-14 pr-12 ${errors.password ? 'border-red-500 bg-red-50' : ''}`} 
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
@@ -440,10 +491,10 @@ if (!isOpen) return null;
             {/* Fila 5: Confirmar Contraseña */}
             <div className="relative">
               <div className="relative text-left">
-                <FiLock className="absolute left-5 top-1/2 -translate-y-1/2" color={iconColor} size={16} />
+                <FiLock color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
                 <input 
                   type={showRegConfirmPassword ? "text" : "password"} 
-                  placeholder="Confirmar contraseña:" 
+                  placeholder={t('confirmPassword')} 
                   className={`${inputClass} pl-14 pr-12 ${errors.confirmPassword ? 'border-red-500 bg-red-50' : ''}`} 
                   value={regConfirmPassword}
                   onChange={(e) => setRegConfirmPassword(e.target.value)}
@@ -461,11 +512,11 @@ if (!isOpen) return null;
                 {errors.confirmPassword && <ErrorMsg text={errors.confirmPassword} />}
               </div>
             </div>
-            <button type="submit" className="w-full bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium">Registrar</button>
+            <button type="submit" className="w-full bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium">{t('register')}</button>
             
             {/* Alternar a Login en móvil */}
             <div className="md:hidden text-center mt-4 pb-4">
-               <p className="text-gray-500 text-xs">¿Ya tienes cuenta? <button type="button" onClick={() => setIsLogin(true)} className="text-[#8B0000] font-bold underline italic">iniciar sesión</button></p>
+               <p className="text-gray-500 text-xs">{t('haveAccount')} <button type="button" onClick={() => setIsLogin(true)} className="text-[#8B0000] font-bold underline italic">{t('signInHere')}</button></p>
             </div>
           </div>
         </form>
@@ -477,10 +528,10 @@ if (!isOpen) return null;
           className="hidden md:flex absolute top-0 left-0 w-1/2 h-full bg-[#B2C7B5] z-[205] flex flex-col items-center justify-center p-8 md:p-12 text-center pointer-events-none"
         >
           <div className="pointer-events-auto">
-            <h2 className="text-[40px] md:text-[54px] text-[#1A4D2E] leading-none mb-4" style={{ fontFamily: 'var(--font-jockey)' }}>BIENVENIDO</h2>
-            <p className="text-[#1A4D2E] mb-8 font-medium text-sm md:text-base">{isLogin ? "¿Ya tienes una cuenta?" : "¿No te has registrado?"}</p>
+            <h2 className="text-[40px] md:text-[54px] text-[#1A4D2E] leading-none mb-4" style={{ fontFamily: 'var(--font-jockey)' }}>{tCommon('welcome').toUpperCase()}</h2>
+            <p className="text-[#1A4D2E] mb-8 font-medium text-sm md:text-base">{isLogin ? t('haveAccount') : t('noAccount')}</p>
             <button onClick={() => setIsLogin(!isLogin)} className="px-8 md:px-12 py-3 border-2 border-[#8B0000] text-[#8B0000] rounded-full hover:bg-[#8B0000] hover:text-white transition-all text-[11px] md:text-[14px]">
-              {isLogin ? "Iniciar sesión" : "Registrarme"}
+              {isLogin ? t('login') : t('register')}
             </button>
           </div>
         </motion.div>

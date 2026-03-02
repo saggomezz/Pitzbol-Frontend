@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from 'next/navigation';
 import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
 import type { LatLngExpression, Icon as LeafletIcon } from "leaflet";
 import { FiMapPin } from "react-icons/fi";
+import { getPlaceImageUrlSync } from "@/lib/placeImages";
 
 // Tipos para el icono personalizado
 let redIcon: LeafletIcon | undefined;
@@ -48,6 +49,7 @@ interface MapComponentProps {
     onSelectPlace: (lugar: Lugar) => void;
     mapCenter: [number, number];
     mapZoom: number;
+    placeImages?: Record<string, string>;
 }
 
 export type { MapComponentProps };
@@ -71,13 +73,18 @@ export default function MapComponent({
     onSelectPlace,
     mapCenter,
     mapZoom,
+    placeImages = {},
 }: MapComponentProps) {
     const router = useRouter();
+    // Usar una key estable que solo cambia cuando es necesario reinicializar el mapa
+    const [mapKey] = useState(() => `map-${Date.now()}`);
     
     if (!redIcon) return <div>Cargando mapa...</div>;
 
-    return (
+    // Memoizar el contenido del mapa para evitar re-renderizaciones innecesarias
+    const mapContent = useMemo(() => (
         <MapContainer
+            key={`map-${mapKey}`}
             center={mapCenter as LatLngExpression}
             zoom={mapZoom}
             style={{ height: "100%", width: "100%", borderRadius: "20px" }}
@@ -126,13 +133,30 @@ export default function MapComponent({
                                 }}
                             >
                                 <img
-                                    src="https://via.placeholder.com/250x120?text=Lugar"
+                                    src={placeImages[lugar.nombre] || getPlaceImageUrlSync({
+                                        nombre: lugar.nombre,
+                                        categoria: lugar.categoria || "",
+                                        ubicacion: lugar.ubicacion || "",
+                                        latitud: lugar.latitud,
+                                        longitud: lugar.longitud
+                                    })}
                                     alt={lugar.nombre}
                                     style={{
                                         width: "100%",
                                         height: "80px",
                                         objectFit: "cover",
                                         borderRadius: "8px",
+                                    }}
+                                    loading="lazy"
+                                    onError={(e) => {
+                                        // Fallback si la imagen falla al cargar
+                                        (e.target as HTMLImageElement).src = getPlaceImageUrlSync({
+                                            nombre: lugar.nombre,
+                                            categoria: lugar.categoria || "",
+                                            ubicacion: lugar.ubicacion || "",
+                                            latitud: lugar.latitud,
+                                            longitud: lugar.longitud
+                                        });
                                     }}
                                 />
                                 <div style={{ padding: "0 0.25rem" }}>
@@ -172,5 +196,7 @@ export default function MapComponent({
                 );
             })}
         </MapContainer>
-    );
+    ), [mapCenter, mapZoom, lugares, selectedPlace, placeImages, mapKey]);
+
+    return mapContent;
 }

@@ -3,12 +3,13 @@ import { ensureFaceApiReady } from "./initTF";
 import { useState, useEffect } from "react";
 import { Geist, Geist_Mono, Jockey_One, JetBrains_Mono, Roboto } from "next/font/google";
 import { AnimatePresence } from "framer-motion";
+import { NextIntlClientProvider } from 'next-intl';
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthModal from "./components/AuthModal";
-import GuideModal from "./components/GuideModal";
-import BusinessModal from "./components/BusinessModal";
+import BecomeGuideFlow from "./components/BecomeGuideFlow";
+import PublishBusinessFlow from "./components/PublishBusinessFlow";
 
 declare global {
   interface Window {
@@ -29,8 +30,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isBusinessOpen, setIsBusinessOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState<"turista" | "guia" | "negocio">("turista");
+  const [locale, setLocale] = useState('es');
+  const [messages, setMessages] = useState<any>(null);
 
   useEffect(() => {
+    // Cargar mensajes de traducción
+    const loadMessages = async () => {
+      const cookieLocale = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('NEXT_LOCALE='))
+        ?.split('=')[1] || 'es';
+      
+      setLocale(cookieLocale);
+      
+      try {
+        const msgs = await import(`../messages/${cookieLocale}.json`);
+        setMessages(msgs.default);
+      } catch (error) {
+        console.error('Error loading messages:', error);
+        // Fallback a español
+        const fallback = await import(`../messages/es.json`);
+        setMessages(fallback.default);
+      }
+    };
+
+    loadMessages();
+
     // Pre-cargar TensorFlow.js y face-api.js globalmente al cargar la página
     ensureFaceApiReady().catch(err => {
       console.error("Error pre-cargando librerías de reconocimiento facial:", err);
@@ -69,47 +94,53 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }, []);
 
   return (
-    <html lang="es">
+    <html lang={locale}>
       <body className={`${geistSans.variable} ${geistMono.variable} ${jockey.variable} ${jetbrains.variable} ${roboto.variable} antialiased bg-[#FDFCF9]`}>
-        
-        <Navbar 
-          onOpenAuth={() => { setPendingRole("turista"); setIsAuthOpen(true); }} 
-          onOpenAuthAsGuide={() => { setPendingRole("guia"); setIsAuthOpen(true); }}
-          onOpenGuide={() => setIsGuideOpen(true)}
-          onOpenAuthAsBusiness={() => { setPendingRole("negocio"); setIsAuthOpen(true); }}
-          onOpenBusiness={() => setIsBusinessOpen(true)} 
-        />
-
-        <main className="relative z-10 min-h-screen">
-          {children}
-        </main>
-
-        <Footer />
-
-        <AnimatePresence>
-          {isAuthOpen && (
-            <AuthModal 
-              isOpen={isAuthOpen} 
-              onClose={() => setIsAuthOpen(false)}
-              intendedRole={pendingRole}
+        {messages ? (
+          <NextIntlClientProvider locale={locale} messages={messages}>
+            <Navbar 
+              onOpenAuth={() => { setPendingRole("turista"); setIsAuthOpen(true); }} 
+              onOpenAuthAsGuide={() => { setPendingRole("guia"); setIsAuthOpen(true); }}
+              onOpenGuide={() => setIsGuideOpen(true)}
+              onOpenAuthAsBusiness={() => { setPendingRole("negocio"); setIsAuthOpen(true); }}
+              onOpenBusiness={() => setIsBusinessOpen(true)} 
             />
-          )}
 
-          {isGuideOpen && (
-            <GuideModal 
-              isOpen={isGuideOpen} 
-              onClose={() => setIsGuideOpen(false)} 
-              onOpenAuth={() => { setPendingRole("guia"); setIsAuthOpen(true); }}
-            />
-          )}
+            <main className="relative z-10 min-h-screen">
+              {children}
+            </main>
 
-          {isBusinessOpen && (
-            <BusinessModal 
-              isOpen={isBusinessOpen} 
-              onClose={() => setIsBusinessOpen(false)} 
-            />
-          )}
-        </AnimatePresence>
+            <Footer />
+
+            <AnimatePresence>
+              {isAuthOpen && (
+                <AuthModal 
+                  isOpen={isAuthOpen} 
+                  onClose={() => setIsAuthOpen(false)}
+                  intendedRole={pendingRole}
+                />
+              )}
+
+              {isGuideOpen && (
+                <BecomeGuideFlow 
+                  isOpen={isGuideOpen} 
+                  onClose={() => setIsGuideOpen(false)}
+                />
+              )}
+
+              {isBusinessOpen && (
+                <PublishBusinessFlow 
+                  isOpen={isBusinessOpen} 
+                  onClose={() => setIsBusinessOpen(false)} 
+                />
+              )}
+            </AnimatePresence>
+          </NextIntlClientProvider>
+        ) : (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">Cargando...</div>
+          </div>
+        )}
       </body>
     </html>
   );

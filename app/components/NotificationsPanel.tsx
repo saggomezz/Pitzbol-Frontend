@@ -1,16 +1,20 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader } from "react-icons/fi";
+
+import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 
 interface Notification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado';
   titulo: string;
   mensaje: string;
   fecha: string;
   leido: boolean;
+  enlace?: string;
+  solicitudId?: string;
+  uidSolicitante?: string;
 }
 
 interface NotificationsPanelProps {
@@ -27,60 +31,103 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   // Cargar notificaciones del backend (Firestore)
   const cargarNotificacionesDelBackend = async () => {
     if (!userId) return;
+    setCargando(true);
+    const key = `pitzbol_notifications_${userId}`;
+    const notificacionesLocal: Notification[] = JSON.parse(localStorage.getItem(key) || '[]');
 
     try {
       setCargando(true);
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
       const token = localStorage.getItem('pitzbol_token');
+      const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
+      
+      // Obtener notificaciones del usuario (siempre)
       const response = await fetch(`${API_BASE}/api/admin/notificaciones/${userId}`, {
         credentials: 'include',
         headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
       });
       
+      let notificacionesDelBackend: Notification[] = [];
+      
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.notificaciones) {
-          const notificacionesDelBackend = data.notificaciones.map((notif: any) => ({
-            id: notif.id,
-            tipo: notif.tipo,
-            titulo: notif.titulo,
-            mensaje: notif.mensaje,
-            fecha: notif.fecha,
-            leido: notif.leido || false
-          }));
-
-          // Combinar con localStorage y eliminar duplicados
-          const key = `pitzbol_notifications_${userId}`;
-          const notificacionesLocal = JSON.parse(localStorage.getItem(key) || '[]');
-          
-          // Crear un mapa de notificaciones locales por ID para priorizar cambios locales
-          const localMap = new Map(notificacionesLocal.map((n: Notification) => [n.id, n]));
-          
-          // Combinar: Firestore como base, pero localStorage sobrescribe si existe
-          const notificacionesCombinadas = notificacionesDelBackend.map((notif: Notification) => 
-            localMap.get(notif.id) || notif
-          );
-          
-          // Agregar notificaciones locales que no están en Firestore
-          const idsBackend = new Set(notificacionesDelBackend.map((n: Notification) => n.id));
-          for (const localNotif of notificacionesLocal) {
-            if (!idsBackend.has(localNotif.id)) {
-              notificacionesCombinadas.push(localNotif);
-            }
-          }
-
-          // Ordenar por fecha (más recientes primero)
-          notificacionesCombinadas.sort((a: Notification, b: Notification) => 
-            new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-          );
-
-          setNotificaciones(notificacionesCombinadas);
-          setNoLeidas(notificacionesCombinadas.filter((n: Notification) => !n.leido).length);
-
-          // Actualizar localStorage
-          localStorage.setItem(key, JSON.stringify(notificacionesCombinadas));
+          notificacionesDelBackend = data.notificaciones.map((notif: any) => {
+            const mapped = {
+              id: notif.id,
+              tipo: notif.tipo,
+              titulo: notif.titulo,
+              mensaje: notif.mensaje,
+              fecha: notif.fecha,
+              leido: notif.leido || false,
+              enlace: notif.enlace,
+              solicitudId: notif.solicitudId,
+              uidSolicitante: notif.uidSolicitante
+            };
+            console.log(`📩 Notificación del backend:`, mapped);
+            return mapped;
+          });
         }
       }
+
+      // Si es admin, también cargar notificaciones de soporte
+      if (user?.role === 'admin') {
+        try {
+          const supportResponse = await fetch(`${API_BASE}/api/support/notifications`, {
+            credentials: 'include',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
+          });
+
+          if (supportResponse.ok) {
+            const supportData = await supportResponse.json();
+            if (supportData.success && supportData.notificaciones) {
+              const notificacionesSoporte = supportData.notificaciones.map((notif: any) => ({
+                id: notif.id,
+                tipo: notif.tipo,
+                titulo: notif.titulo,
+                mensaje: notif.mensaje,
+                fecha: notif.fecha,
+                leido: notif.leido || false,
+                enlace: notif.enlace,
+              }));
+              notificacionesDelBackend = [...notificacionesDelBackend, ...notificacionesSoporte];
+            }
+          }
+        } catch (error) {
+          console.error("Error al cargar notificaciones de soporte:", error);
+        }
+      }
+
+      // Combinar con localStorage y eliminar duplicados
+      const key = `pitzbol_notifications_${userId}`;
+      const notificacionesLocal = JSON.parse(localStorage.getItem(key) || '[]');
+      
+      // Crear un mapa de notificaciones locales por ID para priorizar cambios locales
+      const localMap = new Map((notificacionesLocal as Notification[]).map((n: Notification) => [n.id, n]));
+      
+      // Combinar: Firestore como base, pero localStorage sobrescribe si existe
+      const notificacionesCombinadas: Notification[] = notificacionesDelBackend.map((notif: Notification) => 
+        localMap.get(notif.id) || notif
+      );
+      
+      // Agregar notificaciones locales que no están en Firestore
+      const idsBackend = new Set(notificacionesDelBackend.map((n: Notification) => n.id));
+      for (const localNotif of notificacionesLocal as Notification[]) {
+        if (!idsBackend.has(localNotif.id)) {
+          notificacionesCombinadas.push(localNotif);
+        }
+      }
+
+      // Ordenar por fecha (más recientes primero)
+      notificacionesCombinadas.sort((a, b) => 
+        new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+      );
+
+      setNotificaciones(notificacionesCombinadas);
+      setNoLeidas(notificacionesCombinadas.filter((n) => !n.leido).length);
+
+      // Actualizar localStorage
+      localStorage.setItem(key, JSON.stringify(notificacionesCombinadas));
     } catch (error) {
       console.error("Error al cargar notificaciones del backend:", error);
       // Cargar solo del localStorage si el backend falla
@@ -96,29 +143,41 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
     const key = `pitzbol_notifications_${userId}`;
     const stored = localStorage.getItem(key);
-    const notifs = stored ? JSON.parse(stored) : [];
-    
+    const notifs: Notification[] = stored ? JSON.parse(stored) : [];
     setNotificaciones(notifs);
-    setNoLeidas(notifs.filter((n: Notification) => !n.leido).length);
+    setNoLeidas(notifs.filter((n) => !n.leido).length);
   };
 
   // Efecto inicial para cargar notificaciones
   useEffect(() => {
     if (userId) {
       cargarNotificacionesLocal();
-      // Cargar del backend cuando se abre el panel
-      if (isOpen) {
-        cargarNotificacionesDelBackend();
-      }
+      // Cargar del backend inmediatamente al montar (para admins y badge)
+      cargarNotificacionesDelBackend();
     }
   }, [userId]);
 
+  // El efecto de Firestore se elimina. Solo se usa la API REST y localStorage.
   // Recargar notificaciones cuando se abre el panel
   useEffect(() => {
     if (isOpen && userId) {
       cargarNotificacionesDelBackend();
     }
   }, [isOpen, userId]);
+
+  // Polling ligero para admins: refresca cada 30s aunque el panel esté cerrado
+  useEffect(() => {
+    if (!userId) return;
+
+    const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
+    if (user?.role !== 'admin') return;
+
+    const interval = setInterval(() => {
+      cargarNotificacionesDelBackend();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [userId]);
 
   // Cerrar panel al hacer clic fuera
   useEffect(() => {
@@ -139,9 +198,23 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     const handleStorageChange = () => {
       cargarNotificacionesLocal();
     };
+    const handleNotificationsUpdated = (event: Event) => {
+      cargarNotificacionesLocal();
+    };
+    const handleRefreshFromBackend = () => {
+      if (userId) {
+        cargarNotificacionesDelBackend();
+      }
+    };
     
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
+    window.addEventListener("refreshNotificationsFromBackend", handleRefreshFromBackend);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
+      window.removeEventListener("refreshNotificationsFromBackend", handleRefreshFromBackend);
+    };
   }, [userId]);
 
   const marcarComoLeida = async (id: string) => {
@@ -209,6 +282,22 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return <FiCheck className="text-green-600" size={20} />;
       case 'rechazado':
         return <FiAlertCircle className="text-red-600" size={20} />;
+      case 'contacto':
+        return <FiBell className="text-blue-600" size={20} />;
+      case 'llamada':
+        return <FiBell className="text-purple-600" size={20} />;
+      case 'nueva_solicitud_negocio':
+        return <FiBriefcase className="text-orange-500" size={20} />;
+      case 'solicitud_negocio_enviada':
+        return <FiBriefcase className="text-[#0D601E]" size={20} />;
+      case 'negocio_aprobado':
+        return <FiCheck className="text-emerald-600" size={20} />;
+      case 'negocio_rechazado':
+        return <FiAlertCircle className="text-red-600" size={20} />;
+      case 'negocio_archivado':
+        return <FiX className="text-red-600" size={20} />;
+      case 'negocio_editado':
+        return <FiBriefcase className="text-blue-600" size={20} />;
       default:
         return <FiBell className="text-blue-600" size={20} />;
     }
@@ -220,6 +309,22 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return 'bg-green-50 border-green-100';
       case 'rechazado':
         return 'bg-red-50 border-red-100';
+      case 'contacto':
+        return 'bg-blue-50 border-blue-100';
+      case 'llamada':
+        return 'bg-purple-50 border-purple-100';
+      case 'nueva_solicitud_negocio':
+        return 'bg-orange-50 border-orange-100';
+      case 'solicitud_negocio_enviada':
+        return 'bg-emerald-50 border-emerald-100';
+      case 'negocio_aprobado':
+        return 'bg-emerald-50 border-emerald-100';
+      case 'negocio_rechazado':
+        return 'bg-red-50 border-red-100';
+      case 'negocio_archivado':
+        return 'bg-red-50 border-red-100';
+      case 'negocio_editado':
+        return 'bg-blue-50 border-blue-100';
       default:
         return 'bg-blue-50 border-blue-100';
     }
@@ -324,13 +429,22 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                       className={`p-4 border-l-4 ${getColorNotificacion(notif.tipo)} cursor-pointer hover:bg-opacity-75 transition-colors ${
                         !notif.leido ? 'border-l-[#F00808] bg-opacity-60' : 'border-l-gray-200'
                       }`}
-                      onClick={() => marcarComoLeida(notif.id)}
+                      onClick={() => {
+                        console.log(`🔔 Clic en notificación:`, notif);
+                        console.log(`🔗 Enlace de notificación:`, notif.enlace);
+                        marcarComoLeida(notif.id);
+                        if (notif.enlace) {
+                          console.log(`➡️ Navegando a:`, notif.enlace);
+                          window.location.href = notif.enlace;
+                        } else {
+                          console.warn(`⚠️ La notificación no tiene enlace`);
+                        }
+                      }}
                     >
                       <div className="flex gap-3">
                         <div className="flex-shrink-0 mt-1">
                           {getIconoNotificacion(notif.tipo)}
                         </div>
-                        
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <h4 className="font-bold text-sm text-gray-800">
@@ -343,8 +457,24 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                           <p className="text-xs text-gray-600 mt-1 line-clamp-2">
                             {notif.mensaje}
                           </p>
-                          
-                          {!notif.leido && (
+                          {/* Botón para revisar solicitud de guía pendiente */}
+                          {notif.tipo === 'solicitud_guia_pendiente' && notif.enlace && (
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  marcarComoLeida(notif.id);
+                                  if (typeof notif.enlace === 'string') {
+                                    window.location.href = notif.enlace;
+                                  }
+                                }}
+                                className="text-xs px-3 py-1 bg-[#0D601E] hover:bg-[#1A4D2E] rounded text-white font-bold transition-colors"
+                              >
+                                Revisar solicitud
+                              </button>
+                            </div>
+                          )}
+                          {!notif.leido && notif.tipo !== 'solicitud_guia_pendiente' && (
                             <div className="mt-2 flex gap-2">
                               <button
                                 onClick={(e) => {
@@ -358,7 +488,6 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                             </div>
                           )}
                         </div>
-                        
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

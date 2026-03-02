@@ -2,9 +2,11 @@
  * Utilidades para manejar notificaciones de Pitzbol
  */
 
+import { agregarHistorialSolicitud } from "@/app/components/HistorialSolicitudesModal";
+
 export interface PitzbolNotification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado';
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -15,9 +17,9 @@ export interface PitzbolNotification {
 /**
  * Enviar notificación a un usuario
  */
-export const enviarNotificacion = (
+export const enviarNotificacion = async (
   userId: string,
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia',
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'advertencia' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado',
   titulo: string,
   mensaje: string,
   enlace?: string
@@ -32,18 +34,40 @@ export const enviarNotificacion = (
     enlace
   };
 
+  // Guardar localmente SIEMPRE para mostrar al instante
+  guardarNotificacionLocal(userId, notificacion);
+
+  // Lógica para enviar al backend si existe sesión
+  const token = localStorage.getItem('pitzbol_token');
+  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  if (token) {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/notificaciones/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(notificacion)
+      });
+      if (!response.ok) {
+        throw new Error(`Backend respondió ${response.status}`);
+      }
+    } catch (e) {
+      // Si falla el backend, ya quedó guardada localmente
+    }
+  }
+  return notificacion;
+};
+
+function guardarNotificacionLocal(userId: string, notificacion: PitzbolNotification) {
   const key = `pitzbol_notifications_${userId}`;
   const notificacionesActuales = JSON.parse(localStorage.getItem(key) || '[]');
   const notificacionesActualizadas = [notificacion, ...notificacionesActuales];
-
-  // Mantener solo las últimas 50 notificaciones
   if (notificacionesActualizadas.length > 50) {
     notificacionesActualizadas.pop();
   }
-
   localStorage.setItem(key, JSON.stringify(notificacionesActualizadas));
-
-  // Disparar evento de storage para sincronizar entre pestañas
   window.dispatchEvent(
     new StorageEvent('storage', {
       key,
@@ -51,9 +75,10 @@ export const enviarNotificacion = (
       url: window.location.href
     })
   );
-
-  return notificacion;
-};
+  window.dispatchEvent(new CustomEvent('pitzbolNotificationsUpdated', {
+    detail: { key }
+  }));
+}
 
 /**
  * Enviar notificación de aprobación como guía
@@ -90,7 +115,21 @@ export const notificarSolicitudEnviada = (userId: string) => {
     'info',
     'Solicitud Enviada ✓',
     'Tu solicitud para ser Guía Pitzbol ha sido enviada correctamente. Estamos revisando tu información y te notificaremos pronto.',
-    '/perfil'
+    '/guide/estatus'
+  );
+};
+
+/**
+ * Enviar notificación cuando se envía solicitud de negocio
+ */
+export const notificarSolicitudNegocioEnviada = (userId: string, businessId?: string) => {
+  const enlace = businessId ? `/negocio/preview?id=${businessId}` : '/negocio/preview';
+  return enviarNotificacion(
+    userId,
+    'solicitud_negocio_enviada',
+    'Negocio enviado ✓',
+    'Tu solicitud de negocio fue enviada correctamente. Te avisaremos cuando sea revisada.',
+    enlace
   );
 };
 
@@ -130,4 +169,20 @@ export const marcarNotificacionComoLeida = (userId: string, notificationId: stri
       url: window.location.href
     })
   );
+  window.dispatchEvent(new CustomEvent('pitzbolNotificationsUpdated', {
+    detail: { key }
+  }));
+};
+
+/**
+ * Registrar acción en el historial de solicitudes
+ */
+export const registrarAccionSolicitud = (accion: "aceptada" | "rechazada", nombre: string, mensaje: string) => {
+  agregarHistorialSolicitud({
+    id: `solicitud_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    nombre,
+    accion,
+    fecha: new Date().toISOString(),
+    mensaje
+  });
 };

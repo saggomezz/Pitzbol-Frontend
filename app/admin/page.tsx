@@ -1,14 +1,35 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { FiChevronRight, FiFileText, FiLogOut, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle } from "react-icons/fi";
+import { enviarNotificacion } from "../../lib/notificaciones";
+import { useTranslations } from 'next-intl';
+import { FiChevronRight, FiFileText, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle, FiMail, FiTrash2 } from "react-icons/fi";
+import AdminHistorialSolicitudesModal from "@/app/components/AdminHistorialSolicitudesModal";
 
 type NotificationType = {
   tipo: 'exito' | 'error' | 'info';
   mensaje: string;
 };
 
+type ManagedUser = {
+  uid: string;
+  nombre?: string;
+  apellido?: string;
+  correo?: string;
+  telefono?: string;
+  role: 'guia' | 'negociante';
+};
+
+const getBackendBaseUrl = () => {
+  const rawBase = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001').trim();
+  const normalized = rawBase.replace(/\/+$/, '');
+  return normalized.endsWith('/api') ? normalized.slice(0, -4) : normalized;
+};
+
 export default function AdminPerfil() {
+  const t = useTranslations('admin');
+  const tCommon = useTranslations('common');
+  
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
     
@@ -22,15 +43,24 @@ export default function AdminPerfil() {
   const [selectedGuia, setSelectedGuia] = useState<any>(null);
   const [procesando, setProcesando] = useState(false);
   const [notificacion, setNotificacion] = useState<NotificationType | null>(null);
+  const [showHistorialModal, setShowHistorialModal] = useState(false);
+  const [guias, setGuias] = useState<ManagedUser[]>([]);
+  const [negociantes, setNegociantes] = useState<ManagedUser[]>([]);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(true);
+  const [eliminandoUid, setEliminandoUid] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSolicitudes();
+    fetchUsuariosGestionables();
   }, []);
 
   const fetchSolicitudes = async () => {
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      const token = localStorage.getItem('pitzbol_token');
+      let token = '';
+      if (typeof window !== 'undefined') {
+        token = localStorage.getItem('pitzbol_token') || '';
+      }
       const response = await fetch(`${API_BASE}/api/admin/solicitudes-pendientes`, {
         credentials: 'include',
         headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
@@ -42,6 +72,16 @@ export default function AdminPerfil() {
       }
 
       const data = await response.json();
+      // Notificar al admin si hay nuevas solicitudes
+      if ((data.solicitudes || []).length > solicitudes.length) {
+        enviarNotificacion(
+          'admin',
+          'info',
+          'Nueva solicitud de negocio',
+          'Ha llegado una nueva solicitud de negocio pendiente.',
+          '/admin/negocios'
+        );
+      }
       setSolicitudes(data.solicitudes || []);
     } catch (error) {
       console.error("Error de conexión:", error);
@@ -55,6 +95,104 @@ export default function AdminPerfil() {
     setTimeout(() => setNotificacion(null), 5000);
   };
 
+  const fetchUsuariosGestionables = async () => {
+    setLoadingUsuarios(true);
+    try {
+      const API_BASE = getBackendBaseUrl();
+      let token = '';
+      if (typeof window !== 'undefined') {
+        token = localStorage.getItem('pitzbol_token') || '';
+      }
+
+      const response = await fetch(`${API_BASE}/api/admin/usuarios-gestionables`, {
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          mostrarNotificacion('error', t('adminAuthRequired'));
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1200);
+          setGuias([]);
+          setNegociantes([]);
+          return;
+        }
+        const serverMessage = data?.msg || data?.message || data?.error;
+        mostrarNotificacion('error', serverMessage || t('managedUsersLoadError'));
+        setGuias([]);
+        setNegociantes([]);
+        return;
+      }
+
+      setGuias(data.guias || []);
+      setNegociantes(data.negociantes || []);
+    } catch (error) {
+      mostrarNotificacion('error', t('managedUsersLoadError'));
+      setGuias([]);
+      setNegociantes([]);
+    } finally {
+      setLoadingUsuarios(false);
+    }
+  };
+
+  const handleEliminarUsuario = async (usuario: ManagedUser) => {
+    const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || usuario.correo || usuario.uid;
+    const confirmar = window.confirm(
+      t('confirmDeleteUser', {
+        role: usuario.role === 'guia' ? t('guideSingular') : t('businessSingular'),
+        user: nombreCompleto,
+      })
+    );
+
+    if (!confirmar) return;
+
+    setEliminandoUid(usuario.uid);
+
+    try {
+      const API_BASE = getBackendBaseUrl();
+      let token = '';
+      if (typeof window !== 'undefined') {
+        token = localStorage.getItem('pitzbol_token') || '';
+      }
+
+      const response = await fetch(`${API_BASE}/api/admin/usuarios/${usuario.uid}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ role: usuario.role }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data.success) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error(t('adminAuthRequired'));
+        }
+        throw new Error(data.message || data.msg || t('userDeletedError'));
+      }
+
+      if (usuario.role === 'guia') {
+        setGuias(prev => prev.filter(item => item.uid !== usuario.uid));
+      } else {
+        setNegociantes(prev => prev.filter(item => item.uid !== usuario.uid));
+      }
+
+      mostrarNotificacion('exito', t('userDeletedSuccess'));
+    } catch (error: any) {
+      console.error('❌ Error al eliminar usuario:', error);
+      mostrarNotificacion('error', error.message || t('userDeletedError'));
+    } finally {
+      setEliminandoUid(null);
+    }
+  };
+
   const handleDecision = async (uid: string, accion: 'aprobar' | 'rechazar') => {
     setProcesando(true);
     
@@ -62,7 +200,10 @@ export default function AdminPerfil() {
     
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      const token = localStorage.getItem('pitzbol_token');
+      let token = '';
+      if (typeof window !== 'undefined') {
+        token = localStorage.getItem('pitzbol_token') || '';
+      }
       const response = await fetch(`${API_BASE}/api/admin/gestionar-guia`, {
         method: 'POST',
         credentials: 'include',
@@ -77,7 +218,16 @@ export default function AdminPerfil() {
         // Remover de la lista local
         setSolicitudes(prev => prev.filter(s => s.uid !== uid));
         setSelectedGuia(null);
-        
+        // Notificar al usuario
+        enviarNotificacion(
+          uid,
+          accion === 'aprobar' ? 'aprobado' : 'rechazado',
+          accion === 'aprobar' ? 'Negocio aprobado' : 'Negocio rechazado',
+          accion === 'aprobar'
+            ? '¡Tu negocio ha sido aprobado y ya es visible para los usuarios!'
+            : 'Tu solicitud de negocio fue rechazada. Puedes revisar y volver a intentarlo.',
+          '/negocio/estatus'
+        );
         // Mostrar notificación de éxito
         mostrarNotificacion(
           'exito',
@@ -109,9 +259,14 @@ export default function AdminPerfil() {
     window.location.href = "/";
   };
 
+  let token = '';
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem('pitzbol_token') || '';
+  }
+
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-[#FDFCF9] font-light text-gray-400 italic">
-      Sincronizando panel de control...
+      {t('loading')}
     </div>
   );
 
@@ -119,12 +274,32 @@ export default function AdminPerfil() {
     <div className="min-h-screen bg-[#FDFCF9] flex flex-col">
       <header className="px-8 py-10 max-w-6xl mx-auto w-full flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-medium text-gray-800 tracking-tight">Panel de administración</h1>
-          <p className="text-gray-400 text-sm font-light">Validación de nuevos perfiles Pitzbol</p>
+          <h1 className="text-2xl font-medium text-gray-800 tracking-tight">{t('title')}</h1>
+          <p className="text-gray-400 text-sm font-light">{t('subtitle')}</p>
         </div>
-        <button onClick={handleLogout} className="p-3 text-gray-300 hover:text-red-400 transition-colors">
-          <FiLogOut size={20} />
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => window.location.href = '/admin/mensajes'} 
+            className="p-3 text-gray-400 hover:text-[#0D601E] transition-colors"
+            title={t('messages')}
+          >
+            <FiMail size={20} />
+          </button>
+          <button 
+            onClick={() => window.location.href = '/admin/llamadas'} 
+            className="p-3 text-gray-400 hover:text-[#0D601E] transition-colors"
+            title={t('calls')}
+          >
+            <FiPhone size={20} />
+          </button>
+          <button 
+            onClick={() => setShowHistorialModal(true)} 
+            className="p-3 text-gray-400 hover:text-[#0D601E] transition-colors"
+            title={t('history')}
+          >
+            <FiFileText size={20} />
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-8 pb-20">
@@ -135,13 +310,13 @@ export default function AdminPerfil() {
               <span className="w-8 h-8 rounded-full bg-orange-50 text-orange-400 flex items-center justify-center text-xs font-bold">
                 {solicitudes.length}
               </span>
-              <h2 className="text-gray-500 text-sm font-medium uppercase tracking-widest">Solicitudes en espera</h2>
+              <h2 className="text-gray-500 text-sm font-medium uppercase tracking-widest">{t('pendingRequests')}</h2>
             </div>
 
             {solicitudes.length === 0 ? (
               <div className="bg-white rounded-[35px] border border-gray-100 p-20 text-center">
                 <FiShield className="mx-auto text-gray-100 mb-4" size={48} />
-                <p className="text-gray-300 font-light italic">No hay guías pendientes por el momento.</p>
+                <p className="text-gray-300 font-light italic">{t('noRequests')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -166,16 +341,88 @@ export default function AdminPerfil() {
                       </div>
                       <div>
                         <h3 className="text-gray-700 font-medium">
-                          {(sol["01_nombre"] || "Sin nombre")} {(sol["02_apellido"] || "")}
+                          {(sol["01_nombre"] || t('noName'))} {(sol["02_apellido"] || "")}
                         </h3>
                         <p className="text-[11px] text-gray-400 font-light italic">
-                          {sol["04_correo"] || "Sin correo registrado"}
+                          {sol["04_correo"] || t('noEmail')}
                         </p>
                       </div>
                     </div>
                     <FiChevronRight className="text-gray-200 group-hover:text-green-600 transition-all" />
                   </motion.div>
                 ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <div className="flex items-center gap-3 mb-8">
+              <h2 className="text-gray-500 text-sm font-medium uppercase tracking-widest">{t('managedUsers')}</h2>
+            </div>
+
+            {loadingUsuarios ? (
+              <div className="bg-white rounded-[35px] border border-gray-100 p-10 text-center text-gray-400 font-light italic">
+                {t('loadingManagedUsers')}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-[28px] border border-gray-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-gray-700 font-medium">{t('guidesListTitle')}</h3>
+                    <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">{guias.length}</span>
+                  </div>
+                  {guias.length === 0 ? (
+                    <p className="text-sm text-gray-400 italic">{t('noGuidesToManage')}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {guias.map((guia) => (
+                        <div key={guia.uid} className="flex items-center justify-between gap-3 border border-gray-100 rounded-2xl p-3">
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">{`${guia.nombre || ''} ${guia.apellido || ''}`.trim() || t('noName')}</p>
+                            <p className="text-xs text-gray-400">{guia.correo || guia.uid}</p>
+                          </div>
+                          <button
+                            onClick={() => handleEliminarUsuario(guia)}
+                            disabled={eliminandoUid === guia.uid}
+                            className="px-3 py-2 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 text-xs font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            <FiTrash2 size={14} />
+                            {eliminandoUid === guia.uid ? tCommon('processing') : t('deleteUser')}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-[28px] border border-gray-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-gray-700 font-medium">{t('businessUsersTitle')}</h3>
+                    <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">{negociantes.length}</span>
+                  </div>
+                  {negociantes.length === 0 ? (
+                    <p className="text-sm text-gray-400 italic">{t('noBusinessesToManage')}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {negociantes.map((negociante) => (
+                        <div key={negociante.uid} className="flex items-center justify-between gap-3 border border-gray-100 rounded-2xl p-3">
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">{`${negociante.nombre || ''} ${negociante.apellido || ''}`.trim() || t('noName')}</p>
+                            <p className="text-xs text-gray-400">{negociante.correo || negociante.uid}</p>
+                          </div>
+                          <button
+                            onClick={() => handleEliminarUsuario(negociante)}
+                            disabled={eliminandoUid === negociante.uid}
+                            className="px-3 py-2 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 text-xs font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            <FiTrash2 size={14} />
+                            {eliminandoUid === negociante.uid ? tCommon('processing') : t('deleteUser')}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </section>
@@ -194,10 +441,10 @@ export default function AdminPerfil() {
             >
               <div className="p-8 border-b border-gray-50 flex justify-between items-center">
                 <button onClick={() => setSelectedGuia(null)} className="text-gray-400 hover:text-gray-800 flex items-center gap-2 text-sm font-light">
-                  <FiX /> Cerrar revisión
+                  <FiX /> {t('closeReview')}
                 </button>
                 <div className="text-right">
-                  <span className="text-[10px] text-orange-500 font-bold uppercase tracking-widest bg-orange-50 px-3 py-1 rounded-full">Revisión pendiente</span>
+                  <span className="text-[10px] text-orange-500 font-bold uppercase tracking-widest bg-orange-50 px-3 py-1 rounded-full">{t('pendingReview')}</span>
                 </div>
               </div>
 
@@ -224,12 +471,12 @@ export default function AdminPerfil() {
                           <FiShield size={24} />
                         </div>
                         <div>
-                          <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Análisis de Identidad</p>
+                          <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{t('identityAnalysis')}</p>
                           <h4 className={`text-lg font-bold ${selectedGuia.validacion_biometrica?.coincide ? 'text-green-700' : 'text-red-700'}`}>
-                            {selectedGuia.validacion_biometrica?.coincide ? 'Identidad Confirmada' : 'Posible Suplantación'}
+                            {selectedGuia.validacion_biometrica?.coincide ? t('identityConfirmed') : t('possibleImpersonation')}
                           </h4>
                           <p className="text-xs text-gray-500 italic">
-                            Coincidencia facial del {selectedGuia.validacion_biometrica?.porcentaje || "0"}%
+                            {t('facialMatch', { percentage: selectedGuia.validacion_biometrica?.porcentaje || "0" })}
                           </p>
                         </div>
                       </div>
@@ -238,30 +485,30 @@ export default function AdminPerfil() {
                     {/* Fotos de Identificación */}
                     <div className="space-y-4">
                       <p className="text-[11px] text-gray-300 font-bold uppercase tracking-[0.2em] flex items-center gap-2">
-                        <FiFileText /> Credencial oficial (INE)
+                        <FiFileText /> {t('officialId')}
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         
                         {/* Frente */}
                         <div className="space-y-2">
-                          <p className="text-[10px] text-gray-400 uppercase font-bold pl-2">Frente</p>
+                          <p className="text-[10px] text-gray-400 uppercase font-bold pl-2">{t('front')}</p>
                           <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50 flex items-center justify-center min-h-[150px]">
                             {selectedGuia["11_foto_frente"] ? (
                               <img src={selectedGuia["11_foto_frente"]} className="w-full h-auto" alt="INE Frente" />
                             ) : (
-                              <p className="text-[10px] text-gray-400 italic">Imagen no disponible</p>
+                              <p className="text-[10px] text-gray-400 italic">{t('imageNotAvailable')}</p>
                             )}
                           </div>
                         </div>
 
                         {/* Reverso */}
                         <div className="space-y-2">
-                          <p className="text-[10px] text-gray-400 uppercase font-bold pl-2">Reverso</p>
+                          <p className="text-[10px] text-gray-400 uppercase font-bold pl-2">{t('back')}</p>
                           <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50 flex items-center justify-center min-h-[150px]">
                             {selectedGuia["12_foto_reverso"] ? (
                               <img src={selectedGuia["12_foto_reverso"]} className="w-full h-auto" alt="INE Reverso" />
                             ) : (
-                              <p className="text-[10px] text-gray-400 italic">Imagen no disponible</p>
+                              <p className="text-[10px] text-gray-400 italic">{t('imageNotAvailable')}</p>
                             )}
                           </div>
                         </div>
@@ -270,14 +517,14 @@ export default function AdminPerfil() {
                     </div>
                     {/* Información de Contacto */}
                     <div className="p-6 bg-gray-50 rounded-[28px] border border-gray-100">
-                      <p className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-4">Información de Contacto</p>
+                      <p className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-4">{t('contactInfo')}</p>
                       <div className="grid grid-cols-1 gap-4 text-sm">
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-white rounded-lg text-gray-400">
                             <FiPhone size={16} />
                           </div>
                           <div>
-                            <p className="text-[10px] text-gray-400 uppercase font-bold">Teléfono de contacto</p>
+                            <p className="text-[10px] text-gray-400 uppercase font-bold">{t('contactPhone')}</p>
                             <p className="text-gray-700 font-medium">{selectedGuia["06_telefono"]}</p>
                           </div>
                         </div>
@@ -301,12 +548,12 @@ export default function AdminPerfil() {
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full"
                       />
-                      Procesando...
+                      {tCommon('processing')}
                     </>
                   ) : (
                     <>
                       <FiX size={18} />
-                      Rechazar registro
+                      {t('rejectRegistration')}
                     </>
                   )}
                 </button>
@@ -322,12 +569,12 @@ export default function AdminPerfil() {
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
                       />
-                      Procesando...
+                      {tCommon('processing')}
                     </>
                   ) : (
                     <>
                       <FiCheck size={18} />
-                      Aprobar como guía oficial
+                      {t('approveAsGuide')}
                     </>
                   )}
                 </button>
@@ -372,9 +619,9 @@ export default function AdminPerfil() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-white font-bold text-lg mb-1">
-                    {notificacion.tipo === 'exito' ? '¡Operación Exitosa!' : 
-                     notificacion.tipo === 'error' ? 'Error en la Operación' : 
-                     'Información'}
+                    {notificacion.tipo === 'exito' ? t('successOperation') : 
+                     notificacion.tipo === 'error' ? t('errorOperation') : 
+                     t('information')}
                   </h3>
                   <p className="text-white/90 text-sm font-medium leading-relaxed">
                     {notificacion.mensaje}
@@ -391,6 +638,8 @@ export default function AdminPerfil() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AdminHistorialSolicitudesModal open={showHistorialModal} onClose={() => setShowHistorialModal(false)} token={token} />
     </div>
   );
 }

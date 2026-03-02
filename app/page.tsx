@@ -1,13 +1,14 @@
 "use client";
 import { generarItinerarioManual, Lugar } from '@/lib/pitzbol-engine';
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from 'next-intl';
 import Papa from 'papaparse';
 import { Suspense, useEffect, useRef, useState } from "react";
-import { FiChevronRight } from "react-icons/fi";
+import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi";
-import { construirItinerarioElegido, ordenarPorCercania } from '../lib/pitzbol-engine';
 import WelcomeNotification from './components/WelcomeNotification';
 
 type Category = { name: string; img: string; };
@@ -44,26 +45,6 @@ const recommendations: Recommendation[] = [
   { name: "Tlaquepaque", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
   { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
 ];
-
-const CategoryCarousel = ({ categories }: { categories: Category[] }) => (
-  <section className="flex gap-4 p-4 md:py-6 md:px-8 overflow-x-auto md:justify-center bg-white">
-    {categories.map((category) => (
-      <Link 
-        key={category.name} 
-        href={category.name === "Fútbol" ? "/futbol" : "#"} 
-        className="flex-shrink-0"
-      >
-        <div className="relative w-40 h-24 md:w-64 md:h-34 rounded-xl overflow-hidden shadow-lg cursor-pointer group transition-transform duration-300 md:hover:scale-105">
-          <Image src={category.img} alt={category.name} fill className="object-cover" />
-          <div className="absolute inset-0 bg-black opacity-40 group-hover:opacity-20 transition-opacity duration-300"></div>
-          <div className="absolute inset-0 flex items-center justify-center p-2">
-            <span className="text-white text-xl font-bold text-center drop-shadow-md">{category.name}</span>
-          </div>
-        </div>
-      </Link>
-    ))}
-  </section>
-);
 
 const DateSlider = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false); // Estado para el modal
@@ -138,10 +119,10 @@ return (
   );
 };
 
-const MatchItem = ({ location, date, team1, flag1, team2, flag2, time }: any) => (
+const MatchItem = ({ location, date, team1, flag1, team2, flag2, time, tHome }: any) => (
   <div className="w-full mb-2"> {/* Reduje el margen inferior de mb-6 a mb-3 */}
     <h3 className="text-center text-[#0D601E] text-xs md:text-sm mb-1 font-medium" style={{ fontFamily: 'var(--font-roboto)' }}>
-      Próximo partido en <span className="font-bold">{location}</span> - {date}:
+      {tHome('nextMatchIn')} <span className="font-bold">{location}</span> - {date}:
     </h3>
     <div className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-2 shadow-md min-h-[60px] md:min-h-[50px]">
       {/* Equipo 1 */}
@@ -160,7 +141,7 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time }: any) =>
           {time}
         </span>
         <span className="text-[10px] md:text-xs font-medium text-black" style={{ fontFamily: 'var(--font-roboto)' }}>
-          hrs
+          {tHome('hours')}
         </span>
       </div>
 
@@ -192,27 +173,79 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const hasCheckedWelcome = useRef(false);
+  const [isNewWelcome, setIsNewWelcome] = useState(false);
+  
+  // Traducciones
+  const tCat = useTranslations('categories');
+  const tHome = useTranslations('home');
+  const tPlaces = useTranslations('places');
+  const tCommon = useTranslations('common');
+
+  // Componentes internos que usan las traducciones
+  const CategoryCarousel = ({ categories }: { categories: Category[] }) => {
+    const getCategoryName = (name: string) => {
+      const categoryMap: { [key: string]: string } = {
+        "Fútbol": tCat('soccer'),
+        "Gastronomía": tCat('gastronomy'),
+        "Arte": tCat('art'),
+        "Cultura": tCat('culture'),
+        "Eventos": tCat('events')
+      };
+      return categoryMap[name] || name;
+    };
+
+    return (
+      <section className="flex gap-4 p-4 md:py-6 md:px-8 overflow-x-auto md:justify-center bg-white">
+        {categories.map((category) => (
+          <Link 
+            key={category.name} 
+            href={category.name === "Fútbol" ? "/futbol" : "#"} 
+            className="flex-shrink-0"
+          >
+            <div className="relative w-40 h-24 md:w-64 md:h-34 rounded-xl overflow-hidden shadow-lg cursor-pointer group transition-transform duration-300 md:hover:scale-105">
+              <Image src={category.img} alt={getCategoryName(category.name)} fill className="object-cover" />
+              <div className="absolute inset-0 bg-black opacity-40 group-hover:opacity-20 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 flex items-center justify-center p-2">
+                <span className="text-white text-xl font-bold text-center drop-shadow-md">{getCategoryName(category.name)}</span>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </section>
+    );
+  };
+
+  const RecommendationsComponent = ({ recommendations }: { recommendations: any[] }) => {
+    const getPlaceName = (name: string) => {
+      const placeMap: { [key: string]: string } = {
+        "Centro de Guadalajara": tPlaces('centralGuadalajara'),
+        "Tlaquepaque": tPlaces('tlaquepaque'),
+        "Tequila, Jalisco": tPlaces('tequila')
+      };
+      return placeMap[name] || name;
+    };
+
+    return (
+      <div className="flex flex-col w-full md:w-3/5">
+        <h2 className="text-2xl font-bold mb-4 text-[#1A4D2E]">{tHome('recommendations')}</h2>
+        <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-6">
+          {recommendations.map((place) => (
+            <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
+              <div className="w-full relative overflow-hidden pb-[56.25%] md:pb-[100%]">
+                {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={getPlaceName(place.name)} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{tCommon('noImage')}</div>}
+                <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#1A4D2E] text-white px-3 py-1 rounded-full shadow-lg">{tCommon('search')}</button></div>
+              </div>
+              <div className="p-4"><h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{getPlaceName(place.name)}</h3></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   // ESTADOS PARA LA IA
-  const [itinerarioTxt, setItinerarioTxt] = useState("Cargando itinerario...");
+  const [itinerarioTxt, setItinerarioTxt] = useState("");
   const [loadingIA, setLoadingIA] = useState(true);
-  const [lugaresBD, setLugaresBD] = useState<Lugar[]>([]);
-  const [seleccionados, setSeleccionados] = useState<Lugar[]>([]);
-  const [mostrarOpciones, setMostrarOpciones] = useState(false);
-  const [itinerarioFinal, setItinerarioFinal] = useState("");
-
-  // Cargar la base de datos al inicio
-  useEffect(() => {
-    const cargarDatos = async () => {
-      const res = await fetch('/datosLugares.csv');
-      const reader = res.body?.getReader();
-      const result = await reader?.read();
-      const csv = new TextDecoder('utf-8').decode(result?.value);
-      const { data } = Papa.parse(csv, { header: true, dynamicTyping: true, skipEmptyLines: true });
-      setLugaresBD((data as Lugar[]).filter(l => l.nombre));
-    };
-    cargarDatos();
-  }, []);
 
   // Detectar si el usuario acaba de iniciar sesión
   useEffect(() => {
@@ -225,33 +258,18 @@ function HomeContent() {
     if (userLocal && token) {
       const user = JSON.parse(userLocal);
       const justLoggedIn = sessionStorage.getItem("justLoggedIn");
+      const justRegistered = sessionStorage.getItem("justRegistered");
 
-      if (justLoggedIn === "true") {
+      if (justLoggedIn === "true" || justRegistered === "true") {
         setWelcomeMessage(user.nombre || "Usuario");
         setShowWelcome(true);
+        setIsNewWelcome(justRegistered === "true");
         sessionStorage.removeItem("justLoggedIn");
+        sessionStorage.removeItem("justRegistered");
         setIsLogged(true);
       }
     }
   }, []);
-
-  const toggleLugar = (lugar: Lugar) => {
-    setSeleccionados(prev => {
-      const existe = prev.find(s => s.nombre === lugar.nombre);
-      
-      if (existe) {
-        return prev.filter(s => s.nombre !== lugar.nombre);
-      } else {
-        return [...prev, lugar];
-      }
-    });
-  };
-
-  const finalizarRuta = () => {
-    const texto = construirItinerarioElegido(seleccionados);
-    setItinerarioFinal(texto);
-    setMostrarOpciones(false);
-  };
 
   const cargarItinerarioHome = async () => {
     setLoadingIA(true);
@@ -340,31 +358,17 @@ function HomeContent() {
     return () => clearTimeout(timer);
   }, []);
   
-  useEffect(() => {
-    if (mostrarOpciones && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const miPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setLugaresBD((prevLugares) => ordenarPorCercania(prevLugares, miPos));
-          console.log("Lugares ordenados por tu GPS");
-        },
-        (error) => {
-          console.log("No se pudo obtener ubicación, usando orden alfabético.");
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
-    }
-  }, [mostrarOpciones]); 
 
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
       {/* Notificación de Bienvenida */}
-      <WelcomeNotification
-        userName={welcomeMessage}
-        isVisible={showWelcome}
-        onClose={() => setShowWelcome(false)}
-        duration={5000}
-      />
+       <WelcomeNotification
+         userName={welcomeMessage}
+         isVisible={showWelcome}
+         onClose={() => setShowWelcome(false)}
+         duration={5000}
+         isNew={isNewWelcome}
+       />
       
       <CategoryCarousel categories={categories} />
       <DateSlider />
@@ -374,24 +378,25 @@ function HomeContent() {
             location="CDMX"
             date="11 de Junio"
             team1="México"
-            flag1="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Mexico.svg/1024px-Flag_of_Mexico.svg.png"
+            flag1="https://flagcdn.com/mx.svg"
             team2="Sudáfrica"
-            flag2="https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Flag_of_South_Africa.svg/1200px-Flag_of_South_Africa.svg.png"
+            flag2="https://flagcdn.com/za.svg"
             time="13:00"
+            tHome={tHome}
           />
           <MatchItem 
             location="GDL"
             date="11 de Junio"
             team1="Corea"
-            flag1="https://upload.wikimedia.org/wikipedia/commons/0/09/Flag_of_South_Korea.svg"
+            flag1="https://flagcdn.com/kr.svg"
             team2="Dinamarca"
-            flag2="https://img.freepik.com/foto-gratis/fondo-textura-bandera-nacional-dinamarca-ia-generativa_169016-29875.jpg"
+            flag2="https://flagcdn.com/dk.svg"
             time="20:00"
+            tHome={tHome}
           />
+          {/* PITZBOT — IA de Itinerarios */}
           <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100 min-h-[280px] relative overflow-hidden hover:shadow-xl transition-all duration-300">
             <div className="h-full flex flex-col justify-between">
-              
-              {/* HEADER MINIMALISTA */}
               <div className="flex items-center gap-4 mb-8">
                 <div className="w-12 h-12 bg-[#1A4D2E] rounded-2xl flex items-center justify-center">
                   <span className="text-2xl">🤖</span>
@@ -403,8 +408,6 @@ function HomeContent() {
                   <p className="text-sm text-gray-600 font-medium">Crear itinerario con IA</p>
                 </div>
               </div>
-
-              {/* DESCRIPCIÓN MINIMALISTA */}
               <div className="flex-1 flex flex-col justify-center mb-6">
                 <p className="text-gray-700 leading-relaxed mb-2">
                   Genera itinerarios personalizados para Guadalajara según tu presupuesto e intereses.
@@ -414,8 +417,6 @@ function HomeContent() {
                   <span>IA disponible</span>
                 </div>
               </div>
-
-              {/* BOTÓN MINIMALISTA */}
               <a
                 href="http://69.30.204.56:3003"
                 className="w-full text-center py-4 px-6 rounded-2xl font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-3 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
@@ -428,25 +429,8 @@ function HomeContent() {
           </div>
         </div>
 
-        <Recommendations recommendations={recommendations} />
+        <RecommendationsComponent recommendations={recommendations} />
       </main>
     </div>
   );
 }
-
-const Recommendations = ({ recommendations }: { recommendations: any[] }) => (
-  <div className="flex flex-col w-full md:w-3/5">
-    <h2 className="text-2xl font-bold mb-4 text-[#1A4D2E]">Recomendaciones</h2>
-    <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-6">
-      {recommendations.map((place) => (
-        <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
-          <div className="w-full relative overflow-hidden pb-[56.25%] md:pb-[100%]">
-            {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={place.name} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">Sin imagen</div>}
-            <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#1A4D2E] text-white px-3 py-1 rounded-full shadow-lg">Ubicar</button></div>
-          </div>
-          <div className="p-4"><h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3></div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
