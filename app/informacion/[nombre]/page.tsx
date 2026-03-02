@@ -18,6 +18,26 @@ interface Lugar {
   notaIA: string;
 }
 
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
 export default function InformacionLugar() {
   const params = useParams();
   const router = useRouter();
@@ -40,24 +60,22 @@ export default function InformacionLugar() {
         const nombreBuscado = decodeURIComponent(params.nombre as string);
 
         for (let i = 1; i < lineas.length; i++) {
-          const valores = lineas[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-          
-          if (valores) {
-            const nombreLugar = valores[0].replace(/"/g, "");
-            
-            if (nombreLugar === nombreBuscado) {
-              setLugar({
-                nombre: nombreLugar,
-                categoria: valores[1]?.replace(/"/g, "") || "",
-                direccion: valores[2]?.replace(/"/g, "") || "",
-                latitud: parseFloat(valores[3]) || 0,
-                longitud: parseFloat(valores[4]) || 0,
-                tiempoEstancia: parseInt(valores[5]) || 0,
-                costoEstimado: valores[6]?.replace(/"/g, "") || "",
-                notaIA: valores[7]?.replace(/"/g, "") || "",
-              });
-              break;
-            }
+          if (!lineas[i].trim()) continue;
+          const valores = parseCSVLine(lineas[i]);
+          const nombreLugar = valores[0];
+
+          if (nombreLugar === nombreBuscado) {
+            setLugar({
+              nombre: nombreLugar,
+              categoria: valores[1] || "",
+              direccion: valores[2] || "",
+              latitud: parseFloat((valores[3] || "0").replace(',', '.')) || 0,
+              longitud: parseFloat((valores[4] || "0").replace(',', '.')) || 0,
+              tiempoEstancia: parseInt(valores[5] || "0") || 0,
+              costoEstimado: valores[6] || "",
+              notaIA: valores[7] || "",
+            });
+            break;
           }
         }
 
@@ -169,6 +187,22 @@ export default function InformacionLugar() {
       {/* Header con imagen de fondo */}
       <div className={styles.heroHeader}>
         <div className={styles.heroOverlay}></div>
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '1.25rem',
+            left: 0,
+            right: 0,
+            textAlign: 'center',
+            zIndex: 2,
+            padding: '0 5rem',
+            pointerEvents: 'none',
+          }}
+        >
+          <p style={{ color: 'white', fontSize: '1.25rem', fontWeight: 700, margin: 0, textShadow: '0 2px 8px rgba(0,0,0,0.5)', lineHeight: 1.3 }}>
+            {lugar.nombre}
+          </p>
+        </div>
         <div className={styles.heroContent}>
           <div className="flex flex-col items-center gap-1">
             <button
