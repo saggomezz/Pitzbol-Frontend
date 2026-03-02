@@ -395,35 +395,26 @@ function HomeContent() {
             tHome={tHome}
           />
           {/* PITZBOT — IA de Itinerarios */}
-          <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100 min-h-[280px] relative overflow-hidden hover:shadow-xl transition-all duration-300">
-            <div className="h-full flex flex-col justify-between">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-[#1A4D2E] rounded-2xl flex items-center justify-center">
-                  <span className="text-2xl">🤖</span>
-                </div>
+          <div className="bg-white rounded-3xl p-4 shadow-lg border border-gray-100 relative overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
                 <div>
-                  <h2 className="text-xl font-bold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                  <h2 className="text-base font-bold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
                     PitzBot
                   </h2>
-                  <p className="text-sm text-gray-600 font-medium">Crear itinerario con IA</p>
+                  <p className="text-xs text-gray-600 font-medium">Crear itinerario con IA</p>
                 </div>
               </div>
-              <div className="flex-1 flex flex-col justify-center mb-6">
-                <p className="text-gray-700 leading-relaxed mb-2">
-                  Genera itinerarios personalizados para Guadalajara según tu presupuesto e intereses.
-                </p>
-                <div className="flex items-center gap-2 text-sm text-[#769C7B]">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>IA disponible</span>
-                </div>
+              <div className="flex items-center gap-2 text-xs text-[#769C7B]">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>IA disponible</span>
               </div>
               <a
                 href="http://69.30.204.56:3003"
-                className="w-full text-center py-4 px-6 rounded-2xl font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-3 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
               >
-                <span className="text-lg">⚡</span>
                 <span>Crear Itinerario</span>
-                <span className="text-lg">→</span>
+                <span>→</span>
               </a>
             </div>
           </div>
