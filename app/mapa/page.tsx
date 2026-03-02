@@ -46,7 +46,9 @@ import {
     FiActivity,
     FiChevronDown,
     FiNavigation,
-    FiExternalLink
+    FiExternalLink,
+    FiChevronLeft,
+    FiChevronRight
 } from "react-icons/fi";
 import { 
     GiSoccerBall, 
@@ -60,6 +62,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import "leaflet/dist/leaflet.css";
 import styles from "./mapa.module.css";
+import { getPlaceImageUrlSync, getPlaceImageByCategory } from "@/lib/placeImages";
+import { useFavoritesSync } from "@/lib/favoritesApi";
 
 interface Lugar {
     nombre: string;
@@ -69,6 +73,202 @@ interface Lugar {
     imagen?: string;
     latitud?: string;
     longitud?: string;
+}
+
+// Componente de carrusel de imágenes para el info box
+function PlaceImageCarousel({ 
+    selectedPlace, 
+    placeImages, 
+    placeAllPhotos,
+    getPlaceImageUrlSync,
+    favorites,
+    toggleFavorite
+}: {
+    selectedPlace: Lugar;
+    placeImages: Record<string, string>;
+    placeAllPhotos: Record<string, string[]>;
+    getPlaceImageUrlSync: (options: any) => string;
+    favorites: string[];
+    toggleFavorite: (e: React.MouseEvent, nombre: string) => void;
+}) {
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    
+    // Obtener todas las fotos disponibles para este lugar
+    const allPhotos = placeAllPhotos[selectedPlace.nombre] || [];
+    const hasMultiplePhotos = allPhotos.length > 1;
+    
+    // Si no hay fotos guardadas, usar la imagen por categoría
+    const images = hasMultiplePhotos 
+        ? allPhotos 
+        : [placeImages[selectedPlace.nombre] || getPlaceImageUrlSync({
+            nombre: selectedPlace.nombre,
+            categoria: selectedPlace.categoria,
+            ubicacion: selectedPlace.ubicacion,
+            latitud: selectedPlace.latitud,
+            longitud: selectedPlace.longitud
+        })];
+    
+    // Resetear índice cuando cambia el lugar
+    useEffect(() => {
+        setCurrentImageIndex(0);
+    }, [selectedPlace.nombre]);
+    
+    const nextImage = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    };
+    
+    const prevImage = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    };
+    
+    return (
+        <div className={styles.infoImage} style={{ position: 'relative' }}>
+            <img
+                src={images[currentImageIndex]}
+                alt={selectedPlace.nombre}
+                loading="lazy"
+                onError={(e) => {
+                    // Fallback si la imagen falla al cargar
+                    (e.target as HTMLImageElement).src = getPlaceImageUrlSync({
+                        nombre: selectedPlace.nombre,
+                        categoria: selectedPlace.categoria,
+                        ubicacion: selectedPlace.ubicacion,
+                        latitud: selectedPlace.latitud,
+                        longitud: selectedPlace.longitud
+                    });
+                }}
+            />
+            
+            {/* Botones de navegación del carrusel (solo si hay más de una foto) */}
+            {hasMultiplePhotos && (
+                <>
+                    <button
+                        onClick={prevImage}
+                        className={styles.carouselButton}
+                        style={{
+                            position: 'absolute',
+                            left: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'rgba(255, 255, 255, 0.9)',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '36px',
+                            height: '36px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            zIndex: 15,
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+                        }}
+                        onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLElement).style.background = 'white';
+                            (e.currentTarget as HTMLElement).style.transform = 'translateY(-50%) scale(1.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.background = 'rgba(255, 255, 255, 0.9)';
+                            (e.currentTarget as HTMLElement).style.transform = 'translateY(-50%) scale(1)';
+                        }}
+                    >
+                        <FiChevronLeft size={20} color="#1A4D2E" />
+                    </button>
+                    
+                    <button
+                        onClick={nextImage}
+                        className={styles.carouselButton}
+                        style={{
+                            position: 'absolute',
+                            right: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'rgba(255, 255, 255, 0.9)',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '36px',
+                            height: '36px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            zIndex: 15,
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+                        }}
+                        onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLElement).style.background = 'white';
+                            (e.currentTarget as HTMLElement).style.transform = 'translateY(-50%) scale(1.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.background = 'rgba(255, 255, 255, 0.9)';
+                            (e.currentTarget as HTMLElement).style.transform = 'translateY(-50%) scale(1)';
+                        }}
+                    >
+                        <FiChevronRight size={20} color="#1A4D2E" />
+                    </button>
+                    
+                    {/* Indicadores de posición (puntos en la parte inferior) */}
+                    <div
+                        style={{
+                            position: 'absolute',
+                            bottom: '12px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            display: 'flex',
+                            gap: '6px',
+                            zIndex: 15
+                        }}
+                    >
+                        {images.map((_, index) => (
+                            <div
+                                key={index}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentImageIndex(index);
+                                }}
+                                style={{
+                                    width: currentImageIndex === index ? '24px' : '8px',
+                                    height: '8px',
+                                    borderRadius: '4px',
+                                    background: currentImageIndex === index ? 'white' : 'rgba(255, 255, 255, 0.5)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                                }}
+                            />
+                        ))}
+                    </div>
+                </>
+            )}
+            
+            <div className={styles.imageOverlay}></div>
+            <div className={styles.categoryBadgeOverlay}>
+                {selectedPlace.categoria}
+            </div>
+            
+            {/* Botón de favoritos overlay */}
+            <motion.button 
+                className={`${styles.favoriteButtonOverlay} ${
+                    favorites.includes(selectedPlace.nombre) ? styles.active : ""
+                }`}
+                onClick={(e) => toggleFavorite(e, selectedPlace.nombre)}
+                whileTap={{ scale: 0.85 }}
+                animate={{ 
+                    scale: favorites.includes(selectedPlace.nombre) ? [1, 1.25, 1] : 1,
+                    rotate: favorites.includes(selectedPlace.nombre) ? [0, -10, 10, 0] : 0
+                }}
+                transition={{ duration: 0.4 }}
+                title={favorites.includes(selectedPlace.nombre) ? "Quitar de favoritos" : "Agregar a favoritos"}
+            >
+                <FiHeart 
+                    fill={favorites.includes(selectedPlace.nombre) ? "currentColor" : "none"}
+                />
+            </motion.button>
+        </div>
+    );
 }
 
 // Importar componente de mapa dinámicamente para evitar problemas con SSR
@@ -106,6 +306,10 @@ export default function MapaPage() {
     const [mapZoom, setMapZoom] = useState(12);
     const [showFavoriteToast, setShowFavoriteToast] = useState(false);
     const [favoriteToastMessage, setFavoriteToastMessage] = useState("");
+    const [placeImages, setPlaceImages] = useState<Record<string, string>>({});
+    const [placeAllPhotos, setPlaceAllPhotos] = useState<Record<string, string[]>>({}); // Todas las fotos para el carrusel
+    
+    const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
 
     const categories = [
         { name: "Todos Los Lugares", icon: FiMapPin },
@@ -121,10 +325,25 @@ export default function MapaPage() {
     ];
 
     useEffect(() => {
-        const storedFavorites = localStorage.getItem("pitzbol_favorites");
-        if (storedFavorites) {
-            setFavorites(JSON.parse(storedFavorites));
-        }
+        const loadInitialData = async () => {
+            // Cargar favoritos sincronizados solo si está autenticado
+            try {
+                if (isAuthenticated()) {
+                    await syncLocalFavorites();
+                }
+                const favs = await getFavorites();
+                setFavorites(favs);
+            } catch (error) {
+                console.error("Error al cargar favoritos:", error);
+                // Fallback a localStorage
+                const storedFavorites = localStorage.getItem("pitzbol_favorites");
+                if (storedFavorites) {
+                    setFavorites(JSON.parse(storedFavorites));
+                }
+            }
+        };
+        
+        loadInitialData();
 
         fetch("/datosLugares.csv")
             .then((response) => response.text())
@@ -132,19 +351,125 @@ export default function MapaPage() {
                 Papa.parse(csvText, {
                     header: true,
                     skipEmptyLines: true,
+                    dynamicTyping: false, // Mantener todo como string
                     complete: (results) => {
-                        const data = results.data.filter((row: any) => row["Nombre del Lugar"]);
-                        const parsed = data.map((row: any) => ({
-                            nombre: row["Nombre del Lugar"],
-                            categoria: row["Categoría"],
-                            descripcion: row["Nota para IA"] || "",
-                            ubicacion: row["Dirección"],
-                            latitud: row["Latitud"]?.replace(",", "."),
-                            longitud: row["Longitud"]?.replace(",", "."),
-                        }));
-                        setLugares(parsed);
-                        setFilteredLugares(parsed);
-                        setLoading(false);
+                        console.log("📊 CSV parseado - Total filas:", results.data.length);
+                        
+                        if (results.errors && results.errors.length > 0) {
+                            console.error("⚠️ Errores en parseo CSV:", results.errors);
+                        }
+                        
+                        const data = results.data.filter((row: any) => {
+                            const tieneNombre = row && row["Nombre del Lugar"] && String(row["Nombre del Lugar"]).trim() !== "";
+                            if (!tieneNombre && row) {
+                                console.warn("⚠️ Fila sin nombre válido:", row);
+                            }
+                            return tieneNombre;
+                        });
+                        
+                        console.log("📊 Filas con nombre válido:", data.length);
+                        
+                        const parsed = data.map((row: any) => {
+                            const nombre = String(row["Nombre del Lugar"] || "").trim();
+                            const categoria = String(row["Categoría"] || "").trim();
+                            // Tomar solo la primera categoría si hay múltiples separadas por coma
+                            const categoriaPrimera = categoria.split(",")[0].trim();
+                            
+                            return {
+                                nombre,
+                                categoria: categoriaPrimera, // Usar solo la primera categoría para el filtro
+                                descripcion: String(row["Nota para IA"] || "").trim(),
+                                ubicacion: String(row["Dirección"] || "").trim(),
+                                latitud: String(row["Latitud"] || "").replace(",", ".").trim(),
+                                longitud: String(row["Longitud"] || "").replace(",", ".").trim(),
+                            };
+                        }).filter(lugar => lugar.nombre !== ""); // Filtrar lugares vacíos
+                        
+                        console.log("✅ Lugares parseados:", parsed.length);
+                        console.log("📋 Primeros 3 lugares:", parsed.slice(0, 3));
+                        
+                        // Generar imágenes iniciales (por categoría como fallback)
+                        const initialImages: Record<string, string> = {};
+                        parsed.forEach((lugar: Lugar) => {
+                            initialImages[lugar.nombre] = getPlaceImageUrlSync({
+                                nombre: lugar.nombre,
+                                categoria: lugar.categoria,
+                                ubicacion: lugar.ubicacion,
+                                latitud: lugar.latitud,
+                                longitud: lugar.longitud
+                            });
+                        });
+                        setPlaceImages(initialImages);
+                        
+                        // Guardar lugares del CSV temporalmente
+                        const lugaresCSV = parsed;
+                        
+                        // Buscar lugares y fotos guardadas en Firestore (lugares creados manualmente + fotos)
+                        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+                        fetch(`${BACKEND_URL}/api/lugares`)
+                            .then(response => {
+                                if (response.ok) {
+                                    return response.json();
+                                }
+                                return { lugares: [] };
+                            })
+                            .then(data => {
+                                const lugaresFirestore = data.lugares || [];
+                                
+                                // Crear un mapa de nombres del CSV para verificar duplicados
+                                const nombresCSV = new Set(lugaresCSV.map(l => l.nombre));
+                                
+                                // Agregar lugares de Firestore que NO están en el CSV (lugares creados manualmente)
+                                lugaresFirestore.forEach((lugarFirestore: any) => {
+                                    if (lugarFirestore.nombre && !nombresCSV.has(lugarFirestore.nombre)) {
+                                        // Este es un lugar creado manualmente, agregarlo
+                                        lugaresCSV.push({
+                                            nombre: lugarFirestore.nombre,
+                                            categoria: lugarFirestore.categoria || 'Cultura',
+                                            descripcion: lugarFirestore.descripcion || '',
+                                            ubicacion: lugarFirestore.ubicacion || '',
+                                            latitud: lugarFirestore.latitud || '',
+                                            longitud: lugarFirestore.longitud || ''
+                                        });
+                                        console.log(`✅ Lugar creado manualmente agregado: ${lugarFirestore.nombre}`);
+                                    }
+                                });
+                                
+                                console.log(`📊 Total lugares: ${lugaresCSV.length} (${parsed.length} del CSV + ${lugaresCSV.length - parsed.length} creados manualmente)`);
+                                
+                                setLugares(lugaresCSV);
+                                setFilteredLugares(lugaresCSV);
+                                
+                                // Crear un mapa de fotos por nombre
+                                const fotosMap: Record<string, string[]> = {};
+                                lugaresFirestore.forEach((lugar: any) => {
+                                    if (lugar.nombre && lugar.fotos && lugar.fotos.length > 0) {
+                                        fotosMap[lugar.nombre] = lugar.fotos;
+                                    }
+                                });
+                                
+                                // Guardar todas las fotos para el carrusel
+                                setPlaceAllPhotos(fotosMap);
+                                
+                                // Actualizar imágenes con fotos guardadas (primera foto para compatibilidad)
+                                if (Object.keys(fotosMap).length > 0) {
+                                    const updatedImages = { ...initialImages };
+                                    Object.keys(fotosMap).forEach(nombre => {
+                                        if (fotosMap[nombre] && fotosMap[nombre].length > 0) {
+                                            updatedImages[nombre] = fotosMap[nombre][0]; // Usar la primera foto
+                                            console.log(`✅ ${fotosMap[nombre].length} foto(s) guardada(s) para: ${nombre}`);
+                                        }
+                                    });
+                                    setPlaceImages(updatedImages);
+                                }
+                            })
+                            .catch(error => {
+                                console.error("Error obteniendo fotos guardadas:", error);
+                                // Continuar con imágenes por categoría si falla
+                            })
+                            .finally(() => {
+                                setLoading(false);
+                            });
                     },
                 });
             })
@@ -156,20 +481,29 @@ export default function MapaPage() {
 
     useEffect(() => {
         let filtered = lugares;
+        
+        console.log("🔍 Filtrando lugares - Total:", lugares.length);
+        console.log("🔍 Categoría seleccionada:", selectedCategory);
+        console.log("🔍 Término de búsqueda:", searchTerm);
 
         if (selectedCategory !== "Todos Los Lugares" && selectedCategory !== "Más Populares") {
+            const antes = filtered.length;
             filtered = filtered.filter((lugar) => lugar.categoria === selectedCategory);
+            console.log(`🔍 Filtrado por categoría: ${antes} → ${filtered.length}`);
         }
 
         if (searchTerm) {
+            const antes = filtered.length;
             filtered = filtered.filter(
                 (lugar) =>
-                    lugar.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    lugar.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    lugar.ubicacion.toLowerCase().includes(searchTerm.toLowerCase())
+                    lugar.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    lugar.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    lugar.ubicacion?.toLowerCase().includes(searchTerm.toLowerCase())
             );
+            console.log(`🔍 Filtrado por búsqueda: ${antes} → ${filtered.length}`);
         }
 
+        console.log("✅ Lugares filtrados finales:", filtered.length);
         setFilteredLugares(filtered);
     }, [selectedCategory, searchTerm, lugares]);
 
@@ -185,19 +519,33 @@ export default function MapaPage() {
         return () => window.removeEventListener("keydown", handleEscape);
     }, [selectedPlace]);
 
-    const toggleFavorite = (e: React.MouseEvent, nombre: string) => {
+    const toggleFavorite = async (e: React.MouseEvent, nombre: string) => {
         e.stopPropagation();
         const isRemoving = favorites.includes(nombre);
-        const updated = isRemoving
-            ? favorites.filter((n) => n !== nombre)
-            : [...favorites, nombre];
-        setFavorites(updated);
-        localStorage.setItem("pitzbol_favorites", JSON.stringify(updated));
         
-        // Mostrar notificación
-        setFavoriteToastMessage(isRemoving ? "Eliminado de favoritos" : "Agregado a favoritos");
-        setShowFavoriteToast(true);
-        setTimeout(() => setShowFavoriteToast(false), 2000);
+        try {
+            const updated = isRemoving
+                ? await removeFavoriteApi(nombre)
+                : await addFavorite(nombre);
+            setFavorites(updated);
+            
+            // Mostrar notificación
+            setFavoriteToastMessage(isRemoving ? "Eliminado de favoritos" : "Agregado a favoritos");
+            setShowFavoriteToast(true);
+            setTimeout(() => setShowFavoriteToast(false), 2000);
+        } catch (error) {
+            console.error("Error al actualizar favorito:", error);
+            // Fallback: actualizar solo localmente
+            const updated = isRemoving
+                ? favorites.filter((n) => n !== nombre)
+                : [...favorites, nombre];
+            setFavorites(updated);
+            localStorage.setItem("pitzbol_favorites", JSON.stringify(updated));
+            
+            setFavoriteToastMessage(isRemoving ? "Eliminado de favoritos" : "Agregado a favoritos");
+            setShowFavoriteToast(true);
+            setTimeout(() => setShowFavoriteToast(false), 2000);
+        }
     };
 
     // Manejar selección de lugar (desde lista o desde mapa)
@@ -347,9 +695,21 @@ export default function MapaPage() {
                                             onClick={() => handleSelectPlace(lugar)}
                                         >
                                             <img
-                                                src="https://via.placeholder.com/90?text=Lugar"
+                                                src={placeImages[lugar.nombre] || getPlaceImageUrlSync({
+                                                    nombre: lugar.nombre,
+                                                    categoria: lugar.categoria,
+                                                    ubicacion: lugar.ubicacion,
+                                                    latitud: lugar.latitud,
+                                                    longitud: lugar.longitud
+                                                })}
                                                 alt={lugar.nombre}
                                                 className={styles.placeImage}
+                                                loading="lazy"
+                                                onError={(e) => {
+                                                    // Fallback garantizado: usar imagen por categoría
+                                                    // Esto SIEMPRE funciona porque usa Unsplash
+                                                    (e.target as HTMLImageElement).src = getPlaceImageByCategory(lugar.categoria);
+                                                }}
                                             />
                                             <div className={styles.placeContent}>
                                                 <div className={styles.placeHeader}>
@@ -410,13 +770,15 @@ export default function MapaPage() {
                             }
                         }}
                     >
-                        <div className={styles.mapContainer}>
+                        <div className={styles.mapContainer} key="map-container-wrapper">
                             <MapComponent
+                                key="main-map-component"
                                 lugares={filteredLugares}
                                 selectedPlace={selectedPlace}
                                 onSelectPlace={handleSelectPlace}
                                 mapCenter={mapCenter}
                                 mapZoom={mapZoom}
+                                placeImages={placeImages}
                             />
 
                             {/* Info box para lugar seleccionado */}
@@ -438,34 +800,15 @@ export default function MapaPage() {
                                             ×
                                         </button>
                                         
-                                        {/* Imagen del lugar con gradiente overlay */}
-                                        <div className={styles.infoImage}>
-                                            <img
-                                                src="https://via.placeholder.com/400x200?text=Lugar"
-                                                alt={selectedPlace.nombre}
-                                            />
-                                            <div className={styles.imageOverlay}></div>
-                                            <div className={styles.categoryBadgeOverlay}>
-                                                {selectedPlace.categoria}
-                                            </div>
-                                            <motion.button 
-                                                className={`${styles.favoriteButtonOverlay} ${
-                                                    favorites.includes(selectedPlace.nombre) ? styles.active : ""
-                                                }`}
-                                                onClick={(e) => toggleFavorite(e, selectedPlace.nombre)}
-                                                whileTap={{ scale: 0.85 }}
-                                                animate={{ 
-                                                    scale: favorites.includes(selectedPlace.nombre) ? [1, 1.25, 1] : 1,
-                                                    rotate: favorites.includes(selectedPlace.nombre) ? [0, -10, 10, 0] : 0
-                                                }}
-                                                transition={{ duration: 0.4 }}
-                                                title={favorites.includes(selectedPlace.nombre) ? "Quitar de favoritos" : "Agregar a favoritos"}
-                                            >
-                                                <FiHeart 
-                                                    fill={favorites.includes(selectedPlace.nombre) ? "currentColor" : "none"}
-                                                />
-                                            </motion.button>
-                                        </div>
+                                        {/* Imagen del lugar con gradiente overlay y carrusel */}
+                                        <PlaceImageCarousel 
+                                            selectedPlace={selectedPlace}
+                                            placeImages={placeImages}
+                                            placeAllPhotos={placeAllPhotos}
+                                            getPlaceImageUrlSync={getPlaceImageUrlSync}
+                                            favorites={favorites}
+                                            toggleFavorite={toggleFavorite}
+                                        />
 
                                         {/* Contenido */}
                                         <div className={styles.infoContent}>

@@ -6,7 +6,6 @@ let faceapiInstance: any = null;
 
 export async function ensureTensorFlowReady() {
   if (tfInitialized && tfInstance) {
-    console.log("✅ TensorFlow.js ya está inicializado");
     return tfInstance;
   }
 
@@ -15,16 +14,32 @@ export async function ensureTensorFlowReady() {
   }
 
   try {
-    console.log("🔄 Inicializando TensorFlow.js globalmente...");
-    
+    // Suprimir warnings de TensorFlow durante inicialización
+    const originalWarn = console.warn;
+    console.warn = function(...args: any[]) {
+      const message = args[0]?.toString?.() || '';
+      // Ignorar warnings específicos de TensorFlow
+      if (message.includes('already been set') || 
+          message.includes('already registered') ||
+          message.includes('backend') ||
+          message.includes('kernel')) {
+        return;
+      }
+      originalWarn.apply(console, args);
+    };
+
     // Importar TensorFlow.js y hacer que esté disponible globalmente
     const tf = await import('@tensorflow/tfjs');
     
     // Asignar a window para que face-api.js lo encuentre
     (window as any).tf = tf;
     
-    // Registrar el backend WebGL explícitamente
-    await tf.setBackend('webgl');
+    // Intentar usar WebGL, pero fallback a CPU si no está disponible
+    try {
+      await tf.setBackend('webgl');
+    } catch (e) {
+      await tf.setBackend('cpu');
+    }
     
     // Esperar a que esté listo
     await tf.ready();
@@ -32,7 +47,8 @@ export async function ensureTensorFlowReady() {
     tfInstance = tf;
     tfInitialized = true;
     
-    console.log("✅ TensorFlow.js inicializado globalmente, backend:", tf.getBackend());
+    // Restaurar console.warn
+    console.warn = originalWarn;
     
     return tf;
   } catch (error) {
@@ -43,7 +59,6 @@ export async function ensureTensorFlowReady() {
 
 export async function ensureFaceApiReady() {
   if (faceapiInitialized && faceapiInstance) {
-    console.log("✅ face-api.js ya está inicializado");
     return faceapiInstance;
   }
 
@@ -52,7 +67,21 @@ export async function ensureFaceApiReady() {
   }
 
   try {
-    console.log("🔄 Cargando @vladmandic/face-api...");
+    // Suprimir warnings durante inicialización
+    const originalWarn = console.warn;
+    console.warn = function(...args: any[]) {
+      const message = args[0]?.toString?.() || '';
+      if (message.includes('already been set') || 
+          message.includes('already registered') ||
+          message.includes('backend') ||
+          message.includes('kernel')) {
+        return;
+      }
+      originalWarn.apply(console, args);
+    };
+    
+    // Primero asegurar que TensorFlow.js esté completamente inicializado
+    await ensureTensorFlowReady();
     
     // Importar @vladmandic/face-api que no tiene conflictos con TensorFlow
     const faceapi = await import('@vladmandic/face-api');
@@ -60,7 +89,8 @@ export async function ensureFaceApiReady() {
     faceapiInstance = faceapi;
     faceapiInitialized = true;
     
-    console.log("✅ face-api.js inicializado correctamente");
+    // Restaurar console.warn
+    console.warn = originalWarn;
     
     return faceapi;
   } catch (error) {

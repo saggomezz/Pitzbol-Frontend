@@ -1,6 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import {
     FiArrowRight,
     FiCheck,
@@ -30,15 +31,6 @@ const ALL_COUNTRIES = [
   { name: "Reino Unido", lada: "+44" }, { name: "Uruguay", lada: "+598" },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
-const CATEGORIAS_CONSULTA = [
-    { id: "general", label: "Consulta General", icon: FiHelpCircle, color: "#0D601E" },
-    { id: "tecnico", label: "Problema Técnico", icon: FiTool, color: "#F00808" },
-    { id: "cuenta", label: "Mi Cuenta", icon: FiUser, color: "#1A4D2E" },
-    { id: "negocio", label: "Alianzas Comerciales", icon: FiBriefcase, color: "#B90808" },
-    { id: "sugerencia", label: "Sugerencia", icon: FiMessageCircle, color: "#769C7B" },
-    { id: "otro", label: "Otro", icon: FiFlag, color: "#4A4A4A" },
-];
-
 interface FormData {
     name: string;
     email: string;
@@ -57,6 +49,8 @@ interface CallRequestData {
 }
 
 export default function SoportePage() {
+    const t = useTranslations('support');
+    const tCommon = useTranslations('common');
     const [formData, setFormData] = useState<FormData>({
         name: "",
         email: "",
@@ -80,6 +74,15 @@ export default function SoportePage() {
     const [callError, setCallError] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("");
     const [activeTab, setActiveTab] = useState<"message" | "call">("message");
+
+    const CATEGORIAS_CONSULTA = [
+        { id: "general", label: t('categoryGeneral'), icon: FiHelpCircle, color: "#0D601E" },
+        { id: "tecnico", label: t('categoryTechnical'), icon: FiTool, color: "#F00808" },
+        { id: "cuenta", label: t('categoryAccount'), icon: FiUser, color: "#1A4D2E" },
+        { id: "negocio", label: t('categoryBusiness'), icon: FiBriefcase, color: "#B90808" },
+        { id: "sugerencia", label: t('categorySuggestion'), icon: FiMessageCircle, color: "#769C7B" },
+        { id: "otro", label: t('categoryOther'), icon: FiFlag, color: "#4A4A4A" },
+    ];
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -112,18 +115,35 @@ export default function SoportePage() {
 
         // Validación básica
         if (!formData.name || !formData.email || !formData.phone || !formData.category || !formData.subject || !formData.message) {
-            setError("Por favor, completa todos los campos.");
+            setError(t('validationError'));
             setIsLoading(false);
             return;
         }
 
-        // Simular envío (reemplazar con tu endpoint real)
-        setTimeout(() => {
+        try {
+            const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+            const response = await fetch(`${API_BASE}/api/support/contact-form`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(formData),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.msg || "Error al enviar el formulario");
+            }
+
+            const data = await response.json();
             setIsSubmitted(true);
             setFormData({ name: "", email: "", countryCode: "+52", phone: "", category: "", subject: "", message: "" });
             setSelectedCategory("");
+        } catch (err: any) {
+            setError(err.message || "Error al enviar el formulario. Por favor, intenta de nuevo.");
+        } finally {
             setIsLoading(false);
-        }, 1500);
+        }
     };
 
     const handleCallRequest = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -133,17 +153,34 @@ export default function SoportePage() {
 
         // Validación básica
         if (!callRequestData.name || !callRequestData.phone || !callRequestData.reason) {
-            setCallError("Por favor, completa todos los campos.");
+            setCallError(t('validationError'));
             setIsCallLoading(false);
             return;
         }
 
-        // Simular envío (reemplazar con tu endpoint real)
-        setTimeout(() => {
+        try {
+            const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+            const response = await fetch(`${API_BASE}/api/support/call-request`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(callRequestData),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.msg || "Error al enviar la solicitud");
+            }
+
+            const data = await response.json();
             setIsCallSubmitted(true);
             setCallRequestData({ name: "", countryCode: "+52", phone: "", reason: "" });
+        } catch (err: any) {
+            setCallError(err.message || "Error al enviar la solicitud de llamada. Por favor, intenta de nuevo.");
+        } finally {
             setIsCallLoading(false);
-        }, 1500);
+        }
     };
 
     return (
@@ -156,9 +193,9 @@ export default function SoportePage() {
                     transition={{ duration: 0.5 }}
                     className={styles.header}
                 >
-                    <h1 className={styles.title}>Soporte y Contacto</h1>
+                    <h1 className={styles.title}>{t('title')}</h1>
                     <p className={styles.subtitle}>
-                        ¿Tienes dudas o necesitas ayuda? Nos encantaría escucharte. Contacta con nosotros a través de cualquier canal disponible.
+                        {t('subtitle')}
                     </p>
                 </motion.div>
 
@@ -175,9 +212,9 @@ export default function SoportePage() {
                             <div className={styles.cardIcon}>
                                 <FiMail size={28} />
                             </div>
-                            <h3 className={styles.cardTitle}>Correo Electrónico</h3>
+                            <h3 className={styles.cardTitle}>{t('emailCardTitle')}</h3>
                             <p className={styles.cardDescription}>
-                                Envíanos un email y te responderemos en las próximas 24 horas.
+                                {t('emailCardDescription')}
                             </p>
                             <a href="mailto:pitzbol2026@gmail.com" className={styles.cardLink}>
                                 pitzbol2026@gmail.com <FiArrowRight size={16} />
@@ -189,9 +226,9 @@ export default function SoportePage() {
                             <div className={styles.cardIcon}>
                                 <FiPhone size={28} />
                             </div>
-                            <h3 className={styles.cardTitle}>Solicitar Llamada</h3>
+                            <h3 className={styles.cardTitle}>{t('callCardTitle')}</h3>
                             <p className={styles.cardDescription}>
-                                Completa el formulario con tu número y motivo. Te contactaremos en nuestro horario de atención: Lunes a Viernes 9am-6pm.
+                                {t('callCardDescription')}
                             </p>
                             <button
                                 onClick={() => {
@@ -200,7 +237,7 @@ export default function SoportePage() {
                                 }}
                                 className={styles.cardLink}
                             >
-                                Solicitar ahora <FiArrowRight size={16} />
+                                {t('requestNow')} <FiArrowRight size={16} />
                             </button>
                         </div>
                     </motion.div>
@@ -213,7 +250,7 @@ export default function SoportePage() {
                         transition={{ duration: 0.6, delay: 0.2 }}
                         className={styles.formContainer}
                     >
-                        <h2 className={styles.formTitle}>¿Cómo prefieres contactarnos?</h2>
+                        <h2 className={styles.formTitle}>{t('howPreferContact')}</h2>
                         
                         {/* Tabs */}
                         <div className={styles.tabContainer}>
@@ -223,7 +260,7 @@ export default function SoportePage() {
                                 className={`${styles.tab} ${activeTab === "message" ? styles.tabActive : ""}`}
                             >
                                 <FiMail size={18} />
-                                Enviar Mensaje
+                                {t('sendMessage')}
                             </button>
                             <button
                                 type="button"
@@ -231,7 +268,7 @@ export default function SoportePage() {
                                 className={`${styles.tab} ${activeTab === "call" ? styles.tabActive : ""}`}
                             >
                                 <FiPhone size={18} />
-                                Solicitar Llamada
+                                {t('requestCall')}
                             </button>
                         </div>
 
@@ -239,7 +276,7 @@ export default function SoportePage() {
                         {activeTab === "message" && (
                             <>
                                 <p className={styles.formSubtitle}>
-                                    Completa el formulario y nos pondremos en contacto contigo lo antes posible.
+                                    {t('formDescription')}
                                 </p>
 
                                 {isSubmitted && !isLoading && (
@@ -251,15 +288,15 @@ export default function SoportePage() {
                                         <div className={styles.successIcon}>
                                             <FiCheck size={24} />
                                         </div>
-                                        <h3 className={styles.successTitle}>¡Mensaje enviado!</h3>
+                                        <h3 className={styles.successTitle}>{t('messageSentTitle')}</h3>
                                         <p className={styles.successText}>
-                                            Gracias por contactarnos. Nos comunicaremos contigo en breve.
+                                            {t('messageSentText')}
                                         </p>
                                         <button
                                             onClick={() => setIsSubmitted(false)}
                                             className={styles.successButton}
                                         >
-                                            Enviar otro mensaje
+                                            {t('sendAnother')}
                                         </button>
                                     </motion.div>
                                 )}
@@ -279,7 +316,7 @@ export default function SoportePage() {
 
                                 {/* Categorías de Consulta */}
                                 <div className={styles.categorySection}>
-                                    <label className={styles.label}>Categoría de Consulta</label>
+                                    <label className={styles.label}>{t('categoryLabel')}</label>
                                     <div className={styles.categoryGrid}>
                                         {CATEGORIAS_CONSULTA.map((cat) => {
                                             const IconComponent = cat.icon;
@@ -330,32 +367,32 @@ export default function SoportePage() {
 
                                 <div className={styles.formRow}>
                                     <div className={styles.formGroup}>
-                                        <label className={styles.label}>Nombre Completo</label>
+                                        <label className={styles.label}>{t('fullName')}</label>
                                         <input
                                             type="text"
                                             name="name"
                                             value={formData.name}
                                             onChange={handleInputChange}
-                                            placeholder="Tu nombre"
+                                            placeholder={t('namePlaceholder')}
                                             className={styles.input}
                                         />
                                     </div>
 
                                     <div className={styles.formGroup}>
-                                        <label className={styles.label}>Correo Electrónico</label>
+                                        <label className={styles.label}>{t('email')}</label>
                                         <input
                                             type="email"
                                             name="email"
                                             value={formData.email}
                                             onChange={handleInputChange}
-                                            placeholder="tu@email.com"
+                                            placeholder={t('emailPlaceholder')}
                                             className={styles.input}
                                         />
                                     </div>
                                 </div>
 
                                 <div className={styles.formGroup}>
-                                    <label className={styles.label}>Teléfono de Contacto</label>
+                                    <label className={styles.label}>{t('phoneLabel')}</label>
                                     <div className={styles.phoneInputContainer}>
                                         <div className={styles.phoneCodeWrapper}>
                                             <select
@@ -377,32 +414,32 @@ export default function SoportePage() {
                                             name="phone"
                                             value={formData.phone}
                                             onChange={handleInputChange}
-                                            placeholder="123 456 7890"
+                                            placeholder={t('phonePlaceholder')}
                                             className={styles.phoneInput}
                                         />
                                     </div>
-                                    <p className={styles.fieldHint}>Te contactaremos a este número en nuestro horario de atención.</p>
+                                    <p className={styles.fieldHint}>{t('phoneHint')}</p>
                                 </div>
 
                                 <div className={styles.formGroup}>
-                                    <label className={styles.label}>Asunto</label>
+                                    <label className={styles.label}>{t('subjectLabel')}</label>
                                     <input
                                         type="text"
                                         name="subject"
                                         value={formData.subject}
                                         onChange={handleInputChange}
-                                        placeholder="¿Cuál es tu consulta?"
+                                        placeholder={t('subjectPlaceholder')}
                                         className={styles.input}
                                     />
                                 </div>
 
                                 <div className={styles.formGroup}>
-                                    <label className={styles.label}>Mensaje</label>
+                                    <label className={styles.label}>{t('messageLabel')}</label>
                                     <textarea
                                         name="message"
                                         value={formData.message}
                                         onChange={handleInputChange}
-                                        placeholder="Cuéntanos más detalles sobre tu consulta..."
+                                        placeholder={t('messagePlaceholder')}
                                         rows={6}
                                         className={styles.textarea}
                                     />
@@ -413,7 +450,7 @@ export default function SoportePage() {
                                     disabled={isLoading}
                                     className={styles.submitButton}
                                 >
-                                    {isLoading ? "Enviando..." : "Enviar Mensaje"}
+                                    {isLoading ? t('submitting') : t('submitButton')}
                                     {!isLoading && <FiArrowRight size={16} />}
                                 </button>
                             </form>
@@ -425,7 +462,7 @@ export default function SoportePage() {
                         {activeTab === "call" && (
                             <>
                                 <p className={styles.formSubtitle}>
-                                    Déjanos tus datos y te contactaremos telefónicamente en nuestro horario de atención (Lun-Vie 9am-6pm).
+                                    {t('callFormDescription')}
                                 </p>
 
                                 {isCallSubmitted && !isCallLoading && (
@@ -437,15 +474,15 @@ export default function SoportePage() {
                                         <div className={styles.successIcon}>
                                             <FiCheck size={24} />
                                         </div>
-                                        <h3 className={styles.successTitle}>¡Solicitud recibida!</h3>
+                                        <h3 className={styles.successTitle}>{t('callRequestTitle')}</h3>
                                         <p className={styles.successText}>
-                                            Te contactaremos pronto al número proporcionado.
+                                            {t('callRequestText')}
                                         </p>
                                         <button
                                             onClick={() => setIsCallSubmitted(false)}
                                             className={styles.successButton}
                                         >
-                                            Nueva solicitud
+                                            {t('newRequest')}
                                         </button>
                                     </motion.div>
                                 )}
@@ -464,19 +501,19 @@ export default function SoportePage() {
                                         )}
 
                                         <div className={styles.formGroup}>
-                                            <label className={styles.label}>Nombre Completo</label>
+                                            <label className={styles.label}>{t('fullName')}</label>
                                             <input
                                                 type="text"
                                                 name="name"
                                                 value={callRequestData.name}
                                                 onChange={handleCallInputChange}
-                                                placeholder="Tu nombre"
+                                                placeholder={t('namePlaceholder')}
                                                 className={styles.input}
                                             />
                                         </div>
 
                                         <div className={styles.formGroup}>
-                                            <label className={styles.label}>Teléfono de Contacto</label>
+                                            <label className={styles.label}>{t('phoneLabel')}</label>
                                             <div className={styles.phoneInputContainer}>
                                                 <div className={styles.phoneCodeWrapper}>
                                                     <select
@@ -498,20 +535,20 @@ export default function SoportePage() {
                                                     name="phone"
                                                     value={callRequestData.phone}
                                                     onChange={handleCallInputChange}
-                                                    placeholder="123 456 7890"
+                                                    placeholder={t('phonePlaceholder')}
                                                     className={styles.phoneInput}
                                                 />
                                             </div>
-                                            <p className={styles.fieldHint}>Te llamaremos a este número en horario hábil.</p>
+                                            <p className={styles.fieldHint}>{t('callHint')}</p>
                                         </div>
 
                                         <div className={styles.formGroup}>
-                                            <label className={styles.label}>Motivo de la Llamada</label>
+                                            <label className={styles.label}>{t('callReasonLabel')}</label>
                                             <textarea
                                                 name="reason"
                                                 value={callRequestData.reason}
                                                 onChange={handleCallInputChange}
-                                                placeholder="Cuéntanos brevemente el motivo de tu llamada..."
+                                                placeholder={t('callReasonPlaceholder')}
                                                 rows={4}
                                                 className={styles.textarea}
                                             />
@@ -522,7 +559,7 @@ export default function SoportePage() {
                                             disabled={isCallLoading}
                                             className={styles.submitButton}
                                         >
-                                            {isCallLoading ? "Enviando..." : "Solicitar Llamada"}
+                                            {isCallLoading ? t('submitting') : t('submitCallButton')}
                                             {!isCallLoading && <FiArrowRight size={16} />}
                                         </button>
                                     </form>
@@ -538,47 +575,47 @@ export default function SoportePage() {
                         transition={{ duration: 0.6, delay: 0.3 }}
                         className={styles.faqContainer}
                     >
-                        <h2 className={styles.faqTitle}>Preguntas Frecuentes</h2>
+                        <h2 className={styles.faqTitle}>{t('faqTitle')}</h2>
                         <div className={styles.faqGrid}>
                             <div className={styles.faqCard}>
-                                <h4 className={styles.faqQuestion}>¿Cómo puedo crear una cuenta?</h4>
+                                <h4 className={styles.faqQuestion}>{t('faqQ1')}</h4>
                                 <p className={styles.faqAnswer}>
-                                    Haz clic en "Identificarse" en el menú de la página principal y sigue los pasos para registrarte. Es completamente gratis.
+                                    {t('faqA1')}
                                 </p>
                             </div>
 
                             <div className={styles.faqCard}>
-                                <h4 className={styles.faqQuestion}>¿Cuándo recibiré una respuesta?</h4>
+                                <h4 className={styles.faqQuestion}>{t('faqQ2')}</h4>
                                 <p className={styles.faqAnswer}>
-                                    Normalmente respondemos en menos de 24 horas durante días hábiles. Para consultas urgentes, selecciona "Solicitar Llamada".
+                                    {t('faqA2')}
                                 </p>
                             </div>
 
                             <div className={styles.faqCard}>
-                                <h4 className={styles.faqQuestion}>¿Qué categoría de consulta debo elegir?</h4>
+                                <h4 className={styles.faqQuestion}>{t('faqQ3')}</h4>
                                 <p className={styles.faqAnswer}>
-                                    Selecciona la categoría que mejor describa tu consulta. Si no estás seguro, elige "Consulta General" o "Otro".
+                                    {t('faqA3')}
                                 </p>
                             </div>
 
                             <div className={styles.faqCard}>
-                                <h4 className={styles.faqQuestion}>¿Dónde puedo reportar un problema técnico?</h4>
+                                <h4 className={styles.faqQuestion}>{t('faqQ4')}</h4>
                                 <p className={styles.faqAnswer}>
-                                    Usa el formulario de contacto y selecciona "Problema Técnico". Describe con detalle el error que encontraste.
+                                    {t('faqA4')}
                                 </p>
                             </div>
 
                             <div className={styles.faqCard}>
-                                <h4 className={styles.faqQuestion}>¿Cuál es el horario de atención telefónica?</h4>
+                                <h4 className={styles.faqQuestion}>{t('faqQ5')}</h4>
                                 <p className={styles.faqAnswer}>
-                                    Nuestro equipo está disponible de lunes a viernes, 9:00 AM a 6:00 PM (Hora de Guadalajara).
+                                    {t('faqA5')}
                                 </p>
                             </div>
 
                             <div className={styles.faqCard}>
-                                <h4 className={styles.faqQuestion}>¿Puedo solicitar alianzas comerciales?</h4>
+                                <h4 className={styles.faqQuestion}>{t('faqQ6')}</h4>
                                 <p className={styles.faqAnswer}>
-                                    ¡Claro! Selecciona "Alianzas Comerciales" en el formulario y cuéntanos sobre tu negocio o propuesta.
+                                    {t('faqA6')}
                                 </p>
                             </div>
                         </div>
