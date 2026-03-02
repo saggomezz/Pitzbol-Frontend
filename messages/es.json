@@ -51,7 +51,9 @@
     "seeMore": "Ver más",
     "seeAll": "Ver todos",
     "filter": "Filtrar",
-    "search": "Buscar"
+    "search": "Buscar",
+    "noImage": "Sin imagen",
+    "loadingItinerary": "Cargando itinerario..."
   },
   "footer": {
     "description": "Nuestra identidad nace del \"Pitz\", término maya que consagra el juego de pelota como un acto ritual y cosmogónico. Más que un escudo, nuestro emblema es un diálogo visual entre el ancestral \"Ollamaliztli\" —donde la vida y el cosmos se decidían en el campo— y la euforia del fútbol contemporáneo. Encarnamos el movimiento perpetuo de la esfera de caucho, una herencia de honor y comunidad que hoy, bajo nuestra bandera, vuelve a unir a México con el mundo.",
@@ -115,7 +117,14 @@
     "personalizedItinerary": "Itinerario Personalizado",
     "findGuide": "Encuentra tu Guía",
     "discoverPlaces": "Descubre Lugares",
-    "viewMatch": "Ver Partido"
+    "viewMatch": "Ver Partido",
+    "nextMatchIn": "Próximo partido en",
+    "buildYourItinerary": "Arma tu Itinerario",
+    "yourChosenRoute": "Tu Ruta Elegida",
+    "pressToChoosePlaces": "Presiona para elegir lugares",
+    "generateItinerary": "Generar Itinerario",
+    "selectAtLeastOnePlace": "Selecciona al menos 1 lugar",
+    "hours": "hrs"
   },
   "categories": {
     "soccer": "Fútbol",
@@ -557,7 +566,21 @@
     "approve": "Aprobar",
     "reject": "Rechazar",
     "delete": "Eliminar",
-    "statistics": "Estadísticas"
+    "statistics": "Estadísticas",
+    "managedUsers": "Gestión de usuarios",
+    "loadingManagedUsers": "Cargando guías y negociantes...",
+    "guidesListTitle": "Guías activos",
+    "businessUsersTitle": "Negociantes activos",
+    "noGuidesToManage": "No hay guías para gestionar.",
+    "noBusinessesToManage": "No hay negociantes para gestionar.",
+    "managedUsersLoadError": "No se pudieron cargar guías y negociantes.",
+    "adminAuthRequired": "Tu sesión de administrador expiró o no tiene permisos.",
+    "deleteUser": "Eliminar usuario",
+    "userDeletedSuccess": "Usuario eliminado correctamente",
+    "userDeletedError": "No se pudo eliminar el usuario",
+    "guideSingular": "guía",
+    "businessSingular": "negociante",
+    "confirmDeleteUser": "¿Seguro que deseas eliminar al {role} {user}? Esta acción no se puede deshacer."
   },
   "payment": {
     "title": "Pago",

@@ -212,7 +212,28 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         }),
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get("content-type");
+      
+      try {
+        // Verificar si la respuesta tiene contenido JSON
+        if (contentType && contentType.includes("application/json")) {
+          const text = await response.text();
+          if (text.trim()) {
+            data = JSON.parse(text);
+          } else {
+            data = {};
+          }
+        } else {
+          // Si no es JSON, leer como texto
+          const text = await response.text();
+          data = { message: text || "Sin respuesta del servidor" };
+        }
+      } catch (parseError) {
+        console.error("❌ Error al parsear respuesta:", parseError);
+        alert("El servidor no está respondiendo correctamente. Por favor, verifica que el servidor esté corriendo.");
+        return;
+      }
       
       console.log('📝 Response status:', response.status);
       console.log('📝 Response data:', data);
@@ -271,7 +292,29 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
       } else {
         // Mostrar mensaje de error específico del servidor
         console.error("❌ Error de login:", data);
-        const errorMsg = data.msg || "Credenciales inválidas. Verifica tu correo y contraseña.";
+        console.error("❌ Status code:", response.status);
+        console.error("❌ Response headers:", Object.fromEntries(response.headers.entries()));
+        
+        // Intentar diferentes campos del error
+        let errorMsg = data?.msg || data?.message || data?.error;
+        
+        // Si no hay mensaje del servidor, usar uno basado en el status code
+        if (!errorMsg) {
+          switch (response.status) {
+            case 401:
+              errorMsg = "Credenciales inválidas. Verifica tu correo y contraseña.";
+              break;
+            case 404:
+              errorMsg = "Usuario no encontrado. Verifica tu correo electrónico.";
+              break;
+            case 500:
+              errorMsg = "Error en el servidor. Por favor, intenta más tarde.";
+              break;
+            default:
+              errorMsg = `Error al iniciar sesión (código ${response.status}). Por favor, intenta de nuevo.`;
+          }
+        }
+        
         alert(errorMsg);
       }
     } catch (error: any) {

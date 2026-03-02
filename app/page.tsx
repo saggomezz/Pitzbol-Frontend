@@ -120,10 +120,10 @@ return (
   );
 };
 
-const MatchItem = ({ location, date, team1, flag1, team2, flag2, time }: any) => (
+const MatchItem = ({ location, date, team1, flag1, team2, flag2, time, tHome }: any) => (
   <div className="w-full mb-2"> {/* Reduje el margen inferior de mb-6 a mb-3 */}
     <h3 className="text-center text-[#0D601E] text-xs md:text-sm mb-1 font-medium" style={{ fontFamily: 'var(--font-roboto)' }}>
-      Próximo partido en <span className="font-bold">{location}</span> - {date}:
+      {tHome('nextMatchIn')} <span className="font-bold">{location}</span> - {date}:
     </h3>
     <div className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-2 shadow-md min-h-[60px] md:min-h-[50px]">
       {/* Equipo 1 */}
@@ -142,7 +142,7 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time }: any) =>
           {time}
         </span>
         <span className="text-[10px] md:text-xs font-medium text-black" style={{ fontFamily: 'var(--font-roboto)' }}>
-          hrs
+          {tHome('hours')}
         </span>
       </div>
 
@@ -233,7 +233,7 @@ function HomeContent() {
           {recommendations.map((place) => (
             <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
               <div className="w-full relative overflow-hidden pb-[56.25%] md:pb-[100%]">
-                {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={getPlaceName(place.name)} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">Sin imagen</div>}
+                {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={getPlaceName(place.name)} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{tCommon('noImage')}</div>}
                 <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#1A4D2E] text-white px-3 py-1 rounded-full shadow-lg">{tCommon('search')}</button></div>
               </div>
               <div className="p-4"><h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{getPlaceName(place.name)}</h3></div>
@@ -245,7 +245,7 @@ function HomeContent() {
   };
 
   // ESTADOS PARA LA IA
-  const [itinerarioTxt, setItinerarioTxt] = useState("Cargando itinerario...");
+  const [itinerarioTxt, setItinerarioTxt] = useState("");
   const [loadingIA, setLoadingIA] = useState(true);
   const [lugaresBD, setLugaresBD] = useState<Lugar[]>([]);
   const [seleccionados, setSeleccionados] = useState<Lugar[]>([]);
@@ -433,6 +433,7 @@ function HomeContent() {
             team2="Sudáfrica"
             flag2="https://flagcdn.com/za.svg"
             time="13:00"
+            tHome={tHome}
           />
           <MatchItem 
             location="GDL"
@@ -442,11 +443,12 @@ function HomeContent() {
             team2="Dinamarca"
             flag2="https://flagcdn.com/dk.svg"
             time="20:00"
+            tHome={tHome}
           />
           {/* CONTENEDOR DE ITINERARIO */}
           <div className="bg-[#FAF9F2] rounded-3xl p-6 shadow-sm min-h-[300px] border border-[#1A4D2E]/10 flex flex-col relative">
             <h2 className="font-black text-[#1A4D2E] uppercase text-xs tracking-widest mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-              {itinerarioFinal ? "Tu Ruta Elegida" : "Arma tu Itinerario"}
+              {itinerarioFinal ? tHome('yourChosenRoute') : tHome('buildYourItinerary')}
             </h2>
 
             {!itinerarioFinal && !mostrarOpciones && (
@@ -455,7 +457,7 @@ function HomeContent() {
                 className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#769C7B]/30 rounded-2xl hover:bg-[#F6F0E6] transition-all group"
               >
                 <FiMapPin className="text-[#769C7B] group-hover:text-[#F00808] mb-2" size={24} />
-                <p className="text-[11px] font-bold text-[#769C7B] uppercase">Presiona para elegir lugares</p>
+                <p className="text-[11px] font-bold text-[#769C7B] uppercase">{tHome('pressToChoosePlaces')}</p>
               </button>
             )}
 
@@ -487,8 +489,8 @@ function HomeContent() {
                   }`}
                 >
                   {seleccionados.length > 0
-                    ? `Generar Itinerario (${seleccionados.length})`
-                    : "Selecciona al menos 1 lugar"}
+                    ? `${tHome('generateItinerary')} (${seleccionados.length})`
+                    : tHome('selectAtLeastOnePlace')}
                 </button>
               </div>
             )}
