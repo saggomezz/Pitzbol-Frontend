@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://69.30.204.56:3001',
+  },
   reactStrictMode: true,
   turbopack: {}, // Silenciar warning de Turbopack en Next.js 16
   webpack: (config: any) => {
