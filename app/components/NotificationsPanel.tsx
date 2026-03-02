@@ -7,7 +7,7 @@ import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 
 interface Notification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado';
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -52,17 +52,21 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.notificaciones) {
-          notificacionesDelBackend = data.notificaciones.map((notif: any) => ({
-            id: notif.id,
-            tipo: notif.tipo,
-            titulo: notif.titulo,
-            mensaje: notif.mensaje,
-            fecha: notif.fecha,
-            leido: notif.leido || false,
-            enlace: notif.enlace,
-            solicitudId: notif.solicitudId,
-            uidSolicitante: notif.uidSolicitante
-          }));
+          notificacionesDelBackend = data.notificaciones.map((notif: any) => {
+            const mapped = {
+              id: notif.id,
+              tipo: notif.tipo,
+              titulo: notif.titulo,
+              mensaje: notif.mensaje,
+              fecha: notif.fecha,
+              leido: notif.leido || false,
+              enlace: notif.enlace,
+              solicitudId: notif.solicitudId,
+              uidSolicitante: notif.uidSolicitante
+            };
+            console.log(`📩 Notificación del backend:`, mapped);
+            return mapped;
+          });
         }
       }
 
@@ -197,12 +201,19 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     const handleNotificationsUpdated = (event: Event) => {
       cargarNotificacionesLocal();
     };
+    const handleRefreshFromBackend = () => {
+      if (userId) {
+        cargarNotificacionesDelBackend();
+      }
+    };
     
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
+    window.addEventListener("refreshNotificationsFromBackend", handleRefreshFromBackend);
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
+      window.removeEventListener("refreshNotificationsFromBackend", handleRefreshFromBackend);
     };
   }, [userId]);
 
@@ -277,6 +288,16 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return <FiBell className="text-purple-600" size={20} />;
       case 'nueva_solicitud_negocio':
         return <FiBriefcase className="text-orange-500" size={20} />;
+      case 'solicitud_negocio_enviada':
+        return <FiBriefcase className="text-[#0D601E]" size={20} />;
+      case 'negocio_aprobado':
+        return <FiCheck className="text-emerald-600" size={20} />;
+      case 'negocio_rechazado':
+        return <FiAlertCircle className="text-red-600" size={20} />;
+      case 'negocio_archivado':
+        return <FiX className="text-red-600" size={20} />;
+      case 'negocio_editado':
+        return <FiBriefcase className="text-blue-600" size={20} />;
       default:
         return <FiBell className="text-blue-600" size={20} />;
     }
@@ -294,6 +315,16 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return 'bg-purple-50 border-purple-100';
       case 'nueva_solicitud_negocio':
         return 'bg-orange-50 border-orange-100';
+      case 'solicitud_negocio_enviada':
+        return 'bg-emerald-50 border-emerald-100';
+      case 'negocio_aprobado':
+        return 'bg-emerald-50 border-emerald-100';
+      case 'negocio_rechazado':
+        return 'bg-red-50 border-red-100';
+      case 'negocio_archivado':
+        return 'bg-red-50 border-red-100';
+      case 'negocio_editado':
+        return 'bg-blue-50 border-blue-100';
       default:
         return 'bg-blue-50 border-blue-100';
     }
@@ -399,9 +430,14 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                         !notif.leido ? 'border-l-[#F00808] bg-opacity-60' : 'border-l-gray-200'
                       }`}
                       onClick={() => {
+                        console.log(`🔔 Clic en notificación:`, notif);
+                        console.log(`🔗 Enlace de notificación:`, notif.enlace);
                         marcarComoLeida(notif.id);
                         if (notif.enlace) {
+                          console.log(`➡️ Navegando a:`, notif.enlace);
                           window.location.href = notif.enlace;
+                        } else {
+                          console.warn(`⚠️ La notificación no tiene enlace`);
                         }
                       }}
                     >
