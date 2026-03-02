@@ -395,29 +395,38 @@ function HomeContent() {
             tHome={tHome}
           />
           {/* PITZBOT — IA de Itinerarios */}
-          <div className="bg-white rounded-3xl p-4 shadow-lg border border-gray-100 relative overflow-hidden hover:shadow-xl transition-all duration-300">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <div>
-                  <h2 className="text-base font-bold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-                    PitzBot
-                  </h2>
-                  <p className="text-xs text-gray-600 font-medium">Crear itinerario con IA</p>
+          {(() => {
+            let pitzUrl = 'http://69.30.204.56:3003';
+            try {
+              const raw = localStorage.getItem('pitzbol_user');
+              if (raw) { const uid = JSON.parse(raw).uid; if (uid) pitzUrl = `http://69.30.204.56:3003?uid=${uid}`; }
+            } catch {}
+            return (
+              <div className="bg-white rounded-3xl p-4 shadow-lg border border-gray-100 relative overflow-hidden hover:shadow-xl transition-all duration-300">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h2 className="text-base font-bold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                        PitzBot
+                      </h2>
+                      <p className="text-xs text-gray-600 font-medium">Crear itinerario con IA</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#769C7B]">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>IA disponible</span>
+                  </div>
+                  <a
+                    href={pitzUrl}
+                    className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <span>Crear Itinerario</span>
+                    <span>→</span>
+                  </a>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-xs text-[#769C7B]">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>IA disponible</span>
-              </div>
-              <a
-                href="http://69.30.204.56:3003"
-                className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <span>Crear Itinerario</span>
-                <span>→</span>
-              </a>
-            </div>
-          </div>
+            );
+          })()}
         </div>
 
         <RecommendationsComponent recommendations={recommendations} />

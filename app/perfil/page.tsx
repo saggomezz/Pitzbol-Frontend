@@ -10,6 +10,7 @@ import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
   FiPlus, FiShield, FiUser, FiX, FiCreditCard
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
+import { getItinerariosUsuario, type ItinerarioGuardado } from "@/lib/itinerariosApi";
 
 import WalletModal from "@/app/components/WalletModal";
 
@@ -132,6 +133,8 @@ export default function PerfilDetallado() {
   const [guardando, setGuardando] = useState(false);
   const [exito, setExito] = useState("");
   const [error, setError] = useState("");
+  const [itinerarios, setItinerarios] = useState<ItinerarioGuardado[]>([]);
+  const [loadingItin, setLoadingItin] = useState(false);
   const [mostrarNotificacionAprobado, setMostrarNotificacionAprobado] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
 
@@ -253,6 +256,14 @@ export default function PerfilDetallado() {
         console.error("Error de sincronización con Pitzbol Server:", error);
       }
       setLoading(false);
+      // Cargar itinerarios guardados en Firebase
+      if (userLocal.uid) {
+        setLoadingItin(true);
+        getItinerariosUsuario(userLocal.uid)
+          .then(setItinerarios)
+          .catch(() => {})
+          .finally(() => setLoadingItin(false));
+      }
     };
     cargarDatos();
   }, []);
@@ -1624,6 +1635,48 @@ export default function PerfilDetallado() {
                       {t('explore')}
                     </button>
                   </div>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Mis Itinerarios */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]"
+            >
+              <div className="mb-5">
+                <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Itinerarios</h3>
+                <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">Generados con PitzBot</p>
+              </div>
+              {loadingItin ? (
+                <div className="flex items-center gap-2 text-[#81C784] text-sm py-4">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#81C784] border-t-transparent" />
+                  <span>Cargando itinerarios...</span>
+                </div>
+              ) : itinerarios.length === 0 ? (
+                <div className="py-8 flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-[#F1F8F6] rounded-xl flex items-center justify-center mb-3 border border-[#E0F2F1]">
+                    <FiMap size={22} className="text-[#81C784]" />
+                  </div>
+                  <p className="text-sm text-[#81C784]">Aún no tienes itinerarios guardados.</p>
+                  <a href="http://69.30.204.56:3003" className="mt-3 text-xs font-semibold text-[#1A4D2E] underline">
+                    Crear con PitzBot →
+                  </a>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {itinerarios.map(it => (
+                    <div key={it.id} className="border border-[#E0F2F1] rounded-xl p-4 hover:border-[#81C784] transition-colors">
+                      <p className="font-bold text-[#1A4D2E] text-sm leading-snug">{it.titulo}</p>
+                      <div className="flex flex-wrap gap-3 mt-1.5">
+                        {it.fecha && <span className="text-xs text-gray-500">📅 {it.fecha}</span>}
+                        {it.meta?.duration && <span className="text-xs text-gray-500">⏱ {it.meta.duration}</span>}
+                        {it.stops && <span className="text-xs text-gray-500">📍 {it.stops.length} paradas</span>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </motion.div>
