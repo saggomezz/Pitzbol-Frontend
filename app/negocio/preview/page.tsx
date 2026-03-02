@@ -8,6 +8,8 @@ import {
   FiMapPin, FiPhone, FiGlobe, FiFileText, FiImage, FiClock,
   FiCheckCircle, FiAlertCircle, FiArrowLeft, FiShare2, FiEdit
 } from "react-icons/fi";
+import dynamic from "next/dynamic";
+import "leaflet/dist/leaflet.css";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
@@ -29,6 +31,8 @@ interface BusinessData {
     images: string[];
     owner: string;
     createdAt: string;
+    latitud?: string | null;
+    longitud?: string | null;
   };
 }
 
@@ -72,6 +76,11 @@ export default function BusinessPreviewPage() {
 
         const data = await response.json();
         if (data.success && data.business) {
+          console.log("📦 Datos del negocio recibidos:", data.business);
+          console.log("📍 Coordenadas en business:", {
+            latitud: data.business.business?.latitud,
+            longitud: data.business.business?.longitud
+          });
           setBusiness(data.business);
         } else {
           setError("No se pudieron cargar los detalles.");
@@ -390,23 +399,37 @@ export default function BusinessPreviewPage() {
               className="bg-[#F6F0E6]/50 rounded-3xl p-6 border border-[#1A4D2E]/10 mb-8"
             >
               <h3 className="text-lg font-black text-[#1A4D2E] mb-4">Información de Registro</h3>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-1 gap-4">
                 <div>
-                  <p className="text-xs text-[#769C7B] font-semibold uppercase">Email</p>
+                  <p className="text-xs text-[#769C7B] font-semibold uppercase">Email contacto Negocio</p>
                   <p className="text-sm text-[#1A4D2E] break-all">{business.email}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#769C7B] font-semibold uppercase">ID del Negocio</p>
-                  <p className="text-sm text-[#1A4D2E] font-mono">{business.id}</p>
                 </div>
               </div>
             </motion.div>
+
+            {/* Mapa de Ubicación */}
+            {business.business.location && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="mb-8"
+              >
+                <h3 className="text-2xl font-black text-[#1A4D2E] mb-6">Ubicación en el Mapa</h3>
+                <LocationMap 
+                  location={business.business.location} 
+                  businessName={business.business.name}
+                  latitud={business.business.latitud}
+                  longitud={business.business.longitud}
+                />
+              </motion.div>
+            )}
 
             {/* Botones de Acción */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
+              transition={{ delay: 0.7 }}
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
               <button
@@ -415,19 +438,21 @@ export default function BusinessPreviewPage() {
               >
                 <FiArrowLeft /> Atrás
               </button>
-              <button
-                onClick={() => {
-                  if (navigator.share)
-                    navigator.share({
-                      title: business.business.name,
-                      text: `Mira mi negocio: ${business.business.name}`,
-                      url: window.location.href,
-                    });
-                }}
-                className="flex-1 bg-[#0D601E] hover:bg-[#094d18] text-white font-bold py-3 px-6 rounded-full transition-colors flex items-center justify-center gap-2"
-              >
-                <FiShare2 /> Compartir
-              </button>
+              {business.status !== "PENDING" && (
+                <button
+                  onClick={() => {
+                    if (navigator.share)
+                      navigator.share({
+                        title: business.business.name,
+                        text: `Mira mi negocio: ${business.business.name}`,
+                        url: window.location.href,
+                      });
+                  }}
+                  className="flex-1 bg-[#0D601E] hover:bg-[#094d18] text-white font-bold py-3 px-6 rounded-full transition-colors flex items-center justify-center gap-2"
+                >
+                  <FiShare2 /> Compartir
+                </button>
+              )}
             </motion.div>
           </div>
         </motion.div>
@@ -465,6 +490,161 @@ export default function BusinessPreviewPage() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// Componente de Mapa para mostrar la ubicación
+const LocationMap = dynamic(
+  () => Promise.resolve(LocationMapComponent),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[400px] bg-[#F6F0E6] rounded-3xl flex items-center justify-center border border-[#1A4D2E]/10">
+        <p className="text-[#769C7B] font-semibold">Cargando mapa...</p>
+      </div>
+    ),
+  }
+);
+
+function LocationMapComponent({ 
+  location, 
+  businessName,
+  latitud,
+  longitud 
+}: { 
+  location: string; 
+  businessName: string;
+  latitud?: string | null;
+  longitud?: string | null;
+}) {
+  const [coordinates, setCoordinates] = useState<[number, number] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    console.log("🗺️ LocationMap - Datos recibidos:", { latitud, longitud, location });
+    
+    // Si tenemos latitud y longitud guardadas, usarlas directamente
+    if (latitud && longitud) {
+      const lat = parseFloat(latitud);
+      const lon = parseFloat(longitud);
+      
+      console.log("🔢 Parseando coordenadas:", { lat, lon, isNaNLat: isNaN(lat), isNaNLon: isNaN(lon) });
+      
+      if (!isNaN(lat) && !isNaN(lon)) {
+        console.log("✅ Usando coordenadas guardadas:", lat, lon);
+        setCoordinates([lat, lon]);
+        setError(false);
+        setLoading(false);
+        return;
+      } else {
+        console.warn("⚠️ Coordenadas guardadas inválidas");
+      }
+    } else {
+      console.warn("⚠️ No hay coordenadas guardadas, intentando geocodificar");
+    }
+
+    // Si no hay coordenadas, intentar geocodificar la dirección
+    const geocodeAddress = async () => {
+      try {
+        console.log("🌍 Geocodificando dirección:", location);
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`
+        );
+        const data = await response.json();
+        
+        console.log("📍 Resultado de geocodificación:", data);
+        
+        if (data && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lon = parseFloat(data[0].lon);
+          console.log("✅ Coordenadas geocodificadas:", lat, lon);
+          setCoordinates([lat, lon]);
+          setError(false);
+        } else {
+          console.error("❌ No se encontraron resultados de geocodificación");
+          setError(true);
+        }
+      } catch (err) {
+        console.error("❌ Error geocoding address:", err);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    geocodeAddress();
+  }, [location, latitud, longitud]);
+
+  if (loading) {
+    return (
+      <div className="h-[400px] bg-[#F6F0E6] rounded-3xl flex items-center justify-center border border-[#1A4D2E]/10">
+        <p className="text-[#769C7B] font-semibold">Cargando ubicación...</p>
+      </div>
+    );
+  }
+
+  if (error || !coordinates) {
+    return (
+      <div className="bg-[#F6F0E6] rounded-3xl p-6 border border-[#1A4D2E]/10">
+        <div className="flex items-center gap-3 mb-3">
+          <FiMapPin className="text-[#0D601E]" size={24} />
+          <h4 className="font-bold text-[#1A4D2E]">Ubicación</h4>
+        </div>
+        <p className="text-[#1A4D2E] mb-2">{location}</p>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm">
+          <p className="text-yellow-800 font-semibold mb-1">ℹ️ Mapa no disponible</p>
+          <p className="text-yellow-700 text-xs">
+            No hay coordenadas guardadas para este negocio. Por favor, asegúrate de colocar el marcador en el mapa durante el registro.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const { MapContainer, TileLayer, Marker, Popup } = require("react-leaflet");
+  const L = require("leaflet");
+
+  // Fix para iconos de Leaflet en Next.js
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+    iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+  });
+
+  return (
+    <div className="rounded-3xl overflow-hidden border-2 border-[#1A4D2E]/20">
+      <MapContainer
+        center={coordinates}
+        zoom={15}
+        style={{ height: "400px", width: "100%" }}
+        scrollWheelZoom={true}
+        dragging={true}
+        zoomControl={true}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <Marker position={coordinates}>
+          <Popup>
+            <div className="text-center">
+              <strong>{businessName}</strong>
+              <br />
+              <span className="text-sm text-gray-600">{location}</span>
+            </div>
+          </Popup>
+        </Marker>
+      </MapContainer>
+      <div className="bg-[#0D601E] text-white text-center py-2 text-sm font-semibold">
+        📍 {location}
+      </div>
     </div>
   );
 }
