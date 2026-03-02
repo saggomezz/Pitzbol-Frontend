@@ -28,6 +28,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'arquitecturaviva.com' },
       { protocol: 'https', hostname: 'A.espncdn.com' },
       { protocol: 'https', hostname: 'flagcdn.com' },
+      { protocol: 'https', hostname: 'noticiasgdl.com' },
+      { protocol: 'https', hostname: 'offloadmedia.feverup.com' },
     ],
   },
 };
