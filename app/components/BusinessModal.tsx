@@ -1097,6 +1097,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             latitud={form.latitud}
                             longitud={form.longitud}
                             onLocationChange={(lat, lng) => {
+                              console.log("📍 MinimapaLocationPicker - Coordenadas actualizadas:", { lat, lng });
                               // Marcar que este cambio SÍ es manual (usuario movió el marcador)
                               isManualMapChangeRef.current = true;
                               setForm((f: FormState) => ({
