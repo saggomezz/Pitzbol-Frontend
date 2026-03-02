@@ -1,5 +1,6 @@
 "use client";
 import { useTranslations } from 'next-intl';
+import { usePitzbolUser } from "@/lib/usePitzbolUser";
 interface FormState {
   nombre: string;
   categoria: string;
@@ -40,6 +41,7 @@ import MinimapaLocationPicker from "./MinimapaLocationPicker";
 const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const t = useTranslations('businessModal');
   const tCommon = useTranslations('common');
+  const pitzbolUser = usePitzbolUser();
   
   const [step, setStep] = useState(0);
   const [isFinishing, setIsFinishing] = useState(false);
@@ -791,6 +793,33 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     setIsFinishing(true);
     setSuccess(false);
     try {
+      let ownerUid: string | undefined;
+      
+      // PRIORIDAD 1: Usar el usuario del hook (más confiable)
+      if (pitzbolUser?.uid) {
+        ownerUid = pitzbolUser.uid;
+        console.log("[BusinessModal] ✅ ownerUid obtenido del hook usePitzbolUser:", ownerUid);
+      } else {
+        // PRIORIDAD 2: Si no está en el hook, intentar localStorage
+        try {
+          const storedUser = localStorage.getItem("pitzbol_user");
+          console.log("[BusinessModal] localStorage storedUser:", storedUser);
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            ownerUid = parsedUser?.uid;
+            console.log("[BusinessModal] ownerUid extraído del localStorage:", ownerUid);
+            console.log("[BusinessModal] Usuario completo:", parsedUser);
+          }
+        } catch (error) {
+          console.error("[BusinessModal] Error al parsear pitzbol_user:", error);
+          ownerUid = undefined;
+        }
+      }
+      
+      if (!ownerUid) {
+        console.warn("[BusinessModal] ⚠️ No se pudo obtener ownerUid, la notificación no llegará al usuario");
+      }
+
       // Crear FormData para enviar archivos
       const formData = new FormData();
       formData.append("email", form.correo);
@@ -804,6 +833,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       formData.append("website", form.sitioWeb);
       formData.append("rfc", form.rfc);
       formData.append("cp", form.cp);
+      if (ownerUid) {
+        formData.append("ownerUid", ownerUid);
+        console.log("[BusinessModal] ✅ ownerUid agregado al FormData:", ownerUid);
+      } else {
+        console.log("[BusinessModal] ⚠️ No se agregó ownerUid porque es undefined");
+      }
       
       // Agregar logo - convertir Data URL a File si es necesario
       if (files.logo) {
@@ -836,6 +871,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         website: form.sitioWeb,
         rfc: form.rfc,
         cp: form.cp,
+        ownerUid: ownerUid || "NO PRESENTE",
         logo: files.logo || imagePreview.logoUrl ? "Presente" : "NO PRESENTE",
         galeria: (files.galeria.filter(f => f).length + imagePreview.galeriaUrls.filter(u => u).length) + " archivos"
       });
@@ -860,7 +896,14 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       localStorage.removeItem("pitzbol_business_draft");
       localStorage.removeItem("pitzbol_business_images");
       setFiles({ logo: null, galeria: [null, null, null] });
+
       setSuccess(true);
+      
+      // Disparar evento para recargar notificaciones desde el backend después de un delay
+      setTimeout(() => {
+        window.dispatchEvent(new Event("refreshNotificationsFromBackend"));
+      }, 500);
+
       setTimeout(() => {
         setIsFinishing(false);
         setSuccess(false);
@@ -1054,6 +1097,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             latitud={form.latitud}
                             longitud={form.longitud}
                             onLocationChange={(lat, lng) => {
+                              console.log("📍 MinimapaLocationPicker - Coordenadas actualizadas:", { lat, lng });
                               // Marcar que este cambio SÍ es manual (usuario movió el marcador)
                               isManualMapChangeRef.current = true;
                               setForm((f: FormState) => ({
