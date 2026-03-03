@@ -135,6 +135,7 @@ export default function PerfilDetallado() {
   const [error, setError] = useState("");
   const [itinerarios, setItinerarios] = useState<ItinerarioGuardado[]>([]);
   const [loadingItin, setLoadingItin] = useState(false);
+  const [expandedItinId, setExpandedItinId] = useState<string | null>(null);
   const [mostrarNotificacionAprobado, setMostrarNotificacionAprobado] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
 
@@ -1665,18 +1666,60 @@ export default function PerfilDetallado() {
                     Crear con PitzBot →
                   </a>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {itinerarios.map(it => (
-                    <div key={it.id} className="border border-[#E0F2F1] rounded-xl p-4 hover:border-[#81C784] transition-colors">
-                      <p className="font-bold text-[#1A4D2E] text-sm leading-snug">{it.titulo}</p>
-                      <div className="flex flex-wrap gap-3 mt-1.5">
-                        {it.fecha && <span className="text-xs text-gray-500">📅 {it.fecha}</span>}
-                        {it.meta?.duration && <span className="text-xs text-gray-500">⏱ {it.meta.duration}</span>}
-                        {it.stops && <span className="text-xs text-gray-500">📍 {it.stops.length} paradas</span>}
+              ) : expandedItinId ? (
+                (() => {
+                  const it = itinerarios.find(i => i.id === expandedItinId)!;
+                  const fechaLabel = it.fecha
+                    ? new Date(it.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                    : it.fecha;
+                  return (
+                    <div>
+                      <button
+                        onClick={() => setExpandedItinId(null)}
+                        className="text-xs text-[#1A4D2E] font-semibold hover:underline mb-4 flex items-center gap-1"
+                      >
+                        ← Volver a mis itinerarios
+                      </button>
+                      <p className="font-bold text-[#1A4D2E] text-base mb-1">Itinerario para {fechaLabel}</p>
+                      <div className="flex flex-wrap gap-3 mb-4">
+                        {it.meta?.duration && <span className="text-xs bg-[#E0F2F1] text-[#1A4D2E] px-2 py-0.5 rounded-full">{it.meta.duration}</span>}
+                        {it.stops && <span className="text-xs bg-[#E0F2F1] text-[#1A4D2E] px-2 py-0.5 rounded-full">{it.stops.length} paradas</span>}
+                      </div>
+                      <div className="space-y-2">
+                        {it.stops?.map((s, i) => (
+                          <div key={i} className="border border-[#E0F2F1] rounded-xl p-3">
+                            <div className="flex justify-between items-start">
+                              <p className="font-semibold text-[#1A4D2E] text-sm">{s.nombre}</p>
+                              <span className="text-xs text-gray-400 whitespace-nowrap ml-2">{s.horaLlegada} – {s.horaSalida}</span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">{s.direccion}</p>
+                            {s.costo && <p className="text-xs text-[#81C784] mt-0.5">{s.costo}</p>}
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  );
+                })()
+              ) : (
+                <div className="space-y-3">
+                  {itinerarios.map(it => {
+                    const fechaLabel = it.fecha
+                      ? new Date(it.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                      : it.fecha;
+                    return (
+                      <button
+                        key={it.id}
+                        onClick={() => setExpandedItinId(it.id)}
+                        className="w-full text-left border border-[#E0F2F1] rounded-xl p-4 hover:border-[#81C784] hover:bg-[#F9FFFE] transition-colors"
+                      >
+                        <p className="font-bold text-[#1A4D2E] text-sm leading-snug">Itinerario para {fechaLabel}</p>
+                        <div className="flex flex-wrap gap-3 mt-1.5">
+                          {it.meta?.duration && <span className="text-xs text-gray-500">⏱ {it.meta.duration}</span>}
+                          {it.stops && <span className="text-xs text-gray-500">📍 {it.stops.length} paradas</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </motion.div>
