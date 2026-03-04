@@ -260,7 +260,7 @@ export default function PerfilDetallado() {
       // Cargar itinerarios guardados en Firebase
       if (userLocal.uid) {
         setLoadingItin(true);
-        getItinerariosUsuario(userLocal.uid)
+        getItinerariosUsuario(userLocal.uid, userLocal.role || 'turista')
           .then(setItinerarios)
           .catch(() => {})
           .finally(() => setLoadingItin(false));

@@ -12,6 +12,11 @@ const firebaseConfig = {
 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
+function getRoleCollection(role: string): string {
+  const map: Record<string, string> = { turista: 'turistas', guia: 'guias', admin: 'admins' };
+  return map[role] || 'turistas';
+}
+
 export interface ItinerarioGuardado {
   id: string;
   titulo: string;
@@ -20,9 +25,11 @@ export interface ItinerarioGuardado {
   stops: { nombre: string; categoria: string; direccion: string; horaLlegada: string; horaSalida: string; costo: string }[];
 }
 
-export async function getItinerariosUsuario(uid: string): Promise<ItinerarioGuardado[]> {
+export async function getItinerariosUsuario(uid: string, role: string = 'turista'): Promise<ItinerarioGuardado[]> {
   const db = getFirestore(app);
-  const ref = collection(db, 'usuarios', uid, 'itinerarios');
+  const roleCollection = getRoleCollection(role);
+  // Path: usuarios/{roleCollection}/{uid}/{docId}
+  const ref = collection(db, 'usuarios', roleCollection, uid);
   const q = query(ref, orderBy('creadoEn', 'desc'));
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as ItinerarioGuardado));
