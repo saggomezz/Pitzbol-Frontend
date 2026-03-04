@@ -1647,9 +1647,18 @@ export default function PerfilDetallado() {
               transition={{ delay: 0.3 }}
               className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]"
             >
-              <div className="mb-5">
-                <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Itinerarios</h3>
-                <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">Generados con PitzBot</p>
+              <div className="mb-5 flex items-start justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Itinerarios</h3>
+                  <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">Generados con PitzBot</p>
+                </div>
+                <a
+                  href={`http://69.30.204.56:3003${perfil?.id ? `?uid=${perfil.id}` : ''}`}
+                  title="Nuevo itinerario"
+                  className="w-9 h-9 rounded-xl bg-[#1A4D2E] text-white flex items-center justify-center hover:bg-[#0D601E] transition-colors shrink-0"
+                >
+                  <FiPlus size={18} />
+                </a>
               </div>
               {loadingItin ? (
                 <div className="flex items-center gap-2 text-[#81C784] text-sm py-4">
