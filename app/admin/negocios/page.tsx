@@ -23,7 +23,6 @@ export interface Business {
 }
 
 const AdminNegociosPage = () => {
-
   const [negocios, setNegocios] = useState<Business[]>([]);
   const [pendientes, setPendientes] = useState<Business[]>([]);
   const [tab, setTab] = useState<"registrados" | "pendientes" | "archivados">("registrados");
@@ -161,7 +160,12 @@ const AdminNegociosPage = () => {
                   {negocio.status === "archivado" && <span className="bg-gray-200 text-gray-500 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><FaArchive size={14} color="#6b7280" />Archivado</span>}
                 </div>
                 <div className="flex gap-2 mt-auto">
-                  <button className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100 transition-all text-sm"><FaEye size={16} color="#1d4ed8" />Ver</button>
+                  <button 
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100 transition-all text-sm"
+                    onClick={() => router.push(`/admin/negocios/${negocio.id}`)}
+                  >
+                    <FaEye size={16} color="#1d4ed8" />Ver
+                  </button>
                   <button
                     className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-yellow-50 text-yellow-700 rounded-lg font-semibold hover:bg-yellow-100 transition-all text-sm"
                     onClick={() => abrirModalEditar(negocio)}
