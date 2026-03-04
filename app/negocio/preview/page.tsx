@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiMapPin, FiPhone, FiGlobe, FiFileText, FiImage, FiClock,
-  FiCheckCircle, FiAlertCircle, FiArrowLeft, FiShare2, FiEdit
+  FiCheckCircle, FiAlertCircle, FiArrowLeft, FiShare2, FiEdit, FiMail
 } from "react-icons/fi";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
@@ -337,26 +337,50 @@ export default function BusinessPreviewPage() {
                   <p className="text-xs text-[#769C7B] font-semibold uppercase mb-1">RFC</p>
                   <p className="text-lg font-bold text-[#1A4D2E] font-mono">{business.business.rfc}</p>
                 </div>
+
+                {/* Email del negocio */}
+                {business.email && (
+                  <div className="bg-white border-2 border-[#1A4D2E]/10 rounded-2xl p-5 hover:shadow-lg transition-shadow">
+                    <div className="flex items-start gap-4">
+                      <div className="bg-[#0D601E]/10 p-3 rounded-full flex-shrink-0">
+                        <FiMail className="text-[#0D601E]" size={24} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-[#769C7B] font-semibold uppercase mb-1">Email</p>
+                        <a
+                          href={`mailto:${business.email}`}
+                          className="text-lg font-bold text-[#0D601E] hover:underline break-all"
+                        >
+                          {business.email}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </div>
 
             {/* Descripción */}
-            {business.business.description && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="mb-12 bg-gradient-to-br from-[#F6F0E6]/50 to-[#E8F5E9]/50 rounded-3xl p-8 border border-[#1A4D2E]/10"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-[#0D601E]/10 p-2 rounded-lg">
-                    <FiFileText className="text-[#0D601E]" size={20} />
-                  </div>
-                  <h3 className="text-xl font-black text-[#1A4D2E]">Descripción</h3>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mb-12 bg-gradient-to-br from-[#F6F0E6]/50 to-[#E8F5E9]/50 rounded-3xl p-8 border border-[#1A4D2E]/10"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-[#0D601E]/10 p-2 rounded-lg">
+                  <FiFileText className="text-[#0D601E]" size={20} />
                 </div>
-                <p className="text-[#1A4D2E] leading-relaxed whitespace-pre-wrap">{business.business.description}</p>
-              </motion.div>
-            )}
+                <h3 className="text-xl font-black text-[#1A4D2E]">Descripción</h3>
+              </div>
+              <p className={`leading-relaxed whitespace-pre-wrap ${
+                business.business.description
+                  ? "text-[#1A4D2E]"
+                  : "text-[#769C7B] italic"
+              }`}>
+                {business.business.description || "No hay descripción registrada aún"}
+              </p>
+            </motion.div>
 
             {/* Galería de Imágenes */}
             {business.business.images && business.business.images.length > 0 && (
