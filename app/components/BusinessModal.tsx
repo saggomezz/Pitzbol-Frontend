@@ -20,6 +20,7 @@ interface FormState {
   sitioWeb: string;
   rfc: string;
   cp: string;
+  descripcion: string;
   galeria: (File | null)[];
   logo: File | null;
 }
@@ -69,6 +70,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       sitioWeb: "",
       rfc: "",
       cp: "",
+      descripcion: "",
       galeria: [null, null, null],
       logo: null
     } as FormState;
@@ -100,6 +102,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [ciudadError, setCiudadError] = useState("");
   const [estadoError, setEstadoError] = useState("");
   const [sitioWebError, setSitioWebError] = useState("");
+  const [descripcionError, setDescripcionError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [logoError, setLogoError] = useState("");
   const [buscandoCoordenadas, setBuscandoCoordenadas] = useState(false);
@@ -254,6 +257,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       setCodigoPostalError("");
       setCiudadError("");
       setEstadoError("");
+      setDescripcionError("");
       setGeocodeError("");
     }
   }, [isOpen]);
@@ -279,7 +283,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       referencias: form.referencias,
       sitioWeb: form.sitioWeb,
       rfc: form.rfc,
-      cp: form.cp
+      cp: form.cp,
+      descripcion: form.descripcion
     };
     localStorage.setItem("pitzbol_business_draft", JSON.stringify(formToSave));
   }, [form]);
@@ -709,8 +714,13 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
   // Función para validar el paso 3 antes de avanzar
   const validateStep3 = () => {
-    // En el paso 3 se valida la galería (opcional)
-    // Si quieres hacer la galería obligatoria, puedes agregar validaciones aquí
+    setDescripcionError("");
+
+    if (!form.descripcion.trim()) {
+      setDescripcionError("La descripción del negocio es obligatoria");
+      return false;
+    }
+
     return true;
   };
 
@@ -746,6 +756,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     if (!validateEmail(form.correo)) {
       setEmailError("Correo inválido");
       if (firstErrorStep === null) firstErrorStep = 0;
+    }
+    if (!form.descripcion.trim()) {
+      setDescripcionError("La descripción del negocio es obligatoria");
+      if (firstErrorStep === null) firstErrorStep = 2;
     }
     if (!validateRFC(form.rfc)) {
       setRfcError("RFC inválido");
@@ -833,6 +847,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       formData.append("website", form.sitioWeb);
       formData.append("rfc", form.rfc);
       formData.append("cp", form.cp);
+      if (form.descripcion) {
+        formData.append("description", form.descripcion);
+      }
       if (ownerUid) {
         formData.append("ownerUid", ownerUid);
         console.log("[BusinessModal] ✅ ownerUid agregado al FormData:", ownerUid);
@@ -871,6 +888,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         website: form.sitioWeb,
         rfc: form.rfc,
         cp: form.cp,
+        description: form.descripcion || "NO PRESENTE",
         ownerUid: ownerUid || "NO PRESENTE",
         logo: files.logo || imagePreview.logoUrl ? "Presente" : "NO PRESENTE",
         galeria: (files.galeria.filter(f => f).length + imagePreview.galeriaUrls.filter(u => u).length) + " archivos"
@@ -930,8 +948,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
         className={`relative bg-white w-full rounded-[50px] shadow-2xl border border-white/20 ${
           step === 1
-            ? "max-w-[900px] max-h-[92vh] overflow-y-auto p-4 md:p-6"
-            : "max-w-[850px] min-h-[500px] max-h-[90vh] overflow-y-auto p-8 md:p-12"
+            ? "max-w-[900px] max-h-[92vh] overflow-hidden p-4 md:p-6"
+            : "max-w-[850px] min-h-[500px] max-h-[90vh] overflow-hidden p-6 md:p-8"
         }`}
       >
         <AnimatePresence mode="wait">
@@ -952,20 +970,20 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   {saveError}
                 </div>
               )}
-              <div className={`text-center ${step === 1 ? "mb-8" : "mb-10"}`}>
-                <h2 className={`${step === 1 ? "text-[24px] md:text-[30px]" : "text-[32px] md:text-[42px]"} text-[#8B0000] font-black uppercase leading-none`} style={{ fontFamily: 'var(--font-jockey)' }}>
+              <div className={`text-center ${step === 1 ? "mb-5" : "mb-6"}`}>
+                <h2 className={`${step === 1 ? "text-[22px] md:text-[28px]" : "text-[28px] md:text-[36px]"} text-[#8B0000] font-black uppercase leading-none`} style={{ fontFamily: 'var(--font-jockey)' }}>
                   {step === 0 ? t('step1Title') : step === 1 ? t('step2Title') : step === 2 ? t('step3Title') : t('step4Title')}
                 </h2>
                 <p className={`${step === 1 ? "text-xs" : "text-sm"} text-[#1A4D2E] italic mt-1`}>{t('stepProgress', { current: step + 1, total: 4 })}</p>
               </div>
 
-              <div className="max-w-2xl mx-auto space-y-4">
+              <div className="max-w-2xl mx-auto space-y-2">
                 {step === 0 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
                     <div className={cardClass}>
                       <span className={labelClass}>{t('brandIdentity')}</span>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="relative pb-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="relative pb-3">
                           <input 
                             placeholder={t('businessName')} 
                             className={inputClass + (nombreError ? " border-red-500 bg-red-50/50" : "")} 
@@ -1019,8 +1037,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                     </div>
                     <div className={cardClass}>
                       <span className={labelClass}>{t('officialContact')}</span>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="relative pb-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="relative pb-3">
                           <input 
                             placeholder={t('businessEmail')} 
                             className={inputClass + (emailError ? " border-red-500 bg-red-50/50" : "")} 
@@ -1087,9 +1105,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
                 {step === 1 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
-                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1.25fr] gap-3">
-                      <div className="flex flex-col gap-3 h-full">
-                        <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[185px]">
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1.25fr] gap-2">
+                      <div className="flex flex-col gap-2 h-full">
+                        <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[140px]">
                           <span className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-2 mb-1">
                             Ubicación en el mapa
                           </span>
@@ -1126,7 +1144,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                       <div className="space-y-2">
                         <div className="space-y-2">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="relative pb-4">
+                            <div className="relative pb-2">
                               <input
                                 placeholder="Calle"
                                 className={inputClass + " text-[12px] py-2" + (calleError ? " border-red-500 bg-red-50/50" : "")}
@@ -1143,7 +1161,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               />
                               {calleError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{calleError}</p>}
                             </div>
-                            <div className="relative pb-4">
+                            <div className="relative pb-2">
                               <input
                                 placeholder="Número"
                                 className={inputClass + " text-[12px] py-2" + (numeroError ? " border-red-500 bg-red-50/50" : "")}
@@ -1161,7 +1179,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               {numeroError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{numeroError}</p>}
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 mb-2">
+                          <div className="flex items-center gap-3 mb-1">
                             <button
                               type="button"
                               onClick={() => buscarCoordenadas(composeDireccion(form))}
@@ -1178,7 +1196,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             <p className="text-[9px] text-red-500 mb-2 ml-4 italic bg-red-50 p-2 rounded border border-red-200">{geocodeError}</p>
                           )}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="relative pb-4">
+                            <div className="relative pb-2">
                               <input
                                 placeholder="Colonia"
                                 disabled
@@ -1196,7 +1214,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               />
                               {coloniaError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{coloniaError}</p>}
                             </div>
-                            <div className="relative pb-4">
+                            <div className="relative pb-2">
                               <input
                                 placeholder="Código Postal"
                                 className={inputClass + " text-[12px] py-2" + (codigoPostalError ? " border-red-500 bg-red-50/50" : "")}
@@ -1219,7 +1237,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="relative pb-4">
+                            <div className="relative pb-2">
                               <input
                                 placeholder="Ciudad"
                                 disabled
@@ -1237,7 +1255,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               />
                               {ciudadError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{ciudadError}</p>}
                             </div>
-                            <div className="relative pb-4">
+                            <div className="relative pb-2">
                               <input
                                 placeholder="Estado"
                                 disabled
@@ -1257,7 +1275,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="relative pb-4 md:col-span-2">
+                            <div className="relative pb-2 md:col-span-2">
                               <input
                                 placeholder="Local (opcional)"
                                 className={inputClass + " text-[12px] py-2"}
@@ -1265,7 +1283,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                 onChange={e => setForm((f: FormState) => ({ ...f, local: e.target.value }))}
                               />
                             </div>
-                            <div className="relative pb-4 md:col-span-2">
+                            <div className="relative pb-2 md:col-span-2">
                               <input
                                 placeholder="Referencias (opcional)"
                                 className={inputClass + " text-[12px] py-2"}
@@ -1279,7 +1297,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           )}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="relative">
+                          <div className="relative pb-2">
                             <label className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-1">
                               Latitud {form.latitud && <span className="text-green-600 text-[9px]">✓</span>}
                             </label>
@@ -1290,7 +1308,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               onChange={e => setForm((f: FormState) => ({ ...f, latitud: e.target.value }))}
                             />
                           </div>
-                          <div className="relative">
+                          <div className="relative pb-2">
                             <label className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-1">
                               Longitud {form.longitud && <span className="text-green-600 text-[9px]">✓</span>}
                             </label>
@@ -1302,7 +1320,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             />
                           </div>
                         </div>
-                        <div className="relative pb-4">
+                        <div className="relative pb-2">
                           <input 
                             placeholder={t('websiteSocial')} 
                             className={inputClass + " pl-11 text-[12px] py-2.5" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")} 
@@ -1344,12 +1362,35 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 )}
 
                 {step === 2 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                    <div className={cardClass}>
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
+                    <div className="bg-[#F6F0E6]/20 p-4 rounded-[35px] border border-[#1A4D2E]/10">
+                      <span className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold mb-2 block">Descripción del Negocio</span>
+                      <textarea
+                        placeholder="Describe tu negocio, servicios y especialidades"
+                        className={`w-full px-4 py-2 bg-white/70 border rounded-2xl outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-xs resize-none h-[60px] ${
+                          descripcionError ? "border-red-500 bg-red-50/50" : "border-[#1A4D2E]/20"
+                        }`}
+                        value={form.descripcion}
+                        onChange={e => {
+                          const nextValue = e.target.value;
+                          setForm((f: FormState) => ({ ...f, descripcion: nextValue }));
+                          if (nextValue.trim()) {
+                            setDescripcionError("");
+                          }
+                        }}
+                        maxLength={500}
+                      />
+                      <div className="flex items-center justify-between mt-1.5">
+                        <p className="text-[9px] text-red-500 italic min-h-[12px]">{descripcionError}</p>
+                        <p className="text-[9px] text-[#769C7B]">{form.descripcion.length}/500</p>
+                      </div>
+                    </div>
+
+                    <div className={cardClass.replace("p-6", "p-4")}>
                       <span className={labelClass}>Galería del Establecimiento</span>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {[0, 1, 2].map((i) => (
-                          <label key={i} className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-[#769C7B]/40 rounded-3xl cursor-pointer hover:bg-[#F6F0E6]/50 transition-all relative">
+                          <label key={i} className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-[#769C7B]/40 rounded-3xl cursor-pointer hover:bg-[#F6F0E6]/50 transition-all relative">
                             {imagePreview.galeriaUrls[i] ? (
                               <img src={imagePreview.galeriaUrls[i] as string} alt={`Galería preview ${i+1}`} className="absolute inset-0 w-full h-full object-cover rounded-3xl z-10" style={{background: '#fff', width: '100%', height: '100%'}} />
                             ) : (
@@ -1363,11 +1404,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           </label>
                         ))}
                       </div>
-                      <div className="mt-6 p-4 bg-[#F6F0E6] rounded-2xl border border-[#1A4D2E]/10">
-                        <p className="text-[11px] text-[#1A4D2E] leading-relaxed italic">
-                          <FiInfo className="inline mb-1 mr-2 text-[#0D601E]"/> 
-                          <strong>Nota:</strong> Estas imágenes son fundamentales para validar la autenticidad de tu perfil. 
-                          Podrás subir más fotos detalladas una vez que tu cuenta sea aprobada.
+                      <div className="mt-2 bg-[#F6F0E6] rounded-2xl border border-[#1A4D2E]/10 p-2.5">
+                        <p className="text-[9px] text-[#1A4D2E] leading-relaxed italic">
+                          <FiInfo className="inline mb-0.5 mr-1 text-[#0D601E]"/>
+                          <strong>Nota:</strong> Estas imágenes son clave para validar tu perfil. Podrás subir más fotos detalladas cuando sea aprobado.
                         </p>
                       </div>
                     </div>
