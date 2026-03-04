@@ -168,24 +168,6 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             <div className="flex items-center gap-3 md:gap-5 relative">
                 <Link href="/"><FiHome size={22} className="hover:text-[#F00808] transition-colors" title={t('home')} /></Link>
                 <Link href="/favoritos"><FiHeart size={22} className="hover:text-[#F00808] transition-colors" title={t('favorites')} /></Link>
-                <Link href="/calendario"><FiCalendar size={22} className="hover:text-[#F00808] transition-colors" title={t('calendar')} /></Link>
-                
-                {/* Botón de Mensajes con Contador */}
-                {user && (
-                    <Link 
-                        href="/mensajes" 
-                        onClick={clearNotification}
-                        className="relative hover:text-[#F00808] transition-colors" 
-                        title={t('messages')}
-                    >
-                        <FiMessageSquare size={22} />
-                        {unreadCount > 0 && (
-                            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-                                {unreadCount > 9 ? '9+' : unreadCount}
-                            </span>
-                        )}
-                    </Link>
-                )}
                 
                 {/* Panel de Notificaciones */}
                 {user && <NotificationsPanel userId={user.uid} />}
@@ -202,7 +184,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="absolute top-[120%] right-0 w-72 bg-white rounded-[32px] shadow-2xl border border-gray-100 p-5 flex flex-col gap-1 z-[120]"
+                            className="absolute top-[120%] right-0 w-72 bg-white rounded-[32px] shadow-2xl border border-gray-100 p-5 flex flex-col gap-1 z-[120] max-h-[85vh] overflow-y-auto scrollbar-hidden"
                         >
                             <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('myAccount')}</p>
                             {user ? (
@@ -240,6 +222,27 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             <Link href="/mapa" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
                                 <FiMapPin /> {t('map')}
                             </Link>
+                            <Link href="/calendario" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
+                                <FiCalendar /> {t('calendar')}
+                            </Link>
+                            {user && (
+                                <Link
+                                    href="/mensajes"
+                                    onClick={() => {
+                                        setIsMenuOpen(false);
+                                        clearNotification();
+                                    }}
+                                    className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left relative"
+                                >
+                                    <FiMessageSquare />
+                                    <span>{t('messages')}</span>
+                                    {unreadCount > 0 && (
+                                        <span className="ml-auto bg-red-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                                            {unreadCount > 9 ? '9+' : unreadCount}
+                                        </span>
+                                    )}
+                                </Link>
+                            )}
                             {(role === "turista" || role === "admin") && (
                                 <Link href="/tours" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
                                     <FiCompass /> {t('tours')}
@@ -270,46 +273,10 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left">
                                         <FiCreditCard /> {t('myPayments')}
                                     </button>
-                                    <Link 
-                                        href="/mensajes" 
-                                        onClick={() => {
-                                            setIsMenuOpen(false);
-                                            clearNotification();
-                                        }} 
-                                        className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium relative"
-                                    >
-                                        <FiMessageSquare /> 
-                                        <span>{t('messages')}</span>
-                                        {unreadCount > 0 && (
-                                            <span className="ml-auto bg-red-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
-                                                {unreadCount > 9 ? '9+' : unreadCount}
-                                            </span>
-                                        )}
-                                    </Link>
                                 </>
                             ) : (
                                 <>
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('opportunities')}</p>
-                                    
-                                    {/* Mensajes para turistas */}
-                                    {user && (
-                                        <Link 
-                                            href="/mensajes" 
-                                            onClick={() => {
-                                                setIsMenuOpen(false);
-                                                clearNotification();
-                                            }} 
-                                            className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium relative"
-                                        >
-                                            <FiMessageSquare /> 
-                                            <span>{t('messages')}</span>
-                                            {unreadCount > 0 && (
-                                                <span className="ml-auto bg-red-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
-                                                    {unreadCount > 9 ? '9+' : unreadCount}
-                                                </span>
-                                            )}
-                                        </Link>
-                                    )}
                                     
                                     {isPendingVerification ? (
                                         <button

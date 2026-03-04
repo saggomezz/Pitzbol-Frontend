@@ -188,17 +188,21 @@ export default function EstatusNegocioPage() {
             </motion.div>
 
             {/* Descripción */}
-            {business.business?.description && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="mb-8 bg-[#F6F0E6]/50 rounded-2xl p-6 border border-[#1A4D2E]/10"
-              >
-                <p className="text-sm text-[#769C7B] font-semibold uppercase mb-2">Descripción</p>
-                <p className="text-[#1A4D2E] leading-relaxed">{business.business.description}</p>
-              </motion.div>
-            )}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mb-8 bg-[#F6F0E6]/50 rounded-2xl p-6 border border-[#1A4D2E]/10"
+            >
+              <p className="text-sm text-[#769C7B] font-semibold uppercase mb-2">Descripción</p>
+              <p className={`leading-relaxed ${
+                business.business?.description
+                  ? "text-[#1A4D2E]"
+                  : "text-[#769C7B] italic"
+              }`}>
+                {business.business?.description || "No hay descripción registrada aún"}
+              </p>
+            </motion.div>
 
             {/* Galería rápida */}
             {business.business?.images && business.business.images.length > 0 && (

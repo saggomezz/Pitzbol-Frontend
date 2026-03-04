@@ -1,4 +1,5 @@
 // API para gestionar favoritos sincronizados en el backend
+import { useCallback, useMemo } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -153,7 +154,7 @@ export const sincronizarFavoritosBackend = async (favoritosLocales: string[]): P
  * Usa backend si el usuario está autenticado, localStorage como fallback
  */
 export const useFavoritesSync = () => {
-  const isAuthenticated = (): boolean => {
+  const isAuthenticated = useCallback((): boolean => {
     if (typeof window === 'undefined') return false;
     const user = localStorage.getItem('pitzbol_user');
     if (!user) return false;
@@ -164,9 +165,9 @@ export const useFavoritesSync = () => {
     } catch {
       return false;
     }
-  };
+  }, []);
 
-  const getFavorites = async (): Promise<string[]> => {
+  const getFavorites = useCallback(async (): Promise<string[]> => {
     if (isAuthenticated()) {
       try {
         return await obtenerFavoritosBackend();
@@ -181,9 +182,9 @@ export const useFavoritesSync = () => {
       const stored = localStorage.getItem('pitzbol_favorites');
       return stored ? JSON.parse(stored) : [];
     }
-  };
+  }, [isAuthenticated]);
 
-  const addFavorite = async (nombreLugar: string): Promise<string[]> => {
+  const addFavorite = useCallback(async (nombreLugar: string): Promise<string[]> => {
     if (isAuthenticated()) {
       try {
         const updated = await agregarFavoritoBackend(nombreLugar);
@@ -216,9 +217,9 @@ export const useFavoritesSync = () => {
       }
       return current;
     }
-  };
+  }, [isAuthenticated]);
 
-  const removeFavorite = async (nombreLugar: string): Promise<string[]> => {
+  const removeFavorite = useCallback(async (nombreLugar: string): Promise<string[]> => {
     if (isAuthenticated()) {
       try {
         const updated = await eliminarFavoritoBackend(nombreLugar);
@@ -245,9 +246,9 @@ export const useFavoritesSync = () => {
       window.dispatchEvent(new Event('favoritesChanged'));
       return updated;
     }
-  };
+  }, [isAuthenticated]);
 
-  const syncLocalFavorites = async (): Promise<string[]> => {
+  const syncLocalFavorites = useCallback(async (): Promise<string[]> => {
     if (!isAuthenticated()) {
       // Si no está autenticado, retornar favoritos locales sin sincronizar
       const stored = localStorage.getItem('pitzbol_favorites');
@@ -275,13 +276,13 @@ export const useFavoritesSync = () => {
       const stored = localStorage.getItem('pitzbol_favorites');
       return stored ? JSON.parse(stored) : [];
     }
-  };
+  }, [isAuthenticated]);
 
-  return {
+  return useMemo(() => ({
     getFavorites,
     addFavorite,
     removeFavorite,
     syncLocalFavorites,
     isAuthenticated,
-  };
+  }), [getFavorites, addFavorite, removeFavorite, syncLocalFavorites, isAuthenticated]);
 };

@@ -1,6 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import {
     FiFilter,
     FiHeart,
@@ -9,54 +10,95 @@ import {
     FiSearch,
     FiSun
 } from "react-icons/fi";
-
-// Los datos de los lugares se mantienen igual
-const futbolPlaces = [
-    {
-        id: 1,
-        name: "Estadio Akron",
-        type: "Estadio",
-        desc: "Casa de las Chivas y sede mundialista 2026.",
-        img: "https://estadioakron.mx/img/acceso_directo/acceso_como_llego.jpg",
-    },
-    {
-        id: 2,
-        name: "Estadio Jalisco",
-        type: "Estadio Histórico",
-        desc: "Sede de dos mundiales y del legendario Pelé.",
-        img: "https://www.shutterstock.com/shutterstock/photos/2421042901/display_1500/stock-photo-guadalajara-mexico-october-aerial-mastery-drone-perspective-of-estadio-jalisco-2421042901.jpg",
-    },
-    {
-        id: 3,
-        name: "Museo Chivas",
-        type: "Museo",
-        desc: "Historia del equipo Chivas, ubicado dentro del Estadio Akron.",
-        img: "https://estadioakron.mx/img/zona-para-eventos/museo-chivas/museochivas1.jpg",
-    },
-    {
-        id: 4,
-        name: "Tienda Selección",
-        type: "Tienda",
-        desc: "Consigue mercancía de la selección y artículos exclusivos para el Mundial 2026.",
-        img: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=1600",
-    }
-];
+import { getPlaceImageByCategory } from "@/lib/placeImages";
+import { getMergedPlaces, matchesCategory, PlaceRecord } from "@/lib/placesApi";
+import { useFavoritesSync } from "@/lib/favoritesApi";
 
 export default function FutbolPage() {
     const [searchTerm, setSearchTerm] = useState("");
-    const [favorites, setFavorites] = useState<number[]>([]);
+    const [favorites, setFavorites] = useState<string[]>([]);
+    const [places, setPlaces] = useState<PlaceRecord[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
+
+    useEffect(() => {
+        const loadPlaces = async () => {
+            try {
+                setLoading(true);
+                const mergedPlaces = await getMergedPlaces();
+                setPlaces(mergedPlaces.filter((place) => matchesCategory(place.categoria, "Fútbol")));
+            } catch (error) {
+                console.error("Error cargando lugares de fútbol:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadPlaces();
+    }, []);
+
+    useEffect(() => {
+        const loadFavorites = async () => {
+            try {
+                if (isAuthenticated()) {
+                    await syncLocalFavorites();
+                }
+                const favs = await getFavorites();
+                setFavorites(favs);
+            } catch (error) {
+                console.error("Error cargando favoritos de fútbol:", error);
+            }
+        };
+
+        loadFavorites();
+
+        const handleFavoritesChanged = () => {
+            loadFavorites();
+        };
+
+        window.addEventListener("favoritesChanged", handleFavoritesChanged);
+        window.addEventListener("storage", handleFavoritesChanged);
+        window.addEventListener("authStateChanged", handleFavoritesChanged);
+
+        return () => {
+            window.removeEventListener("favoritesChanged", handleFavoritesChanged);
+            window.removeEventListener("storage", handleFavoritesChanged);
+            window.removeEventListener("authStateChanged", handleFavoritesChanged);
+        };
+    }, [getFavorites, isAuthenticated, syncLocalFavorites]);
+
+    const filteredPlaces = useMemo(() => {
+        const term = searchTerm.toLowerCase().trim();
+        if (!term) return places;
+
+        return places.filter((place) => {
+            return (
+                place.nombre.toLowerCase().includes(term) ||
+                place.categoria.toLowerCase().includes(term) ||
+                place.ubicacion.toLowerCase().includes(term) ||
+                place.descripcion.toLowerCase().includes(term)
+            );
+        });
+    }, [places, searchTerm]);
     
     // Solo necesitamos saber si el usuario existe para los favoritos
     // Estos datos ahora se manejan idealmente vía context o el localStorage global
-    const handleFavoriteClick = (id: number) => {
+    const handleFavoriteClick = async (placeName: string) => {
         const storedUser = localStorage.getItem("pitzbol_user");
         if (!storedUser) {
             alert("Por favor, identifícate para guardar favoritos.");
             return;
         }
-        setFavorites(prev =>
-            prev.includes(id) ? prev.filter(favId => favId !== id) : [...prev, id]
-        );
+
+        try {
+            const updatedFavorites = favorites.includes(placeName)
+                ? await removeFavoriteApi(placeName)
+                : await addFavorite(placeName);
+
+            setFavorites(updatedFavorites);
+        } catch (error) {
+            console.error("Error actualizando favoritos en fútbol:", error);
+        }
     };
 
     return (
@@ -96,46 +138,63 @@ export default function FutbolPage() {
 
                 {/* GRID DE TARJETAS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {futbolPlaces
-                        .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                        .map((place) => (
+                    {loading && (
+                        <div className="col-span-full text-center text-[#769C7B] font-medium py-8">Cargando lugares de fútbol...</div>
+                    )}
+
+                    {!loading && filteredPlaces.length === 0 && (
+                        <div className="col-span-full bg-white border border-[#F6F0E6] rounded-3xl p-8 text-center text-[#769C7B]">
+                            No se encontraron lugares de fútbol con ese criterio.
+                        </div>
+                    )}
+
+                    {filteredPlaces.map((place) => (
                         <motion.div
-                            key={place.id}
+                            key={place.nombre}
                             whileHover={{ y: -10 }}
                             className="bg-white rounded-[40px] overflow-hidden shadow-[0_10px_30px_rgba(26,77,46,0.05)] border border-[#F6F0E6] flex flex-col group"
                         >
                             <div className="relative h-56 w-full overflow-hidden">
-                                <img src={place.img} alt={place.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                <img
+                                    src={place.fotos?.[0] || getPlaceImageByCategory(place.categoria || "Fútbol")}
+                                    alt={place.nombre}
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                    loading="lazy"
+                                />
                                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-[#0D601E] z-10">
-                                    {place.type}
+                                    {place.categoria || "Fútbol"}
                                 </div>
 
                                 <button
-                                    onClick={() => handleFavoriteClick(place.id)}
+                                    onClick={() => handleFavoriteClick(place.nombre)}
                                     className="absolute top-4 right-4 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg z-10 transition-all active:scale-90"
                                 >
                                     <FiHeart
-                                        className={`transition-colors ${favorites.includes(place.id) ? "text-[#F00808] fill-[#F00808]" : "text-[#769C7B]"}`}
+                                        className={`transition-colors ${favorites.includes(place.nombre) ? "text-[#F00808] fill-[#F00808]" : "text-[#769C7B]"}`}
                                         size={18}
                                     />
                                 </button>
                             </div>
 
                             <div className="p-6 flex flex-col flex-1">
-                                <h3 className="text-xl font-black text-[#1A4D2E] uppercase mb-2 leading-tight" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-                                    {place.name}
+                                <h3 className="text-xl font-black text-[#1A4D2E] uppercase mb-2 leading-tight" style={{ fontFamily: "var(--font-jockey)" }}>
+                                    {place.nombre}
                                 </h3>
                                 <p className="text-[13px] text-[#769C7B] leading-snug mb-6 flex-1 italic">
-                                    {place.desc}
+                                    {place.descripcion || "Explora este destino futbolero destacado en Guadalajara."}
                                 </p>
 
                                 <div className="flex items-center justify-between mt-auto gap-2">
-                                    <button className="flex-1 bg-[#1A4D2E] text-white py-3 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#F00808] transition-colors shadow-md">
-                                        <FiMapPin /> Ubicar
-                                    </button>
-                                    <div className="p-3 bg-[#F6F0E6] rounded-full text-[#1A4D2E]/40 cursor-help">
-                                        <FiInfo size={16} />
-                                    </div>
+                                    <Link href="/mapa" className="flex-1">
+                                        <button className="w-full bg-[#1A4D2E] text-white py-3 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#F00808] transition-colors shadow-md">
+                                            <FiMapPin /> Ubicar
+                                        </button>
+                                    </Link>
+                                    <Link href={`/informacion/${encodeURIComponent(place.nombre)}`}>
+                                        <button className="p-3 bg-[#F6F0E6] rounded-full text-[#1A4D2E]/40 hover:text-[#1A4D2E] transition-colors">
+                                            <FiInfo size={16} />
+                                        </button>
+                                    </Link>
                                 </div>
                             </div>
                         </motion.div>

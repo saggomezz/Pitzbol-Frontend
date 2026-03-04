@@ -1,4 +1,5 @@
 "use client";
+import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from 'next-intl';
@@ -13,7 +14,13 @@ export default function Footer() {
             {/* LADO IZQUIERDO: LOGO Y SIGNIFICADO */}
             <div className="lg:col-span-5 flex flex-col md:flex-row items-center gap-6">
                 <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0">
-                    <Image src={imglogo} alt="Pitzbol Logo" fill className="object-contain" />
+                    <motion.div
+                        whileHover={{ rotate: 190 }}
+                        transition={{ duration: 2.0, ease: "easeInOut" }}
+                        className="absolute inset-0 cursor-pointer"
+                    >
+                        <Image src={imglogo} alt="Pitzbol Logo" fill className="object-contain" />
+                    </motion.div>
                 </div>
                 <div className="flex flex-col gap-3 justify-center">
                     <h2 className="text-3xl font-black uppercase leading-none" style={{ fontFamily: "'Jockey One', sans-serif" }}>
