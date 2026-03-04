@@ -362,6 +362,7 @@ export default function GuidePublicProfilePage() {
                 )}
               </motion.div>
             )}
+            </div>
 
             {isGuide && (
               <motion.div
@@ -387,7 +388,11 @@ export default function GuidePublicProfilePage() {
                 </button>
               </motion.div>
             )}
+          </div>
+        </motion.div>
+      </div>
 
+      <div className="max-w-6xl mx-auto px-4 my-12">
         <div className="grid md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-8">
             {profile.biografia && (
@@ -785,13 +790,13 @@ export default function GuidePublicProfilePage() {
         <ChatModal
           isOpen={isChatOpen}
           onClose={() => setIsChatOpen(false)}
-          guideId={profile.uid}
+          guideId={profile!.uid}
           guideName={profileName || "Guía"}
-          touristId={user.uid}
-          touristName={user.nombre || "Turista"}
+          touristId={user!.uid}
+          touristName={user!.nombre || "Turista"}
           currentUserType="tourist"
-          currentUserId={user.uid}
-          currentUserName={user.nombre + " " + user.apellido}
+          currentUserId={user!.uid}
+          currentUserName={user!.nombre + " " + user!.apellido}
         />
       )}
     </div>
