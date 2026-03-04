@@ -720,13 +720,18 @@ export default function PerfilDetallado() {
 
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-gradient-to-br from-[#F6F0E6] to-[#FDFCF9]">
-      <motion.div 
+      <motion.div
         animate={{ rotate: 360 }}
         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         className="w-16 h-16 border-4 border-[#0D601E] border-t-transparent rounded-full"
       />
     </div>
   );
+
+  if (!perfil) {
+    if (typeof window !== 'undefined') window.location.replace('/login');
+    return null;
+  }
 
   const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
