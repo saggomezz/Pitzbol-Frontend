@@ -507,6 +507,56 @@ export default function MapaPage() {
         setFilteredLugares(filtered);
     }, [selectedCategory, searchTerm, lugares]);
 
+    // Manejar query parameter "lugar" para mostrar solo un lugar específico
+    useEffect(() => {
+        // Leer el parámetro "lugar" del URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const lugarParam = urlParams.get('lugar');
+        
+        if (lugarParam && lugares.length > 0) {
+            // Buscar el lugar por nombre (decodificando el URL)
+            const lugarEncontrado = lugares.find(
+                lugar => lugar.nombre.toLowerCase() === decodeURIComponent(lugarParam).toLowerCase()
+            );
+            
+            if (lugarEncontrado) {
+                console.log("📍 Lugar encontrado desde URL:", lugarEncontrado.nombre);
+                
+                // Filtrar para mostrar solo este lugar
+                setFilteredLugares([lugarEncontrado]);
+                
+                // Seleccionar el lugar y centrar el mapa
+                setSelectedPlace(lugarEncontrado);
+                const lat = parseFloat(lugarEncontrado.latitud || "20.6597");
+                const lng = parseFloat(lugarEncontrado.longitud || "-103.3496");
+                setMapCenter([lat, lng]);
+                setMapZoom(15);
+                
+                // Limpiar filtros de categoría y búsqueda para evitar conflictos
+                setSelectedCategory("Todos Los Lugares");
+                setSearchTerm("");
+            } else {
+                console.warn("⚠️ No se encontró el lugar:", lugarParam);
+            }
+        }
+    }, [lugares]);
+
+    // Manejar selección de lugar (desde lista o desde mapa)
+    const handleSelectPlace = (lugar: Lugar) => {
+        setSelectedPlace(lugar);
+        const lat = parseFloat(lugar.latitud || "20.6597");
+        const lng = parseFloat(lugar.longitud || "-103.3496");
+        setMapCenter([lat, lng]);
+        setMapZoom(15);
+    };
+
+    // Limpiar selección y volver a mostrar todos los lugares
+    const handleClearSelection = () => {
+        setSelectedPlace(null);
+        setMapCenter([20.6597, -103.3496]);
+        setMapZoom(12);
+    };
+
     // Deseleccionar con ESC
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
@@ -546,22 +596,6 @@ export default function MapaPage() {
             setShowFavoriteToast(true);
             setTimeout(() => setShowFavoriteToast(false), 2000);
         }
-    };
-
-    // Manejar selección de lugar (desde lista o desde mapa)
-    const handleSelectPlace = (lugar: Lugar) => {
-        setSelectedPlace(lugar);
-        const lat = parseFloat(lugar.latitud || "20.6597");
-        const lng = parseFloat(lugar.longitud || "-103.3496");
-        setMapCenter([lat, lng]);
-        setMapZoom(15);
-    };
-
-    // Limpiar selección y volver a mostrar todos los lugares
-    const handleClearSelection = () => {
-        setSelectedPlace(null);
-        setMapCenter([20.6597, -103.3496]);
-        setMapZoom(12);
     };
 
     if (loading) {
