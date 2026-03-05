@@ -17,6 +17,13 @@ export default function EventosPage() {
       sectionSubtitle="Planea tu día con actividades destacadas en Guadalajara."
       searchPlaceholder="Buscar concierto, actividad, evento, zona..."
       quickFilters={["Conciertos", "Festivales", "Nocturno", "Familiar", "Temporada"]}
+      quickFilterKeywords={{
+        "Conciertos": ["concierto", "musica", "show", "arena", "teatro"],
+        "Festivales": ["festival", "feria", "cultural", "evento", "celebracion"],
+        "Nocturno": ["noche", "nocturno", "bar", "club", "after"],
+        "Familiar": ["familiar", "familia", "ninos", "actividad", "parque"],
+        "Temporada": ["temporada", "especial", "mundial", "junio", "julio"]
+      }}
       loadingText="Cargando eventos..."
       emptyText="No se encontraron eventos con ese criterio."
       defaultDescription="Explora este evento recomendado para complementar tu experiencia en la ciudad."

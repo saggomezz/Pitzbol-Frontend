@@ -17,6 +17,13 @@ export default function CulturaPage() {
       sectionSubtitle="Encuentra experiencias auténticas para vivir la ciudad más allá del estadio."
       searchPlaceholder="Buscar museo, plaza, tradición, zona..."
       quickFilters={["Tradición", "Historia", "Centro", "Patrimonio", "Familiar"]}
+      quickFilterKeywords={{
+        "Tradición": ["tradicion", "tradicional", "cultural", "folklor", "artesania"],
+        "Historia": ["historia", "historico", "museo", "patrimonio", "centro"],
+        "Centro": ["centro", "centro historico", "guadalajara centro"],
+        "Patrimonio": ["patrimonio", "arquitectura", "monumento", "catedral"],
+        "Familiar": ["familiar", "familia", "plaza", "parque", "museo"]
+      }}
       loadingText="Cargando lugares de cultura..."
       emptyText="No se encontraron lugares de cultura con ese criterio."
       defaultDescription="Conoce este lugar cultural recomendado para conectar con la esencia de Guadalajara."

@@ -19,6 +19,13 @@ export default function MedicoPage() {
       sectionSubtitle="Localiza servicios de salud disponibles según tu ubicación."
       searchPlaceholder="Buscar médico, clínica, consultorio, zona..."
       quickFilters={["Consulta", "Clínicas", "Especialidad", "Cercano", "Disponible"]}
+      quickFilterKeywords={{
+        "Consulta": ["consulta", "consultorio", "atencion", "medico"],
+        "Clínicas": ["clinica", "clinicas", "hospital", "salud"],
+        "Especialidad": ["especialidad", "especialista", "cardio", "trauma", "pediatria"],
+        "Cercano": ["cercano", "centro", "zona", "guadalajara"],
+        "Disponible": ["disponible", "abierto", "24", "atencion"]
+      }}
       loadingText="Cargando servicios médicos..."
       emptyText="No se encontraron servicios médicos con ese criterio."
       defaultDescription="Explora este servicio médico recomendado para atención y seguimiento durante tu visita."
