@@ -72,8 +72,8 @@ const DateSlider = () => {
 
 return (
     <>
-      <div className="bg-white md:bg-transparent py-1 w-full overflow-hidden">
-        <div className="flex gap-1 md:gap-0 px-2 md:px-0 justify-center items-center w-full max-w-7xl mx-auto">
+      <div className="bg-white md:bg-transparent py-2 md:py-1 w-full overflow-hidden">
+        <div className="flex gap-2 md:gap-0 px-3 md:px-0 justify-center items-center w-full max-w-7xl mx-auto">
           {dynamicDates.map((date, index) => {
             let bgColor = index === 0 ? "bg-[#0D601E]" : index === 1 ? "bg-white border-y border-gray-100 shadow-sm" : "bg-[#B90808]";
             let textColor = index === 1 ? "text-[#6F4545]" : "text-white";
@@ -83,20 +83,20 @@ return (
                 key={date.fullDate}
                 className={`
                   relative flex-1 flex flex-col items-center justify-center cursor-pointer transition-all
-                  h-12 md:h-12
+                  h-14 md:h-12 min-w-[70px]
                   ${index === 0 ? "rounded-l-[12px] md:rounded-l-[20px]" : ""}
                   ${index === 2 ? "rounded-r-[12px] md:rounded-r-[20px]" : ""}
                   ${bgColor}
                 `}
               >
                 <div 
-                  className={`text-lg md:text-2xl font-normal leading-tight ${textColor}`}
+                  className={`text-xl md:text-2xl font-normal leading-tight ${textColor}`}
                   style={{ fontFamily: "var(--font-jetbrains)" }}
                 >
                   {date.day}
                 </div>
                 <div 
-                  className={`text-[9px] md:text-xs font-normal uppercase ${textColor}`}
+                  className={`text-[10px] md:text-xs font-normal uppercase ${textColor}`}
                   style={{ fontFamily: "var(--font-jockey)" }}
                 >
                   {date.weekday}
@@ -104,7 +104,7 @@ return (
 
                 {index === 0 && (
                   <div className="absolute -top-1 -left-1 md:top-0 md:left-2 z-10">
-                    <GiSoccerBall size={18} className="text-black bg-white rounded-full p-0.5 shadow-md animate-bounce" style={{ animationDuration: '3s' }} />
+                    <GiSoccerBall size={16} className="text-black bg-white rounded-full p-0.5 shadow-md animate-bounce md:w-[18px] md:h-[18px]" style={{ animationDuration: '3s' }} />
                   </div>
                 )}
               </div>
@@ -112,8 +112,8 @@ return (
           })}
 
           <Link href="/calendario">
-            <button className="ml-2 p-3 text-black hover:scale-110 transition-transform flex-shrink-0">
-              <FiChevronRight size={35} />
+            <button className="ml-1 md:ml-2 p-2 md:p-3 text-black hover:scale-110 transition-transform flex-shrink-0">
+              <FiChevronRight size={28} className="md:w-[35px] md:h-[35px]" />
             </button>
           </Link>
         </div>
@@ -252,14 +252,14 @@ function HomeContent() {
     const nextCategory = allCategories[nextIndex];
 
     return (
-      <section className="relative bg-gradient-to-r from-[#FDFCF9] via-white to-[#FDFCF9] py-8 md:py-12 px-4 md:px-8">
+      <section className="relative bg-gradient-to-r from-[#FDFCF9] via-white to-[#FDFCF9] py-6 md:py-12 px-3 md:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-8">
-            <h2 className="text-3xl md:text-4xl font-black text-[#1A4D2E] uppercase mb-2" style={{ fontFamily: "var(--font-jockey)" }}>
+          <div className="text-center mb-6 md:mb-8">
+            <h2 className="text-2xl md:text-4xl font-black text-[#1A4D2E] uppercase mb-2" style={{ fontFamily: "var(--font-jockey)" }}>
               Categorías
             </h2>
-            <p className="text-[#769C7B] text-sm md:text-base font-medium">Explora nuestras categorías y descubre nuevas experiencias</p>
+            <p className="text-[#769C7B] text-xs md:text-base font-medium px-2">Explora nuestras categorías y descubre nuevas experiencias</p>
           </div>
 
           {/* Carrusel */}
@@ -280,9 +280,9 @@ function HomeContent() {
             </motion.button>
 
             {/* Contenedor de Categorías */}
-            <div className="w-full overflow-hidden px-12 md:px-16">
+            <div className="w-full overflow-hidden px-8 sm:px-12 md:px-16">
               <div className="mx-auto w-full max-w-5xl relative" onMouseEnter={() => setIsAutoPlay(false)} onMouseLeave={resetAutoPlay}>
-                <div className="hidden md:block pointer-events-none">
+                <div className="hidden lg:block pointer-events-none">
                   <motion.div
                     key={`peek-left-${prevCategory.name}-${currentIndex}`}
                     initial={{ x: direction > 0 ? -30 : 10, opacity: 0.2, scale: 0.9 }}
@@ -360,7 +360,7 @@ function HomeContent() {
           </div>
 
           {/* Indicadores */}
-          <div className="flex justify-center items-center gap-2 mt-8">
+          <div className="flex justify-center items-center gap-2 mt-6 md:mt-8">
             {allCategories.map((_, idx) => (
               <motion.button
                 key={idx}
@@ -370,8 +370,8 @@ function HomeContent() {
                 }}
                 className={`rounded-full transition-all ${
                   idx === currentIndex
-                    ? "bg-[#0D601E] w-8 h-3"
-                    : "bg-[#F6F0E6] w-3 h-3 hover:bg-[#1A4D2E]"
+                    ? "bg-[#0D601E] w-6 md:w-8 h-2.5 md:h-3"
+                    : "bg-[#F6F0E6] w-2.5 md:w-3 h-2.5 md:h-3 hover:bg-[#1A4D2E]"
                 }`}
                 whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
@@ -395,11 +395,11 @@ function HomeContent() {
 
     return (
       <div className="flex flex-col w-full md:w-3/5">
-        <h2 className="text-2xl font-bold mb-4 text-[#1A4D2E]">{tHome('recommendations')}</h2>
-        <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-6">
+        <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-[#1A4D2E] px-1">{tHome('recommendations')}</h2>
+        <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
           {recommendations.map((place) => (
-            <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
-              <div className="w-full relative overflow-hidden pb-[56.25%] md:pb-[100%]">
+            <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
+              <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
                 {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={getPlaceName(place.name)} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{tCommon('noImage')}</div>}
                 <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#1A4D2E] text-white px-3 py-1 rounded-full shadow-lg">{tCommon('search')}</button></div>
               </div>
@@ -590,8 +590,8 @@ function HomeContent() {
       
       <CategoryCarousel categories={ALL_CATEGORIES} />
       <DateSlider />
-      <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 pl-4 pr-4 md:pl-22 md:pr-22 w-full">
-        <div className="flex flex-col gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
+      <main className="flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-10 px-3 md:px-8 lg:px-22 w-full max-w-[1600px] mx-auto">
+        <div className="flex flex-col gap-3 md:gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
           <MatchItem 
             location="CDMX"
             date="11 de Junio"
@@ -613,8 +613,8 @@ function HomeContent() {
             tHome={tHome}
           />
           {/* CONTENEDOR DE ITINERARIO */}
-          <div className="bg-[#FAF9F2] rounded-3xl p-6 shadow-sm min-h-[300px] border border-[#1A4D2E]/10 flex flex-col relative">
-            <h2 className="font-black text-[#1A4D2E] uppercase text-xs tracking-widest mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+          <div className="bg-[#FAF9F2] rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm min-h-[280px] md:min-h-[300px] border border-[#1A4D2E]/10 flex flex-col relative">
+            <h2 className="font-black text-[#1A4D2E] uppercase text-[10px] md:text-xs tracking-widest mb-3 md:mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
               {itinerarioFinal ? tHome('yourChosenRoute') : tHome('buildYourItinerary')}
             </h2>
 
