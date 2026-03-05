@@ -29,9 +29,9 @@ export async function getItinerariosUsuario(uid: string, role: string = 'turista
   const db = getFirestore(app);
   const roleCollection = getRoleCollection(role);
 
-  // Buscar el documento del usuario en usuarios/{roleCollection}/lista donde ui == uid
+  // Buscar el documento del usuario en usuarios/{roleCollection}/lista donde uid == uid
   const listaRef = collection(db, 'usuarios', roleCollection, 'lista');
-  const userSnap = await getDocs(query(listaRef, where('ui', '==', uid)));
+  const userSnap = await getDocs(query(listaRef, where('uid', '==', uid)));
 
   if (userSnap.empty) return [];
 
