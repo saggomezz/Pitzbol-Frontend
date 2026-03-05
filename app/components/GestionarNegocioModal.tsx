@@ -57,7 +57,7 @@ const GestionarNegocioModal: React.FC<GestionarNegocioModalProps> = ({
             {titulo}
           </h2>
         </div>
-        <p className={`mb-5 ${textColor}/75 text-center text-sm font-medium leading-relaxed`}>
+        <p className={`mb-5 text-center text-sm font-medium leading-relaxed ${isAprobar ? "text-[#0D601E]" : "text-[#8B0000]"} opacity-75`}>
           {message ||
             (isAprobar
               ? "¿Estás seguro de que deseas aprobar este negocio?"

@@ -45,6 +45,19 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const tRoles = useTranslations('roles');
 
     useEffect(() => {
+        // Prevenir scroll cuando el menú está abierto en móvil
+        if (isMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isMenuOpen]);
+
+    useEffect(() => {
         if (!isMenuOpen) return;
         const storedUser = localStorage.getItem("pitzbol_user");
         setUser(storedUser ? JSON.parse(storedUser) : null);
@@ -140,23 +153,23 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     };
 
     return (
-        <nav className="flex justify-between items-center bg-[#F6F0E6] px-4 md:px-8 h-20 md:h-24 sticky top-0 z-[100] shadow-sm text-[#1A4D2E]">
+        <nav className="flex justify-between items-center bg-[#F6F0E6] px-3 md:px-8 h-16 md:h-20 lg:h-24 sticky top-0 z-[100] shadow-sm text-[#1A4D2E]">
             {/* LOGO Y NOMBRE */}
-            <div className="flex items-center h-full">
-                <motion.div whileHover={{ rotate: 190 }} transition={{ duration: 2.0, ease: "easeInOut" }} className="relative h-22 w-22 right-3 md:h-32 md:w-32 flex-shrink-0 cursor-pointer">
+            <div className="flex items-center h-full gap-1">
+                <motion.div whileHover={{ rotate: 190 }} transition={{ duration: 2.0, ease: "easeInOut" }} className="relative h-14 w-14 md:h-20 md:w-20 lg:h-28 lg:w-28 flex-shrink-0 cursor-pointer">
                     <Link href="/"><Image src={imglogo} alt="logo" fill className="object-contain" priority /></Link>
                 </motion.div>
-                <div className="relative flex items-center h-full ml-1 pointer-events-none">
-                    <div className="absolute inset-y-0 -left-6 md:top-8 top-6 z-0 flex items-center w-[120%] min-w-[150px] md:min-w-[250px]">
+                <div className="relative flex items-center h-full pointer-events-none">
+                    <div className="absolute inset-y-0 -left-3 md:-left-5 top-3 md:top-5 lg:top-7 z-0 flex items-center w-[95%] md:w-[105%] min-w-[105px] md:min-w-[125px] lg:min-w-[220px]">
                         <Image src={imgPasto} alt="pasto" className="object-contain" />
                     </div>
-                    <h1 className="relative z-10 right-2 text-[35px] md:text-[50px] leading-none drop-shadow-[2px_4px_4px_rgba(0,0,0,0.5)] text-white" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    <h1 className="relative z-10 ml-1 md:ml-2 text-[20px] md:text-[28px] lg:text-[42px] leading-none drop-shadow-[2px_4px_4px_rgba(0,0,0,0.5)] text-white" style={{ fontFamily: "'Jockey One', sans-serif" }}>
                         PITZ<span className="text-[#F00808]">BOL</span>
                     </h1>
                 </div>
             </div>
             {/* BUSCADOR */}
-            <div className="hidden lg:flex flex-1 max-w-[800px] mx-8 relative">
+            <div className="hidden lg:flex flex-1 max-w-[600px] xl:max-w-[800px] mx-4 xl:mx-8 relative">
                 <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#769C7B]" size={18} />
                 <input
                     type="text"
@@ -165,27 +178,36 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                 />
             </div>
             {/* ICONOS DERECHA */}
-            <div className="flex items-center gap-3 md:gap-5 relative">
-                <Link href="/"><FiHome size={22} className="hover:text-[#F00808] transition-colors" title={t('home')} /></Link>
-                <Link href="/favoritos"><FiHeart size={22} className="hover:text-[#F00808] transition-colors" title={t('favorites')} /></Link>
+            <div className="flex items-center gap-2 md:gap-3 lg:gap-5 relative">
+                <Link href="/" className="hidden sm:block"><FiHome size={20} className="md:w-[22px] md:h-[22px] hover:text-[#F00808] transition-colors" title={t('home')} /></Link>
+                <Link href="/favoritos"><FiHeart size={20} className="md:w-[22px] md:h-[22px] hover:text-[#F00808] transition-colors" title={t('favorites')} /></Link>
                 
                 {/* Panel de Notificaciones */}
                 {user && <NotificationsPanel userId={user.uid} />}
                 {/* Selector de Idioma */}
                 <LanguageSwitcher />
-                <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 z-[110] bg-white/40 rounded-full hover:bg-white transition-all shadow-sm">
-                    {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+                <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 z-[110] bg-white/40 rounded-full hover:bg-white transition-all shadow-sm relative">
+                    {isMenuOpen ? <FiX size={22} className="md:w-[24px] md:h-[24px]" /> : <FiMenu size={22} className="md:w-[24px] md:h-[24px]" />}
                 </button>
                 {/* MENÚ DESPLEGABLE */}
                 <AnimatePresence>
                     {isMenuOpen && (
-                        <motion.div
-                            ref={menuRef}
-                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="absolute top-[120%] right-0 w-72 bg-white rounded-[32px] shadow-2xl border border-gray-100 p-5 flex flex-col gap-1 z-[120] max-h-[85vh] overflow-y-auto scrollbar-hidden"
-                        >
+                        <>
+                            {/* Overlay para cerrar el menú al hacer clic fuera (solo móvil) */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setIsMenuOpen(false)}
+                                className="fixed inset-0 bg-black/20 z-[105] md:hidden"
+                            />
+                            <motion.div
+                                ref={menuRef}
+                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                className="fixed md:absolute top-16 md:top-[120%] right-2 md:right-0 w-[calc(100vw-1rem)] max-w-[340px] md:w-72 bg-white rounded-[24px] md:rounded-[32px] shadow-2xl border border-gray-100 p-4 md:p-5 flex flex-col gap-1 z-[120] max-h-[calc(100vh-5rem)] md:max-h-[85vh] overflow-y-auto scrollbar-hidden"
+                            >
                             <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('myAccount')}</p>
                             {user ? (
                                 <button
@@ -333,6 +355,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                 </>
                             )}
                         </motion.div>
+                        </>
                     )}
                 </AnimatePresence>
             </div>
