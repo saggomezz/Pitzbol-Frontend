@@ -268,8 +268,8 @@ export default function CategoryPlacesPage({
       </div>
 
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-10 md:py-12 w-full">
-        <section className="relative overflow-hidden rounded-[28px] md:rounded-[42px] bg-[#1A4D2E] text-white p-6 md:p-10 mb-10">
-          <Image src={heroImage} alt={heroTitle} fill className="object-cover opacity-25" priority />
+        <section className="relative overflow-hidden rounded-[28px] md:rounded-[42px] bg-[#1A4D2E] text-white p-6 md:p-10 mb-10 min-h-[300px] md:min-h-[400px]">
+          <Image src={heroImage} alt={heroTitle} fill className="object-cover opacity-25" priority sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 1600px" />
           <div className="relative z-10 max-w-3xl">
             <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] font-bold text-[#F6F0E6]">{heroLabel}</p>
             <h1 className="text-4xl md:text-6xl leading-[0.95] mt-3 mb-4" style={{ fontFamily: "var(--font-jockey)" }}>
