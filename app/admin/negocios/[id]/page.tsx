@@ -18,6 +18,9 @@ import {
   FiBriefcase,
   FiX,
   FiChevronRight,
+  FiTrash2,
+  FiRotateCcw,
+  FiArchive,
 } from "react-icons/fi";
 import { gestionarNegocioPendiente } from "@/lib/gestionarNegocioApi";
 import dynamic from "next/dynamic";
@@ -89,7 +92,7 @@ interface BusinessData {
   uid: string;
   ownerUid?: string | null;
   email: string;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "archivado";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "archivado" | "aprobado" | "ARCHIVED" | "Archivado";
   business: {
     name: string;
     category: string;
@@ -139,6 +142,12 @@ export default function AdminViewBusinessPage() {
   const [resultadoMensaje, setResultadoMensaje] = useState<{ tipo: "exito" | "error"; mensaje: string } | null>(null);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [locationDraftCoords, setLocationDraftCoords] = useState<{ latitud: string; longitud: string } | null>(null);
+  
+  // Nuevos estados para acciones de negocios activos y archivados
+  const [modalArchivar, setModalArchivar] = useState(false);
+  const [motivoArchivo, setMotivoArchivo] = useState("");
+  const [modalEliminar, setModalEliminar] = useState(false);
+  const [procesandoAccion, setProcesandoAccion] = useState(false);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
@@ -225,7 +234,9 @@ export default function AdminViewBusinessPage() {
       });
       setModalOpen(false);
       setTimeout(() => {
-        router.push("/admin/negocios?tab=pendientes");
+        // Redirigir según la acción: aprobados → registrados, rechazados → archivados
+        const targetTab = modalAccion === "aprobar" ? "registrados" : "archivados";
+        router.push(`/admin/negocios?tab=${targetTab}`);
       }, 1500);
     } catch (e) {
       console.error("Error al gestionar negocio:", e);
@@ -236,6 +247,113 @@ export default function AdminViewBusinessPage() {
       setModalOpen(false);
     } finally {
       setProcesando(false);
+    }
+  };
+
+  // Regresar negocio activo a pendientes
+  const handleRegresarAPendientes = async () => {
+    if (!business) return;
+    setProcesandoAccion(true);
+    try {
+      const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
+      const response = await fetch(`${BACKEND_URL}/api/admin/negocios/${business.id}/regresar-pendientes`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminUid }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setResultadoMensaje({ tipo: "exito", mensaje: "Negocio regresado a pendientes exitosamente" });
+        setTimeout(() => router.push("/admin/negocios?tab=pendientes"), 1500);
+      } else {
+        setResultadoMensaje({ tipo: "error", mensaje: data.message || "Error al regresar a pendientes" });
+      }
+    } catch (error) {
+      setResultadoMensaje({ tipo: "error", mensaje: "Error de conexión" });
+    } finally {
+      setProcesandoAccion(false);
+    }
+  };
+
+  // Archivar negocio activo
+  const handleArchivarNegocio = async () => {
+    if (!business || !motivoArchivo.trim()) return;
+    setProcesandoAccion(true);
+    try {
+      const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
+      const response = await fetch(`${BACKEND_URL}/api/admin/negocios/${business.id}/archivar`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motivo: motivoArchivo, adminUid }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setResultadoMensaje({ tipo: "exito", mensaje: "Negocio archivado exitosamente" });
+        setModalArchivar(false);
+        setMotivoArchivo("");
+        setTimeout(() => router.push("/admin/negocios?tab=archivados"), 1500);
+      } else {
+        setResultadoMensaje({ tipo: "error", mensaje: data.message || "Error al archivar" });
+      }
+    } catch (error) {
+      setResultadoMensaje({ tipo: "error", mensaje: "Error de conexión" });
+    } finally {
+      setProcesandoAccion(false);
+    }
+  };
+
+  // Desarchivar negocio
+  const handleDesarchivarNegocio = async () => {
+    if (!business) return;
+    setProcesandoAccion(true);
+    try {
+      const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
+      const response = await fetch(`${BACKEND_URL}/api/admin/negocios/${business.id}/desarchivar`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminUid }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setResultadoMensaje({ tipo: "exito", mensaje: "Negocio desarchivado exitosamente" });
+        setTimeout(() => router.push("/admin/negocios?tab=pendientes"), 1500);
+      } else {
+        setResultadoMensaje({ tipo: "error", mensaje: data.message || "Error al desarchivar" });
+      }
+    } catch (error) {
+      setResultadoMensaje({ tipo: "error", mensaje: "Error de conexión" });
+    } finally {
+      setProcesandoAccion(false);
+    }
+  };
+
+  // Eliminar permanentemente negocio
+  const handleEliminarPermanentemente = async () => {
+    if (!business) return;
+    setProcesandoAccion(true);
+    try {
+      const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
+      const response = await fetch(`${BACKEND_URL}/api/admin/negocios/${business.id}/eliminar-permanente`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminUid }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setResultadoMensaje({ tipo: "exito", mensaje: "Negocio eliminado permanentemente" });
+        setModalEliminar(false);
+        setTimeout(() => router.push("/admin/negocios?tab=archivados"), 1500);
+      } else {
+        setResultadoMensaje({ tipo: "error", mensaje: data.message || "Error al eliminar" });
+      }
+    } catch (error) {
+      setResultadoMensaje({ tipo: "error", mensaje: "Error de conexión" });
+    } finally {
+      setProcesandoAccion(false);
     }
   };
 
@@ -574,11 +692,22 @@ export default function AdminViewBusinessPage() {
     },
   };
 
-  const status = business.status as keyof typeof statusConfig;
-  const config = statusConfig[status] || statusConfig.PENDING;
+  const normalizedStatus = (business.status || "").toString().trim().toLowerCase();
+  const statusMap: Record<string, keyof typeof statusConfig> = {
+    pending: "PENDING",
+    approved: "APPROVED",
+    aprobado: "APPROVED",
+    rejected: "REJECTED",
+    archivado: "archivado",
+    archived: "archivado",
+  };
+  const mappedStatus = statusMap[normalizedStatus] || "PENDING";
+  const config = statusConfig[mappedStatus];
   const ownerName = owner ? `${owner.nombre} ${owner.apellido}`.trim() : business.business.owner;
   const ownerProfileIdentifier = owner?.uid || business.ownerUid || business.id || business.uid || business.business.owner || "";
-  const isPending = business.status === "PENDING";
+  const isPending = mappedStatus === "PENDING";
+  const isApproved = mappedStatus === "APPROVED";
+  const isArchived = mappedStatus === "archivado";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FDFCF9] to-[#F6F0E6] px-4 py-8 md:py-12">
@@ -615,6 +744,22 @@ export default function AdminViewBusinessPage() {
                 modalAccion={modalAccion}
                 onAprobar={() => handleGestionarNegocio("aprobar")}
                 onRechazar={() => handleGestionarNegocio("rechazar")}
+              />
+            )}
+
+            {isApproved && (
+              <ApprovedBusinessPanel
+                procesando={procesandoAccion}
+                onRegresarPendientes={handleRegresarAPendientes}
+                onArchivar={() => setModalArchivar(true)}
+              />
+            )}
+
+            {isArchived && (
+              <ArchivedBusinessPanel
+                procesando={procesandoAccion}
+                onDesarchivar={handleDesarchivarNegocio}
+                onEliminar={() => setModalEliminar(true)}
               />
             )}
 
@@ -939,13 +1084,129 @@ export default function AdminViewBusinessPage() {
         loading={procesando}
       />
 
+      {/* Modal para archivar negocio activo */}
+      <AnimatePresence>
+        {modalArchivar && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+            onClick={() => {
+              if (!procesandoAccion) {
+                setModalArchivar(false);
+                setMotivoArchivo("");
+              }
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-gray-100 p-3 rounded-full">
+                  <FiArchive className="text-gray-600" size={24} />
+                </div>
+                <h3 className="text-2xl font-black text-gray-800">Archivar negocio</h3>
+              </div>
+              <p className="text-gray-600 mb-4">
+                Indica el motivo por el cual deseas archivar este negocio. El negocio dejará de estar visible para los usuarios.
+              </p>
+              <textarea
+                value={motivoArchivo}
+                onChange={(e) => setMotivoArchivo(e.target.value)}
+                placeholder="Escribe el motivo del archivado..."
+                className="w-full border border-gray-300 rounded-xl p-3 mb-4 min-h-[100px] text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                disabled={procesandoAccion}
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={handleArchivarNegocio}
+                  disabled={!motivoArchivo.trim() || procesandoAccion}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {procesandoAccion ? "Archivando..." : "Archivar"}
+                </button>
+                <button
+                  onClick={() => {
+                    if (!procesandoAccion) {
+                      setModalArchivar(false);
+                      setMotivoArchivo("");
+                    }
+                  }}
+                  disabled={procesandoAccion}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal para eliminar permanentemente */}
+      <AnimatePresence>
+        {modalEliminar && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+            onClick={() => !procesandoAccion && setModalEliminar(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-red-100 p-3 rounded-full">
+                  <FiTrash2 className="text-[#8B0000]" size={24} />
+                </div>
+                <h3 className="text-2xl font-black text-[#8B0000]">Eliminar permanentemente</h3>
+              </div>
+              <p className="text-gray-700 mb-4">
+                ¿Estás seguro de que deseas eliminar permanentemente este negocio? 
+              </p>
+              <div className="bg-red-50 border-l-4 border-[#8B0000] p-4 mb-6 rounded">
+                <p className="text-sm text-[#8B0000] font-semibold">
+                  ⚠️ Esta acción borrará todos los elementos de la base de datos y de Cloudinary. No se podrá deshacer.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleEliminarPermanentemente}
+                  disabled={procesandoAccion}
+                  className="flex-1 bg-[#8B0000] hover:bg-[#6B0000] text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {procesandoAccion ? "Eliminando..." : "Sí, eliminar"}
+                </button>
+                <button
+                  onClick={() => !procesandoAccion && setModalEliminar(false)}
+                  disabled={procesandoAccion}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {resultadoMensaje && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-8 right-8 z-40 max-w-md"
+            className="fixed top-24 right-8 z-[60] max-w-md"
           >
             <div
               className={`rounded-2xl shadow-lg p-6 border-l-4 ${
@@ -1043,6 +1304,90 @@ function PendingDecisionPanel({
         >
           <FiAlertCircle size={18} />
           {procesando && modalAccion === "rechazar" ? "Rechazando..." : "Rechazar negocio"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ApprovedBusinessPanel({
+  procesando,
+  onRegresarPendientes,
+  onArchivar,
+}: {
+  procesando: boolean;
+  onRegresarPendientes: () => void;
+  onArchivar: () => void;
+}) {
+  return (
+    <div className="mb-8 rounded-3xl border border-[#1A4D2E]/15 bg-gradient-to-br from-[#E9F7EE] via-[#F0FFF4] to-[#E8F5E9] shadow-sm p-6">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Acción administrativa</p>
+          <h3 className="text-xl font-black text-[#1A4D2E]">Gestionar negocio activo</h3>
+          <p className="text-sm text-[#1A4D2E]/70 mt-1">Este negocio está activo. Puedes regresarlo a pendientes o archivarlo.</p>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <button
+          onClick={onRegresarPendientes}
+          disabled={procesando}
+          className="inline-flex items-center justify-center gap-2 bg-[#FFF7E8] hover:bg-[#FFF3D6] text-[#B56A00] font-bold py-3.5 px-6 rounded-2xl transition-all border border-[#F2C47C] shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <FiRotateCcw size={18} />
+          {procesando ? "Procesando..." : "Regresar a pendientes"}
+        </button>
+
+        <button
+          onClick={onArchivar}
+          disabled={procesando}
+          className="inline-flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3.5 px-6 rounded-2xl transition-all border border-gray-300 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <FiArchive size={18} />
+          {procesando ? "Procesando..." : "Archivar negocio"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ArchivedBusinessPanel({
+  procesando,
+  onDesarchivar,
+  onEliminar,
+}: {
+  procesando: boolean;
+  onDesarchivar: () => void;
+  onEliminar: () => void;
+}) {
+  return (
+    <div className="mb-8 rounded-3xl border border-gray-300 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 shadow-sm p-6">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <p className="text-xs uppercase tracking-wide font-bold text-gray-500 mb-1">Acción administrativa</p>
+          <h3 className="text-xl font-black text-gray-700">Gestionar negocio archivado</h3>
+          <p className="text-sm text-gray-600 mt-1">Este negocio está archivado. Puedes desarchivarlo o eliminarlo permanentemente.</p>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-[1fr_auto] gap-3">
+        <button
+          onClick={onDesarchivar}
+          disabled={procesando}
+          className="inline-flex items-center justify-center gap-2 bg-[#0D601E] hover:bg-[#094d18] text-white font-bold py-3.5 px-6 rounded-2xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <FiRotateCcw size={18} />
+          {procesando ? "Procesando..." : "Desarchivar"}
+        </button>
+
+        <button
+          onClick={onEliminar}
+          disabled={procesando}
+          className="inline-flex items-center justify-center gap-2 bg-[#8B0000] hover:bg-[#6B0000] text-white font-bold p-3.5 rounded-2xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Eliminar permanentemente"
+        >
+          <FiTrash2 size={20} />
         </button>
       </div>
     </div>
