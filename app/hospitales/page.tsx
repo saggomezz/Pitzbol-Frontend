@@ -2,6 +2,7 @@
 
 import { FiShield } from "react-icons/fi";
 import CategoryPlacesPage from "@/app/components/CategoryPlacesPage";
+import PlaceRating from "@/app/components/PlaceRating";
 
 export default function HospitalesPage() {
   return (
