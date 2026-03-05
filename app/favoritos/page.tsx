@@ -60,50 +60,97 @@ export default function FavoritosPage() {
           const favoriteNames = await getFavorites();
           setFavorites(favoriteNames);
 
-          // Cargar datos de lugares desde CSV
-          const response = await fetch('/datosLugares.csv');
-          const csvText = await response.text();
-          
-          Papa.parse(csvText, {
-            header: true,
-            skipEmptyLines: true,
-            complete: (results) => {
-              const data = results.data.filter((row: any) => {
-                return row && row["Nombre del Lugar"] && String(row["Nombre del Lugar"]).trim() !== "";
-              });
+          // Array para almacenar lugares favoritos encontrados
+          const foundPlaces: Lugar[] = [];
 
-              const allPlaces: Lugar[] = data.map((row: any) => {
-                const nombre = String(row["Nombre del Lugar"] || "").trim();
-                const categoria = String(row["Categoría"] || "").trim();
-                const categoriaPrimera = categoria.split(",")[0].trim();
-                
-                return {
-                  nombre,
-                  categoria: categoriaPrimera,
-                  descripcion: String(row["Nota para IA"] || "").trim(),
-                  ubicacion: String(row["Dirección"] || "").trim(),
-                  latitud: String(row["Latitud"] || "").replace(",", ".").trim(),
-                  longitud: String(row["Longitud"] || "").replace(",", ".").trim(),
-                };
-              }).filter(lugar => lugar.nombre !== "");
+          // 1. BUSCAR PRIMERO EN BACKEND (Firestore)
+          try {
+            const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+            const backendResponse = await fetch(`${BACKEND_URL}/api/lugares`);
+            
+            if (backendResponse.ok) {
+              const data = await backendResponse.json();
+              const lugaresBackend = data.lugares || [];
               
-              // Filtrar solo los lugares que están en favoritos
-              const favPlaces = allPlaces.filter((lugar: Lugar) => 
-                favoriteNames.includes(lugar.nombre)
-              );
+              // Filtrar lugares del backend que están en favoritos
+              for (const nombreFav of favoriteNames) {
+                const lugarBackend = lugaresBackend.find((l: any) => l.nombre === nombreFav);
+                if (lugarBackend) {
+                  foundPlaces.push({
+                    nombre: lugarBackend.nombre,
+                    categoria: lugarBackend.categoria || "Sin categoría",
+                    descripcion: lugarBackend.descripcion || "",
+                    ubicacion: lugarBackend.direccion || lugarBackend.ubicacion || "",
+                    latitud: lugarBackend.latitud?.toString() || "",
+                    longitud: lugarBackend.longitud?.toString() || "",
+                  });
+                }
+              }
               
-              console.log("📋 Favoritos sincronizados:", favoriteNames);
-              console.log("📋 Lugares encontrados en CSV:", allPlaces.length);
-              console.log("✅ Lugares favoritos encontrados:", favPlaces.length);
-              
-              setFavoritePlaces(favPlaces);
-              setLoading(false);
-            },
-            error: (error: any) => {
-              console.error("Error al cargar lugares:", error);
-              setLoading(false);
+              console.log("🔥 Lugares encontrados en Backend:", foundPlaces.length);
             }
-          });
+          } catch (error) {
+            console.error("⚠️ Error al buscar en backend:", error);
+          }
+
+          // 2. COMPLEMENTAR CON CSV (para lugares que no están en backend)
+          const nombresEncontrados = foundPlaces.map(p => p.nombre);
+          const faltantes = favoriteNames.filter(nombre => !nombresEncontrados.includes(nombre));
+          
+          if (faltantes.length > 0) {
+            console.log("📄 Buscando en CSV:", faltantes.length, "lugares faltantes");
+            
+            const response = await fetch('/datosLugares.csv');
+            const csvText = await response.text();
+            
+            Papa.parse(csvText, {
+              header: true,
+              skipEmptyLines: true,
+              complete: (results) => {
+                const data = results.data.filter((row: any) => {
+                  return row && row["Nombre del Lugar"] && String(row["Nombre del Lugar"]).trim() !== "";
+                });
+
+                const csvPlaces: Lugar[] = data.map((row: any) => {
+                  const nombre = String(row["Nombre del Lugar"] || "").trim();
+                  const categoria = String(row["Categoría"] || "").trim();
+                  const categoriaPrimera = categoria.split(",")[0].trim();
+                  
+                  return {
+                    nombre,
+                    categoria: categoriaPrimera,
+                    descripcion: String(row["Nota para IA"] || "").trim(),
+                    ubicacion: String(row["Dirección"] || "").trim(),
+                    latitud: String(row["Latitud"] || "").replace(",", ".").trim(),
+                    longitud: String(row["Longitud"] || "").replace(",", ".").trim(),
+                  };
+                }).filter(lugar => lugar.nombre !== "");
+                
+                // Agregar solo los lugares del CSV que están en faltantes
+                const csvFavoritos = csvPlaces.filter(lugar => faltantes.includes(lugar.nombre));
+                const allFavPlaces = [...foundPlaces, ...csvFavoritos];
+                
+                console.log("📋 Total favoritos:", favoriteNames.length);
+                console.log("🔥 Desde Backend:", foundPlaces.length);
+                console.log("📄 Desde CSV:", csvFavoritos.length);
+                console.log("✅ Total encontrados:", allFavPlaces.length);
+                
+                setFavoritePlaces(allFavPlaces);
+                setLoading(false);
+              },
+              error: (error: any) => {
+                console.error("Error al cargar CSV:", error);
+                // Si hay error en CSV, usar solo los del backend
+                setFavoritePlaces(foundPlaces);
+                setLoading(false);
+              }
+            });
+          } else {
+            // Todos los favoritos se encontraron en el backend
+            console.log("✅ Todos los favoritos encontrados en Backend");
+            setFavoritePlaces(foundPlaces);
+            setLoading(false);
+          }
         } catch (error) {
           console.error("Error al cargar favoritos:", error);
           setLoading(false);
