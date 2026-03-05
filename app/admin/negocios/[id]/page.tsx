@@ -578,6 +578,7 @@ export default function AdminViewBusinessPage() {
   const config = statusConfig[status] || statusConfig.PENDING;
   const ownerName = owner ? `${owner.nombre} ${owner.apellido}`.trim() : business.business.owner;
   const ownerProfileIdentifier = owner?.uid || business.ownerUid || business.id || business.uid || business.business.owner || "";
+  const isPending = business.status === "PENDING";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FDFCF9] to-[#F6F0E6] px-4 py-8 md:py-12">
@@ -608,6 +609,15 @@ export default function AdminViewBusinessPage() {
           </div>
 
           <div className="p-8 md:p-12">
+            {isPending && (
+              <PendingDecisionPanel
+                procesando={procesando}
+                modalAccion={modalAccion}
+                onAprobar={() => handleGestionarNegocio("aprobar")}
+                onRechazar={() => handleGestionarNegocio("rechazar")}
+              />
+            )}
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -635,33 +645,31 @@ export default function AdminViewBusinessPage() {
                     transition={{ duration: 0.25, ease: "easeInOut" }}
                     className="overflow-hidden"
                   >
-                    <div className="grid lg:grid-cols-[auto,1fr] gap-6 items-start mt-5">
-                  <div className="flex flex-col items-center">
-                    <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#1A4D2E]/20 bg-[#F6F0E6]">
-                      {owner?.fotoPerfil ? (
-                        <img src={owner.fotoPerfil} alt={ownerName} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[#769C7B]">
-                          <FiUser size={34} />
-                        </div>
+                    <div className="grid sm:grid-cols-2 gap-4 mt-5">
+                      {ownerProfileIdentifier && (
+                        <Link
+                          href={`/perfil/${encodeURIComponent(ownerProfileIdentifier)}`}
+                          className="bg-white border border-[#1A4D2E]/10 rounded-2xl p-4 hover:shadow-lg hover:border-[#0D601E]/30 transition-all group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#1A4D2E]/20 bg-[#F6F0E6] flex-shrink-0">
+                              {owner?.fotoPerfil ? (
+                                <img src={owner.fotoPerfil} alt={ownerName} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[#769C7B]">
+                                  <FiUser size={22} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-[#769C7B] font-semibold uppercase mb-1">Propietario</p>
+                              <p className="text-sm font-bold text-[#1A4D2E] break-all mb-2">{ownerName || "No disponible"}</p>
+                              <p className="text-xs text-[#769C7B] break-all">{owner?.email || "No disponible"}</p>
+                            </div>
+                            <FiChevronRight size={20} className="text-[#0D601E] flex-shrink-0 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </Link>
                       )}
-                    </div>
-                    {ownerProfileIdentifier && (
-                      <Link
-                        href={`/perfil/${encodeURIComponent(ownerProfileIdentifier)}`}
-                        className="mt-3 inline-flex items-center gap-2 text-xs font-semibold bg-[#0D601E] text-white px-4 py-2 rounded-full hover:bg-[#094d18] transition-colors"
-                      >
-                        <FiUser size={14} /> Ver perfil
-                      </Link>
-                    )}
-                  </div>
-
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <InfoItem label="Propietario" value={ownerName || "No disponible"} icon={<FiUser className="text-[#0D601E]" size={18} />} />
-                    <InfoItem label="Email personal" value={owner?.email || "No disponible"} icon={<FiMail className="text-[#0D601E]" size={18} />} />
-                    <InfoItem label="Email del negocio" value={business.email || "No disponible"} icon={<FiBriefcase className="text-[#0D601E]" size={18} />} />
-                    <InfoItem label="Teléfono" value={owner?.telefono || "No disponible"} icon={<FiPhone className="text-[#0D601E]" size={18} />} />
-                  </div>
                     </div>
                   </motion.div>
                 )}
@@ -925,30 +933,6 @@ export default function AdminViewBusinessPage() {
                 </motion.div>
               </div>
             </motion.div>
-
-            {business.status === "PENDING" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.45 }}
-                className="flex flex-col sm:flex-row gap-4 justify-center pt-8 border-t border-[#1A4D2E]/10"
-              >
-                <button
-                  onClick={() => handleGestionarNegocio("aprobar")}
-                  disabled={procesando}
-                  className="flex-1 sm:flex-none sm:min-w-[230px] bg-[#0D601E] hover:bg-[#094d18] text-white font-bold py-3 px-8 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {procesando ? "Procesando..." : "Aprobar negocio"}
-                </button>
-                <button
-                  onClick={() => handleGestionarNegocio("rechazar")}
-                  disabled={procesando}
-                  className="flex-1 sm:flex-none sm:min-w-[230px] bg-[#FDEAEA] hover:bg-[#FBDDDD] text-[#8B0000] font-bold py-3 px-8 rounded-full transition-colors border border-[#F2A5A5] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {procesando ? "Procesando..." : "Rechazar negocio"}
-                </button>
-              </motion.div>
-            )}
           </div>
         </motion.div>
       </div>
@@ -1015,6 +999,58 @@ export default function AdminViewBusinessPage() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function PendingDecisionPanel({
+  procesando,
+  modalAccion,
+  onAprobar,
+  onRechazar,
+  compact = false,
+}: {
+  procesando: boolean;
+  modalAccion: "aprobar" | "rechazar";
+  onAprobar: () => void;
+  onRechazar: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={`mb-8 rounded-3xl border border-[#1A4D2E]/15 bg-gradient-to-br from-[#F6F0E6] via-[#FCF8F1] to-[#E8F5E9] shadow-sm ${
+        compact ? "p-5" : "p-6"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Accion administrativa</p>
+          <h3 className="text-xl font-black text-[#1A4D2E]">Gestionar solicitud del negocio</h3>
+          {!compact && (
+            <p className="text-sm text-[#1A4D2E]/70 mt-1">Revisa la informacion y confirma si apruebas o rechazas esta solicitud.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <button
+          onClick={onAprobar}
+          disabled={procesando}
+          className="inline-flex items-center justify-center gap-2 bg-[#0D601E] hover:bg-[#094d18] text-white font-bold py-3.5 px-6 rounded-2xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <FiCheckCircle size={18} />
+          {procesando && modalAccion === "aprobar" ? "Aprobando..." : "Aprobar negocio"}
+        </button>
+
+        <button
+          onClick={onRechazar}
+          disabled={procesando}
+          className="inline-flex items-center justify-center gap-2 bg-[#FDEAEA] hover:bg-[#FBDDDD] text-[#8B0000] font-bold py-3.5 px-6 rounded-2xl transition-all border border-[#F2A5A5] shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <FiAlertCircle size={18} />
+          {procesando && modalAccion === "rechazar" ? "Rechazando..." : "Rechazar negocio"}
+        </button>
+      </div>
     </div>
   );
 }
