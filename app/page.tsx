@@ -190,7 +190,12 @@ function HomeContent() {
     const categoryRoutes: { [key: string]: string } = {
       "Fútbol": "/futbol",
       "Gastronomía": "/gastronomia",
-      "Arte": "/arte"
+      "Arte": "/arte",
+      "Cultura": "/cultura",
+      "Eventos": "/eventos",
+      "Casas de Cambio": "/casas-cambio",
+      "Hospitales": "/hospitales",
+      "Médico": "/medico"
     };
 
     const [currentIndex, setCurrentIndex] = useState(0);
