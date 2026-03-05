@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2 } from "react-icons/fi";
 import styles from "../informacion.module.css";
 import { useFavoritesSync } from "@/lib/favoritesApi";
+import PlaceRating from "@/app/components/PlaceRating";
+import { usePlaceView } from "@/lib/usePlaceView";
 
 interface Lugar {
   nombre: string;
@@ -27,38 +29,77 @@ export default function InformacionLugar() {
   
   const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
 
+  // Registrar vista del lugar
+  const nombreLugar = params.nombre ? decodeURIComponent(params.nombre as string) : null;
+  usePlaceView(nombreLugar);
+
   useEffect(() => {
     const cargarLugar = async () => {
       try {
-        const response = await fetch("/datosLugares.csv");
-        const text = await response.text();
-        const lineas = text.split("\n");
-
         const nombreBuscado = decodeURIComponent(params.nombre as string);
+        let lugarEncontrado: Lugar | null = null;
 
-        for (let i = 1; i < lineas.length; i++) {
-          const valores = lineas[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+        // 1. Primero intentar buscar en el backend (Firestore)
+        try {
+          const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+          const backendResponse = await fetch(`${BACKEND_URL}/api/lugares`);
           
-          if (valores) {
-            const nombreLugar = valores[0].replace(/"/g, "");
+          if (backendResponse.ok) {
+            const data = await backendResponse.json();
+            const lugares = data.lugares || [];
             
-            if (nombreLugar === nombreBuscado) {
-              setLugar({
-                nombre: nombreLugar,
-                categoria: valores[1]?.replace(/"/g, "") || "",
-                direccion: valores[2]?.replace(/"/g, "") || "",
-                latitud: parseFloat(valores[3]) || 0,
-                longitud: parseFloat(valores[4]) || 0,
-                tiempoEstancia: parseInt(valores[5]) || 0,
-                costoEstimado: valores[6]?.replace(/"/g, "") || "",
-                notaIA: valores[7]?.replace(/"/g, "") || "",
-              });
-              break;
+            const lugarBackend = lugares.find((l: any) => l.nombre === nombreBuscado);
+            
+            if (lugarBackend) {
+              lugarEncontrado = {
+                nombre: lugarBackend.nombre || nombreBuscado,
+                categoria: lugarBackend.categoria || "",
+                direccion: lugarBackend.ubicacion || "",
+                latitud: parseFloat(lugarBackend.latitud) || 0,
+                longitud: parseFloat(lugarBackend.longitud) || 0,
+                tiempoEstancia: 60, // Valor por defecto
+                costoEstimado: "$$", // Valor por defecto
+                notaIA: lugarBackend.descripcion || "",
+              };
+            }
+          }
+        } catch (backendError) {
+          console.log("No se pudo buscar en backend, intentando CSV:", backendError);
+        }
+
+        // 2. Si no se encontró en backend, buscar en CSV
+        if (!lugarEncontrado) {
+          const response = await fetch("/datosLugares.csv");
+          const text = await response.text();
+          const lineas = text.split("\n");
+
+          for (let i = 1; i < lineas.length; i++) {
+            const valores = lineas[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+            
+            if (valores) {
+              const nombreLugar = valores[0].replace(/"/g, "");
+              
+              if (nombreLugar === nombreBuscado) {
+                lugarEncontrado = {
+                  nombre: nombreLugar,
+                  categoria: valores[1]?.replace(/"/g, "") || "",
+                  direccion: valores[2]?.replace(/"/g, "") || "",
+                  latitud: parseFloat(valores[3]) || 0,
+                  longitud: parseFloat(valores[4]) || 0,
+                  tiempoEstancia: parseInt(valores[5]) || 0,
+                  costoEstimado: valores[6]?.replace(/"/g, "") || "",
+                  notaIA: valores[7]?.replace(/"/g, "") || "",
+                };
+                break;
+              }
             }
           }
         }
 
-        // Verificar si está en favoritos
+        // 3. Establecer el lugar encontrado (o null si no se encontró)
+        setLugar(lugarEncontrado);
+
+        // 4. Verificar si está en favoritos
         try {
           if (isAuthenticated()) {
             await syncLocalFavorites();
@@ -197,6 +238,15 @@ export default function InformacionLugar() {
           <div className={styles.titleSection}>
             <span className={styles.categoryBadge}>{lugar.categoria}</span>
             <h1 className={styles.title}>{lugar.nombre}</h1>
+            
+            {/* Calificación del lugar */}
+            <div style={{ marginTop: '1rem' }}>
+              <PlaceRating 
+                placeName={lugar.nombre} 
+                showLabel={true}
+                size="large"
+              />
+            </div>
           </div>
 
           {/* Stats Cards */}

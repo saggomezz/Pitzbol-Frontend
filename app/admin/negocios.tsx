@@ -1,15 +1,15 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import styles from "../styles/Negocios.module.css";
 // import { db } from "../../lib/firebase";
 // import { collection, query, getDocs, updateDoc, doc, Timestamp } from "firebase/firestore";
 import { enviarNotificacion } from "../../lib/notificaciones";
 
 export default function AdminNegociosPage() {
+  const router = useRouter();
   const [negocios, setNegocios] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [archivarId, setArchivarId] = useState<string | null>(null);
-  const [motivo, setMotivo] = useState("");
   const [tab, setTab] = useState<'registrados' | 'pendientes' | 'archivados'>('registrados');
 
   useEffect(() => {
@@ -20,9 +20,9 @@ export default function AdminNegociosPage() {
   const fetchNegocios = async () => {
     setLoading(true);
     const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-    let endpoint = `${API_BASE}/admin/negocios`;
-    if (tab === 'pendientes') endpoint = `${API_BASE}/admin/negocios/pendientes`;
-    if (tab === 'archivados') endpoint = `${API_BASE}/admin/negocios/archivados`;
+    let endpoint = `${API_BASE}/api/admin/negocios`;
+    if (tab === 'pendientes') endpoint = `${API_BASE}/api/admin/negocios/pendientes`;
+    if (tab === 'archivados') endpoint = `${API_BASE}/api/admin/negocios/archivados`;
     try {
       const res = await fetch(endpoint, {
         credentials: "include",
@@ -40,32 +40,6 @@ export default function AdminNegociosPage() {
       setNegocios([]);
     }
     setLoading(false);
-  };
-
-  const handleArchivar = async () => {
-    if (!archivarId) return;
-    // Archivar negocio vía API REST
-    try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-      const res = await fetch(`${API_BASE}/admin/negocios/${archivarId}/archivar`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ motivo, adminUid: "ADMIN_UID_AQUI" }) // Reemplaza por el UID real del admin
-      });
-      const data = await res.json();
-      if (data.success) {
-        setArchivarId(null);
-        setMotivo("");
-        fetchNegocios();
-      } else {
-        alert("Error al archivar negocio: " + (data.message || data.error));
-      }
-    } catch (err) {
-      alert("Error de red al archivar negocio");
-    }
   };
 
   if (loading) return <div className="p-8 text-center">Cargando negocios...</div>;
@@ -91,10 +65,28 @@ export default function AdminNegociosPage() {
         {negocios.map(neg => {
           const logo = neg.business?.logo;
           const images = Array.isArray(neg.business?.images) ? neg.business.images.filter((img: string) => !!img) : [];
-          // Mostrar logo o placeholder
+          
+          const handleClick = (e: React.MouseEvent) => {
+            e.preventDefault();
+            console.log('Clickeando negocio:', neg.id, neg.business?.name);
+            router.push(`/admin/negocios/${neg.id}`);
+          };
+          
           return (
-            <div key={neg.id} className={styles.negocioCard}>
-              <div style={{flex:1}}>
+            <div 
+              key={neg.id} 
+              className={`${styles.negocioCard}`}
+              onClick={handleClick}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  handleClick(e as any);
+                }
+              }}
+              style={{ cursor: 'pointer', userSelect: 'none' }}
+            >
+              <div style={{flex:1, pointerEvents: 'none'}}>
                 <div className="font-bold text-lg text-[#3B5D50]">{neg.business?.name}</div>
                 <div className="text-gray-700 mb-2">{neg.business?.description}</div>
                 <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:8}}>
@@ -119,27 +111,10 @@ export default function AdminNegociosPage() {
                 </div>
                 <div className={`text-xs mb-2 negocioStatus ${styles.negocioStatus} ${styles[neg.status]}`}>{neg.status}</div>
               </div>
-              <div className={styles.negocioActions}>
-                <button className={styles.negocioBtn + " " + styles.deleteBtn} onClick={() => setArchivarId(neg.id)}>Archivar</button>
-              </div>
             </div>
           );
         })}
       </div>
-      {/* Modal de archivado */}
-      {archivarId && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalCard + " animate-fadeIn"}>
-            <h3 className="text-xl font-bold mb-4 text-[#B90808]">¿Seguro que deseas archivar este negocio?</h3>
-            <label className="block mb-2 text-[#B90808]">Motivo de archivado</label>
-            <input className={styles.negocioInput} value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Motivo..." />
-            <div className={styles.modalActions}>
-              <button className={styles.negocioBtn + " " + styles.deleteBtn} onClick={handleArchivar} disabled={!motivo}>Archivar</button>
-              <button className={styles.negocioBtn} style={{background:'#e5e7eb',color:'#222'}} onClick={() => setArchivarId(null)}>Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

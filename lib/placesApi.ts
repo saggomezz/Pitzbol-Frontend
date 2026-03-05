@@ -10,6 +10,8 @@ export interface PlaceRecord {
   latitud: string;
   longitud: string;
   fotos: string[];
+  rating: number;
+  views: number;
 }
 
 interface FirestorePlace {
@@ -20,6 +22,29 @@ interface FirestorePlace {
   latitud?: string;
   longitud?: string;
   fotos?: string[];
+  rating?: number | string;
+  views?: number | string;
+}
+
+function parseNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const normalized = String(value).replace(",", ".").trim();
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function fallbackRating(name: string): number {
+  // Sin ratings reales, devolver 0
+  return 0;
+}
+
+function fallbackViews(name: string): number {
+  // Sin vistas reales, devolver 0
+  return 0;
+}
+
+export function getPopularityScore(place: PlaceRecord): number {
+  return place.rating * 100 + Math.log10(place.views + 1) * 25;
 }
 
 function normalizeCategory(categoria: string): string {
@@ -43,6 +68,15 @@ function parseCsvPlaces(csvText: string): PlaceRecord[] {
       latitud: String(row["Latitud"] || "").replace(",", ".").trim(),
       longitud: String(row["Longitud"] || "").replace(",", ".").trim(),
       fotos: [],
+      rating:
+        parseNumber(row["Rating"]) ??
+        parseNumber(row["Calificación"]) ??
+        parseNumber(row["Calificacion"]) ??
+        fallbackRating(String(row["Nombre del Lugar"] || "")),
+      views:
+        parseNumber(row["Views"]) ??
+        parseNumber(row["Vistas"]) ??
+        fallbackViews(String(row["Nombre del Lugar"] || "")),
     }))
     .filter((place) => place.nombre !== "");
 }
@@ -71,6 +105,12 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
       if (!nombre) return;
 
       const existing = mergedByName.get(nombre);
+      
+      // Usar datos reales de Firestore para rating y views si existen
+      const realRating = parseNumber(firestorePlace.rating) ?? 
+                        parseNumber((firestorePlace as any).averageRating);
+      const realViews = parseNumber(firestorePlace.views);
+
       const nextValue: PlaceRecord = {
         nombre,
         categoria: normalizeCategory(String(firestorePlace.categoria || existing?.categoria || "")),
@@ -79,6 +119,9 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
         latitud: String(firestorePlace.latitud || existing?.latitud || "").trim(),
         longitud: String(firestorePlace.longitud || existing?.longitud || "").trim(),
         fotos: Array.isArray(firestorePlace.fotos) ? firestorePlace.fotos : existing?.fotos || [],
+        // Prioridad: datos reales > CSV > fallback
+        rating: realRating ?? existing?.rating ?? fallbackRating(nombre),
+        views: realViews ?? existing?.views ?? fallbackViews(nombre),
       };
 
       mergedByName.set(nombre, nextValue);

@@ -20,7 +20,7 @@ export default function AdminNegociosPendientesPage() {
     setLoading(true);
     const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
     try {
-      const res = await fetch(`${API_BASE}/admin/negocios/pendientes`, {
+      const res = await fetch(`${API_BASE}/api/admin/negocios/pendientes`, {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
       });
