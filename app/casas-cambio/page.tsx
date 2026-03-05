@@ -18,6 +18,13 @@ export default function CasasCambioPage() {
       sectionSubtitle="Encuentra opciones cercanas para operar con tranquilidad."
       searchPlaceholder="Buscar casa de cambio, divisas, zona..."
       quickFilters={["USD", "EUR", "Centro", "Cerca del estadio", "24 horas"]}
+      quickFilterKeywords={{
+        "USD": ["usd", "dolar", "dolares", "cambio"],
+        "EUR": ["eur", "euro", "euros", "cambio"],
+        "Centro": ["centro", "guadalajara centro"],
+        "Cerca del estadio": ["estadio", "akron", "jalisco", "centro"],
+        "24 horas": ["24", "24 horas", "abierto", "urgente"]
+      }}
       loadingText="Cargando casas de cambio..."
       emptyText="No se encontraron casas de cambio con ese criterio."
       defaultDescription="Consulta este punto financiero recomendado para gestionar tu cambio de moneda."
