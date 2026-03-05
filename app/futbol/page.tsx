@@ -15,6 +15,7 @@ import { getPlaceImageByCategory } from "@/lib/placeImages";
 import { getMergedPlaces, getPopularityScore, matchesCategory, PlaceRecord } from "@/lib/placesApi";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import AdvancedFiltersModal from "@/app/components/AdvancedFiltersModal";
+import PlaceRating from "@/app/components/PlaceRating";
 
 type FilterOptions = {
     zone?: "centro" | "estadio" | "periferico" | null;
@@ -322,9 +323,17 @@ export default function FutbolPage() {
                                         <h3 className="text-xl font-black text-[#1A4D2E] uppercase mb-2 leading-tight" style={{ fontFamily: "var(--font-jockey)" }}>
                                             {place.nombre}
                                         </h3>
-                                        <p className="text-[11px] text-[#769C7B] font-semibold mb-3">
-                                            Rating {place.rating.toFixed(1)} | {place.views.toLocaleString("es-MX")} vistas
-                                        </p>
+                                        <div className="mb-3">
+                                            <PlaceRating 
+                                                placeName={place.nombre} 
+                                                showLabel={false}
+                                                size="small"
+                                                readonly={true}
+                                            />
+                                            <p className="text-[10px] text-[#769C7B] mt-1">
+                                                {place.views.toLocaleString("es-MX")} vistas
+                                            </p>
+                                        </div>
                                         <p className="text-[13px] text-[#769C7B] leading-snug mb-6 flex-1 italic">
                                             {place.descripcion || "Explora este destino futbolero destacado en Guadalajara."}
                                         </p>

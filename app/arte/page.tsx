@@ -10,6 +10,7 @@ import { getPlaceImageByCategory } from "@/lib/placeImages";
 import { getMergedPlaces, getPopularityScore, matchesCategory, PlaceRecord } from "@/lib/placesApi";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import AdvancedFiltersModal from "@/app/components/AdvancedFiltersModal";
+import PlaceRating from "@/app/components/PlaceRating";
 
 type FilterOptions = {
   zone?: "centro" | "estadio" | "periferico" | null;
@@ -332,10 +333,18 @@ export default function ArtePage() {
                       <span className="text-[9px] px-3 py-1 rounded-full bg-[#F6F0E6] text-[#1A4D2E] font-bold uppercase tracking-widest">Recomendado</span>
                     </div>
 
-                    <p className="text-xs uppercase tracking-widest text-[#0D601E] font-bold mb-3">{place.ubicacion || "Guadalajara"}</p>
-                    <p className="text-[11px] text-[#769C7B] font-semibold mb-3">
-                      Rating {place.rating.toFixed(1)} | {place.views.toLocaleString("es-MX")} vistas
-                    </p>
+                    <p className="text-xs uppercase tracking-widest text-[#0D601E] font-bold mb-2">{place.ubicacion || "Guadalajara"}</p>
+                    <div className="mb-3">
+                      <PlaceRating 
+                        placeName={place.nombre} 
+                        showLabel={false}
+                        size="small"
+                        readonly={true}
+                      />
+                      <p className="text-[10px] text-[#769C7B] mt-1">
+                        {place.views.toLocaleString("es-MX")} vistas
+                      </p>
+                    </div>
                     <p className="text-[13px] text-[#769C7B] leading-snug mb-6 flex-1 italic">{place.descripcion || "Descubre este espacio artístico y cultural en Guadalajara."}</p>
 
                     <div className="flex items-center gap-2">

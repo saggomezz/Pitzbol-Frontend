@@ -10,6 +10,7 @@ import { getPlaceImageByCategory } from "@/lib/placeImages";
 import { getMergedPlaces, getPopularityScore, matchesCategory, PlaceRecord } from "@/lib/placesApi";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import AdvancedFiltersModal from "@/app/components/AdvancedFiltersModal";
+import PlaceRating from "@/app/components/PlaceRating";
 
 type FilterOptions = {
   zone?: "centro" | "estadio" | "periferico" | null;
@@ -329,9 +330,17 @@ export default function GastronomiaPage() {
                       {place.nombre}
                     </h3>
                     <p className="text-xs uppercase tracking-widest text-[#0D601E] font-bold mb-2">{place.ubicacion || "Guadalajara"}</p>
-                    <p className="text-[11px] text-[#769C7B] font-semibold mb-3">
-                      Rating {place.rating.toFixed(1)} | {place.views.toLocaleString("es-MX")} vistas
-                    </p>
+                    <div className="mb-3">
+                      <PlaceRating 
+                        placeName={place.nombre} 
+                        showLabel={false}
+                        size="small"
+                        readonly={true}
+                      />
+                      <p className="text-[10px] text-[#769C7B] mt-1">
+                        {place.views.toLocaleString("es-MX")} vistas
+                      </p>
+                    </div>
                     <div className="inline-flex w-fit items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#769C7B] bg-[#F6F0E6] px-3 py-1 rounded-full mb-4">
                       <FiClock size={11} /> Ruta disponible
                     </div>
