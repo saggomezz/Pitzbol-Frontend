@@ -559,16 +559,18 @@ export default function PerfilDetallado() {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
 
     try {
-      const response = await fetch('http://localhost:3001/api/guides/update', {
+      const token = localStorage.getItem('pitzbol_token');
+      const response = await fetch(`${API_BASE}/api/guides/update`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           uid: userLocal.uid,
-          categorias: especialidadesTemp 
+          categorias: especialidadesTemp,
         })
       });
-      
-      // TODO: backend debe proteger este endpoint; incluir credenciales y token si existe
 
       if (response.ok) {
         setEspecialidades([...especialidadesTemp]);
