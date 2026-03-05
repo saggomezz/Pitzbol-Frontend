@@ -1,5 +1,5 @@
 import { getApps, initializeApp, getApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -28,9 +28,15 @@ export interface ItinerarioGuardado {
 export async function getItinerariosUsuario(uid: string, role: string = 'turista'): Promise<ItinerarioGuardado[]> {
   const db = getFirestore(app);
   const roleCollection = getRoleCollection(role);
-  // Path: usuarios/{roleCollection}/{uid}/{docId}
-  const ref = collection(db, 'usuarios', roleCollection, uid);
-  const q = query(ref, orderBy('creadoEn', 'desc'));
-  const snap = await getDocs(q);
+
+  // Buscar el documento del usuario en usuarios/{roleCollection}/lista donde ui == uid
+  const listaRef = collection(db, 'usuarios', roleCollection, 'lista');
+  const userSnap = await getDocs(query(listaRef, where('ui', '==', uid)));
+
+  if (userSnap.empty) return [];
+
+  // Leer la subcolección itinerarios dentro del documento del usuario
+  const userDocRef = userSnap.docs[0].ref;
+  const snap = await getDocs(query(collection(userDocRef, 'itinerarios'), orderBy('creadoEn', 'desc')));
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as ItinerarioGuardado));
 }
