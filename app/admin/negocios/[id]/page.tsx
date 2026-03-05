@@ -704,12 +704,12 @@ export default function AdminViewBusinessPage() {
                     className="overflow-hidden"
                   >
                     <div className="pt-1">
-                  <div className="grid lg:grid-cols-2 gap-8 mb-8">
+                  <div className="grid lg:grid-cols-2 gap-6 mb-6">
                     <motion.div
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.2 }}
-                      className="flex flex-col gap-6"
+                      className="flex flex-col gap-4"
                     >
                       <LocationMap
                         location={business.business.location}
@@ -746,6 +746,18 @@ export default function AdminViewBusinessPage() {
                           }
                           required
                           onSave={(value) => handleUpdateBusinessField("category", value)}
+                        />
+
+                        <AdminEditableField
+                          label="Descripción"
+                          value={business.business.description || ""}
+                          multiline={true}
+                          rows={4}
+                          required
+                          maxLength={500}
+                          validate={(value) => (value.trim() ? null : "La descripción es obligatoria")}
+                          icon={<FiFileText className="text-[#0D601E]" size={24} />}
+                          onSave={(value) => handleUpdateBusinessField("description", value)}
                         />
                       </div>
                     </motion.div>
@@ -855,24 +867,6 @@ export default function AdminViewBusinessPage() {
                       />
                     </motion.div>
                   </div>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <AdminEditableField
-                      label="Descripción"
-                      value={business.business.description || ""}
-                      multiline={true}
-                      rows={4}
-                      required
-                      maxLength={500}
-                      validate={(value) => (value.trim() ? null : "La descripción es obligatoria")}
-                      icon={<FiFileText className="text-[#0D601E]" size={24} />}
-                      onSave={(value) => handleUpdateBusinessField("description", value)}
-                    />
-                  </motion.div>
                     </div>
                   </motion.div>
                 )}
@@ -885,7 +879,7 @@ export default function AdminViewBusinessPage() {
               transition={{ delay: 0.35 }}
               className="mb-8"
             >
-              <div className="flex flex-col gap-8">
+              <div className="flex flex-col gap-4">
                 {/* Logo - Arriba */}
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
