@@ -328,21 +328,17 @@ const AdminNegociosPage = () => {
                     transition={{ delay: index * 0.05 }}
                     layout
                     onClick={() => {
-                      if (isPendingCard) {
-                        router.push(`/admin/negocios/${negocio.id}`);
-                      }
+                      router.push(`/admin/negocios/${negocio.id}`);
                     }}
                     onKeyDown={(e) => {
-                      if (isPendingCard && (e.key === "Enter" || e.key === " ")) {
+                      if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         router.push(`/admin/negocios/${negocio.id}`);
                       }
                     }}
-                    role={isPendingCard ? "button" : undefined}
-                    tabIndex={isPendingCard ? 0 : -1}
-                    className={`bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group border-2 border-transparent hover:border-[#0D601E]/20 ${
-                      isPendingCard ? "cursor-pointer" : "cursor-default"
-                    }`}
+                    role="button"
+                    tabIndex={0}
+                    className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group border-2 border-transparent hover:border-[#0D601E]/20 cursor-pointer"
                   >
                     {/* Business Header con Logo */}
                     <div className="relative h-32 bg-gradient-to-br from-[#0D601E]/5 to-[#1A4D2E]/10 flex items-center justify-center overflow-hidden">
