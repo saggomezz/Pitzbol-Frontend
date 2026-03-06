@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
@@ -40,6 +40,16 @@ function MapCenter({ center, zoom }: { center: LatLngExpression; zoom: number })
       map.setView(center, zoom, { animate: true });
     }
   }, [center, zoom, map]);
+
+  return null;
+}
+
+function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(event) {
+      onPick(event.latlng.lat, event.latlng.lng);
+    },
+  });
 
   return null;
 }
@@ -90,6 +100,12 @@ function MinimapaLocationPickerComponent({
     onLocationChange(lat.toFixed(6), lng.toFixed(6));
   };
 
+  const handleMapPick = (lat: number, lng: number) => {
+    const newPosition: [number, number] = [lat, lng];
+    setPosition(newPosition);
+    onLocationChange(lat.toFixed(6), lng.toFixed(6));
+  };
+
   if (typeof window === "undefined" || !draggableIcon) {
     return (
       <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", background: "#e0e0e0", borderRadius: "12px" }}>
@@ -111,6 +127,7 @@ function MinimapaLocationPickerComponent({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapCenter center={position} zoom={15} />
+        <MapClickHandler onPick={handleMapPick} />
 
         <Marker
           position={position}

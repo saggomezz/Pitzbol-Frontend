@@ -16,12 +16,15 @@ type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
 type Recommendation = { name: string; img: string | null; };
 
-const categories: Category[] = [
+const ALL_CATEGORIES: Category[] = [
   { name: "Fútbol", img: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&q=80&w=2070" },
   { name: "Gastronomía", img: "https://images.unsplash.com/photo-1711306722944-70b776bb4394?auto=format&fit=crop&q=80&w=1528" },
   { name: "Arte", img: "https://museocabanas.jalisco.gob.mx/wp-content/uploads/2024/08/1.png" },
   { name: "Cultura", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Voladores_de_Papantla.png/1200px-Voladores_de_Papantla.png" },
-  { name: "Eventos", img: "https://www.debate.com.mx/img/2020/09/01/reabre_expo_gdl_invierten_25__1180283_crop1598978065412.jpg?__scale=w:1200,h:675,t:2,fpx:519,fpy:533" },
+  { name: "Eventos", img: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=1528" },
+  { name: "Casas de Cambio", img: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1528" },
+  { name: "Hospitales", img: "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=1700" },
+  { name: "Médico", img: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&q=80&w=1528" },
 ];
 
 const dates: DateInfo[] = [
@@ -69,8 +72,8 @@ const DateSlider = () => {
 
 return (
     <>
-      <div className="bg-white md:bg-transparent py-1 w-full overflow-hidden">
-        <div className="flex gap-1 md:gap-0 px-2 md:px-0 justify-center items-center w-full max-w-7xl mx-auto">
+      <div className="bg-white md:bg-transparent py-2 md:py-1 w-full overflow-hidden">
+        <div className="flex gap-2 md:gap-0 px-3 md:px-0 justify-center items-center w-full max-w-7xl mx-auto">
           {dynamicDates.map((date, index) => {
             let bgColor = index === 0 ? "bg-[#0D601E]" : index === 1 ? "bg-white border-y border-gray-100 shadow-sm" : "bg-[#B90808]";
             let textColor = index === 1 ? "text-[#6F4545]" : "text-white";
@@ -80,20 +83,20 @@ return (
                 key={date.fullDate}
                 className={`
                   relative flex-1 flex flex-col items-center justify-center cursor-pointer transition-all
-                  h-12 md:h-12
+                  h-14 md:h-12 min-w-[70px]
                   ${index === 0 ? "rounded-l-[12px] md:rounded-l-[20px]" : ""}
                   ${index === 2 ? "rounded-r-[12px] md:rounded-r-[20px]" : ""}
                   ${bgColor}
                 `}
               >
                 <div 
-                  className={`text-lg md:text-2xl font-normal leading-tight ${textColor}`}
+                  className={`text-xl md:text-2xl font-normal leading-tight ${textColor}`}
                   style={{ fontFamily: "var(--font-jetbrains)" }}
                 >
                   {date.day}
                 </div>
                 <div 
-                  className={`text-[9px] md:text-xs font-normal uppercase ${textColor}`}
+                  className={`text-[10px] md:text-xs font-normal uppercase ${textColor}`}
                   style={{ fontFamily: "var(--font-jockey)" }}
                 >
                   {date.weekday}
@@ -101,7 +104,7 @@ return (
 
                 {index === 0 && (
                   <div className="absolute -top-1 -left-1 md:top-0 md:left-2 z-10">
-                    <GiSoccerBall size={18} className="text-black bg-white rounded-full p-0.5 shadow-md animate-bounce" style={{ animationDuration: '3s' }} />
+                    <GiSoccerBall size={16} className="text-black bg-white rounded-full p-0.5 shadow-md animate-bounce md:w-[18px] md:h-[18px]" style={{ animationDuration: '3s' }} />
                   </div>
                 )}
               </div>
@@ -109,8 +112,8 @@ return (
           })}
 
           <Link href="/calendario">
-            <button className="ml-2 p-3 text-black hover:scale-110 transition-transform flex-shrink-0">
-              <FiChevronRight size={35} />
+            <button className="ml-1 md:ml-2 p-2 md:p-3 text-black hover:scale-110 transition-transform flex-shrink-0">
+              <FiChevronRight size={28} className="md:w-[35px] md:h-[35px]" />
             </button>
           </Link>
         </div>
@@ -184,6 +187,24 @@ function HomeContent() {
 
   // Componentes internos que usan las traducciones
   const CategoryCarousel = ({ categories }: { categories: Category[] }) => {
+    const categoryRoutes: { [key: string]: string } = {
+      "Fútbol": "/futbol",
+      "Gastronomía": "/gastronomia",
+      "Arte": "/arte",
+      "Cultura": "/cultura",
+      "Eventos": "/eventos",
+      "Casas de Cambio": "/casas-cambio",
+      "Hospitales": "/hospitales",
+      "Médico": "/medico"
+    };
+
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isAutoPlay, setIsAutoPlay] = useState(true);
+    const [direction, setDirection] = useState(1);
+    const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
+
+    const allCategories = categories.length ? categories : ALL_CATEGORIES;
+
     const getCategoryName = (name: string) => {
       const categoryMap: { [key: string]: string } = {
         "Fútbol": tCat('soccer'),
@@ -195,23 +216,169 @@ function HomeContent() {
       return categoryMap[name] || name;
     };
 
+    const handleNext = () => {
+      setDirection(1);
+      setCurrentIndex((prev) => (prev + 1) % allCategories.length);
+    };
+
+    const handlePrev = () => {
+      setDirection(-1);
+      setCurrentIndex((prev) => (prev - 1 + allCategories.length) % allCategories.length);
+    };
+
+    const resetAutoPlay = () => {
+      setIsAutoPlay(true);
+      if (autoPlayRef.current) clearTimeout(autoPlayRef.current);
+    };
+
+    useEffect(() => {
+      if (!isAutoPlay) return;
+
+      autoPlayRef.current = setTimeout(() => {
+        setDirection(1);
+        setCurrentIndex((prev) => (prev + 1) % allCategories.length);
+      }, 5000);
+
+      return () => {
+        if (autoPlayRef.current) clearTimeout(autoPlayRef.current);
+      };
+    }, [isAutoPlay, allCategories.length]);
+
+    if (!allCategories.length) return null;
+    const activeCategory = allCategories[currentIndex];
+    const prevIndex = (currentIndex - 1 + allCategories.length) % allCategories.length;
+    const nextIndex = (currentIndex + 1) % allCategories.length;
+    const prevCategory = allCategories[prevIndex];
+    const nextCategory = allCategories[nextIndex];
+
     return (
-      <section className="flex gap-4 p-4 md:py-6 md:px-8 overflow-x-auto md:justify-center bg-white">
-        {categories.map((category) => (
-          <Link 
-            key={category.name} 
-            href={category.name === "Fútbol" ? "/futbol" : "#"} 
-            className="flex-shrink-0"
-          >
-            <div className="relative w-40 h-24 md:w-64 md:h-34 rounded-xl overflow-hidden shadow-lg cursor-pointer group transition-transform duration-300 md:hover:scale-105">
-              <Image src={category.img} alt={getCategoryName(category.name)} fill className="object-cover" />
-              <div className="absolute inset-0 bg-black opacity-40 group-hover:opacity-20 transition-opacity duration-300"></div>
-              <div className="absolute inset-0 flex items-center justify-center p-2">
-                <span className="text-white text-xl font-bold text-center drop-shadow-md">{getCategoryName(category.name)}</span>
+      <section className="relative bg-gradient-to-r from-[#FDFCF9] via-white to-[#FDFCF9] py-6 md:py-12 px-3 md:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-6 md:mb-8">
+            <h2 className="text-2xl md:text-4xl font-black text-[#1A4D2E] uppercase mb-2" style={{ fontFamily: "var(--font-jockey)" }}>
+              Categorías
+            </h2>
+            <p className="text-[#769C7B] text-xs md:text-base font-medium px-2">Explora nuestras categorías y descubre nuevas experiencias</p>
+          </div>
+
+          {/* Carrusel */}
+          <div className="relative flex items-center justify-center">
+            {/* Botón Anterior */}
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                handlePrev();
+                setIsAutoPlay(false);
+              }}
+              onMouseEnter={() => setIsAutoPlay(false)}
+              onMouseLeave={resetAutoPlay}
+              className="absolute left-0 z-20 p-2 md:p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all text-[#1A4D2E]"
+            >
+              <FiChevronRight size={24} className="transform rotate-180" />
+            </motion.button>
+
+            {/* Contenedor de Categorías */}
+            <div className="w-full overflow-hidden px-8 sm:px-12 md:px-16">
+              <div className="mx-auto w-full max-w-5xl relative" onMouseEnter={() => setIsAutoPlay(false)} onMouseLeave={resetAutoPlay}>
+                <div className="hidden lg:block pointer-events-none">
+                  <motion.div
+                    key={`peek-left-${prevCategory.name}-${currentIndex}`}
+                    initial={{ x: direction > 0 ? -30 : 10, opacity: 0.2, scale: 0.9 }}
+                    animate={{ x: direction > 0 ? -18 : -24, opacity: 0.45, scale: 0.94 }}
+                    transition={{ duration: 0.45, ease: "easeOut" }}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[30%] w-[28%] h-44 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
+                  >
+                    <img src={prevCategory.img} alt={getCategoryName(prevCategory.name)} className="w-full h-full object-cover" loading="lazy" />
+                  </motion.div>
+                  <motion.div
+                    key={`peek-right-${nextCategory.name}-${currentIndex}`}
+                    initial={{ x: direction > 0 ? -10 : 30, opacity: 0.2, scale: 0.9 }}
+                    animate={{ x: direction > 0 ? 24 : 18, opacity: 0.45, scale: 0.94 }}
+                    transition={{ duration: 0.45, ease: "easeOut" }}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[30%] w-[28%] h-44 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
+                  >
+                    <img src={nextCategory.img} alt={getCategoryName(nextCategory.name)} className="w-full h-full object-cover" loading="lazy" />
+                  </motion.div>
+                </div>
+                <AnimatePresence initial={false} custom={direction} mode="wait">
+                  <motion.div
+                    key={activeCategory.name}
+                    custom={direction}
+                    initial={{ opacity: 0, x: direction > 0 ? 80 : -80 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: direction > 0 ? -80 : 80 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 28 }}
+                    className="w-full"
+                  >
+                    <Link href={categoryRoutes[activeCategory.name] || "/mapa"}>
+                      <motion.div
+                        whileHover={{ y: -12, scale: 1.01 }}
+                        className="relative h-48 md:h-56 rounded-[28px] overflow-hidden shadow-xl border-2 border-[#F6F0E6] cursor-pointer group"
+                      >
+                        <img
+                          src={activeCategory.img}
+                          alt={getCategoryName(activeCategory.name)}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          loading="lazy"
+                        />
+
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-70 group-hover:opacity-50 transition-opacity duration-300"></div>
+
+                        <div className="absolute inset-0 flex flex-col items-center justify-end p-6 text-center">
+                          <h3 className="text-xl md:text-2xl font-black text-white uppercase drop-shadow-lg leading-tight" style={{ fontFamily: "var(--font-jockey)" }}>
+                            {getCategoryName(activeCategory.name)}
+                          </h3>
+                          <p className="text-xs md:text-sm text-white/80 mt-2 font-medium">Descubre más →</p>
+                        </div>
+
+                        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-[#0D601E] shadow-md">
+                          {currentIndex + 1}/{allCategories.length}
+                        </div>
+                      </motion.div>
+                    </Link>
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </div>
-          </Link>
-        ))}
+
+            {/* Botón Siguiente */}
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                handleNext();
+                setIsAutoPlay(false);
+              }}
+              onMouseEnter={() => setIsAutoPlay(false)}
+              onMouseLeave={resetAutoPlay}
+              className="absolute right-0 z-20 p-2 md:p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all text-[#1A4D2E]"
+            >
+              <FiChevronRight size={24} />
+            </motion.button>
+          </div>
+
+          {/* Indicadores */}
+          <div className="flex justify-center items-center gap-2 mt-6 md:mt-8">
+            {allCategories.map((_, idx) => (
+              <motion.button
+                key={idx}
+                onClick={() => {
+                  setCurrentIndex(idx);
+                  setIsAutoPlay(false);
+                }}
+                className={`rounded-full transition-all ${
+                  idx === currentIndex
+                    ? "bg-[#0D601E] w-6 md:w-8 h-2.5 md:h-3"
+                    : "bg-[#F6F0E6] w-2.5 md:w-3 h-2.5 md:h-3 hover:bg-[#1A4D2E]"
+                }`}
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+              />
+            ))}
+          </div>
+        </div>
       </section>
     );
   };
@@ -228,11 +395,11 @@ function HomeContent() {
 
     return (
       <div className="flex flex-col w-full md:w-3/5">
-        <h2 className="text-2xl font-bold mb-4 text-[#1A4D2E]">{tHome('recommendations')}</h2>
-        <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-6">
+        <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-[#1A4D2E] px-1">{tHome('recommendations')}</h2>
+        <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
           {recommendations.map((place) => (
-            <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
-              <div className="w-full relative overflow-hidden pb-[56.25%] md:pb-[100%]">
+            <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
+              <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
                 {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={getPlaceName(place.name)} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{tCommon('noImage')}</div>}
                 <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#1A4D2E] text-white px-3 py-1 rounded-full shadow-lg">{tCommon('search')}</button></div>
               </div>
@@ -421,10 +588,10 @@ function HomeContent() {
          isNew={isNewWelcome}
        />
       
-      <CategoryCarousel categories={categories} />
+      <CategoryCarousel categories={ALL_CATEGORIES} />
       <DateSlider />
-      <main className="flex flex-col md:flex-row gap-8 py-6 md:py-10 pl-4 pr-4 md:pl-22 md:pr-22 w-full">
-        <div className="flex flex-col gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
+      <main className="flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-10 px-3 md:px-8 lg:px-22 w-full max-w-[1600px] mx-auto">
+        <div className="flex flex-col gap-3 md:gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
           <MatchItem 
             location="CDMX"
             date="11 de Junio"
@@ -446,8 +613,8 @@ function HomeContent() {
             tHome={tHome}
           />
           {/* CONTENEDOR DE ITINERARIO */}
-          <div className="bg-[#FAF9F2] rounded-3xl p-6 shadow-sm min-h-[300px] border border-[#1A4D2E]/10 flex flex-col relative">
-            <h2 className="font-black text-[#1A4D2E] uppercase text-xs tracking-widest mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+          <div className="bg-[#FAF9F2] rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm min-h-[280px] md:min-h-[300px] border border-[#1A4D2E]/10 flex flex-col relative">
+            <h2 className="font-black text-[#1A4D2E] uppercase text-[10px] md:text-xs tracking-widest mb-3 md:mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
               {itinerarioFinal ? tHome('yourChosenRoute') : tHome('buildYourItinerary')}
             </h2>
 
