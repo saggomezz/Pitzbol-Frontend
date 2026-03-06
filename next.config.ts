@@ -11,6 +11,7 @@ const nextConfig = {
     },
   images: {
     remotePatterns: [
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: 'micro-cdn.summapress.com' },
       { protocol: 'https', hostname: 'www.elfinanciero.com.mx' },
       { protocol: 'https', hostname: 'www.gaceta.unam.mx' },
