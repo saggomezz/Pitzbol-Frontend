@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { enviarNotificacion } from "../../lib/notificaciones";
 import { useTranslations } from 'next-intl';
-import { FiChevronRight, FiFileText, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle, FiMail, FiTrash2 } from "react-icons/fi";
+import { FiFileText, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle, FiTrash2 } from "react-icons/fi";
+import { FaUserTie, FaHistory, FaCheckCircle, FaHourglassHalf, FaSearch, FaEnvelope, FaPhone } from "react-icons/fa";
 import AdminHistorialSolicitudesModal from "@/app/components/AdminHistorialSolicitudesModal";
 
 type NotificationType = {
@@ -45,7 +46,6 @@ export default function AdminPerfil() {
   const [notificacion, setNotificacion] = useState<NotificationType | null>(null);
   const [showHistorialModal, setShowHistorialModal] = useState(false);
   const [guias, setGuias] = useState<ManagedUser[]>([]);
-  const [negociantes, setNegociantes] = useState<ManagedUser[]>([]);
   const [loadingUsuarios, setLoadingUsuarios] = useState(true);
   const [eliminandoUid, setEliminandoUid] = useState<string | null>(null);
 
@@ -118,22 +118,18 @@ export default function AdminPerfil() {
             window.location.href = '/';
           }, 1200);
           setGuias([]);
-          setNegociantes([]);
           return;
         }
         const serverMessage = data?.msg || data?.message || data?.error;
         mostrarNotificacion('error', serverMessage || t('managedUsersLoadError'));
         setGuias([]);
-        setNegociantes([]);
         return;
       }
 
       setGuias(data.guias || []);
-      setNegociantes(data.negociantes || []);
     } catch (error) {
       mostrarNotificacion('error', t('managedUsersLoadError'));
       setGuias([]);
-      setNegociantes([]);
     } finally {
       setLoadingUsuarios(false);
     }
@@ -178,11 +174,7 @@ export default function AdminPerfil() {
         throw new Error(data.message || data.msg || t('userDeletedError'));
       }
 
-      if (usuario.role === 'guia') {
-        setGuias(prev => prev.filter(item => item.uid !== usuario.uid));
-      } else {
-        setNegociantes(prev => prev.filter(item => item.uid !== usuario.uid));
-      }
+      setGuias(prev => prev.filter(item => item.uid !== usuario.uid));
 
       mostrarNotificacion('exito', t('userDeletedSuccess'));
     } catch (error: any) {
@@ -264,170 +256,364 @@ export default function AdminPerfil() {
     token = localStorage.getItem('pitzbol_token') || '';
   }
 
+  const [tab, setTab] = useState<'solicitudes' | 'guias'>('solicitudes');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredSolicitudes = solicitudes.filter((sol) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (sol["01_nombre"] || '').toLowerCase().includes(q) ||
+      (sol["02_apellido"] || '').toLowerCase().includes(q) ||
+      (sol["04_correo"] || '').toLowerCase().includes(q)
+    );
+  });
+
+  const filteredGuias = guias.filter((guia) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      `${guia.nombre || ''} ${guia.apellido || ''}`.toLowerCase().includes(q) ||
+      (guia.correo || '').toLowerCase().includes(q)
+    );
+  });
+
   if (loading) return (
-    <div className="h-screen flex items-center justify-center bg-[#FDFCF9] font-light text-gray-400 italic">
-      {t('loading')}
+    <div className="min-h-screen bg-gradient-to-br from-[#F6F0E6] via-[#FEFAF5] to-[#E8F5E9] flex items-center justify-center">
+      <div className="text-center flex flex-col items-center gap-4">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-[#0D601E]/20 border-t-[#0D601E] rounded-full animate-spin"></div>
+          <FaUserTie className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#0D601E] text-xl" />
+        </div>
+        <p className="text-gray-600 font-medium">{t('loading')}</p>
+      </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#FDFCF9] flex flex-col">
-      <header className="px-8 py-10 max-w-6xl mx-auto w-full flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-medium text-gray-800 tracking-tight">{t('title')}</h1>
-          <p className="text-gray-400 text-sm font-light">{t('subtitle')}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => window.location.href = '/admin/mensajes'} 
-            className="p-3 text-gray-400 hover:text-[#0D601E] transition-colors"
-            title={t('messages')}
-          >
-            <FiMail size={20} />
-          </button>
-          <button 
-            onClick={() => window.location.href = '/admin/llamadas'} 
-            className="p-3 text-gray-400 hover:text-[#0D601E] transition-colors"
-            title={t('calls')}
-          >
-            <FiPhone size={20} />
-          </button>
-          <button 
-            onClick={() => setShowHistorialModal(true)} 
-            className="p-3 text-gray-400 hover:text-[#0D601E] transition-colors"
-            title={t('history')}
-          >
-            <FiFileText size={20} />
-          </button>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-6xl mx-auto w-full px-8 pb-20">
-        <div className="grid grid-cols-1 gap-12">
-          {/* Sección de Solicitudes */}
-          <section>
-            <div className="flex items-center gap-3 mb-8">
-              <span className="w-8 h-8 rounded-full bg-orange-50 text-orange-400 flex items-center justify-center text-xs font-bold">
-                {solicitudes.length}
-              </span>
-              <h2 className="text-gray-500 text-sm font-medium uppercase tracking-widest">{t('pendingRequests')}</h2>
+    <div className="min-h-screen bg-gradient-to-br from-[#F6F0E6] via-[#FEFAF5] to-[#E8F5E9] p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8"
+        >
+          <div className="flex items-center gap-4">
+            <div className="bg-gradient-to-br from-[#0D601E] to-[#1A4D2E] p-4 rounded-2xl shadow-lg">
+              <FaUserTie className="text-white text-3xl" />
             </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-extrabold text-[#1A4D2E] flex items-center gap-2">
+                {t('title')}
+              </h1>
+              <p className="text-gray-600 text-sm mt-1">{t('subtitle')}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white border-2 border-[#0D601E]/20 text-[#0D601E] font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+              onClick={() => window.location.href = '/admin/mensajes'}
+            >
+              <FaEnvelope /> {t('messages')}
+            </button>
+            <button
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white border-2 border-[#0D601E]/20 text-[#0D601E] font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+              onClick={() => setShowHistorialModal(true)}
+            >
+              <FaHistory /> {t('history')}
+            </button>
+          </div>
+        </motion.div>
 
-            {solicitudes.length === 0 ? (
-              <div className="bg-white rounded-[35px] border border-gray-100 p-20 text-center">
-                <FiShield className="mx-auto text-gray-100 mb-4" size={48} />
-                <p className="text-gray-300 font-light italic">{t('noRequests')}</p>
-              </div>
+        {/* Tabs */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="flex flex-wrap gap-3 mb-6"
+        >
+          <button
+            className={`px-6 py-3 rounded-xl font-bold shadow-md transition-all duration-300 flex items-center gap-2 ${
+              tab === 'solicitudes'
+                ? 'bg-[#EAB308] text-black scale-105 shadow-lg font-extrabold'
+                : 'bg-white text-gray-700 hover:bg-gray-50 hover:scale-105'
+            }`}
+            onClick={() => setTab('solicitudes')}
+          >
+            <FaHourglassHalf /> {t('pendingRequests')} ({solicitudes.length})
+          </button>
+          <button
+            className={`px-6 py-3 rounded-xl font-bold shadow-md transition-all duration-300 flex items-center gap-2 ${
+              tab === 'guias'
+                ? 'bg-[#0D601E] text-white scale-105 shadow-lg'
+                : 'bg-white text-gray-700 hover:bg-gray-50 hover:scale-105'
+            }`}
+            onClick={() => setTab('guias')}
+          >
+            <FaCheckCircle /> {t('guidesListTitle')} ({guias.length})
+          </button>
+        </motion.div>
+
+        {/* Search Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-6"
+        >
+          <div className="relative">
+            <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder={tab === 'solicitudes' ? 'Buscar solicitudes por nombre o correo...' : 'Buscar guías por nombre o correo...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-[#0D601E]/20 focus:border-[#0D601E] focus:outline-none bg-white shadow-md text-gray-700 placeholder-gray-400 transition-all"
+            />
+          </div>
+        </motion.div>
+
+        {/* Tab: Solicitudes Pendientes */}
+        {tab === 'solicitudes' && (
+          <>
+            {solicitudes.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8 p-6 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] rounded-2xl border-2 border-[#0D601E]/50 shadow-lg"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl border border-white/30">
+                      <FaHourglassHalf className="text-white text-3xl" />
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-black text-white">{t('pendingRequests')}</h2>
+                      <p className="text-white/90 text-sm font-semibold mt-1">Tienes {solicitudes.length} solicitud{solicitudes.length !== 1 ? 'es' : ''} pendiente{solicitudes.length !== 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/30">
+                      <span className="text-white font-black text-2xl">{solicitudes.length}</span>
+                      <p className="text-white/80 text-xs font-semibold">Pendientes</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {filteredSolicitudes.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-20 flex flex-col items-center gap-4"
+              >
+                <div className="bg-white p-8 rounded-full shadow-lg">
+                  <FaUserTie className="text-gray-300 text-6xl" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-600 mb-2">{t('noRequests')}</h3>
+                  <p className="text-gray-500">
+                    {searchQuery ? 'Intenta con otra búsqueda' : 'No hay solicitudes pendientes'}
+                  </p>
+                </div>
+              </motion.div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {solicitudes.map((sol) => (
-                  <motion.div 
-                    layoutId={sol.uid}
-                    key={sol.uid}
-                    onClick={() => setSelectedGuia(sol)}
-                    className="bg-white p-6 rounded-[28px] border border-gray-100 hover:border-green-200 transition-all cursor-pointer flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 group-hover:text-green-600 transition-colors">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              >
+                <AnimatePresence mode="popLayout">
+                  {filteredSolicitudes.map((sol, index) => (
+                    <motion.div
+                      key={sol.uid}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ delay: index * 0.05 }}
+                      layout
+                      onClick={() => setSelectedGuia(sol)}
+                      className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group border-2 border-transparent hover:border-[#0D601E]/20 cursor-pointer"
+                    >
+                      {/* Header con foto */}
+                      <div className="relative h-32 bg-gradient-to-br from-[#0D601E]/5 to-[#1A4D2E]/10 flex items-center justify-center overflow-hidden">
                         {sol["13_foto_rostro"] ? (
-                          <img 
-                            src={sol["13_foto_rostro"]} 
-                            alt="Miniatura" 
-                            className="w-full h-full object-cover rounded-2xl" 
-                          />
+                          <div className="relative w-full h-full">
+                            <img
+                              src={sol["13_foto_rostro"]}
+                              alt={`${sol["01_nombre"]} ${sol["02_apellido"]}`}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                          </div>
                         ) : (
-                          <FiUser size={20} />
+                          <div className="flex flex-col items-center justify-center">
+                            <FiUser className="text-[#0D601E]/30 text-6xl mb-2" />
+                            <span className="text-xs text-gray-400 font-medium">Sin foto</span>
+                          </div>
+                        )}
+                        {/* Status Badge */}
+                        <div className="absolute top-3 right-3">
+                          <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg"
+                          >
+                            <FaHourglassHalf />{t('pendingReview')}
+                          </motion.span>
+                        </div>
+                        {/* Biometric Badge */}
+                        {sol.validacion_biometrica && (
+                          <div className="absolute top-3 left-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-bold shadow-lg ${
+                              sol.validacion_biometrica.coincide
+                                ? 'bg-green-500 text-white'
+                                : 'bg-red-500 text-white'
+                            }`}>
+                              🔐 {sol.validacion_biometrica.porcentaje || 0}%
+                            </span>
+                          </div>
                         )}
                       </div>
-                      <div>
-                        <h3 className="text-gray-700 font-medium">
-                          {(sol["01_nombre"] || t('noName'))} {(sol["02_apellido"] || "")}
+
+                      {/* Content */}
+                      <div className="p-5">
+                        <h3 className="font-bold text-xl text-[#1A4D2E] mb-1 line-clamp-1">
+                          {sol["01_nombre"] || t('noName')} {sol["02_apellido"] || ''}
                         </h3>
-                        <p className="text-[11px] text-gray-400 font-light italic">
-                          {sol["04_correo"] || t('noEmail')}
-                        </p>
+
+                        <div className="space-y-2 text-xs mb-4 mt-3">
+                          {sol["04_correo"] && (
+                            <div className="flex items-center gap-2 text-gray-500">
+                              <FaEnvelope className="text-[#0D601E]" />
+                              <span className="truncate">{sol["04_correo"]}</span>
+                            </div>
+                          )}
+                          {sol["06_telefono"] && (
+                            <div className="flex items-center gap-2 text-gray-500">
+                              <FaPhone className="text-[#0D601E]" />
+                              <span>{sol["06_telefono"]}</span>
+                            </div>
+                          )}
+                          {sol["05_rfc"] && (
+                            <div className="flex items-center gap-2 text-gray-500 bg-gray-50 p-2 rounded-lg">
+                              <FiShield className="text-[#0D601E]" />
+                              <span className="font-medium">RFC: {sol["05_rfc"]}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <FiChevronRight className="text-gray-200 group-hover:text-green-600 transition-all" />
-                  </motion.div>
-                ))}
-              </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
             )}
-          </section>
+          </>
+        )}
 
-          <section>
-            <div className="flex items-center gap-3 mb-8">
-              <h2 className="text-gray-500 text-sm font-medium uppercase tracking-widest">{t('managedUsers')}</h2>
-            </div>
-
+        {/* Tab: Guías Gestionados */}
+        {tab === 'guias' && (
+          <>
             {loadingUsuarios ? (
-              <div className="bg-white rounded-[35px] border border-gray-100 p-10 text-center text-gray-400 font-light italic">
-                {t('loadingManagedUsers')}
-              </div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-20 flex flex-col items-center gap-4"
+              >
+                <div className="relative">
+                  <div className="w-16 h-16 border-4 border-[#0D601E]/20 border-t-[#0D601E] rounded-full animate-spin"></div>
+                  <FaUserTie className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#0D601E] text-xl" />
+                </div>
+                <p className="text-gray-600 font-medium">{t('loadingManagedUsers')}</p>
+              </motion.div>
+            ) : filteredGuias.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-20 flex flex-col items-center gap-4"
+              >
+                <div className="bg-white p-8 rounded-full shadow-lg">
+                  <FaUserTie className="text-gray-300 text-6xl" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-600 mb-2">{t('noGuidesToManage')}</h3>
+                  <p className="text-gray-500">
+                    {searchQuery ? 'Intenta con otra búsqueda' : 'No hay guías registrados'}
+                  </p>
+                </div>
+              </motion.div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-[28px] border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-gray-700 font-medium">{t('guidesListTitle')}</h3>
-                    <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">{guias.length}</span>
-                  </div>
-                  {guias.length === 0 ? (
-                    <p className="text-sm text-gray-400 italic">{t('noGuidesToManage')}</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {guias.map((guia) => (
-                        <div key={guia.uid} className="flex items-center justify-between gap-3 border border-gray-100 rounded-2xl p-3">
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">{`${guia.nombre || ''} ${guia.apellido || ''}`.trim() || t('noName')}</p>
-                            <p className="text-xs text-gray-400">{guia.correo || guia.uid}</p>
-                          </div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              >
+                <AnimatePresence mode="popLayout">
+                  {filteredGuias.map((guia, index) => (
+                    <motion.div
+                      key={guia.uid}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ delay: index * 0.05 }}
+                      layout
+                      className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group border-2 border-transparent hover:border-[#0D601E]/20"
+                    >
+                      <div className="relative h-20 bg-gradient-to-br from-[#0D601E]/5 to-[#1A4D2E]/10 flex items-center justify-center">
+                        <div className="absolute top-3 right-3">
+                          <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg"
+                          >
+                            <FaCheckCircle />Activo
+                          </motion.span>
+                        </div>
+                      </div>
+
+                      <div className="p-5">
+                        <h3 className="font-bold text-xl text-[#1A4D2E] mb-1 line-clamp-1">
+                          {`${guia.nombre || ''} ${guia.apellido || ''}`.trim() || t('noName')}
+                        </h3>
+
+                        <div className="space-y-2 text-xs mb-4 mt-3">
+                          {guia.correo && (
+                            <div className="flex items-center gap-2 text-gray-500">
+                              <FaEnvelope className="text-[#0D601E]" />
+                              <span className="truncate">{guia.correo}</span>
+                            </div>
+                          )}
+                          {guia.telefono && (
+                            <div className="flex items-center gap-2 text-gray-500">
+                              <FaPhone className="text-[#0D601E]" />
+                              <span>{guia.telefono}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex justify-end">
                           <button
                             onClick={() => handleEliminarUsuario(guia)}
                             disabled={eliminandoUid === guia.uid}
-                            className="px-3 py-2 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 text-xs font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="px-4 py-2 rounded-xl bg-red-50 border-2 border-red-100 text-red-500 hover:bg-red-100 text-xs font-bold flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all hover:scale-105"
                           >
                             <FiTrash2 size={14} />
                             {eliminandoUid === guia.uid ? tCommon('processing') : t('deleteUser')}
                           </button>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-white rounded-[28px] border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-gray-700 font-medium">{t('businessUsersTitle')}</h3>
-                    <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">{negociantes.length}</span>
-                  </div>
-                  {negociantes.length === 0 ? (
-                    <p className="text-sm text-gray-400 italic">{t('noBusinessesToManage')}</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {negociantes.map((negociante) => (
-                        <div key={negociante.uid} className="flex items-center justify-between gap-3 border border-gray-100 rounded-2xl p-3">
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">{`${negociante.nombre || ''} ${negociante.apellido || ''}`.trim() || t('noName')}</p>
-                            <p className="text-xs text-gray-400">{negociante.correo || negociante.uid}</p>
-                          </div>
-                          <button
-                            onClick={() => handleEliminarUsuario(negociante)}
-                            disabled={eliminandoUid === negociante.uid}
-                            className="px-3 py-2 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 text-xs font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                          >
-                            <FiTrash2 size={14} />
-                            {eliminandoUid === negociante.uid ? tCommon('processing') : t('deleteUser')}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
             )}
-          </section>
-        </div>
-      </main>
+          </>
+        )}
+      </div>
 
       {/* Detalle del Guía */}
       <AnimatePresence>
