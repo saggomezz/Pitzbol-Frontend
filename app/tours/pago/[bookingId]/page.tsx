@@ -55,11 +55,15 @@ export default function TourPaymentPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    // Check localStorage directly to avoid race condition with usePitzbolUser hook
+    const storedUser = localStorage.getItem("pitzbol_user");
+    if (!storedUser) {
       alert("Debes iniciar sesión");
       router.push("/");
       return;
     }
+
+    const parsedUser = JSON.parse(storedUser);
 
     const fetchData = async () => {
       try {
@@ -81,7 +85,7 @@ export default function TourPaymentPage() {
         // Aquí deberías hacer una llamada al endpoint que devuelve las tarjetas guardadas
         // Por ahora, simulamos que hay tarjetas guardadas
         const cardsResponse = await fetch(
-          `${BACKEND_URL}/api/payments/cards/${user.uid}`
+          `${BACKEND_URL}/api/payments/cards/${parsedUser.uid}`
         );
         
         if (cardsResponse.ok) {
@@ -102,7 +106,7 @@ export default function TourPaymentPage() {
     if (bookingId) {
       fetchData();
     }
-  }, [bookingId, user, router]);
+  }, [bookingId, router]);
 
   const handlePayment = async () => {
     if (!selectedCard || !booking) {

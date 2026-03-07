@@ -6,7 +6,7 @@ import {
   FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
   FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
 } from "react-icons/fa";
-import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
+import { FiAward, FiCamera, FiCheck, FiDollarSign, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
   FiPlus, FiShield, FiUser, FiX, FiCreditCard
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
@@ -117,6 +117,15 @@ export default function PerfilDetallado() {
   const [editandoDescripcion, setEditandoDescripcion] = useState(false);
   const [descripcionTemp, setDescripcionTemp] = useState("");
   const [errorDescripcion, setErrorDescripcion] = useState("");
+
+  const [editandoTarifa, setEditandoTarifa] = useState(false);
+  const [tarifaTemp, setTarifaTemp] = useState("");
+  const [tarifaDiaCompletoTemp, setTarifaDiaCompletoTemp] = useState("");
+  const [errorTarifa, setErrorTarifa] = useState("");
+
+  const [editandoRuta, setEditandoRuta] = useState(false);
+  const [rutaTourTemp, setRutaTourTemp] = useState("");
+  const [errorRuta, setErrorRuta] = useState("");
   
   const [editandoEspecialidades, setEditandoEspecialidades] = useState(false);
   const [especialidadesTemp, setEspecialidadesTemp] = useState<string[]>([]);
@@ -178,6 +187,8 @@ export default function PerfilDetallado() {
         fotoUrl: userLocal["14_foto_perfil"]?.url || userLocal.fotoPerfil || null,
         guide_status: guideStatus,
         tarifa: userLocal["17_tarifa_mxn"] || userLocal.tarifa || 0,
+        tarifaDiaCompleto: userLocal["19_tarifa_dia_completo"] || userLocal.tarifaDiaCompleto || 0,
+        rutaTour: userLocal["20_ruta_tour"] || userLocal.rutaTour || "",
             });
 
       setEspecialidades(initialEspecialidades);
@@ -522,6 +533,151 @@ export default function PerfilDetallado() {
     setDescripcionTemp(perfil?.descripcion || "");
     setEditandoDescripcion(false);
     setErrorDescripcion("");
+  };
+
+  const guardarTarifa = async () => {
+    setErrorTarifa("");
+
+    const tarifaNum = tarifaTemp ? Number(tarifaTemp) : 0;
+    const tarifaDiaNum = tarifaDiaCompletoTemp ? Number(tarifaDiaCompletoTemp) : 0;
+
+    if (!tarifaTemp && !tarifaDiaCompletoTemp) {
+      setErrorTarifa(t('rateMustBePositive'));
+      return;
+    }
+
+    if (tarifaTemp && (isNaN(tarifaNum) || tarifaNum < 0)) {
+      setErrorTarifa(t('rateMustBePositive'));
+      return;
+    }
+
+    if (tarifaDiaCompletoTemp && (isNaN(tarifaDiaNum) || tarifaDiaNum < 0)) {
+      setErrorTarifa(t('rateMustBePositive'));
+      return;
+    }
+
+    setGuardando(true);
+    setExito("");
+
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+
+      if (!token) {
+        throw new Error(t('noSession'));
+      }
+
+      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
+        method: "PATCH",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          tarifa: tarifaNum,
+          tarifaDiaCompleto: tarifaDiaNum || 0,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || t('errorServer'));
+      }
+
+      const perfilActualizado = { ...perfil, tarifa: tarifaNum, tarifaDiaCompleto: tarifaDiaNum || 0 };
+      setPerfil(perfilActualizado);
+
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal["17_tarifa_mxn"] = tarifaNum;
+      userLocal.tarifa = tarifaNum;
+      userLocal["19_tarifa_dia_completo"] = tarifaDiaNum || 0;
+      userLocal.tarifaDiaCompleto = tarifaDiaNum || 0;
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+
+      window.dispatchEvent(new Event('guideProfileUpdated'));
+
+      setExito(t('rateUpdated'));
+      setEditandoTarifa(false);
+      setTimeout(() => setExito(""), 3000);
+    } catch (err: any) {
+      console.error("❌ Error al guardar tarifa:", err);
+      setErrorTarifa(err.message || t('errorUpdating'));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarTarifa = () => {
+    setTarifaTemp(String(perfil?.tarifa || ""));
+    setTarifaDiaCompletoTemp(String(perfil?.tarifaDiaCompleto || ""));
+    setEditandoTarifa(false);
+    setErrorTarifa("");
+  };
+
+  const guardarRutaTour = async () => {
+    setErrorRuta("");
+
+    if (rutaTourTemp.trim().length > 1000) {
+      setErrorRuta(t('tourRouteMaxLength'));
+      return;
+    }
+
+    setGuardando(true);
+    setExito("");
+
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+
+      if (!token) {
+        throw new Error(t('noSession'));
+      }
+
+      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
+        method: "PATCH",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          rutaTour: rutaTourTemp,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || t('errorServer'));
+      }
+
+      const perfilActualizado = { ...perfil, rutaTour: rutaTourTemp };
+      setPerfil(perfilActualizado);
+
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal["20_ruta_tour"] = rutaTourTemp;
+      userLocal.rutaTour = rutaTourTemp;
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+
+      window.dispatchEvent(new Event('guideProfileUpdated'));
+
+      setExito(t('tourRouteUpdated'));
+      setEditandoRuta(false);
+      setTimeout(() => setExito(""), 3000);
+    } catch (err: any) {
+      console.error("❌ Error al guardar ruta:", err);
+      setErrorRuta(err.message || t('errorUpdating'));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarRuta = () => {
+    setRutaTourTemp(perfil?.rutaTour || "");
+    setEditandoRuta(false);
+    setErrorRuta("");
   };
 
   const agregarEspecialidad = (interes: string) => {
@@ -1166,6 +1322,145 @@ export default function PerfilDetallado() {
                         <p className="text-sm font-medium text-[#1A4D2E] pl-12 break-all">{perfil?.telefono}</p>
                       )}
                     </motion.div>
+
+                    {/* Card de Tarifa - Solo para Guías */}
+                    {esGuia && (
+                      <motion.div 
+                        whileHover={{ y: -1 }}
+                        className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 bg-[#F1F8F6] rounded-lg">
+                              <FiDollarSign size={16} className="text-[#66BB6A]" />
+                            </div>
+                            <h3 className="text-xs font-medium text-[#81C784] tracking-wide">{t('rateLabel')}</h3>
+                          </div>
+                          {!editandoTarifa && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => {
+                                setTarifaTemp(String(perfil?.tarifa || ""));
+                                setTarifaDiaCompletoTemp(String(perfil?.tarifaDiaCompleto || ""));
+                                setEditandoTarifa(true);
+                              }}
+                              className="px-2.5 py-1 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1"
+                            >
+                              <FiEdit2 size={12} /> {t('edit')}
+                            </motion.button>
+                          )}
+                        </div>
+                        
+                        {editandoTarifa ? (
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-xs text-[#81C784] mb-1 block">{t('rateLabel')}</label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold text-[#1A4D2E]">$</span>
+                                <input
+                                  type="number"
+                                  value={tarifaTemp}
+                                  onChange={(e) => setTarifaTemp(e.target.value)}
+                                  placeholder={t('ratePlaceholder')}
+                                  min="0"
+                                  className="flex-1 px-3 py-2 border border-[#C8E6C9] rounded-lg text-sm text-[#1A4D2E] focus:outline-none focus:ring-2 focus:ring-[#0D601E]/20"
+                                />
+                                <span className="text-xs text-[#81C784]">{t('mxnPerHour')}</span>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs text-[#81C784] mb-1 block">{t('fullDayRateLabel')}</label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold text-[#1A4D2E]">$</span>
+                                <input
+                                  type="number"
+                                  value={tarifaDiaCompletoTemp}
+                                  onChange={(e) => setTarifaDiaCompletoTemp(e.target.value)}
+                                  placeholder={t('fullDayRatePlaceholder')}
+                                  min="0"
+                                  className="flex-1 px-3 py-2 border border-[#C8E6C9] rounded-lg text-sm text-[#1A4D2E] focus:outline-none focus:ring-2 focus:ring-[#0D601E]/20"
+                                />
+                                <span className="text-xs text-[#81C784]">{t('mxnFullDay')}</span>
+                              </div>
+                            </div>
+                            {errorTarifa && (
+                              <p className="text-xs text-red-600">{errorTarifa}</p>
+                            )}
+                            <div className="flex gap-2">
+                              <button onClick={guardarTarifa} disabled={guardando} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50">{t('save')}</button>
+                              <button onClick={cancelarTarifa} disabled={guardando} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors disabled:opacity-50">{tCommon('cancel')}</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="pl-12 space-y-1">
+                            {perfil?.tarifa ? (
+                              <>
+                                <p className="text-sm font-medium text-[#1A4D2E]">${Number(perfil.tarifa).toLocaleString('es-MX')} <span className="text-xs text-[#81C784]">{t('mxnPerHour')}</span></p>
+                                {perfil?.tarifaDiaCompleto > 0 && (
+                                  <p className="text-sm font-medium text-[#1A4D2E]">${Number(perfil.tarifaDiaCompleto).toLocaleString('es-MX')} <span className="text-xs text-[#81C784]">{t('mxnFullDay')}</span></p>
+                                )}
+                              </>
+                            ) : (
+                              <p className="text-sm text-gray-400">{t('noRateYet')}</p>
+                            )}
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+
+                    {/* Card de Ruta del Tour - Solo para Guías */}
+                    {esGuia && (
+                      <motion.div 
+                        whileHover={{ y: -1 }}
+                        className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 bg-[#F1F8F6] rounded-lg">
+                              <FiMap size={16} className="text-[#66BB6A]" />
+                            </div>
+                            <h3 className="text-xs font-medium text-[#81C784] tracking-wide">{t('tourRouteLabel')}</h3>
+                          </div>
+                          {!editandoRuta && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => {
+                                setRutaTourTemp(perfil?.rutaTour || "");
+                                setEditandoRuta(true);
+                              }}
+                              className="px-2.5 py-1 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1"
+                            >
+                              <FiEdit2 size={12} /> {t('edit')}
+                            </motion.button>
+                          )}
+                        </div>
+                        
+                        {editandoRuta ? (
+                          <div className="space-y-3">
+                            <textarea
+                              className="w-full bg-[#FDFCF9] border border-[#1A4D2E]/20 rounded-2xl p-4 text-[#1A4D2E] min-h-[120px] focus:ring-2 focus:ring-[#0D601E]/20 outline-none resize-none transition-all text-sm"
+                              placeholder={t('tourRoutePlaceholder')}
+                              value={rutaTourTemp}
+                              onChange={(e) => setRutaTourTemp(e.target.value)}
+                            />
+                            <p className="text-xs text-[#81C784]">{rutaTourTemp.length}/1000</p>
+                            {errorRuta && (
+                              <p className="text-xs text-red-600">{errorRuta}</p>
+                            )}
+                            <div className="flex gap-2">
+                              <button onClick={guardarRutaTour} disabled={guardando} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50">{t('save')}</button>
+                              <button onClick={cancelarRuta} disabled={guardando} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors disabled:opacity-50">{tCommon('cancel')}</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm font-normal text-[#1A4D2E] pl-12 whitespace-pre-wrap">
+                            {perfil?.rutaTour || t('noTourRouteYet')}
+                          </p>
+                        )}
+                      </motion.div>
+                    )}
 
                     {/* Card de Billetera */}
                     <button 

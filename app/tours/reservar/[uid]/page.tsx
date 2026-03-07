@@ -41,7 +41,9 @@ export default function BookTourPage() {
   const [notas, setNotas] = useState("");
 
   useEffect(() => {
-    if (!user) {
+    // Check localStorage directly to avoid race condition with usePitzbolUser hook
+    const storedUser = localStorage.getItem("pitzbol_user");
+    if (!storedUser) {
       alert("Debes iniciar sesión para reservar un tour");
       router.push("/");
       return;
@@ -71,7 +73,7 @@ export default function BookTourPage() {
     if (guideId) {
       fetchGuideInfo();
     }
-  }, [guideId, user, router]);
+  }, [guideId, router]);
 
   const calcularTotal = () => {
     if (!guide) return 0;

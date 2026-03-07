@@ -2,7 +2,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
-import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase } from "react-icons/fi";
+import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase, FiTrash2 } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 
 interface Notification {
@@ -274,7 +274,27 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     }
   };
 
+  const eliminarTodasLasNotificaciones = async () => {
+    if (!userId) return;
 
+    const key = `pitzbol_notifications_${userId}`;
+    localStorage.setItem(key, JSON.stringify([]));
+    setNotificaciones([]);
+    setNoLeidas(0);
+
+    // Eliminar todas en el backend
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const token = localStorage.getItem('pitzbol_token');
+      await fetch(`${API_BASE}/api/admin/notifications/user/${userId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
+      });
+    } catch (error) {
+      console.error("Error al eliminar todas las notificaciones en backend:", error);
+    }
+  };
 
   const getIconoNotificacion = (tipo: string) => {
     switch(tipo) {
@@ -391,12 +411,23 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                   {noLeidas > 0 ? `${noLeidas} sin leer` : 'Todo al día'}
                 </p>
               </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-              >
-                <FiX size={20} />
-              </button>
+              <div className="flex items-center gap-1">
+                {notificaciones.length > 0 && (
+                  <button
+                    onClick={eliminarTodasLasNotificaciones}
+                    className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                    title="Borrar todas las notificaciones"
+                  >
+                    <FiTrash2 size={18} />
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
             </div>
 
             {/* Contenido */}
