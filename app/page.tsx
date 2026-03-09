@@ -251,10 +251,10 @@ function HomeContent() {
     const nextCategory = allCategories[nextIndex];
 
     return (
-      <section className="relative bg-gradient-to-r from-[#FDFCF9] via-white to-[#FDFCF9] py-6 md:py-12 px-3 md:px-8">
+      <section className="relative bg-gradient-to-r from-[#FDFCF9] via-white to-[#FDFCF9] py-3 md:py-5 px-3 md:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-6 md:mb-8">
+          <div className="text-center mb-3 md:mb-4">
             <h2 className="text-2xl md:text-4xl font-black text-[#1A4D2E] uppercase mb-2" style={{ fontFamily: "var(--font-jockey)" }}>
               Categorías
             </h2>
@@ -287,7 +287,7 @@ function HomeContent() {
                     initial={{ x: direction > 0 ? -30 : 10, opacity: 0.2, scale: 0.9 }}
                     animate={{ x: direction > 0 ? -18 : -24, opacity: 0.45, scale: 0.94 }}
                     transition={{ duration: 0.45, ease: "easeOut" }}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[30%] w-[28%] h-44 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[30%] w-[28%] h-28 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
                   >
                     <img src={prevCategory.img} alt={getCategoryName(prevCategory.name)} className="w-full h-full object-cover" loading="lazy" />
                   </motion.div>
@@ -296,7 +296,7 @@ function HomeContent() {
                     initial={{ x: direction > 0 ? -10 : 30, opacity: 0.2, scale: 0.9 }}
                     animate={{ x: direction > 0 ? 24 : 18, opacity: 0.45, scale: 0.94 }}
                     transition={{ duration: 0.45, ease: "easeOut" }}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[30%] w-[28%] h-44 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[30%] w-[28%] h-28 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
                   >
                     <img src={nextCategory.img} alt={getCategoryName(nextCategory.name)} className="w-full h-full object-cover" loading="lazy" />
                   </motion.div>
@@ -314,7 +314,7 @@ function HomeContent() {
                     <Link href={categoryRoutes[activeCategory.name] || "/mapa"}>
                       <motion.div
                         whileHover={{ y: -12, scale: 1.01 }}
-                        className="relative h-48 md:h-56 rounded-[28px] overflow-hidden shadow-xl border-2 border-[#F6F0E6] cursor-pointer group"
+                        className="relative h-32 md:h-40 rounded-[28px] overflow-hidden shadow-xl border-2 border-[#F6F0E6] cursor-pointer group"
                       >
                         <img
                           src={activeCategory.img}
@@ -359,7 +359,7 @@ function HomeContent() {
           </div>
 
           {/* Indicadores */}
-          <div className="flex justify-center items-center gap-2 mt-6 md:mt-8">
+          <div className="flex justify-center items-center gap-2 mt-3 md:mt-4">
             {allCategories.map((_, idx) => (
               <motion.button
                 key={idx}
