@@ -97,43 +97,23 @@ export default function InformacionLugar() {
           const lineas = text.split("\n");
 
           for (let i = 1; i < lineas.length; i++) {
-            const valores = lineas[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-            
-            if (valores) {
-              const nombreLugar = valores[0].replace(/"/g, "");
-              
-              if (nombreLugar === nombreBuscado) {
-                lugarEncontrado = {
-                  nombre: nombreLugar,
-                  categoria: valores[1]?.replace(/"/g, "") || "",
-                  direccion: valores[2]?.replace(/"/g, "") || "",
-                  latitud: parseFloat(valores[3]) || 0,
-                  longitud: parseFloat(valores[4]) || 0,
-                  tiempoEstancia: parseInt(valores[5]) || 0,
-                  costoEstimado: valores[6]?.replace(/"/g, "") || "",
-                  notaIA: valores[7]?.replace(/"/g, "") || "",
-                };
-                break;
-              }
-            }
-=======
-        for (let i = 1; i < lineas.length; i++) {
-          if (!lineas[i].trim()) continue;
-          const valores = parseCSVLine(lineas[i]);
-          const nombreLugar = valores[0];
+            if (!lineas[i].trim()) continue;
+            const valores = parseCSVLine(lineas[i]);
+            const nombreLugar = valores[0];
 
-          if (nombreLugar === nombreBuscado) {
-            setLugar({
-              nombre: nombreLugar,
-              categoria: valores[1] || "",
-              direccion: valores[2] || "",
-              latitud: parseFloat((valores[3] || "0").replace(',', '.')) || 0,
-              longitud: parseFloat((valores[4] || "0").replace(',', '.')) || 0,
-              tiempoEstancia: parseInt(valores[5] || "0") || 0,
-              costoEstimado: valores[6] || "",
-              notaIA: valores[7] || "",
-            });
-            break;
+            if (nombreLugar === nombreBuscado) {
+              lugarEncontrado = {
+                nombre: nombreLugar,
+                categoria: valores[1] || "",
+                direccion: valores[2] || "",
+                latitud: parseFloat((valores[3] || "0").replace(',', '.')) || 0,
+                longitud: parseFloat((valores[4] || "0").replace(',', '.')) || 0,
+                tiempoEstancia: parseInt(valores[5] || "0") || 0,
+                costoEstimado: valores[6] || "",
+                notaIA: valores[7] || "",
+              };
+              break;
+            }
           }
         }
 

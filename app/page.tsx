@@ -24,8 +24,6 @@ const ALL_CATEGORIES: Category[] = [
   { name: "Casas de Cambio", img: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1528" },
   { name: "Hospitales", img: "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=1700" },
   { name: "Médico", img: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&q=80&w=1528" },
-=======
-  { name: "Eventos", img: "https://noticiasgdl.com/wp-content/uploads/2024/06/feria-san-pedro-tlaquepaque-gobierno.jpg" },
 ];
 
 const dates: DateInfo[] = [
@@ -553,7 +551,7 @@ function HomeContent() {
             time="13:00"
             tHome={tHome}
           />
-          <MatchItem 
+          <MatchItem
             location="GDL"
             date="11 de Junio"
             team1="Corea"
@@ -563,6 +561,22 @@ function HomeContent() {
             time="20:00"
             tHome={tHome}
           />
+          {/* PITZBOT — IA de Itinerarios */}
+          {(() => {
+            let pitzUrl = 'http://69.30.204.56:3003';
+            try {
+              const raw = localStorage.getItem('pitzbol_user');
+              if (raw) { const uid = JSON.parse(raw).uid; if (uid) pitzUrl = `http://69.30.204.56:3003?uid=${uid}`; }
+            } catch {}
+            return (
+              <div className="bg-white rounded-3xl p-4 shadow-lg border border-gray-100 relative overflow-hidden hover:shadow-xl transition-all duration-300">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h2 className="text-base font-bold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                        PitzBot
+                      </h2>
+                      <p className="text-xs text-gray-600 font-medium">Crear itinerario con IA</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-[#769C7B]">
