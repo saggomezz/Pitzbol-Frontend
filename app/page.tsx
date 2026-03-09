@@ -319,7 +319,7 @@ function HomeContent() {
                         <img
                           src={activeCategory.img}
                           alt={getCategoryName(activeCategory.name)}
-                          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${activeCategory.name === "Fútbol" ? "[object-position:center_75%]" : "object-center"}`}
+                          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${activeCategory.name === "Fútbol" ? "[object-position:center_75%]" : activeCategory.name === "Arte" ? "[object-position:center_70%]" : "object-center"}`}
                           loading="lazy"
                         />
 
