@@ -135,8 +135,8 @@ export default function BookTourPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Redirigir al pago
-        router.push(`/tours/pago/${data.bookingId}`);
+        // Redirigir a la página de confirmación de que la solicitud fue enviada
+        router.push(`/tours/confirmacion/${data.bookingId}`);
       } else {
         alert("Error al crear la reserva: " + (data.message || "Error desconocido"));
       }

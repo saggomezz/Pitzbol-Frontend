@@ -114,6 +114,12 @@ export default function TourPaymentPage() {
       return;
     }
 
+    const token = localStorage.getItem("pitzbol_token");
+    if (!token) {
+      setError("Tu sesión ha expirado. Por favor inicia sesión de nuevo.");
+      return;
+    }
+
     setProcessing(true);
     setError(null);
 
@@ -125,6 +131,7 @@ export default function TourPaymentPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             amount: booking.total * 100, // Convertir a centavos
@@ -132,6 +139,7 @@ export default function TourPaymentPage() {
             customerId: user?.uid,
             paymentMethodId: selectedCard,
             bookingId: booking.id,
+            userId: user?.uid,
           }),
         }
       );
@@ -147,6 +155,7 @@ export default function TourPaymentPage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           status: "pagado",
