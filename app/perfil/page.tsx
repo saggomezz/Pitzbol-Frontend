@@ -10,6 +10,7 @@ import { FiAward, FiCamera, FiCheck, FiDollarSign, FiEdit2, FiGlobe, FiMail, FiM
   FiPlus, FiShield, FiUser, FiX, FiCreditCard
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
+import { getItinerariosUsuario, type ItinerarioGuardado } from "@/lib/itinerariosApi";
 
 import WalletModal from "@/app/components/WalletModal";
 
@@ -141,6 +142,9 @@ export default function PerfilDetallado() {
   const [guardando, setGuardando] = useState(false);
   const [exito, setExito] = useState("");
   const [error, setError] = useState("");
+  const [itinerarios, setItinerarios] = useState<ItinerarioGuardado[]>([]);
+  const [loadingItin, setLoadingItin] = useState(false);
+  const [expandedItinId, setExpandedItinId] = useState<string | null>(null);
   const [mostrarNotificacionAprobado, setMostrarNotificacionAprobado] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
 
@@ -264,6 +268,14 @@ export default function PerfilDetallado() {
         console.error("Error de sincronización con Pitzbol Server:", error);
       }
       setLoading(false);
+      // Cargar itinerarios guardados en Firebase
+      if (userLocal.uid) {
+        setLoadingItin(true);
+        getItinerariosUsuario(userLocal.uid, userLocal.role || 'turista')
+          .then(setItinerarios)
+          .catch(() => {})
+          .finally(() => setLoadingItin(false));
+      }
     };
     cargarDatos();
   }, []);
@@ -703,16 +715,18 @@ export default function PerfilDetallado() {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
 
     try {
-      const response = await fetch('http://localhost:3001/api/guides/update', {
+      const token = localStorage.getItem('pitzbol_token');
+      const response = await fetch(`${API_BASE}/api/guides/update`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           uid: userLocal.uid,
-          categorias: especialidadesTemp 
+          categorias: especialidadesTemp,
         })
       });
-      
-      // TODO: backend debe proteger este endpoint; incluir credenciales y token si existe
 
       if (response.ok) {
         setEspecialidades([...especialidadesTemp]);
@@ -864,13 +878,18 @@ export default function PerfilDetallado() {
 
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-gradient-to-br from-[#F6F0E6] to-[#FDFCF9]">
-      <motion.div 
+      <motion.div
         animate={{ rotate: 360 }}
         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         className="w-16 h-16 border-4 border-[#0D601E] border-t-transparent rounded-full"
       />
     </div>
   );
+
+  if (!perfil) {
+    if (typeof window !== 'undefined') window.location.replace('/login');
+    return null;
+  }
 
   const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1919,6 +1938,99 @@ export default function PerfilDetallado() {
                       {t('explore')}
                     </button>
                   </div>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Mis Itinerarios */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]"
+            >
+              <div className="mb-5 flex items-start justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Itinerarios</h3>
+                  <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">Generados con PitzBot</p>
+                </div>
+                <a
+                  href={`http://69.30.204.56:3003${perfil?.id ? `?uid=${perfil.id}` : ''}`}
+                  title="Nuevo itinerario"
+                  className="w-9 h-9 rounded-xl bg-[#1A4D2E] text-white flex items-center justify-center hover:bg-[#0D601E] transition-colors shrink-0"
+                >
+                  <FiPlus size={18} />
+                </a>
+              </div>
+              {loadingItin ? (
+                <div className="flex items-center gap-2 text-[#81C784] text-sm py-4">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#81C784] border-t-transparent" />
+                  <span>Cargando itinerarios...</span>
+                </div>
+              ) : itinerarios.length === 0 ? (
+                <div className="py-8 flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-[#F1F8F6] rounded-xl flex items-center justify-center mb-3 border border-[#E0F2F1]">
+                    <FiMap size={22} className="text-[#81C784]" />
+                  </div>
+                  <p className="text-sm text-[#81C784]">Aún no tienes itinerarios guardados.</p>
+                  <a href="http://69.30.204.56:3003" className="mt-3 text-xs font-semibold text-[#1A4D2E] underline">
+                    Crear con PitzBot →
+                  </a>
+                </div>
+              ) : expandedItinId ? (
+                (() => {
+                  const it = itinerarios.find(i => i.id === expandedItinId)!;
+                  const fechaLabel = it.fecha
+                    ? new Date(it.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                    : it.fecha;
+                  return (
+                    <div>
+                      <button
+                        onClick={() => setExpandedItinId(null)}
+                        className="text-xs text-[#1A4D2E] font-semibold hover:underline mb-4 flex items-center gap-1"
+                      >
+                        ← Volver a mis itinerarios
+                      </button>
+                      <p className="font-bold text-[#1A4D2E] text-base mb-1">Itinerario para {fechaLabel}</p>
+                      <div className="flex flex-wrap gap-3 mb-4">
+                        {it.meta?.duration && <span className="text-xs bg-[#E0F2F1] text-[#1A4D2E] px-2 py-0.5 rounded-full">{it.meta.duration}</span>}
+                        {it.stops && <span className="text-xs bg-[#E0F2F1] text-[#1A4D2E] px-2 py-0.5 rounded-full">{it.stops.length} paradas</span>}
+                      </div>
+                      <div className="space-y-2">
+                        {it.stops?.map((s, i) => (
+                          <div key={i} className="border border-[#E0F2F1] rounded-xl p-3">
+                            <div className="flex justify-between items-start">
+                              <p className="font-semibold text-[#1A4D2E] text-sm">{s.nombre}</p>
+                              <span className="text-xs text-gray-400 whitespace-nowrap ml-2">{s.horaLlegada} – {s.horaSalida}</span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">{s.direccion}</p>
+                            {s.costo && <p className="text-xs text-[#81C784] mt-0.5">{s.costo}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="space-y-3">
+                  {itinerarios.map(it => {
+                    const fechaLabel = it.fecha
+                      ? new Date(it.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                      : it.fecha;
+                    return (
+                      <button
+                        key={it.id}
+                        onClick={() => setExpandedItinId(it.id)}
+                        className="w-full text-left border border-[#E0F2F1] rounded-xl p-4 hover:border-[#81C784] hover:bg-[#F9FFFE] transition-colors"
+                      >
+                        <p className="font-bold text-[#1A4D2E] text-sm leading-snug">Itinerario para {fechaLabel}</p>
+                        <div className="flex flex-wrap gap-3 mt-1.5">
+                          {it.meta?.duration && <span className="text-xs text-gray-500">⏱ {it.meta.duration}</span>}
+                          {it.stops && <span className="text-xs text-gray-500">📍 {it.stops.length} paradas</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </motion.div>

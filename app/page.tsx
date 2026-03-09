@@ -7,9 +7,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import Papa from 'papaparse';
 import { Suspense, useEffect, useRef, useState } from "react";
-import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
+import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi";
-import { construirItinerarioElegido, ordenarPorCercania } from '../lib/pitzbol-engine';
 import WelcomeNotification from './components/WelcomeNotification';
 
 type Category = { name: string; img: string; };
@@ -25,6 +24,8 @@ const ALL_CATEGORIES: Category[] = [
   { name: "Casas de Cambio", img: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1528" },
   { name: "Hospitales", img: "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=1700" },
   { name: "Médico", img: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&q=80&w=1528" },
+=======
+  { name: "Eventos", img: "https://noticiasgdl.com/wp-content/uploads/2024/06/feria-san-pedro-tlaquepaque-gobierno.jpg" },
 ];
 
 const dates: DateInfo[] = [
@@ -414,23 +415,6 @@ function HomeContent() {
   // ESTADOS PARA LA IA
   const [itinerarioTxt, setItinerarioTxt] = useState("");
   const [loadingIA, setLoadingIA] = useState(true);
-  const [lugaresBD, setLugaresBD] = useState<Lugar[]>([]);
-  const [seleccionados, setSeleccionados] = useState<Lugar[]>([]);
-  const [mostrarOpciones, setMostrarOpciones] = useState(false);
-  const [itinerarioFinal, setItinerarioFinal] = useState("");
-
-  // Cargar la base de datos al inicio
-  useEffect(() => {
-    const cargarDatos = async () => {
-      const res = await fetch('/datosLugares.csv');
-      const reader = res.body?.getReader();
-      const result = await reader?.read();
-      const csv = new TextDecoder('utf-8').decode(result?.value);
-      const { data } = Papa.parse(csv, { header: true, dynamicTyping: true, skipEmptyLines: true });
-      setLugaresBD((data as Lugar[]).filter(l => l.nombre));
-    };
-    cargarDatos();
-  }, []);
 
   // Detectar si el usuario acaba de iniciar sesión
   useEffect(() => {
@@ -455,24 +439,6 @@ function HomeContent() {
       }
     }
   }, []);
-
-  const toggleLugar = (lugar: Lugar) => {
-    setSeleccionados(prev => {
-      const existe = prev.find(s => s.nombre === lugar.nombre);
-      
-      if (existe) {
-        return prev.filter(s => s.nombre !== lugar.nombre);
-      } else {
-        return [...prev, lugar];
-      }
-    });
-  };
-
-  const finalizarRuta = () => {
-    const texto = construirItinerarioElegido(seleccionados);
-    setItinerarioFinal(texto);
-    setMostrarOpciones(false);
-  };
 
   const cargarItinerarioHome = async () => {
     setLoadingIA(true);
@@ -561,21 +527,6 @@ function HomeContent() {
     return () => clearTimeout(timer);
   }, []);
   
-  useEffect(() => {
-    if (mostrarOpciones && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const miPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setLugaresBD((prevLugares) => ordenarPorCercania(prevLugares, miPos));
-          console.log("Lugares ordenados por tu GPS");
-        },
-        (error) => {
-          console.log("No se pudo obtener ubicación, usando orden alfabético.");
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
-    }
-  }, [mostrarOpciones]); 
 
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
@@ -612,70 +563,23 @@ function HomeContent() {
             time="20:00"
             tHome={tHome}
           />
-          {/* CONTENEDOR DE ITINERARIO */}
-          <div className="bg-[#FAF9F2] rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm min-h-[280px] md:min-h-[300px] border border-[#1A4D2E]/10 flex flex-col relative">
-            <h2 className="font-black text-[#1A4D2E] uppercase text-[10px] md:text-xs tracking-widest mb-3 md:mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-              {itinerarioFinal ? tHome('yourChosenRoute') : tHome('buildYourItinerary')}
-            </h2>
-
-            {!itinerarioFinal && !mostrarOpciones && (
-              <button 
-                onClick={() => setMostrarOpciones(true)}
-                className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#769C7B]/30 rounded-2xl hover:bg-[#F6F0E6] transition-all group"
-              >
-                <FiMapPin className="text-[#769C7B] group-hover:text-[#F00808] mb-2" size={24} />
-                <p className="text-[11px] font-bold text-[#769C7B] uppercase">{tHome('pressToChoosePlaces')}</p>
-              </button>
-            )}
-
-            {mostrarOpciones && (
-              <div className="flex-1 flex flex-col">
-                <div className="flex-1 overflow-y-auto max-h-60 mb-4 space-y-2 pr-2 custom-scrollbar">
-                  {lugaresBD.map((lugar) => (
-                    <div 
-                      key={lugar.nombre}
-                      onClick={() => toggleLugar(lugar)}
-                      className={`p-3 rounded-xl cursor-pointer border transition-all flex justify-between items-center ${
-                        seleccionados.find(s => s.nombre === lugar.nombre) 
-                        ? "bg-[#1A4D2E] border-[#1A4D2E] text-white" 
-                        : "bg-white border-[#F6F0E6] text-[#1A4D2E]"
-                      }`}
-                    >
-                      <span className="text-[11px] font-bold uppercase">{lugar.nombre}</span>
-                      <span className="text-[9px] opacity-70">{lugar.tiempoEstancia} min</span>
                     </div>
-                  ))}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#769C7B]">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>IA disponible</span>
+                  </div>
+                  <a
+                    href={pitzUrl}
+                    className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <span>Crear Itinerario</span>
+                    <span>→</span>
+                  </a>
                 </div>
-                <button
-                  onClick={finalizarRuta}
-                  disabled={seleccionados.length === 0} 
-                  className={`w-full py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
-                    seleccionados.length > 0
-                      ? "bg-[#F00808] text-white shadow-lg active:scale-95" 
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  {seleccionados.length > 0
-                    ? `${tHome('generateItinerary')} (${seleccionados.length})`
-                    : tHome('selectAtLeastOnePlace')}
-                </button>
               </div>
-            )}
-
-            {itinerarioFinal && (
-              <div className="flex-1 flex flex-col">
-                <div className="text-[13px] leading-relaxed text-[#1A4D2E]/80 font-medium whitespace-pre-wrap flex-1 overflow-y-auto max-h-64">
-                  {itinerarioFinal}
-                </div>
-                <button 
-                  onClick={() => {setItinerarioFinal(""); setSeleccionados([]);}}
-                  className="mt-4 text-[10px] font-bold text-[#769C7B] uppercase hover:text-[#F00808]"
-                >
-                  Reiniciar selección
-                </button>
-              </div>
-            )}
-          </div>
+            );
+          })()}
         </div>
 
         <RecommendationsComponent recommendations={recommendations} />

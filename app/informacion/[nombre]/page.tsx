@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2 } from "react-icons/fi";
@@ -20,9 +20,32 @@ interface Lugar {
   notaIA: string;
 }
 
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
 export default function InformacionLugar() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromItinerario = searchParams.get('from') === 'itinerario';
+  const backUrl = searchParams.get('back');
   const [lugar, setLugar] = useState<Lugar | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -93,6 +116,24 @@ export default function InformacionLugar() {
                 break;
               }
             }
+=======
+        for (let i = 1; i < lineas.length; i++) {
+          if (!lineas[i].trim()) continue;
+          const valores = parseCSVLine(lineas[i]);
+          const nombreLugar = valores[0];
+
+          if (nombreLugar === nombreBuscado) {
+            setLugar({
+              nombre: nombreLugar,
+              categoria: valores[1] || "",
+              direccion: valores[2] || "",
+              latitud: parseFloat((valores[3] || "0").replace(',', '.')) || 0,
+              longitud: parseFloat((valores[4] || "0").replace(',', '.')) || 0,
+              tiempoEstancia: parseInt(valores[5] || "0") || 0,
+              costoEstimado: valores[6] || "",
+              notaIA: valores[7] || "",
+            });
+            break;
           }
         }
 
@@ -207,10 +248,42 @@ export default function InformacionLugar() {
       {/* Header con imagen de fondo */}
       <div className={styles.heroHeader}>
         <div className={styles.heroOverlay}></div>
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '1.25rem',
+            left: 0,
+            right: 0,
+            textAlign: 'center',
+            zIndex: 2,
+            padding: '0 5rem',
+            pointerEvents: 'none',
+          }}
+        >
+          <p style={{ color: 'white', fontSize: '1.25rem', fontWeight: 700, margin: 0, textShadow: '0 2px 8px rgba(0,0,0,0.5)', lineHeight: 1.3 }}>
+            {lugar.nombre}
+          </p>
+        </div>
         <div className={styles.heroContent}>
-          <button onClick={() => router.back()} className={styles.backBtn}>
-            <FiArrowLeft />
-          </button>
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={() => {
+                if (fromItinerario && backUrl) {
+                  window.location.href = decodeURIComponent(backUrl);
+                } else {
+                  router.back();
+                }
+              }}
+              className={styles.backBtn}
+            >
+              <FiArrowLeft />
+            </button>
+            {fromItinerario && (
+              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.85)', fontWeight: 600, letterSpacing: '0.05em', textAlign: 'center', lineHeight: 1.2 }}>
+                Itinerario
+              </span>
+            )}
+          </div>
           <div className={styles.heroActions}>
             <motion.button 
               onClick={toggleFavorite} 
@@ -311,6 +384,33 @@ export default function InformacionLugar() {
               />
             </div>
           </div>
+
+          {/* Botón de regreso al itinerario */}
+          {fromItinerario && backUrl && (
+            <div style={{ marginTop: '2rem' }}>
+              <button
+                onClick={() => { window.location.href = decodeURIComponent(backUrl); }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  width: '100%',
+                  padding: '0.875rem 1.5rem',
+                  backgroundColor: '#1A4D2E',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.75rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  justifyContent: 'center',
+                }}
+              >
+                <FiArrowLeft />
+                Volver al itinerario
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
