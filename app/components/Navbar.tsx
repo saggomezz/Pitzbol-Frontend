@@ -156,7 +156,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         <nav className="flex justify-between items-center bg-[#F6F0E6] px-3 md:px-8 h-16 md:h-20 lg:h-24 sticky top-0 z-[100] shadow-sm text-[#1A4D2E]">
             {/* LOGO Y NOMBRE */}
             <div className="flex items-center h-full gap-1">
-                <motion.div whileHover={{ rotate: 190 }} transition={{ duration: 2.0, ease: "easeInOut" }} className="relative h-14 w-14 md:h-20 md:w-20 lg:h-28 lg:w-28 flex-shrink-0 cursor-pointer">
+                <motion.div whileHover={{ rotate: 190 }} transition={{ duration: 2.0, ease: "easeInOut" }} className="relative h-16 w-16 md:h-24 md:w-24 lg:h-32 lg:w-32 flex-shrink-0 cursor-pointer">
                     <Link href="/"><Image src={imglogo} alt="logo" fill className="object-contain" priority /></Link>
                 </motion.div>
                 <div className="relative flex items-center h-full pointer-events-none">
