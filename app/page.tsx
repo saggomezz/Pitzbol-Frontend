@@ -326,7 +326,7 @@ function HomeContent() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-70 group-hover:opacity-50 transition-opacity duration-300"></div>
 
                         <div className="absolute inset-0 flex flex-col items-center justify-end p-6 text-center">
-                          <h3 className="text-2xl md:text-3xl font-black text-white uppercase drop-shadow-lg leading-tight" style={{ fontFamily: "var(--font-jockey)" }}>
+                          <h3 className="text-lg md:text-xl font-black text-white uppercase drop-shadow-lg leading-tight tracking-wide" style={{ fontFamily: "var(--font-jockey)" }}>
                             {getCategoryName(activeCategory.name)}
                           </h3>
                           <p className="text-xs md:text-sm text-white/80 mt-2 font-medium">Descubre más →</p>
