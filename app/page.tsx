@@ -7,13 +7,41 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import Papa from 'papaparse';
 import { Suspense, useEffect, useRef, useState } from "react";
-import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
+import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi";
 import WelcomeNotification from './components/WelcomeNotification';
+import { getPlaceImageByCategory } from '@/lib/placeImages';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
-type Recommendation = { name: string; img: string | null; };
+type RecommendedPlace = { name: string; img: string | null; categoria?: string; };
+
+const INTERES_TO_CATEGORIES: Record<string, string[]> = {
+  "Arte e Historia": ["Arte e Historia"],
+  "Arquitectura": ["Arquitectura"],
+  "Cultura": ["Cultura"],
+  "Gastronomía": ["Gastronomía", "Gastronomía Mexicana"],
+  "Deporte Fútbol": ["Fútbol"],
+  "Música": ["Música"],
+  "Naturaleza": ["Naturaleza"],
+  "Fotografía": ["Fotografía"],
+  "Vida Nocturna": ["Vida Nocturna"],
+  "Compras": ["Compras"],
+  "Museos": ["Museos"],
+  "Tours Guiados": ["Cultura", "Arte e Historia", "Museos"],
+  "Aventura": ["Aventura"],
+  "Religión": ["Cultura"],
+  "Mercados Locales": ["Mercados Locales"],
+};
+
+const DEFAULT_RECOMMENDATIONS: RecommendedPlace[] = [
+  { name: "Centro de Guadalajara", img: "https://www.liderempresarial.com/wp-content/uploads/2025/07/Asi-se-transformara-el-centro-de-Guadalajara-%C2%BFcuando-estara-listo.jpg" },
+  { name: "Tlaquepaque", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
+  { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
+  { name: "Hueso Restaurante", img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800", categoria: "Gastronomía" },
+  { name: "Mutante Restaurante", img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800", categoria: "Gastronomía" },
+  { name: "Cuerno Andares", img: "https://images.unsplash.com/photo-1484659619207-9165d119dafe?auto=format&fit=crop&q=80&w=800", categoria: "Gastronomía" },
+];
 
 const ALL_CATEGORIES: Category[] = [
   { name: "Fútbol", img: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&q=80&w=2070" },
@@ -43,11 +71,6 @@ interface MatchProps {
   flag2: string;
   time: string;
 }
-const recommendations: Recommendation[] = [
-  { name: "Centro de Guadalajara", img: "https://www.liderempresarial.com/wp-content/uploads/2025/07/Asi-se-transformara-el-centro-de-Guadalajara-%C2%BFcuando-estara-listo.jpg" },
-  { name: "Tlaquepaque", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
-  { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
-];
 
 const DateSlider = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false); // Estado para el modal
@@ -177,7 +200,8 @@ function HomeContent() {
   const router = useRouter();
   const hasCheckedWelcome = useRef(false);
   const [isNewWelcome, setIsNewWelcome] = useState(false);
-  
+  const [recommendedPlaces, setRecommendedPlaces] = useState<RecommendedPlace[]>(DEFAULT_RECOMMENDATIONS);
+
   // Traducciones
   const tCat = useTranslations('categories');
   const tHome = useTranslations('home');
@@ -382,27 +406,29 @@ function HomeContent() {
     );
   };
 
-  const RecommendationsComponent = ({ recommendations }: { recommendations: any[] }) => {
-    const getPlaceName = (name: string) => {
-      const placeMap: { [key: string]: string } = {
-        "Centro de Guadalajara": tPlaces('centralGuadalajara'),
-        "Tlaquepaque": tPlaces('tlaquepaque'),
-        "Tequila, Jalisco": tPlaces('tequila')
-      };
-      return placeMap[name] || name;
-    };
-
+  const RecommendationsComponent = ({ places }: { places: RecommendedPlace[] }) => {
     return (
       <div className="flex flex-col w-full md:w-3/5">
         <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-[#1A4D2E] px-1">{tHome('recommendations')}</h2>
         <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
-          {recommendations.map((place) => (
+          {places.map((place) => (
             <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
               <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
-                {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={getPlaceName(place.name)} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{tCommon('noImage')}</div>}
-                <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#1A4D2E] text-white px-3 py-1 rounded-full shadow-lg">{tCommon('search')}</button></div>
+                {place.img
+                  ? <div className="absolute inset-0"><Image src={place.img} alt={place.name} fill className="object-cover" /></div>
+                  : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{tCommon('noImage')}</div>
+                }
+                {/* Botón Ubicar — solo visible al hover */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/25 z-10">
+                  <Link href="/mapa">
+                    <button className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors">
+                      <FiMapPin size={14} />
+                      Ubicar
+                    </button>
+                  </Link>
+                </div>
               </div>
-              <div className="p-4"><h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{getPlaceName(place.name)}</h3></div>
+              <div className="p-3"><h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3></div>
             </div>
           ))}
         </div>
@@ -437,6 +463,66 @@ function HomeContent() {
       }
     }
   }, []);
+
+  const cargarRecomendaciones = async () => {
+    try {
+      const userLocal = localStorage.getItem('pitzbol_user');
+      if (!userLocal) return;
+
+      const user = JSON.parse(userLocal);
+      const intereses: string[] = user.especialidades || [];
+      if (!intereses.length) return;
+
+      const targetCategories = new Set<string>();
+      intereses.forEach((interes: string) => {
+        (INTERES_TO_CATEGORIES[interes] || []).forEach((cat: string) => targetCategories.add(cat));
+      });
+      if (targetCategories.size === 0) return;
+
+      const res = await fetch('/datosLugares.csv');
+      const text = await res.text();
+      const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
+
+      const scored = (data as any[])
+        .filter((row) => row['Nombre del Lugar'] && row['Categoría'])
+        .map((row) => {
+          const placeCategories = (row['Categoría'] as string).split(',').map((c: string) => c.trim());
+          const matches = placeCategories.filter((c: string) => targetCategories.has(c)).length;
+          return { row, matches };
+        })
+        .filter(({ matches }) => matches > 0)
+        .sort((a, b) => b.matches - a.matches);
+
+      if (scored.length === 0) return;
+
+      // Mezclar dentro del mismo puntaje para variar resultados
+      const shuffled: typeof scored = [];
+      let i = 0;
+      while (i < scored.length) {
+        const score = scored[i].matches;
+        const group: typeof scored = [];
+        while (i < scored.length && scored[i].matches === score) { group.push(scored[i]); i++; }
+        for (let j = group.length - 1; j > 0; j--) {
+          const k = Math.floor(Math.random() * (j + 1));
+          [group[j], group[k]] = [group[k], group[j]];
+        }
+        shuffled.push(...group);
+      }
+
+      const top6: RecommendedPlace[] = shuffled.slice(0, 6).map(({ row }) => {
+        const firstCat = (row['Categoría'] as string).split(',')[0].trim();
+        return { name: row['Nombre del Lugar'] as string, img: getPlaceImageByCategory(firstCat), categoria: firstCat };
+      });
+
+      if (top6.length < 6) {
+        top6.push(...DEFAULT_RECOMMENDATIONS.slice(0, 6 - top6.length));
+      }
+
+      setRecommendedPlaces(top6);
+    } catch {
+      // Mantener defaults en caso de error
+    }
+  };
 
   const cargarItinerarioHome = async () => {
     setLoadingIA(true);
@@ -485,7 +571,8 @@ function HomeContent() {
   };
   useEffect(() => {
     cargarItinerarioHome();
-    
+    cargarRecomendaciones();
+
     // Detectar si viene de un login exitoso
     const checkWelcome = () => {
       if (hasCheckedWelcome.current) return;
@@ -596,7 +683,7 @@ function HomeContent() {
           })()}
         </div>
 
-        <RecommendationsComponent recommendations={recommendations} />
+        <RecommendationsComponent places={recommendedPlaces} />
       </main>
     </div>
   );
