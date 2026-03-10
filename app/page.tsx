@@ -184,6 +184,61 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time, tHome }: 
   </div>
 );
 
+// Componente de tarjeta con fotos ciclables en hover
+function PlaceCard2({ place, photos, noImageText }: {
+  place: RecommendedPlace;
+  photos: string[];
+  noImageText: string;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [photoIdx, setPhotoIdx] = useState(0);
+
+  useEffect(() => {
+    if (!isHovered || photos.length <= 1) { setPhotoIdx(0); return; }
+    const t = setInterval(() => setPhotoIdx(p => (p + 1) % photos.length), 1800);
+    return () => clearInterval(t);
+  }, [isHovered, photos.length]);
+
+  const displayImg = isHovered && photos.length > 0 ? photos[photoIdx] : place.img;
+
+  return (
+    <div
+      className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => { setIsHovered(false); setPhotoIdx(0); }}
+    >
+      <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
+        {displayImg
+          ? <div className="absolute inset-0">
+              <img src={displayImg} alt={place.name} className="w-full h-full object-cover transition-opacity duration-500" />
+            </div>
+          : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
+        }
+        {/* Dots indicador (solo con múltiples fotos y hover) */}
+        {isHovered && photos.length > 1 && (
+          <div className="absolute bottom-9 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
+            {photos.map((_, i) => (
+              <div key={i} className={`rounded-full transition-all duration-300 ${i === photoIdx ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/60'}`} />
+            ))}
+          </div>
+        )}
+        {/* Botón Ubicar */}
+        <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 z-10">
+          <Link href="/mapa">
+            <button className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors">
+              <FiMapPin size={14} />
+              Ubicar
+            </button>
+          </Link>
+        </div>
+      </div>
+      <div className="p-3">
+        <h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#FDFCF9] flex items-center justify-center font-bold">Cargando...</div>}>
@@ -201,6 +256,7 @@ function HomeContent() {
   const hasCheckedWelcome = useRef(false);
   const [isNewWelcome, setIsNewWelcome] = useState(false);
   const [recommendedPlaces, setRecommendedPlaces] = useState<RecommendedPlace[]>(DEFAULT_RECOMMENDATIONS);
+  const [recommendedPhotos, setRecommendedPhotos] = useState<Record<string, string[]>>({});
 
   // Traducciones
   const tCat = useTranslations('categories');
@@ -412,24 +468,12 @@ function HomeContent() {
         <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-[#1A4D2E] px-1">{tHome('recommendations')}</h2>
         <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
           {places.map((place) => (
-            <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
-              <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
-                {place.img
-                  ? <div className="absolute inset-0"><Image src={place.img} alt={place.name} fill className="object-cover" /></div>
-                  : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{tCommon('noImage')}</div>
-                }
-                {/* Botón Ubicar — solo visible al hover */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/25 z-10">
-                  <Link href="/mapa">
-                    <button className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors">
-                      <FiMapPin size={14} />
-                      Ubicar
-                    </button>
-                  </Link>
-                </div>
-              </div>
-              <div className="p-3"><h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3></div>
-            </div>
+            <PlaceCard2
+              key={place.name}
+              place={place}
+              photos={recommendedPhotos[place.name] || []}
+              noImageText={tCommon('noImage')}
+            />
           ))}
         </div>
       </div>
@@ -611,7 +655,22 @@ function HomeContent() {
     
     return () => clearTimeout(timer);
   }, []);
-  
+
+  // Fetch fotos de backend cuando cambian las recomendaciones
+  useEffect(() => {
+    if (!recommendedPlaces.length) return;
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+    recommendedPlaces.forEach(place => {
+      fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(place.name)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.fotos?.length > 0) {
+            setRecommendedPhotos(prev => ({ ...prev, [place.name]: data.fotos.slice(0, 2) }));
+          }
+        })
+        .catch(() => {});
+    });
+  }, [recommendedPlaces]);
 
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">

@@ -49,12 +49,23 @@ export default function InformacionLugar() {
   const [lugar, setLugar] = useState<Lugar | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
-  
+  const [fotos, setFotos] = useState<string[]>([]);
+
   const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
 
   // Registrar vista del lugar
   const nombreLugar = params.nombre ? decodeURIComponent(params.nombre as string) : null;
   usePlaceView(nombreLugar);
+
+  // Fetch fotos del lugar
+  useEffect(() => {
+    if (!nombreLugar) return;
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+    fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(nombreLugar)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.fotos?.length > 0) setFotos(data.fotos.slice(0, 2)); })
+      .catch(() => {});
+  }, [nombreLugar]);
 
   useEffect(() => {
     const cargarLugar = async () => {
@@ -227,7 +238,14 @@ export default function InformacionLugar() {
     <div className={styles.container}>
       {/* Header con imagen de fondo */}
       <div className={styles.heroHeader}>
-        <div className={styles.heroOverlay}></div>
+        {fotos.length > 0 && (
+          <img
+            src={fotos[0]}
+            alt={lugar.nombre}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6, zIndex: 0 }}
+          />
+        )}
+        <div className={styles.heroOverlay} style={{ zIndex: 1 }}></div>
         <div
           style={{
             position: 'absolute',
@@ -301,6 +319,17 @@ export default function InformacionLugar() {
               />
             </div>
           </div>
+
+          {/* Galería de fotos */}
+          {fotos.length > 0 && (
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              {fotos.map((foto, idx) => (
+                <div key={idx} style={{ flex: 1, aspectRatio: '4/3', borderRadius: '0.875rem', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.15)' }}>
+                  <img src={foto} alt={`${lugar.nombre} foto ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Stats Cards */}
           <div className={styles.statsGrid}>
