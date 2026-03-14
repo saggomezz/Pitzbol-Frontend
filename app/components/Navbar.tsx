@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import {
     FiBriefcase, FiCalendar, FiClock, FiCreditCard, FiHeart, FiHome, FiInfo,
     FiLogOut, FiMapPin, FiMenu, FiMessageSquare, FiPlusCircle, FiSearch, FiShield, FiUser,
-    FiX, FiAward, FiFileText, FiCompass
+    FiX, FiAward, FiFileText, FiCompass, FiShoppingBag
 } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
@@ -40,6 +40,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const [user, setUser] = useState<User | null>(null);
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [showHistorialModal, setShowHistorialModal] = useState(false);
+    const [hasBusinessRequests, setHasBusinessRequests] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
     const t = useTranslations('navbar');
     const tRoles = useTranslations('roles');
@@ -61,6 +62,25 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         if (!isMenuOpen) return;
         const storedUser = localStorage.getItem("pitzbol_user");
         setUser(storedUser ? JSON.parse(storedUser) : null);
+
+        // Check if user has any business requests
+        const checkBusinessRequests = async () => {
+            const token = localStorage.getItem("pitzbol_token");
+            if (!token) return;
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/business/my-requests`, {
+                    credentials: "include",
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    setHasBusinessRequests((data.solicitudes?.length || 0) > 0);
+                }
+            } catch {
+                // Silently fail
+            }
+        };
+        checkBusinessRequests();
     }, [isMenuOpen]);
 
     // Determinar tipo de usuario para notificaciones
@@ -295,6 +315,16 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left">
                                         <FiCreditCard /> {t('myPayments')}
                                     </button>
+                                    {user && hasBusinessRequests && (
+                                        <Link
+                                            href="/negocio/mis-solicitudes"
+                                            onClick={() => setIsMenuOpen(false)}
+                                            className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left"
+                                        >
+                                            <FiShoppingBag className="text-[#0D601E]" />
+                                            <span>Gestionar mis negocios</span>
+                                        </Link>
+                                    )}
                                 </>
                             ) : (
                                 <>
@@ -326,6 +356,16 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                         <FiBriefcase className="text-[#0D601E] group-hover:text-[#F00808]" />
                                         <span className="text-[#1A4D2E] group-hover:text-[#F00808]">{t('publishBusiness')}</span>
                                     </button>
+                                    {user && hasBusinessRequests && (
+                                        <Link
+                                            href="/negocio/mis-solicitudes"
+                                            onClick={() => setIsMenuOpen(false)}
+                                            className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left"
+                                        >
+                                            <FiShoppingBag className="text-[#0D601E]" />
+                                            <span>Gestionar mis negocios</span>
+                                        </Link>
+                                    )}
                                 </>
                             )}
                             <div className="h-[1px] bg-gray-100 my-3 mx-2" />
