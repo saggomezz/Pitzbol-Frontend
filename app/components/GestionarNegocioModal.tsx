@@ -11,6 +11,8 @@ interface GestionarNegocioModalProps {
   accion: "aprobar" | "rechazar";
   loading?: boolean;
   message?: string;
+  motivoRechazo?: string;
+  onMotivoRechazoChange?: (value: string) => void;
 }
 
 const GestionarNegocioModal: React.FC<GestionarNegocioModalProps> = ({
@@ -20,6 +22,8 @@ const GestionarNegocioModal: React.FC<GestionarNegocioModalProps> = ({
   accion,
   loading = false,
   message,
+  motivoRechazo = "",
+  onMotivoRechazoChange,
 }) => {
   if (!open) return null;
 
@@ -63,6 +67,21 @@ const GestionarNegocioModal: React.FC<GestionarNegocioModalProps> = ({
               ? "¿Estás seguro de que deseas aprobar este negocio?"
               : "¿Estás seguro de que deseas rechazar este negocio?")}
         </p>
+        {!isAprobar && (
+          <div className="mb-5">
+            <label className="block text-xs font-semibold text-[#8B0000] mb-2">
+              Motivo del rechazo (opcional)
+            </label>
+            <textarea
+              value={motivoRechazo}
+              onChange={(e) => onMotivoRechazoChange?.(e.target.value)}
+              placeholder="Ejemplo: faltan documentos o la informacion esta incompleta"
+              disabled={loading}
+              className="w-full rounded-xl border border-[#F2A5A5] bg-white p-3 text-sm text-[#8B0000] placeholder:text-[#8B0000]/50 focus:outline-none focus:ring-2 focus:ring-[#F2A5A5] disabled:opacity-60"
+              rows={4}
+            />
+          </div>
+        )}
         <div className="flex justify-center gap-3 mt-6">
           <button
             onClick={onClose}
