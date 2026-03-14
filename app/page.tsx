@@ -555,7 +555,8 @@ function HomeContent() {
 
       const top6: RecommendedPlace[] = shuffled.slice(0, 6).map(({ row }) => {
         const firstCat = (row['Categoría'] as string).split(',')[0].trim();
-        return { name: row['Nombre del Lugar'] as string, img: getPlaceImageByCategory(firstCat), categoria: firstCat };
+        const csvImg = (row['Imagen'] as string)?.trim() || null;
+        return { name: row['Nombre del Lugar'] as string, img: csvImg || getPlaceImageByCategory(firstCat), categoria: firstCat };
       });
 
       if (top6.length < 6) {
