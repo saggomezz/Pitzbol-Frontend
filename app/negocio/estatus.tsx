@@ -123,6 +123,10 @@ export default function EstatusNegocioPage() {
       </div>
     );
 
+  const rejectionReason = business.rejectionReason || business.archivedReason;
+  const rejectionDate = business.rejectedAt || business.archivedAt;
+  const isRejected = business.status === "REJECTED" || !!rejectionReason || !!rejectionDate;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FDFCF9] to-[#F6F0E6] px-4 py-8 md:py-12">
       <div className="max-w-3xl mx-auto">
@@ -170,15 +174,15 @@ export default function EstatusNegocioPage() {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <div className={`px-4 py-2 rounded-full font-bold text-xs uppercase ${
-                      business.status === "PENDING"
+                        business.status === "PENDING"
                         ? "bg-[#FFF7E8] text-[#B56A00]"
-                        : business.status === "APPROVED"
+                          : business.status === "APPROVED"
                         ? "bg-[#E9F7EE] text-[#1F6B3A]"
                         : "bg-[#FDEAEA] text-[#8B0000]"
                     }`}>
-                      {business.status === "PENDING"
+                        {business.status === "PENDING"
                         ? "En revisión"
-                        : business.status === "APPROVED"
+                          : business.status === "APPROVED"
                         ? "Aprobado"
                         : "Rechazado"}
                     </div>
@@ -186,6 +190,32 @@ export default function EstatusNegocioPage() {
                 </div>
               </div>
             </motion.div>
+
+              {isRejected && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="mb-8 bg-[#FDEAEA] border border-[#F2A5A5] rounded-2xl p-6"
+                >
+                  <p className="text-sm font-semibold text-[#8B0000] mb-2">Solicitud rechazada</p>
+                  <p className="text-sm text-[#5E1A1A]">
+                    <span className="font-bold">Motivo:</span> {rejectionReason || "No se especificó un motivo."}
+                  </p>
+                  <p className="text-sm text-[#5E1A1A] mt-1">
+                    <span className="font-bold">Fecha de rechazo:</span>{" "}
+                    {rejectionDate
+                      ? new Date(rejectionDate).toLocaleString("es-MX", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "No disponible"}
+                  </p>
+                </motion.div>
+              )}
 
             {/* Descripción */}
             <motion.div
@@ -231,7 +261,7 @@ export default function EstatusNegocioPage() {
               className="flex gap-3"
             >
               <Link
-                href="/negocio/preview"
+                href={business?.id ? `/negocio/preview?id=${business.id}` : "/negocio/preview"}
                 className="flex-1 bg-[#0D601E] hover:bg-[#094d18] text-white font-bold py-3 px-6 rounded-full transition-colors text-center flex items-center justify-center gap-2"
               >
                 Ver detalles completos <FiArrowRight size={20} />
