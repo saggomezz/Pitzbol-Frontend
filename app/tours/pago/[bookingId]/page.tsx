@@ -55,15 +55,11 @@ export default function TourPaymentPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    // Check localStorage directly to avoid race condition with usePitzbolUser hook
-    const storedUser = localStorage.getItem("pitzbol_user");
-    if (!storedUser) {
+    if (!user) {
       alert("Debes iniciar sesión");
       router.push("/");
       return;
     }
-
-    const parsedUser = JSON.parse(storedUser);
 
     const fetchData = async () => {
       try {
@@ -85,7 +81,7 @@ export default function TourPaymentPage() {
         // Aquí deberías hacer una llamada al endpoint que devuelve las tarjetas guardadas
         // Por ahora, simulamos que hay tarjetas guardadas
         const cardsResponse = await fetch(
-          `${BACKEND_URL}/api/payments/cards/${parsedUser.uid}`
+          `${BACKEND_URL}/api/payments/cards/${user.uid}`
         );
         
         if (cardsResponse.ok) {
@@ -106,17 +102,11 @@ export default function TourPaymentPage() {
     if (bookingId) {
       fetchData();
     }
-  }, [bookingId, router]);
+  }, [bookingId, user, router]);
 
   const handlePayment = async () => {
     if (!selectedCard || !booking) {
       setError("Por favor selecciona una tarjeta");
-      return;
-    }
-
-    const token = localStorage.getItem("pitzbol_token");
-    if (!token) {
-      setError("Tu sesión ha expirado. Por favor inicia sesión de nuevo.");
       return;
     }
 
@@ -131,7 +121,6 @@ export default function TourPaymentPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             amount: booking.total * 100, // Convertir a centavos
@@ -139,7 +128,6 @@ export default function TourPaymentPage() {
             customerId: user?.uid,
             paymentMethodId: selectedCard,
             bookingId: booking.id,
-            userId: user?.uid,
           }),
         }
       );
@@ -155,7 +143,6 @@ export default function TourPaymentPage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           status: "pagado",

@@ -117,6 +117,10 @@ interface BusinessData {
     local?: string;
     referencias?: string;
   };
+  archivedReason?: string;
+  archivedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string | null;
 }
 
 type SectionKey = "solicitante" | "negocio" | "galeria";
@@ -139,6 +143,7 @@ export default function AdminViewBusinessPage() {
   });
   const [modalOpen, setModalOpen] = useState(false);
   const [modalAccion, setModalAccion] = useState<"aprobar" | "rechazar">("aprobar");
+  const [motivoRechazo, setMotivoRechazo] = useState("");
   const [resultadoMensaje, setResultadoMensaje] = useState<{ tipo: "exito" | "error"; mensaje: string } | null>(null);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [locationDraftCoords, setLocationDraftCoords] = useState<{ latitud: string; longitud: string } | null>(null);
@@ -214,6 +219,9 @@ export default function AdminViewBusinessPage() {
   const handleGestionarNegocio = async (accion: "aprobar" | "rechazar") => {
     if (!business) return;
     setModalAccion(accion);
+    if (accion === "aprobar") {
+      setMotivoRechazo("");
+    }
     setModalOpen(true);
   };
 
@@ -227,12 +235,14 @@ export default function AdminViewBusinessPage() {
         negocioId: business.id,
         accion: modalAccion,
         adminUid,
+        motivoRechazo: modalAccion === "rechazar" ? motivoRechazo.trim() : undefined,
       });
       setResultadoMensaje({
         tipo: "exito",
         mensaje: `Negocio ${modalAccion === "aprobar" ? "aprobado" : "rechazado"} exitosamente`,
       });
       setModalOpen(false);
+      setMotivoRechazo("");
       setTimeout(() => {
         // Redirigir según la acción: aprobados → registrados, rechazados → archivados
         const targetTab = modalAccion === "aprobar" ? "registrados" : "archivados";
@@ -1078,10 +1088,15 @@ export default function AdminViewBusinessPage() {
 
       <GestionarNegocioModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setMotivoRechazo("");
+        }}
         onConfirm={handleConfirmarGestion}
         accion={modalAccion}
         loading={procesando}
+        motivoRechazo={motivoRechazo}
+        onMotivoRechazoChange={setMotivoRechazo}
       />
 
       {/* Modal para archivar negocio activo */}

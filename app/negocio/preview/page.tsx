@@ -18,6 +18,10 @@ interface BusinessData {
   uid: string;
   email: string;
   status: "PENDING" | "APPROVED" | "REJECTED" | "archivado";
+  archivedReason?: string;
+  archivedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string | null;
   business: {
     name: string;
     category: string;
@@ -196,7 +200,12 @@ export default function BusinessPreviewPage() {
   };
 
   const status = business.status as keyof typeof statusConfig;
-  const config = statusConfig[status] || statusConfig.PENDING;
+  const isRejected = status === "REJECTED" || (!!business.rejectedAt || !!business.rejectionReason);
+  const config = isRejected
+    ? statusConfig.REJECTED
+    : (statusConfig[status] || statusConfig.PENDING);
+  const rejectionReason = business.rejectionReason || business.archivedReason;
+  const rejectionDate = business.rejectedAt || business.archivedAt;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FDFCF9] to-[#F6F0E6] px-4 py-8 md:py-12">
@@ -425,6 +434,37 @@ export default function BusinessPreviewPage() {
               <h3 className="text-lg font-black text-[#1A4D2E] mb-4">Información de Registro</h3>
               <div className="grid md:grid-cols-1 gap-4">
                 <div>
+
+                {isRejected && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 }}
+                    className="mb-8 bg-[#FDEAEA] border border-[#F2A5A5] rounded-2xl p-6"
+                  >
+                    <h3 className="text-lg font-black text-[#8B0000] mb-3">Detalle del rechazo</h3>
+                    <div className="space-y-3 text-sm text-[#5E1A1A]">
+                      <p>
+                        <span className="font-bold">Estado actual:</span> Rechazada
+                      </p>
+                      <p>
+                        <span className="font-bold">Motivo:</span> {rejectionReason || "No se especificó un motivo."}
+                      </p>
+                      <p>
+                        <span className="font-bold">Fecha de rechazo:</span>{" "}
+                        {rejectionDate
+                          ? new Date(rejectionDate).toLocaleString("es-MX", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "No disponible"}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
                   <p className="text-xs text-[#769C7B] font-semibold uppercase">Email contacto Negocio</p>
                   <p className="text-sm text-[#1A4D2E] break-all">{business.email}</p>
                 </div>

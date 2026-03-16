@@ -4,9 +4,11 @@ import React, { useEffect, useState } from "react";
 import { editarNegocio } from "@/lib/editarNegocioApi";
 import EliminarNegocioModal from "@/app/components/EliminarNegocioModal";
 import { archivarNegocio } from "@/lib/adminNegociosApi";
+import { gestionarNegocioPendiente } from "@/lib/gestionarNegocioApi";
 import { FaTrash, FaEdit, FaCheckCircle, FaTimesCircle, FaEye, FaHourglassHalf, FaArchive, FaHistory, FaStore, FaSearch, FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe } from "react-icons/fa";
 import { MdBusiness, MdPerson, MdCategory, MdImage } from "react-icons/md";
 import { IoMdClose } from "react-icons/io";
+import { HiSparkles } from "react-icons/hi";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,6 +54,7 @@ const AdminNegociosPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [negocioAEliminar, setNegocioAEliminar] = useState<Business | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [modalEditarOpen, setModalEditarOpen] = useState(false);
   const [negocioAEditar, setNegocioAEditar] = useState<Business | null>(null);
   const [editForm, setEditForm] = useState({ name: "", description: "" });
@@ -314,6 +317,7 @@ const AdminNegociosPage = () => {
               <AnimatePresence mode="popLayout">
                 {currentBusinesses.map((negocio: Business, index: number) => {
                 const businessData = getBusinessData(negocio);
+                const isPendingCard = tab === "pendientes" || businessData.status === "pendiente" || businessData.status === "PENDING";
                 
                 return (
                   <motion.div
