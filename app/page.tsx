@@ -225,7 +225,7 @@ function PlaceCard2({ place, photos, noImageText }: {
         {/* Botón Ubicar */}
         <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 z-10">
           <Link href="/mapa">
-            <button className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors">
+            <button className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors">
               <FiMapPin size={14} />
               Ubicar
             </button>
@@ -514,7 +514,7 @@ function HomeContent() {
       if (!userLocal) return;
 
       const user = JSON.parse(userLocal);
-      const intereses: string[] = user.especialidades || [];
+      const intereses: string[] = user["07_intereses"] || user.especialidades || user["07_especialidades"] || [];
       if (!intereses.length) return;
 
       const targetCategories = new Set<string>();
@@ -650,11 +650,20 @@ function HomeContent() {
     
     // Verificar inmediatamente
     checkWelcome();
-    
+
     // También verificar con un pequeño delay
     const timer = setTimeout(checkWelcome, 100);
-    
-    return () => clearTimeout(timer);
+
+    // Re-sincronizar recomendaciones cuando el usuario actualiza sus intereses
+    const handleInteresesChange = () => cargarRecomendaciones();
+    window.addEventListener("especialidadesActualizadas", handleInteresesChange);
+    window.addEventListener("storage", handleInteresesChange);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("especialidadesActualizadas", handleInteresesChange);
+      window.removeEventListener("storage", handleInteresesChange);
+    };
   }, []);
 
   // Fetch fotos de backend cuando cambian las recomendaciones
