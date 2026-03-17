@@ -195,11 +195,12 @@ function PlaceCard2({ place, photos, noImageText }: {
 
   useEffect(() => {
     if (!isHovered || photos.length <= 1) { setPhotoIdx(0); return; }
-    const t = setInterval(() => setPhotoIdx(p => (p + 1) % photos.length), 1800);
+    const len = photos.length;
+    const t = setInterval(() => setPhotoIdx(p => (p + 1) % len), 900);
     return () => clearInterval(t);
-  }, [isHovered, photos.length]);
+  }, [isHovered, photos]);
 
-  const displayImg = isHovered && photos.length > 0 ? photos[photoIdx] : place.img;
+  const displayImg = photos.length > 0 ? photos[photoIdx] : place.img;
 
   return (
     <div
@@ -225,7 +226,7 @@ function PlaceCard2({ place, photos, noImageText }: {
         {/* Botón Ubicar */}
         <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 z-10">
           <Link href="/mapa">
-            <button className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors">
+            <button className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors">
               <FiMapPin size={14} />
               Ubicar
             </button>
@@ -514,7 +515,7 @@ function HomeContent() {
       if (!userLocal) return;
 
       const user = JSON.parse(userLocal);
-      const intereses: string[] = user.especialidades || [];
+      const intereses: string[] = user["07_intereses"] || user.especialidades || user["07_especialidades"] || [];
       if (!intereses.length) return;
 
       const targetCategories = new Set<string>();
@@ -650,11 +651,20 @@ function HomeContent() {
     
     // Verificar inmediatamente
     checkWelcome();
-    
+
     // También verificar con un pequeño delay
     const timer = setTimeout(checkWelcome, 100);
-    
-    return () => clearTimeout(timer);
+
+    // Re-sincronizar recomendaciones cuando el usuario actualiza sus intereses
+    const handleInteresesChange = () => cargarRecomendaciones();
+    window.addEventListener("especialidadesActualizadas", handleInteresesChange);
+    window.addEventListener("storage", handleInteresesChange);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("especialidadesActualizadas", handleInteresesChange);
+      window.removeEventListener("storage", handleInteresesChange);
+    };
   }, []);
 
   // Fetch fotos de backend cuando cambian las recomendaciones
@@ -666,7 +676,7 @@ function HomeContent() {
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (data?.fotos?.length > 0) {
-            setRecommendedPhotos(prev => ({ ...prev, [place.name]: data.fotos.slice(0, 2) }));
+            setRecommendedPhotos(prev => ({ ...prev, [place.name]: data.fotos.slice(0, 3) }));
           }
         })
         .catch(() => {});

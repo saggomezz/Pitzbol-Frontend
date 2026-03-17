@@ -91,13 +91,14 @@ export default function PerfilDetallado() {
   // Función para refrescar los datos del perfil desde localStorage
   const refrescarEspecialidades = () => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-    if (userLocal.especialidades) {
-      setEspecialidades(userLocal.especialidades);
+    const intereses = userLocal["07_intereses"] || userLocal.especialidades || userLocal["07_especialidades"] || [];
+    if (intereses.length > 0) {
+      setEspecialidades(intereses);
       setPerfil((prev: any) => ({
         ...prev,
-        especialidades: userLocal.especialidades
+        especialidades: intereses
       }));
-      setEspecialidadesTemp(userLocal.especialidades);
+      setEspecialidadesTemp(intereses);
     }
   }; 
 
@@ -156,7 +157,7 @@ export default function PerfilDetallado() {
         return;
       }
 
-      const initialEspecialidades = userLocal.especialidades || userLocal["07_especialidades"] || [];      
+      const initialEspecialidades = userLocal["07_intereses"] || userLocal.especialidades || userLocal["07_especialidades"] || [];
       const descripcionInicial = userLocal.descripcion ? capitalizarPrimera(userLocal.descripcion) : "";
       
       const initialIdiomas = userLocal.idiomas || userLocal["09_idiomas"] || [];
@@ -184,7 +185,7 @@ export default function PerfilDetallado() {
         rol: rol,
         email: userLocal["04_correo"] || userLocal.email || "",
         telefono: userLocal["06_telefono"] || userLocal.telefono, 
-        especialidades: userLocal["07_especialidades"] || [],
+        especialidades: userLocal["07_intereses"] || userLocal["07_especialidades"] || [],
         idiomas: initialIdiomas,
         nacionalidad: userLocal["05_nacionalidad"] || userLocal.nacionalidad,
         descripcion: userLocal["15_descripcion"] || userLocal.descripcion || "",
@@ -735,8 +736,7 @@ export default function PerfilDetallado() {
 
         const updatedUser = {
           ...userLocal,
-          "07_especialidades": especialidadesTemp,
-          "especialidades": especialidadesTemp  
+          "07_intereses": especialidadesTemp,
         };
         
         localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
