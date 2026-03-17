@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { fetchWithAuth } from "../../../lib/fetchWithAuth";
 import { FiPhone, FiArrowLeft, FiUser, FiCalendar, FiMessageSquare, FiAlertCircle } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -33,12 +34,8 @@ export default function AdminLlamadas() {
   const fetchLlamadas = async () => {
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-      const token = localStorage.getItem("pitzbol_token");
       
-      const response = await fetch(`${API_BASE}/api/support/call-requests`, {
-        credentials: "include",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const response = await fetchWithAuth(`${API_BASE}/api/support/call-requests`);
 
       if (response.ok) {
         const data = await response.json();
@@ -57,14 +54,11 @@ export default function AdminLlamadas() {
     setDeleting(true);
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-      const token = localStorage.getItem("pitzbol_token");
 
-      console.log("🗑️ Eliminando solicitud:", selectedLlamada.id);
+      console.log("\uD83D\uDDD1\uFE0F Eliminando solicitud:", selectedLlamada.id);
 
-      const response = await fetch(`${API_BASE}/api/support/call-requests/${selectedLlamada.id}`, {
+      const response = await fetchWithAuth(`${API_BASE}/api/support/call-requests/${selectedLlamada.id}`, {
         method: "DELETE",
-        credentials: "include",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       const data = await response.json();

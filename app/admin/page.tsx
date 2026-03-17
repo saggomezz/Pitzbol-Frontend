@@ -2,6 +2,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { enviarNotificacion } from "../../lib/notificaciones";
+import { fetchWithAuth } from "../../lib/fetchWithAuth";
 import { useTranslations } from 'next-intl';
 import { FiChevronRight, FiFileText, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle, FiMail, FiTrash2 } from "react-icons/fi";
 import AdminHistorialSolicitudesModal from "@/app/components/AdminHistorialSolicitudesModal";
@@ -57,14 +58,7 @@ export default function AdminPerfil() {
   const fetchSolicitudes = async () => {
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      let token = '';
-      if (typeof window !== 'undefined') {
-        token = localStorage.getItem('pitzbol_token') || '';
-      }
-      const response = await fetch(`${API_BASE}/api/admin/solicitudes-pendientes`, {
-        credentials: 'include',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
-      });
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/solicitudes-pendientes`);
       
       if (!response.ok) {
         console.error("Error en respuesta:", response.status);
@@ -99,15 +93,8 @@ export default function AdminPerfil() {
     setLoadingUsuarios(true);
     try {
       const API_BASE = getBackendBaseUrl();
-      let token = '';
-      if (typeof window !== 'undefined') {
-        token = localStorage.getItem('pitzbol_token') || '';
-      }
 
-      const response = await fetch(`${API_BASE}/api/admin/usuarios-gestionables`, {
-        credentials: 'include',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
-      });
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/usuarios-gestionables`);
 
       const data = await response.json().catch(() => ({}));
 
@@ -154,18 +141,10 @@ export default function AdminPerfil() {
 
     try {
       const API_BASE = getBackendBaseUrl();
-      let token = '';
-      if (typeof window !== 'undefined') {
-        token = localStorage.getItem('pitzbol_token') || '';
-      }
 
-      const response = await fetch(`${API_BASE}/api/admin/usuarios/${usuario.uid}`, {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/usuarios/${usuario.uid}`, {
         method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: usuario.role }),
       });
 
@@ -200,14 +179,9 @@ export default function AdminPerfil() {
     
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      let token = '';
-      if (typeof window !== 'undefined') {
-        token = localStorage.getItem('pitzbol_token') || '';
-      }
-      const response = await fetch(`${API_BASE}/api/admin/gestionar-guia`, {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/gestionar-guia`, {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid, accion })
       });
 

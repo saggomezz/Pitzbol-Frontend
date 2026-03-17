@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FiPlus, FiX, FiImage, FiTrash2, FiMapPin, FiSearch, FiUpload, FiLink } from "react-icons/fi";
 import Papa from "papaparse";
 import dynamic from "next/dynamic";
+import { fetchWithAuth } from "../../../lib/fetchWithAuth";
 
 // Importar minimapa dinámicamente para evitar problemas con SSR
 const MinimapaLocationPicker = dynamic(
@@ -265,10 +266,8 @@ export default function AdminLugaresPage() {
       });
 
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(selectedPlace.nombre)}/fotos`, {
+      const response = await fetchWithAuth(`${BACKEND_URL}/api/lugares/${encodeURIComponent(selectedPlace.nombre)}/fotos`, {
         method: 'POST',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-        credentials: 'include',
         body: formData
       });
 
@@ -297,13 +296,9 @@ export default function AdminLugaresPage() {
 
     try {
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(selectedPlace.nombre)}/fotos`, {
+      const response = await fetchWithAuth(`${BACKEND_URL}/api/lugares/${encodeURIComponent(selectedPlace.nombre)}/fotos`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fotosUrl })
       });
 
@@ -329,10 +324,8 @@ export default function AdminLugaresPage() {
 
     try {
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(selectedPlace.nombre)}/fotos/${index}`, {
+      const response = await fetchWithAuth(`${BACKEND_URL}/api/lugares/${encodeURIComponent(selectedPlace.nombre)}/fotos/${index}`, {
         method: 'DELETE',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-        credentials: 'include'
       });
 
       if (response.ok) {
@@ -394,13 +387,9 @@ export default function AdminLugaresPage() {
     setUploading(true);
     try {
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(selectedPlace.nombre)}`, {
+      const response = await fetchWithAuth(`${BACKEND_URL}/api/lugares/${encodeURIComponent(selectedPlace.nombre)}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nombre: editPlaceData.nombre,
           categoria: editPlaceData.categoria,
@@ -442,13 +431,9 @@ export default function AdminLugaresPage() {
 
     try {
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetch(`${BACKEND_URL}/api/lugares`, {
+      const response = await fetchWithAuth(`${BACKEND_URL}/api/lugares`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevoLugar)
       });
 
