@@ -19,14 +19,7 @@ type FilterOptions = {
   soloFavoritos?: boolean;
 };
 
-const quickFilters = ["Tradicional", "Gourmet", "Callejero", "Mercados", "Cafeterías"];
-const quickFilterKeywords: Record<string, string[]> = {
-  "Tradicional": ["tradicional", "tipico", "regional", "mexicana"],
-  "Gourmet": ["gourmet", "autor", "alta cocina", "premium"],
-  "Callejero": ["callejero", "puestos", "antojitos", "tacos"],
-  "Mercados": ["mercado", "mercados", "local", "tianguis"],
-  "Cafeterías": ["cafeteria", "cafe", "coffee", "brunch"],
-};
+const quickFilters = ["Tradicional", "Gourmet", "Callejero", "Mercados", "Cafeterías", "Vegana"];
 
 const normalizeText = (value: string) =>
   value
@@ -70,7 +63,10 @@ export default function GastronomiaPage() {
       try {
         setLoading(true);
         const mergedPlaces = await getMergedPlaces();
-        setPlaces(mergedPlaces.filter((place) => matchesCategory(place.categoria, "Gastronomía")));
+        setPlaces(mergedPlaces.filter((place) => {
+          const raw = (place.rawCategoria || place.categoria).toLowerCase();
+          return raw.includes("gastronomía") || raw.includes("gastronomia") || raw.includes("vegana");
+        }));
       } catch (error) {
         console.error("Error cargando lugares de gastronomía:", error);
       } finally {
@@ -113,12 +109,11 @@ export default function GastronomiaPage() {
 
   const filteredPlaces = useMemo(() => {
     const term = normalizeText(searchTerm);
-    const quickTerms = activeQuickFilter ? (quickFilterKeywords[activeQuickFilter] || [activeQuickFilter]) : [];
 
     const matchesQuickFilter = (place: PlaceRecord) => {
-      if (!quickTerms.length) return true;
-      const haystack = normalizeText(`${place.nombre} ${place.categoria} ${place.ubicacion} ${place.descripcion}`);
-      return quickTerms.some((quickTerm) => haystack.includes(normalizeText(quickTerm)));
+      if (!activeQuickFilter) return true;
+      if (place.subcategoria) return place.subcategoria === activeQuickFilter;
+      return false;
     };
 
     const matchesZone = (place: PlaceRecord) => {
