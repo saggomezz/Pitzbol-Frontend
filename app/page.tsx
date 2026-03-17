@@ -195,9 +195,10 @@ function PlaceCard2({ place, photos, noImageText }: {
 
   useEffect(() => {
     if (!isHovered || photos.length <= 1) { setPhotoIdx(0); return; }
-    const t = setInterval(() => setPhotoIdx(p => (p + 1) % photos.length), 1800);
+    const len = photos.length;
+    const t = setInterval(() => setPhotoIdx(p => (p + 1) % len), 900);
     return () => clearInterval(t);
-  }, [isHovered, photos.length]);
+  }, [isHovered, photos]);
 
   const displayImg = photos.length > 0 ? photos[photoIdx] : place.img;
 
