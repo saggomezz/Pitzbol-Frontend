@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Papa from "papaparse";
-import { FiCheck, FiChevronDown, FiChevronUp, FiImage, FiSave, FiUpload } from "react-icons/fi";
+import { FiCheck, FiChevronDown, FiChevronUp, FiImage, FiSave, FiTrash2, FiUpload } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 import { storage } from "@/lib/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
@@ -26,6 +26,7 @@ export default function DatosLugaresPage() {
   const [autorizado, setAutorizado] = useState(false);
   // progreso de subida por slot: null = idle, 0-100 = subiendo
   const [uploadProgress, setUploadProgress] = useState<[number | null, number | null, number | null]>([null, null, null]);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const fileInputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
   useEffect(() => {
@@ -101,6 +102,22 @@ export default function DatosLugaresPage() {
     );
   };
 
+  const eliminarLugar = async (nombre: string) => {
+    const token = localStorage.getItem("pitzbol_token");
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(nombre)}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+      });
+      if (res.ok) {
+        setFotosMap(prev => { const n = { ...prev }; delete n[nombre]; return n; });
+        setExpandido(null);
+        setConfirmDelete(null);
+      }
+    } catch { /* silencioso */ }
+  };
+
   const guardarFotos = async (nombre: string) => {
     setGuardando(true);
     setMensaje("");
@@ -162,23 +179,50 @@ export default function DatosLugaresPage() {
 
             return (
               <div key={lugar.nombre} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                <button
-                  onClick={() => abrirLugar(lugar.nombre)}
-                  className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors text-left"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-medium text-[#1A4D2E] truncate">{lugar.nombre}</span>
-                    {tieneImagen && (
-                      <span className="text-[10px] text-green-600 font-semibold bg-green-50 px-1.5 py-0.5 rounded-full whitespace-nowrap flex items-center gap-1">
-                        <FiCheck size={9} /> imagen
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                    <span className="text-[10px] text-gray-400">{lugar.categoria}</span>
-                    {abierto ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
-                  </div>
-                </button>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => abrirLugar(lugar.nombre)}
+                    className="flex-1 flex items-center justify-between p-3 hover:bg-gray-50 transition-colors text-left min-w-0"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm font-medium text-[#1A4D2E] truncate">{lugar.nombre}</span>
+                      {tieneImagen && (
+                        <span className="text-[10px] text-green-600 font-semibold bg-green-50 px-1.5 py-0.5 rounded-full whitespace-nowrap flex items-center gap-1">
+                          <FiCheck size={9} /> imagen
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                      <span className="text-[10px] text-gray-400">{lugar.categoria}</span>
+                      {abierto ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
+                    </div>
+                  </button>
+                  {/* Botón eliminar */}
+                  {confirmDelete === lugar.nombre ? (
+                    <div className="flex items-center gap-1 pr-2 flex-shrink-0">
+                      <button
+                        onClick={() => eliminarLugar(lugar.nombre)}
+                        className="text-[10px] bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600 transition-colors"
+                      >
+                        Confirmar
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(null)}
+                        className="text-[10px] text-gray-400 px-2 py-1 hover:text-gray-600"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={e => { e.stopPropagation(); setConfirmDelete(lugar.nombre); }}
+                      title="Eliminar lugar"
+                      className="p-2 mr-1 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
+                    >
+                      <FiTrash2 size={14} />
+                    </button>
+                  )}
+                </div>
 
                 {abierto && (
                   <div className="px-3 pb-3 border-t border-gray-50">
