@@ -5,6 +5,8 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:300
 export interface PlaceRecord {
   nombre: string;
   categoria: string;
+  rawCategoria: string;
+  subcategoria?: string;
   descripcion: string;
   ubicacion: string;
   latitud: string;
@@ -62,7 +64,9 @@ function parseCsvPlaces(csvText: string): PlaceRecord[] {
     .filter((row) => row && row["Nombre del Lugar"])
     .map((row) => ({
       nombre: String(row["Nombre del Lugar"] || "").trim(),
+      rawCategoria: String(row["Categoría"] || "").trim(),
       categoria: normalizeCategory(String(row["Categoría"] || "").trim()),
+      subcategoria: String(row["Subcategoría"] || "").trim() || undefined,
       descripcion: String(row["Nota para IA"] || "").trim(),
       ubicacion: String(row["Dirección"] || "").trim(),
       latitud: String(row["Latitud"] || "").replace(",", ".").trim(),
@@ -113,7 +117,9 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
 
       const nextValue: PlaceRecord = {
         nombre,
+        rawCategoria: existing?.rawCategoria || normalizeCategory(String(firestorePlace.categoria || "")),
         categoria: normalizeCategory(String(firestorePlace.categoria || existing?.categoria || "")),
+        subcategoria: existing?.subcategoria,
         descripcion: String(firestorePlace.descripcion || existing?.descripcion || "").trim(),
         ubicacion: String(firestorePlace.ubicacion || existing?.ubicacion || "").trim(),
         latitud: String(firestorePlace.latitud || existing?.latitud || "").trim(),

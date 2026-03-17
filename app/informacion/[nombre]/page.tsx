@@ -26,12 +26,24 @@ export default function InformacionLugar() {
   const [lugar, setLugar] = useState<Lugar | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
-  
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [fotoIdx, setFotoIdx] = useState(0);
+
   const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
 
   // Registrar vista del lugar
   const nombreLugar = params.nombre ? decodeURIComponent(params.nombre as string) : null;
   usePlaceView(nombreLugar);
+
+  // Fetch fotos del lugar
+  useEffect(() => {
+    if (!nombreLugar) return;
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+    fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(nombreLugar)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.fotos?.length > 0) setFotos(data.fotos.slice(0, 3)); })
+      .catch(() => {});
+  }, [nombreLugar]);
 
   useEffect(() => {
     const cargarLugar = async () => {
@@ -206,7 +218,34 @@ export default function InformacionLugar() {
     <div className={styles.container}>
       {/* Header con imagen de fondo */}
       <div className={styles.heroHeader}>
+<<<<<<< HEAD
         <div className={styles.heroOverlay}></div>
+=======
+        {fotos.length > 0 && (
+          <img
+            src={fotos[0]}
+            alt={lugar.nombre}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6, zIndex: 0 }}
+          />
+        )}
+        <div className={styles.heroOverlay} style={{ zIndex: 1 }}></div>
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '1.25rem',
+            left: 0,
+            right: 0,
+            textAlign: 'center',
+            zIndex: 2,
+            padding: '0 5rem',
+            pointerEvents: 'none',
+          }}
+        >
+          <p style={{ color: 'white', fontSize: '1.25rem', fontWeight: 700, margin: 0, textShadow: '0 2px 8px rgba(0,0,0,0.5)', lineHeight: 1.3 }}>
+            {lugar.nombre}
+          </p>
+        </div>
+>>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
         <div className={styles.heroContent}>
           <button onClick={() => router.back()} className={styles.backBtn}>
             <FiArrowLeft />
@@ -248,6 +287,38 @@ export default function InformacionLugar() {
               />
             </div>
           </div>
+
+          {/* Carrusel de fotos */}
+          {fotos.length > 0 && (
+            <div style={{ position: 'relative', marginBottom: '1.5rem', borderRadius: '0.875rem', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.15)', aspectRatio: '4/3' }}>
+              <img
+                src={fotos[fotoIdx]}
+                alt={`${lugar.nombre} foto ${fotoIdx + 1}`}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.3s ease' }}
+              />
+              {fotos.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setFotoIdx(i => (i - 1 + fotos.length) % fotos.length)}
+                    style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', color: 'white', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >‹</button>
+                  <button
+                    onClick={() => setFotoIdx(i => (i + 1) % fotos.length)}
+                    style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', color: 'white', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >›</button>
+                  <div style={{ position: 'absolute', bottom: '0.75rem', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '6px' }}>
+                    {fotos.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setFotoIdx(i)}
+                        style={{ width: i === fotoIdx ? '20px' : '8px', height: '8px', borderRadius: '4px', background: i === fotoIdx ? 'white' : 'rgba(255,255,255,0.5)', border: 'none', cursor: 'pointer', transition: 'all 0.3s ease', padding: 0 }}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Stats Cards */}
           <div className={styles.statsGrid}>
