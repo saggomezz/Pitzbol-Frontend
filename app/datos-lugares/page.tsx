@@ -1,8 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Papa from "papaparse";
-import { FiCheck, FiChevronDown, FiChevronUp, FiImage, FiSave } from "react-icons/fi";
+import { FiCheck, FiChevronDown, FiChevronUp, FiImage, FiSave, FiUpload } from "react-icons/fi";
 import { useRouter } from "next/navigation";
+import { storage } from "@/lib/firebase";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 const EMAIL_AUTORIZADO = "cua@hotmail.com";
@@ -22,6 +24,9 @@ export default function DatosLugaresPage() {
   const [mensaje, setMensaje] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [autorizado, setAutorizado] = useState(false);
+  // progreso de subida por slot: null = idle, 0-100 = subiendo
+  const [uploadProgress, setUploadProgress] = useState<[number | null, number | null, number | null]>([null, null, null]);
+  const fileInputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
   useEffect(() => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
@@ -31,7 +36,6 @@ export default function DatosLugaresPage() {
     }
     setAutorizado(true);
 
-    // Cargar CSV
     fetch("/datosLugares.csv")
       .then(r => r.text())
       .then(text => {
@@ -43,7 +47,6 @@ export default function DatosLugaresPage() {
         );
       });
 
-    // Cargar fotos guardadas en Firebase
     fetch(`${BACKEND_URL}/api/lugares`)
       .then(r => r.json())
       .then(data => {
@@ -57,14 +60,45 @@ export default function DatosLugaresPage() {
   }, []);
 
   const abrirLugar = (nombre: string) => {
-    if (expandido === nombre) {
-      setExpandido(null);
-      return;
-    }
+    if (expandido === nombre) { setExpandido(null); return; }
     const fotos = fotosMap[nombre] || [];
     setInputFotos([fotos[0] || "", fotos[1] || "", fotos[2] || ""]);
+    setUploadProgress([null, null, null]);
     setExpandido(nombre);
     setMensaje("");
+  };
+
+  const handleFileUpload = (slot: 0 | 1 | 2, file: File) => {
+    const nombreLugar = expandido || "lugar";
+    const ext = file.name.split(".").pop() || "jpg";
+    const fileName = `lugares/${nombreLugar.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_${slot + 1}_${Date.now()}.${ext}`;
+    const storageRef = ref(storage, fileName);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      "state_changed",
+      snapshot => {
+        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        setUploadProgress(prev => {
+          const next = [...prev] as [number | null, number | null, number | null];
+          next[slot] = pct;
+          return next;
+        });
+      },
+      () => {
+        setUploadProgress(prev => { const n = [...prev] as [number | null, number | null, number | null]; n[slot] = null; return n; });
+        setMensaje("Error al subir imagen");
+      },
+      async () => {
+        const url = await getDownloadURL(uploadTask.snapshot.ref);
+        setInputFotos(prev => {
+          const n = [...prev] as [string, string, string];
+          n[slot] = url;
+          return n;
+        });
+        setUploadProgress(prev => { const n = [...prev] as [number | null, number | null, number | null]; n[slot] = null; return n; });
+      }
+    );
   };
 
   const guardarFotos = async (nombre: string) => {
@@ -118,7 +152,7 @@ export default function DatosLugaresPage() {
           placeholder="Buscar lugar o categoría..."
           value={busqueda}
           onChange={e => setBusqueda(e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-4 py-2 mb-4 text-sm focus:outline-none focus:border-[#1A4D2E]"
+          className="w-full border border-gray-200 rounded-xl px-4 py-2 mb-4 text-sm text-black focus:outline-none focus:border-[#1A4D2E]"
         />
 
         <div className="space-y-2">
@@ -148,7 +182,7 @@ export default function DatosLugaresPage() {
 
                 {abierto && (
                   <div className="px-3 pb-3 border-t border-gray-50">
-                    <p className="text-xs text-gray-400 mt-2 mb-2">URLs de imágenes (máx. 3)</p>
+                    <p className="text-xs text-gray-400 mt-2 mb-2">Imágenes (máx. 3) — pega un URL o sube un archivo</p>
                     {([0, 1, 2] as const).map(i => (
                       <div key={i} className="flex items-center gap-2 mb-2">
                         <FiImage size={13} className="text-gray-400 flex-shrink-0" />
@@ -163,12 +197,35 @@ export default function DatosLugaresPage() {
                           }}
                           className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-black focus:outline-none focus:border-[#1A4D2E]"
                         />
+                        {/* Botón subir archivo */}
+                        <input
+                          ref={fileInputRefs[i]}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload(i, file);
+                            e.target.value = "";
+                          }}
+                        />
+                        <button
+                          onClick={() => fileInputRefs[i].current?.click()}
+                          disabled={uploadProgress[i] !== null}
+                          title="Subir imagen a Firebase"
+                          className="flex-shrink-0 p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        >
+                          {uploadProgress[i] !== null
+                            ? <span className="text-[10px] text-[#1A4D2E] font-medium w-7 text-center block">{uploadProgress[i]}%</span>
+                            : <FiUpload size={13} className="text-gray-500" />
+                          }
+                        </button>
                       </div>
                     ))}
                     <div className="flex items-center gap-3 mt-3">
                       <button
                         onClick={() => guardarFotos(lugar.nombre)}
-                        disabled={guardando}
+                        disabled={guardando || uploadProgress.some(p => p !== null)}
                         className="flex items-center gap-1.5 bg-[#1A4D2E] text-white text-xs px-4 py-1.5 rounded-lg hover:bg-[#0D601E] disabled:opacity-50 transition-colors"
                       >
                         <FiSave size={12} />
