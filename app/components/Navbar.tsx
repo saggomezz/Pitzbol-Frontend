@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import {
     FiBriefcase, FiCalendar, FiClock, FiCreditCard, FiHeart, FiHome, FiInfo,
     FiLogOut, FiMapPin, FiMenu, FiMessageSquare, FiPlusCircle, FiSearch, FiShield, FiUser,
-    FiX, FiAward, FiFileText, FiCompass
+    FiX, FiAward, FiFileText, FiCompass, FiImage
 } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
@@ -269,6 +269,14 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                 <Link href="/tours" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
                                     <FiCompass /> {t('tours')}
                                 </Link>
+                            )}
+                            {user?.email === "cua@hotmail.com" && (
+                                <>
+                                    <div className="h-[1px] bg-gray-100 my-3 mx-2" />
+                                    <Link href="/datos-lugares" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium">
+                                        <FiImage className="text-[#1A4D2E]" /> datosLugares
+                                    </Link>
+                                </>
                             )}
                             <div className="h-[1px] bg-gray-100 my-3 mx-2" />
                             {/* SECCIÓN DINÁMICA POR ROL */}
