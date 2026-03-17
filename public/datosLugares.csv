@@ -34,7 +34,6 @@ Nombre del Lugar,Categoría,Dirección,Latitud,Longitud,Tiempo de Estancia,Costo
 "Restaurante Casa Luna, Guadalajara","Gastronomía Mexicana, Postre, Música",Calle Independencia 211-int. A,"20,6391717","-103,3139611",150,$500 - $600,,Tradicional
 "Tortas Ahogadas Don Jose El De La Bicicleta, Guadalajara",Gastronomía Mexicana,C. Mexicaltzingo 27,"20,6652842","-103,3479514",45,$120 - $250,,Callejero
 "Cantina La Fuente, Guadalajara","Gastronomía Mexicana, Música, Vida Nocturna",C. Pino Suárez 78,"20,6777418","-103,3456321",90,$200-$300,,Tradicional
-"Pozole El Pollo, Guadalajara",Gastronomía,C. Mezquitán 810 - A,"20,6890492","-103,3531121",60,$150 - $280,,Tradicional
 "El Parián de Tlaquepaque, Guadalajara","Gastronomía Mexicana, Vida Nocturna",Calle Progreso 15,"20,6388349","-103,3110439",120,$300,,Tradicional
 "Instituto Cultural Cabañas, Guadalajara","Cultura, Fotografía, Arte e Historia, Museos",Pl. Tapatía,"20,6768911","-103,3406483",120,$80,,
 "Teatro Degollado, Guadalajara ","Fotografía, Vida Nocturna, Música, Arte e Historia, Cultura, Museos, Aventura, Eventos",C. Degollado s/n,"20,6769963","-103,34477",45,$90 - $350,,
@@ -58,7 +57,6 @@ Nombre del Lugar,Categoría,Dirección,Latitud,Longitud,Tiempo de Estancia,Costo
 "Argento Americana, Guadalajara",Gastronomía,Calle Argentina 355,"20,6714566","-103,361081",90,$300,,Gourmet
 "PINOCCHIO - Pedro Moreno, Guadalajara",Gastronomía,C. Pedro Moreno 1567,"20,6752127","-103,369875",120,$200-$400,,Gourmet
 "Romea, Guadalajara","Gastronomía, Vida Nocturna, Música",C. José María Morelos 1360,"20,6762475","-103,3652095",120,$200-$400,,Gourmet
-"Andador Americano, Guadalajara","Gastronomía, Vida Nocturna",C. Independencia #1183,"20,6783815","-103,361904",120,$200-$400,,Gourmet
 "Casa Dolores - Av. Chapultepec, Guadalajara","Gastronomía Mexicana, Postre",Av. Chapultepec Sur 451,"20,6691495","-103,3682298",120,$200-$400,,Tradicional
 "Tikuun comedor, Guadalajara",Gastronomía Mexicana,C. Emeterio Robles Gil 50,"20,6757448","-103,3624709",120,"$400 - $2,500",,Tradicional
 "Rosarito, Guadalajara","Gastronomía Mexicana, Gastronomía, Música, Vida Nocturna",Av. Chapultepec Sur 565,"20,6674669","-103,3682254",150,$200-$400,,Tradicional
