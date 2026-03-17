@@ -161,7 +161,7 @@ export default function DatosLugaresPage() {
                             nuevo[i] = e.target.value;
                             setInputFotos(nuevo);
                           }}
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[#1A4D2E]"
+                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-black focus:outline-none focus:border-[#1A4D2E]"
                         />
                       </div>
                     ))}

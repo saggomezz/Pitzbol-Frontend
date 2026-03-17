@@ -199,7 +199,7 @@ function PlaceCard2({ place, photos, noImageText }: {
     return () => clearInterval(t);
   }, [isHovered, photos.length]);
 
-  const displayImg = isHovered && photos.length > 0 ? photos[photoIdx] : place.img;
+  const displayImg = photos.length > 0 ? photos[photoIdx] : place.img;
 
   return (
     <div
@@ -675,7 +675,7 @@ function HomeContent() {
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (data?.fotos?.length > 0) {
-            setRecommendedPhotos(prev => ({ ...prev, [place.name]: data.fotos.slice(0, 2) }));
+            setRecommendedPhotos(prev => ({ ...prev, [place.name]: data.fotos.slice(0, 3) }));
           }
         })
         .catch(() => {});
