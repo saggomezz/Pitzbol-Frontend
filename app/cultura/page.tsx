@@ -8,7 +8,7 @@ export default function CulturaPage() {
   return (
     <CategoryPlacesPage
       categoryName="Cultura"
-      heroImage="https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&q=80&w=1700"
+      heroImage="https://www.entornoturistico.com/wp-content/uploads/2023/06/Bailes-y-danzas-tradicionales-de-Jalisco.jpg"
       heroLabel="Categoría destacada"
       heroTitle="Cultura Viva en Guadalajara"
       heroDescription="Explora recintos históricos, tradiciones, centros culturales y espacios que cuentan la historia tapatía."
