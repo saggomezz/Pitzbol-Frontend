@@ -44,6 +44,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'noticiasgdl.com' },
       { protocol: 'https', hostname: 'offloadmedia.feverup.com' },
       { protocol: 'https', hostname: 'www.entornoturistico.com' },
+      { protocol: 'https', hostname: 'www.buenosviajes.co' },
     ],
   },
 };
