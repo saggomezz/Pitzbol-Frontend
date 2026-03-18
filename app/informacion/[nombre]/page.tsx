@@ -218,9 +218,6 @@ export default function InformacionLugar() {
     <div className={styles.container}>
       {/* Header con imagen de fondo */}
       <div className={styles.heroHeader}>
-<<<<<<< HEAD
-        <div className={styles.heroOverlay}></div>
-=======
         {fotos.length > 0 && (
           <img
             src={fotos[0]}
@@ -245,7 +242,6 @@ export default function InformacionLugar() {
             {lugar.nombre}
           </p>
         </div>
->>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
         <div className={styles.heroContent}>
           <button onClick={() => router.back()} className={styles.backBtn}>
             <FiArrowLeft />
