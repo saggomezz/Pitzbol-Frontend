@@ -47,7 +47,21 @@ interface BusinessRecord {
   category?: string;
 }
 
-type MovementKind = "creado" | "aprobado" | "rechazado" | "archivado" | "eliminado" | "desarchivado" | "editado" | "otro";
+interface AdminMovementLog {
+  id: string;
+  negocioId?: string;
+  accion?: string;
+  adminUid?: string;
+  nombreNegocio?: string;
+  ownerUid?: string | null;
+  ownerEmail?: string | null;
+  source?: string | null;
+  reason?: string | null;
+  mensaje?: string | null;
+  fecha?: unknown;
+}
+
+type MovementKind = "creado" | "aprobado" | "rechazado" | "archivado" | "eliminado" | "desarchivado" | "regresado" | "editado" | "otro";
 
 interface TimelineEvent {
   id: string;
@@ -57,6 +71,8 @@ interface TimelineEvent {
   category: string;
   action: MovementKind;
   actionLabel: string;
+  actionDetail: string;
+  rawAction?: string;
   dateISO: string;
   actor: string;
   reason?: string;
@@ -75,8 +91,14 @@ const actionLabelMap: Record<MovementKind, string> = {
   archivado: "Archivado",
   eliminado: "Eliminado",
   desarchivado: "Desarchivado",
+  regresado: "Regresado a pendientes",
   editado: "Editado por admin",
   otro: "Movimiento",
+};
+
+const normalizeActionValue = (rawAction: unknown): string => {
+  if (typeof rawAction !== "string") return "";
+  return rawAction.toLowerCase().trim().replace(/\s+/g, "_");
 };
 
 const parseDate = (value: unknown): string | null => {
@@ -102,17 +124,60 @@ const parseDate = (value: unknown): string | null => {
 };
 
 const normalizeMovementKind = (rawAction: unknown): MovementKind => {
-  const value = typeof rawAction === "string" ? rawAction.toLowerCase().trim() : "";
+  const value = normalizeActionValue(rawAction);
   if (!value) return "otro";
 
+  if (value.includes("desarchiv")) return "desarchivado";
+  if (value.includes("regres") && value.includes("pendient")) return "regresado";
+  if (value.includes("elimin") && (value.includes("permanent") || value.includes("definit"))) return "eliminado";
+  if (value === "eliminado") return "eliminado";
   if (value.includes("aproba")) return "aprobado";
   if (value.includes("rechaz")) return "rechazado";
   if (value.includes("archiv")) return "archivado";
-  if (value.includes("desarchiv")) return "desarchivado";
   if (value.includes("elimin")) return "eliminado";
   if (value.includes("edit")) return "editado";
   if (value.includes("cread") || value.includes("solicitud")) return "creado";
   return "otro";
+};
+
+const getActionLabel = (rawAction: unknown, action: MovementKind): string => {
+  const normalized = normalizeActionValue(rawAction);
+  if (normalized.includes("desarchiv")) return "Desarchivado";
+  if (normalized.includes("regres") && normalized.includes("pendient")) return "Regresado a pendientes";
+  if (normalized.includes("elimin") && (normalized.includes("permanent") || normalized.includes("definit"))) return "Eliminado permanentemente";
+  if (normalized === "editado_admin") return "Editado por admin";
+  return actionLabelMap[action] || "Movimiento";
+};
+
+const getActionDetail = (rawAction: unknown, action: MovementKind, reason?: string): string => {
+  const normalized = normalizeActionValue(rawAction);
+  const reasonText = reason && reason.trim() ? ` Motivo: ${reason.trim()}.` : "";
+
+  if (normalized.includes("desarchiv") || action === "desarchivado") {
+    return "El admin desarchivo la solicitud y la envio nuevamente a revision.";
+  }
+  if ((normalized.includes("regres") && normalized.includes("pendient")) || action === "regresado") {
+    return "El admin regreso el negocio a pendientes para una nueva revision.";
+  }
+  if (normalized.includes("aproba") || action === "aprobado") {
+    return "El admin aprobo la solicitud y el negocio paso a activos.";
+  }
+  if (normalized.includes("rechaz") || action === "rechazado") {
+    return `El admin rechazo la solicitud.${reasonText}`.trim();
+  }
+  if (normalized.includes("archiv") || action === "archivado") {
+    return `El admin archivo la solicitud.${reasonText}`.trim();
+  }
+  if (normalized.includes("elimin") || action === "eliminado") {
+    return "El admin elimino permanentemente el negocio de la base de datos.";
+  }
+  if (normalized.includes("edit") || action === "editado") {
+    return "El admin modifico manualmente la informacion del negocio.";
+  }
+  if (normalized.includes("cread") || action === "creado") {
+    return "Se registro la solicitud inicial del negocio.";
+  }
+  return "Movimiento administrativo registrado en el historial.";
 };
 
 const getActionVisual = (action: MovementKind) => {
@@ -121,6 +186,7 @@ const getActionVisual = (action: MovementKind) => {
   if (action === "archivado") return { icon: <MdArchive />, style: { backgroundColor: "#0F172A", color: "#FFFFFF", border: "1px solid #0F172A" } };
   if (action === "eliminado") return { icon: <FaTrashAlt />, style: { backgroundColor: "#18181B", color: "#FFFFFF", border: "1px solid #18181B" } };
   if (action === "desarchivado") return { icon: <FaHistory />, style: { backgroundColor: "#E0F2FE", color: "#0C4A6E", border: "1px solid #7DD3FC" } };
+  if (action === "regresado") return { icon: <FaHistory />, style: { backgroundColor: "#EDE9FE", color: "#5B21B6", border: "1px solid #C4B5FD" } };
   if (action === "editado") return { icon: <MdOutlineTrackChanges />, style: { backgroundColor: "#FEF3C7", color: "#78350F", border: "1px solid #FCD34D" } };
   if (action === "creado") return { icon: <FaClock />, style: { backgroundColor: "#FEF9C3", color: "#713F12", border: "1px solid #FDE047" } };
   return { icon: <FaCalendarAlt />, style: { backgroundColor: "#F5F5F4", color: "#292524", border: "1px solid #D6D3D1" } };
@@ -135,6 +201,40 @@ const getBusinessSummary = (record: BusinessRecord) => {
   const statusSnapshot = record.status || "sin_estado";
 
   return { businessName, businessDescription, category, ownerName, ownerContact, statusSnapshot };
+};
+
+const mapSourceBucket = (rawSource: unknown): SourceBucket => {
+  const value = typeof rawSource === "string" ? rawSource.toLowerCase() : "";
+  if (value.includes("pendient")) return "pendientes";
+  if (value.includes("activ")) return "activos";
+  return "archivados";
+};
+
+const buildTimelineFromAdminLog = (log: AdminMovementLog): TimelineEvent | null => {
+  const businessId = typeof log.negocioId === "string" && log.negocioId.trim() ? log.negocioId : "desconocido";
+  const rawAction = log.accion || "otro";
+  const action = normalizeMovementKind(rawAction);
+  const dateISO = parseDate(log.fecha) || new Date().toISOString();
+  const reason = typeof log.reason === "string" ? log.reason : undefined;
+
+  return {
+    id: `movlog-${log.id || `${businessId}-${dateISO}`}`,
+    businessId,
+    businessName: log.nombreNegocio || "Negocio eliminado",
+    businessDescription: log.mensaje || "Movimiento administrativo persistido en bitacora.",
+    category: "Sin categoria",
+    action,
+    actionLabel: getActionLabel(rawAction, action),
+    actionDetail: getActionDetail(rawAction, action, reason),
+    rawAction: typeof rawAction === "string" ? rawAction : undefined,
+    dateISO,
+    actor: log.adminUid || "admin",
+    reason,
+    source: mapSourceBucket(log.source),
+    statusSnapshot: action === "eliminado" ? "eliminado_permanente" : "sin_estado",
+    ownerName: typeof log.ownerUid === "string" ? log.ownerUid : "Sin propietario",
+    ownerContact: typeof log.ownerEmail === "string" ? log.ownerEmail : "Sin correo",
+  };
 };
 
 const buildTimelineFromRecord = (record: BusinessRecord, source: SourceBucket): TimelineEvent[] => {
@@ -157,6 +257,8 @@ const buildTimelineFromRecord = (record: BusinessRecord, source: SourceBucket): 
 
     const actor = typeof raw.by === "string" && raw.by.trim() ? raw.by : "Sistema";
     const reason = typeof raw.reason === "string" ? raw.reason : undefined;
+    const actionLabel = getActionLabel(rawAction, action);
+    const actionDetail = getActionDetail(rawAction, action, reason);
 
     events.push({
       id: `${record.id}-${action}-${dateISO}-${index}`,
@@ -165,7 +267,9 @@ const buildTimelineFromRecord = (record: BusinessRecord, source: SourceBucket): 
       businessDescription: base.businessDescription,
       category: base.category,
       action,
-      actionLabel: actionLabelMap[action],
+      actionLabel,
+      actionDetail,
+      rawAction: typeof rawAction === "string" ? rawAction : undefined,
       dateISO,
       actor,
       reason,
@@ -187,6 +291,7 @@ const buildTimelineFromRecord = (record: BusinessRecord, source: SourceBucket): 
         category: base.category,
         action: "creado",
         actionLabel: actionLabelMap.creado,
+        actionDetail: getActionDetail("creado", "creado"),
         dateISO: created,
         actor: "Sistema",
         source,
@@ -206,6 +311,7 @@ const buildTimelineFromRecord = (record: BusinessRecord, source: SourceBucket): 
         category: base.category,
         action: "aprobado",
         actionLabel: actionLabelMap.aprobado,
+        actionDetail: getActionDetail("aprobado", "aprobado"),
         dateISO: approved,
         actor: "Sistema",
         source,
@@ -225,6 +331,7 @@ const buildTimelineFromRecord = (record: BusinessRecord, source: SourceBucket): 
         category: base.category,
         action: "rechazado",
         actionLabel: actionLabelMap.rechazado,
+        actionDetail: getActionDetail("rechazado", "rechazado", record.rejectionReason),
         dateISO: rejected,
         actor: "Sistema",
         reason: record.rejectionReason,
@@ -245,6 +352,7 @@ const buildTimelineFromRecord = (record: BusinessRecord, source: SourceBucket): 
         category: base.category,
         action: "archivado",
         actionLabel: actionLabelMap.archivado,
+        actionDetail: getActionDetail("archivado", "archivado", record.archivedReason),
         dateISO: archived,
         actor: "Sistema",
         reason: record.archivedReason,
@@ -291,17 +399,34 @@ export default function AdminBusinessHistoryPage() {
         return Array.isArray(data.negocios) ? data.negocios : [];
       };
 
+      const loadMovementLogs = async (): Promise<AdminMovementLog[]> => {
+        const res = await fetch(`${API_BASE}/api/admin/negocios/movimientos`, {
+          credentials: "include",
+          headers,
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data.movimientos) ? data.movimientos : [];
+      };
+
       try {
-        const [pendientes, activos, archivados] = await Promise.all([
+        const [pendientes, activos, archivados, movementLogs] = await Promise.all([
           loadBucket("/api/admin/negocios/pendientes"),
           loadBucket("/api/admin/negocios"),
           loadBucket("/api/admin/negocios/archivados"),
+          loadMovementLogs(),
         ]);
+
+        const deletedFromLogs = movementLogs
+          .filter((log) => normalizeActionValue(log.accion).includes("elimin"))
+          .map((log) => buildTimelineFromAdminLog(log))
+          .filter((event): event is TimelineEvent => Boolean(event));
 
         const timeline = [
           ...pendientes.flatMap((record) => buildTimelineFromRecord(record, "pendientes")),
           ...activos.flatMap((record) => buildTimelineFromRecord(record, "activos")),
           ...archivados.flatMap((record) => buildTimelineFromRecord(record, "archivados")),
+          ...deletedFromLogs,
         ].sort((a, b) => new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime());
 
         setEvents(timeline);
@@ -380,6 +505,7 @@ export default function AdminBusinessHistoryPage() {
     { value: "archivado", label: `Archivados (${totalsByAction.archivado || 0})` },
     { value: "eliminado", label: `Eliminados (${totalsByAction.eliminado || 0})` },
     { value: "desarchivado", label: `Desarchivados (${totalsByAction.desarchivado || 0})` },
+    { value: "regresado", label: `Regresados a pendientes (${totalsByAction.regresado || 0})` },
     { value: "editado", label: `Editados (${totalsByAction.editado || 0})` },
   ];
 
@@ -495,6 +621,10 @@ export default function AdminBusinessHistoryPage() {
 
                   <p className="mb-3 line-clamp-2 text-base font-medium" style={{ color: "#1F2937", opacity: 1 }}>{event.businessDescription}</p>
 
+                  <p className="mb-3 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-sm" style={{ color: "#334155", opacity: 1 }}>
+                    {event.actionDetail}
+                  </p>
+
                   <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2" style={{ color: "#1E293B", opacity: 1 }}>
                     <p className="inline-flex items-center gap-2 font-medium" style={{ color: "#1E293B", opacity: 1 }}>
                       <FaBuilding className="text-[#0D601E]" />
@@ -545,6 +675,8 @@ export default function AdminBusinessHistoryPage() {
                   <p><b>ID movimiento:</b> {selectedEvent.id}</p>
                   <p><b>ID negocio:</b> {selectedEvent.businessId}</p>
                   <p><b>Accion:</b> {selectedEvent.actionLabel}</p>
+                  <p><b>Detalle:</b> {selectedEvent.actionDetail}</p>
+                  {selectedEvent.rawAction ? <p><b>Accion tecnica:</b> {selectedEvent.rawAction}</p> : null}
                   <p><b>Fecha:</b> {new Date(selectedEvent.dateISO).toLocaleString("es-MX")}</p>
                   <p><b>Actor:</b> {selectedEvent.actor}</p>
                   <p><b>Fuente:</b> {selectedEvent.source}</p>
