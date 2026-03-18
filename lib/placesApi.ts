@@ -92,7 +92,7 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
   });
 
   try {
-    const firestoreResponse = await fetch(`${BACKEND_URL}/api/lugares`);
+    const firestoreResponse = await fetch(`${BACKEND_URL}/api/lugares?includeApprovedBusinesses=true`);
     if (!firestoreResponse.ok) {
       return Array.from(mergedByName.values());
     }

@@ -42,7 +42,7 @@ export default function InformacionLugar() {
         // 1. Primero intentar buscar en el backend (Firestore)
         try {
           const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-          const backendResponse = await fetch(`${BACKEND_URL}/api/lugares`);
+          const backendResponse = await fetch(`${BACKEND_URL}/api/lugares?includeApprovedBusinesses=true`);
           
           if (backendResponse.ok) {
             const data = await backendResponse.json();
