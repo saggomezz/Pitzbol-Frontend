@@ -15,6 +15,7 @@ import WelcomeNotification from './components/WelcomeNotification';
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
 type Recommendation = { name: string; img: string | null; };
+type RecommendedPlace = Recommendation & { categoria?: string };
 
 const ALL_CATEGORIES: Category[] = [
   { name: "Fútbol", img: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&q=80&w=2070" },
@@ -49,6 +50,53 @@ const recommendations: Recommendation[] = [
   { name: "Tlaquepaque", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
   { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
 ];
+
+const DEFAULT_RECOMMENDATIONS: RecommendedPlace[] = recommendations.map((r) => ({ ...r }));
+
+const INTERES_TO_CATEGORIES: Record<string, string[]> = {
+  // Valores reales desde app/perfil/page.tsx (INTERESES_DISPONIBLES)
+  arteehistoria: ["Arte", "Cultura", "Museos"],
+  arquitectura: ["Cultura", "Arte"],
+  deportefutbol: ["Fútbol"],
+  musica: ["Eventos", "Cultura"],
+  naturaleza: ["Cultura", "Aventura"],
+  fotografia: ["Arte", "Cultura"],
+  vidanocturna: ["Eventos", "Gastronomía"],
+  compras: ["Mercados Locales", "Casas de Cambio"],
+  museos: ["Arte", "Cultura", "Museos"],
+  toursguiados: ["Cultura", "Tours Guiados"],
+  aventura: ["Aventura", "Cultura"],
+  religion: ["Religión", "Cultura"],
+  mercadoslocales: ["Mercados Locales", "Gastronomía"],
+
+  // Sinónimos/compatibilidad previa
+  futbol: ["Fútbol"],
+  soccer: ["Fútbol"],
+  gastronomia: ["Gastronomía"],
+  comida: ["Gastronomía"],
+  arte: ["Arte"],
+  cultura: ["Cultura"],
+  eventos: ["Eventos"],
+  conciertos: ["Eventos"],
+  hospitales: ["Hospitales"],
+  medico: ["Médico"],
+  salud: ["Médico", "Hospitales"],
+  casasdecambio: ["Casas de Cambio"],
+  cambio: ["Casas de Cambio"],
+};
+
+const normalizeText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+const getPlaceImageByCategory = (category: string): string | null => {
+  const normalizedCategory = normalizeText(category);
+  const found = ALL_CATEGORIES.find((c) => normalizeText(c.name) === normalizedCategory);
+  return found?.img ?? null;
+};
 
 const DateSlider = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false); // Estado para el modal
@@ -163,10 +211,11 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time, tHome }: 
 );
 
 // Componente de tarjeta con fotos ciclables en hover
-function PlaceCard2({ place, photos, noImageText }: {
-  place: RecommendedPlace;
+function PlaceCard2({ place, photos, noImageText, displayName }: {
+  place: Recommendation;
   photos: string[];
   noImageText: string;
+  displayName?: string;
 }) {
   const [isHovered, setIsHovered] = useState(false);
   const [photoIdx, setPhotoIdx] = useState(0);
@@ -180,6 +229,8 @@ function PlaceCard2({ place, photos, noImageText }: {
 
   const displayImg = photos.length > 0 ? photos[photoIdx] : place.img;
 
+  const nameForUi = displayName || place.name;
+
   return (
     <div
       className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105"
@@ -189,7 +240,7 @@ function PlaceCard2({ place, photos, noImageText }: {
       <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
         {displayImg
           ? <div className="absolute inset-0">
-              <img src={displayImg} alt={place.name} className="w-full h-full object-cover transition-opacity duration-500" />
+              <img src={displayImg} alt={nameForUi} className="w-full h-full object-cover transition-opacity duration-500" />
             </div>
           : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
         }
@@ -212,7 +263,7 @@ function PlaceCard2({ place, photos, noImageText }: {
         </div>
       </div>
       <div className="p-3">
-        <h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3>
+        <h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{nameForUi}</h3>
       </div>
     </div>
   );
@@ -234,13 +285,9 @@ function HomeContent() {
   const router = useRouter();
   const hasCheckedWelcome = useRef(false);
   const [isNewWelcome, setIsNewWelcome] = useState(false);
-<<<<<<< HEAD
-  
-=======
   const [recommendedPlaces, setRecommendedPlaces] = useState<RecommendedPlace[]>(DEFAULT_RECOMMENDATIONS);
   const [recommendedPhotos, setRecommendedPhotos] = useState<Record<string, string[]>>({});
 
->>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
   // Traducciones
   const tCat = useTranslations('categories');
   const tHome = useTranslations('home');
@@ -445,7 +492,7 @@ function HomeContent() {
     );
   };
 
-  const RecommendationsComponent = ({ recommendations }: { recommendations: any[] }) => {
+  const RecommendationsComponent = ({ recommendations }: { recommendations: RecommendedPlace[] }) => {
     const getPlaceName = (name: string) => {
       const placeMap: { [key: string]: string } = {
         "Centro de Guadalajara": tPlaces('centralGuadalajara'),
@@ -459,24 +506,14 @@ function HomeContent() {
       <div className="flex flex-col w-full md:w-3/5">
         <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-[#1A4D2E] px-1">{tHome('recommendations')}</h2>
         <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
-<<<<<<< HEAD
           {recommendations.map((place) => (
-            <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
-              <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
-                {place.img ? <div className="absolute inset-0"><Image src={place.img} alt={getPlaceName(place.name)} fill className="object-cover" /></div> : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{tCommon('noImage')}</div>}
-                <div className="absolute bottom-2 right-2 z-10"><button className="text-xs bg-[#1A4D2E] text-white px-3 py-1 rounded-full shadow-lg">{tCommon('search')}</button></div>
-              </div>
-              <div className="p-4"><h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{getPlaceName(place.name)}</h3></div>
-            </div>
-=======
-          {places.map((place) => (
             <PlaceCard2
               key={place.name}
               place={place}
               photos={recommendedPhotos[place.name] || []}
               noImageText={tCommon('noImage')}
+              displayName={getPlaceName(place.name)}
             />
->>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
           ))}
         </div>
       </div>
@@ -528,74 +565,113 @@ function HomeContent() {
     }
   }, []);
 
-<<<<<<< HEAD
   const toggleLugar = (lugar: Lugar) => {
     setSeleccionados(prev => {
       const existe = prev.find(s => s.nombre === lugar.nombre);
-      
       if (existe) {
         return prev.filter(s => s.nombre !== lugar.nombre);
-      } else {
-        return [...prev, lugar];
-=======
+      }
+      return [...prev, lugar];
+    });
+  };
+
+  const finalizarRuta = () => {
+    const texto = construirItinerarioElegido(seleccionados);
+    setItinerarioFinal(texto);
+    setMostrarOpciones(false);
+  };
+
   const cargarRecomendaciones = async () => {
     try {
       const userLocal = localStorage.getItem('pitzbol_user');
-      if (!userLocal) return;
+      if (!userLocal) {
+        setRecommendedPlaces(DEFAULT_RECOMMENDATIONS);
+        return;
+      }
 
       const user = JSON.parse(userLocal);
-      const intereses: string[] = user["07_intereses"] || user.especialidades || user["07_especialidades"] || [];
-      if (!intereses.length) return;
+      const rawIntereses = user["07_intereses"] || user.especialidades || user["07_especialidades"] || [];
+      const intereses: string[] = Array.isArray(rawIntereses)
+        ? rawIntereses
+        : typeof rawIntereses === "string"
+          ? rawIntereses.split(",")
+          : [];
 
-      const targetCategories = new Set<string>();
-      intereses.forEach((interes: string) => {
-        (INTERES_TO_CATEGORIES[interes] || []).forEach((cat: string) => targetCategories.add(cat));
+      const normalizedIntereses = intereses
+        .map((x) => normalizeText(String(x || "")))
+        .filter(Boolean);
+
+      if (!normalizedIntereses.length) {
+        setRecommendedPlaces(DEFAULT_RECOMMENDATIONS);
+        return;
+      }
+
+      const targetKeywords = new Set<string>();
+      normalizedIntereses.forEach((interes) => {
+        targetKeywords.add(interes);
+        (INTERES_TO_CATEGORIES[interes] || []).forEach((cat) => targetKeywords.add(normalizeText(cat)));
       });
-      if (targetCategories.size === 0) return;
+
+      if (targetKeywords.size === 0) {
+        setRecommendedPlaces(DEFAULT_RECOMMENDATIONS);
+        return;
+      }
 
       const res = await fetch('/datosLugares.csv');
       const text = await res.text();
-      const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
+      const { data } = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true });
 
-      const scored = (data as any[])
+      const scored = (data || [])
         .filter((row) => row['Nombre del Lugar'] && row['Categoría'])
         .map((row) => {
-          const placeCategories = (row['Categoría'] as string).split(',').map((c: string) => c.trim());
-          const matches = placeCategories.filter((c: string) => targetCategories.has(c)).length;
+          const placeCategoriesNormalized = String(row['Categoría'] || "")
+            .split(',')
+            .map((c) => normalizeText(c.trim()))
+            .filter(Boolean);
+
+          const matches = placeCategoriesNormalized.filter((categoryToken) =>
+            Array.from(targetKeywords).some((targetToken) =>
+              categoryToken === targetToken ||
+              categoryToken.includes(targetToken) ||
+              targetToken.includes(categoryToken)
+            )
+          ).length;
+
           return { row, matches };
         })
         .filter(({ matches }) => matches > 0)
         .sort((a, b) => b.matches - a.matches);
 
-      if (scored.length === 0) return;
+      if (!scored.length) {
+        setRecommendedPlaces(DEFAULT_RECOMMENDATIONS);
+        return;
+      }
 
-      // Mezclar dentro del mismo puntaje para variar resultados
       const shuffled: typeof scored = [];
       let i = 0;
       while (i < scored.length) {
         const score = scored[i].matches;
         const group: typeof scored = [];
-        while (i < scored.length && scored[i].matches === score) { group.push(scored[i]); i++; }
-        for (let j = group.length - 1; j > 0; j--) {
+        while (i < scored.length && scored[i].matches === score) {
+          group.push(scored[i]);
+          i += 1;
+        }
+        for (let j = group.length - 1; j > 0; j -= 1) {
           const k = Math.floor(Math.random() * (j + 1));
           [group[j], group[k]] = [group[k], group[j]];
         }
         shuffled.push(...group);
->>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
       }
-    });
-  };
 
-<<<<<<< HEAD
-  const finalizarRuta = () => {
-    const texto = construirItinerarioElegido(seleccionados);
-    setItinerarioFinal(texto);
-    setMostrarOpciones(false);
-=======
       const top6: RecommendedPlace[] = shuffled.slice(0, 6).map(({ row }) => {
-        const firstCat = (row['Categoría'] as string).split(',')[0].trim();
-        const csvImg = (row['Imagen'] as string)?.trim() || null;
-        return { name: row['Nombre del Lugar'] as string, img: csvImg || getPlaceImageByCategory(firstCat), categoria: firstCat };
+        const firstCat = String(row['Categoría'] || "").split(',')[0]?.trim() || "";
+        const csvImg = String(row['Imagen'] || "").trim() || null;
+
+        return {
+          name: String(row['Nombre del Lugar'] || "Lugar"),
+          img: csvImg || getPlaceImageByCategory(firstCat),
+          categoria: firstCat,
+        };
       });
 
       if (top6.length < 6) {
@@ -604,18 +680,17 @@ function HomeContent() {
 
       setRecommendedPlaces(top6);
     } catch {
-      // Mantener defaults en caso de error
+      setRecommendedPlaces(DEFAULT_RECOMMENDATIONS);
     }
->>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
   };
 
   const cargarItinerarioHome = async () => {
     setLoadingIA(true);
-    
+
     // Coordenadas por defecto (Centro de GDL)
     let ubicacionUsuario = { lat: 20.6767, lng: -103.3371 };
 
-    // INTENTAR DETECTAR UBICACIÓN REAL
+    // Intentar detectar ubicacion real
     if ("geolocation" in navigator) {
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -625,9 +700,9 @@ function HomeContent() {
           lat: position.coords.latitude,
           lng: position.coords.longitude
         };
-        console.log("Ubicación detectada con éxito");
-      } catch (error) {
-        console.log("Usando ubicación por defecto (GPS desactivado o timeout)");
+        console.log("Ubicacion detectada con exito");
+      } catch {
+        console.log("Usando ubicacion por defecto (GPS desactivado o timeout)");
       }
     }
 
@@ -641,21 +716,23 @@ function HomeContent() {
       const dataLimpia = (data as Lugar[]).filter(l => l.nombre && l.lat);
 
       const resultIA = generarItinerarioManual(
-        dataLimpia, 
-        ["futbol", "gastronomia", "postres"], 
-        300, 
-        ubicacionUsuario 
+        dataLimpia,
+        ["futbol", "gastronomia", "postres"],
+        300,
+        ubicacionUsuario
       );
 
       setItinerarioTxt(resultIA);
-    } catch (error) {
+    } catch {
       setItinerarioTxt("Error al sincronizar con Pitzbol.");
     } finally {
       setLoadingIA(false);
     }
   };
+
   useEffect(() => {
     cargarItinerarioHome();
+    cargarRecomendaciones();
     
     // Detectar si viene de un login exitoso
     const checkWelcome = () => {
@@ -694,7 +771,9 @@ function HomeContent() {
     const timer = setTimeout(checkWelcome, 100);
 
     // Re-sincronizar recomendaciones cuando el usuario actualiza sus intereses
-    const handleInteresesChange = () => cargarRecomendaciones();
+    const handleInteresesChange = () => {
+      cargarRecomendaciones();
+    };
     window.addEventListener("especialidadesActualizadas", handleInteresesChange);
     window.addEventListener("storage", handleInteresesChange);
 
@@ -704,7 +783,24 @@ function HomeContent() {
       window.removeEventListener("storage", handleInteresesChange);
     };
   }, []);
-<<<<<<< HEAD
+
+  // Fetch fotos de backend cuando cambian las recomendaciones
+  useEffect(() => {
+    if (!recommendedPlaces.length) return;
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+
+    recommendedPlaces.forEach((place) => {
+      fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(place.name)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.fotos?.length > 0) {
+            setRecommendedPhotos((prev) => ({ ...prev, [place.name]: data.fotos.slice(0, 3) }));
+          }
+        })
+        .catch(() => {});
+    });
+  }, [recommendedPlaces]);
+
   
   useEffect(() => {
     if (mostrarOpciones && navigator.geolocation) {
@@ -721,24 +817,6 @@ function HomeContent() {
       );
     }
   }, [mostrarOpciones]); 
-=======
-
-  // Fetch fotos de backend cuando cambian las recomendaciones
-  useEffect(() => {
-    if (!recommendedPlaces.length) return;
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-    recommendedPlaces.forEach(place => {
-      fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(place.name)}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (data?.fotos?.length > 0) {
-            setRecommendedPhotos(prev => ({ ...prev, [place.name]: data.fotos.slice(0, 3) }));
-          }
-        })
-        .catch(() => {});
-    });
-  }, [recommendedPlaces]);
->>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
 
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
@@ -841,7 +919,7 @@ function HomeContent() {
           </div>
         </div>
 
-        <RecommendationsComponent recommendations={recommendations} />
+        <RecommendationsComponent recommendations={recommendedPlaces} />
       </main>
     </div>
   );
