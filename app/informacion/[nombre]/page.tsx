@@ -9,6 +9,25 @@ import { useFavoritesSync } from "@/lib/favoritesApi";
 import PlaceRating from "@/app/components/PlaceRating";
 import { usePlaceView } from "@/lib/usePlaceView";
 
+const CULTURA_DESCRIPTIONS: Record<string, string> = {
+  "Instituto Cultural Cabañas, Guadalajara":
+    "Declarado Patrimonio de la Humanidad por la UNESCO en 1997, el Hospicio Cabañas fue fundado en 1810 por el obispo Juan Cruz Ruiz de Cabañas como casa de beneficencia. Su capilla alberga los célebres murales de José Clemente Orozco pintados entre 1938 y 1939, considerados una de las obras cumbres del muralismo mexicano. La figura del Hombre de Fuego en la cúpula central es su imagen más emblemática.",
+  "Teatro Degollado, Guadalajara":
+    "Inaugurado en 1866, el Teatro Degollado es el principal recinto escénico de Guadalajara y uno de los teatros neoclásicos más importantes de México. Su fachada está coronada por un friso que representa el cuarto acto de Dante en la Divina Comedia. Desde su apertura ha sido sede de la Orquesta Filarmónica de Jalisco y del Ballet Folclórico de la Universidad de Guadalajara, siendo escenario de cientos de eventos culturales internacionales.",
+  "Catedral Metropolitana, Guadalajara":
+    "Construida entre 1558 y 1618, la Catedral de Guadalajara combina estilos gótico, barroco y neoclásico, resultado de más de cuatro siglos de intervenciones arquitectónicas. Sus torres gemelas son el ícono por excelencia de la ciudad y fueron reconstruidas tras el terremoto de 1818. En su interior se conservan retablos coloniales, pinturas de Murillo y la cripta donde reposan varios obispos y arzobispos de Jalisco.",
+  "Palacio de Gobierno de Jalisco, Guadalajara":
+    "Edificado a finales del siglo XVII, el Palacio de Gobierno es el centro administrativo del estado de Jalisco y uno de los recintos históricos más significativos de México. En 1810, el cura Miguel Hidalgo firmó aquí el primer decreto de abolición de la esclavitud en América. Su escalinata principal está decorada con el monumental mural de José Clemente Orozco que representa a Hidalgo como figura libertaria.",
+  "Plaza de Armas, Guadalajara":
+    "Corazón histórico de Guadalajara desde su fundación en 1542, la Plaza de Armas fue durante siglos el espacio público central de la vida colonial tapatía. Flanqueada por la Catedral Metropolitana y el Palacio de Gobierno, fue escenario de proclamaciones, ferias y eventos políticos clave. Su quiosco modernista de hierro, traído desde Francia en 1898, es uno de los elementos más fotogénicos del centro histórico.",
+  "Museo del Periodismo y las Artes Gráficas, Guadalajara":
+    "Ubicado en la Casa de los Perros, un edificio del siglo XVIII declarado monumento histórico, este museo documenta la historia del periodismo en México desde la época colonial. Aquí se imprimió en 1810 el primer periódico insurgente: El Despertador Americano, voz de la lucha de Independencia. Sus salas exhiben prensas tipográficas históricas, primeras ediciones y la evolución del diseño editorial en Jalisco.",
+  "Expiatorio del Santísimo Sacramento, Guadalajara":
+    "Considerada la iglesia más bella de Guadalajara, el Expiatorio es un templo neogótico cuya construcción comenzó en 1897 y no concluyó sino hasta 1972, con más de 70 años de trabajo artesanal. Sus vitrales de origen alemán, sus arbotantes y su cripta la convierten en un referente arquitectónico único en México. Cada viernes se realiza el tradicional mercado de artesanías en su atrio, uno de los más populares de la ciudad.",
+  "Centro Histórico de Tlaquepaque, Guadalajara":
+    "San Pedro Tlaquepaque es reconocido mundialmente como uno de los centros artesanales más importantes de México. Desde el siglo XIX ha sido cuna de maestros vidrieros, alfareros y artesanos textiles cuyas obras llegan a colecciones de todo el mundo. Su centro histórico, con calles empedradas y casonas coloniales, fue declarado Zona de Monumentos Históricos y alberga galerías, talleres y el emblemático El Parián, mercado de artesanías y mariachi.",
+};
+
 interface Lugar {
   nombre: string;
   categoria: string;
@@ -381,6 +400,17 @@ export default function InformacionLugar() {
               </div>
             </div>
           </div>
+
+          {/* Descripción cultural */}
+          {CULTURA_DESCRIPTIONS[lugar.nombre] && (
+            <div className={styles.infoCard}>
+              <div className={styles.infoHeader}>
+                <FiInfo />
+                <h2>Significado cultural</h2>
+              </div>
+              <p className={styles.infoText}>{CULTURA_DESCRIPTIONS[lugar.nombre]}</p>
+            </div>
+          )}
 
           {/* Dirección */}
           <div className={styles.locationCard}>
