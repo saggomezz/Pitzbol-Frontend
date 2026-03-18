@@ -327,7 +327,8 @@ export default function InformacionLugar() {
 
           {/* Carrusel de fotos */}
           {fotos.length > 0 && (
-            <div style={{ position: 'relative', marginBottom: '1.5rem', borderRadius: '0.875rem', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.15)', aspectRatio: '16/9', maxHeight: '210px' }}>
+            <div style={{ padding: '0 2rem 1.5rem' }}>
+            <div style={{ position: 'relative', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', aspectRatio: '16/9', maxHeight: '340px', margin: '0 auto' }}>
               <img
                 src={fotos[fotoIdx]}
                 alt={`${lugar.nombre} foto ${fotoIdx + 1}`}
@@ -354,6 +355,7 @@ export default function InformacionLugar() {
                   </div>
                 </>
               )}
+            </div>
             </div>
           )}
 

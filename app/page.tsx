@@ -203,40 +203,33 @@ function PlaceCard2({ place, photos, noImageText }: {
   const displayImg = photos.length > 0 ? photos[photoIdx] : place.img;
 
   return (
-    <div
-      className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setPhotoIdx(0); }}
-    >
-      <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
-        {displayImg
-          ? <div className="absolute inset-0">
-              <img src={displayImg} alt={place.name} className="w-full h-full object-cover transition-opacity duration-500" />
+    <Link href={`/informacion/${encodeURIComponent(place.name)}`} className="block">
+      <div
+        className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105 cursor-pointer"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => { setIsHovered(false); setPhotoIdx(0); }}
+      >
+        <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
+          {displayImg
+            ? <div className="absolute inset-0">
+                <img src={displayImg} alt={place.name} className="w-full h-full object-cover transition-opacity duration-500" />
+              </div>
+            : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
+          }
+          {/* Dots indicador (solo con múltiples fotos y hover) */}
+          {isHovered && photos.length > 1 && (
+            <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
+              {photos.map((_, i) => (
+                <div key={i} className={`rounded-full transition-all duration-300 ${i === photoIdx ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/60'}`} />
+              ))}
             </div>
-          : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
-        }
-        {/* Dots indicador (solo con múltiples fotos y hover) */}
-        {isHovered && photos.length > 1 && (
-          <div className="absolute bottom-9 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
-            {photos.map((_, i) => (
-              <div key={i} className={`rounded-full transition-all duration-300 ${i === photoIdx ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/60'}`} />
-            ))}
-          </div>
-        )}
-        {/* Botón Ubicar */}
-        <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 z-10">
-          <Link href="/mapa">
-            <button className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors">
-              <FiMapPin size={14} />
-              Ubicar
-            </button>
-          </Link>
+          )}
+        </div>
+        <div className="p-3">
+          <h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3>
         </div>
       </div>
-      <div className="p-3">
-        <h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3>
-      </div>
-    </div>
+    </Link>
   );
 }
 
