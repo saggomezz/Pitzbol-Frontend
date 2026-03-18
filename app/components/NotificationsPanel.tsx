@@ -32,10 +32,43 @@ const BUSINESS_NOTIF_TYPES = new Set([
   'solicitud_negocio_enviada', 'negocio_aprobado', 'negocio_rechazado', 'negocio_archivado', 'negocio_editado', 'nueva_solicitud_negocio',
 ]);
 
-/** Convierte un enlace antiguo /negocio/preview?id=X al detalle de solicitud */
-function resolveNotifLink(notif: Notification): string | undefined {
+function extractBusinessIdFromNotification(notif: Notification): string | undefined {
+  const fromFields = notif.solicitudId || notif.negocioId || notif.uidSolicitante;
+  if (fromFields) return String(fromFields);
+
+  const enlace = notif.enlace || "";
+  if (!enlace) return undefined;
+
+  const directAdmin = enlace.match(/\/admin\/negocios\/([^/?#]+)/);
+  if (directAdmin?.[1]) return decodeURIComponent(directAdmin[1]);
+
+  const userBusinessDetail = enlace.match(/\/negocio\/mis-solicitudes\/([^/?#]+)/);
+  if (userBusinessDetail?.[1]) return decodeURIComponent(userBusinessDetail[1]);
+
+  const previewQuery = enlace.match(/[?&]id=([^&#]+)/);
+  if (previewQuery?.[1]) return decodeURIComponent(previewQuery[1]);
+
+  const anyBusinessQuery = enlace.match(/[?&](negocioId|solicitudId)=([^&#]+)/);
+  if (anyBusinessQuery?.[2]) return decodeURIComponent(anyBusinessQuery[2]);
+
+  return undefined;
+}
+
+/** Convierte enlaces viejos y normaliza navegación por ID de negocio según rol */
+function resolveNotifLink(notif: Notification, userRole?: string): string | undefined {
   const enlace = notif.enlace;
-  if (!enlace) return notif.negocioId ? `/negocio/mis-solicitudes/${notif.negocioId}` : undefined;
+  const businessId = extractBusinessIdFromNotification(notif);
+  const isAdmin = (userRole || "").toLowerCase() === "admin";
+
+  if (!enlace) {
+    if (!businessId) return undefined;
+    return isAdmin ? `/admin/negocios/${businessId}` : `/negocio/mis-solicitudes/${businessId}`;
+  }
+
+  // Para admins: siempre abrir detalle admin de solicitud por ID, independientemente del estatus
+  if (isAdmin && BUSINESS_NOTIF_TYPES.has(notif.tipo) && businessId) {
+    return `/admin/negocios/${businessId}`;
+  }
 
   // Reescribir URLs antiguas de preview para notificaciones de negocio
   if (BUSINESS_NOTIF_TYPES.has(notif.tipo)) {
@@ -506,7 +539,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                       onClick={() => {
                         marcarComoLeida(notif.id);
                         setIsOpen(false);
-                        const targetLink = resolveNotifLink(notif);
+                        const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
+                        const targetLink = resolveNotifLink(notif, user?.role);
                         if (targetLink) {
                           router.push(targetLink);
                         }
