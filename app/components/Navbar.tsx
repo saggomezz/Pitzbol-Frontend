@@ -7,11 +7,7 @@ import { useTranslations } from 'next-intl';
 import {
     FiBriefcase, FiCalendar, FiClock, FiCreditCard, FiHeart, FiHome, FiInfo,
     FiLogOut, FiMapPin, FiMenu, FiMessageSquare, FiPlusCircle, FiSearch, FiShield, FiUser,
-<<<<<<< HEAD
-    FiX, FiAward, FiFileText, FiCompass, FiShoppingBag, FiChevronLeft, FiChevronDown
-=======
-    FiX, FiAward, FiFileText, FiCompass, FiImage
->>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
+    FiX, FiAward, FiFileText, FiCompass, FiShoppingBag, FiChevronLeft, FiChevronDown, FiImage
 } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
