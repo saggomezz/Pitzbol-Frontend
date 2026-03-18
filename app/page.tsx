@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import Papa from 'papaparse';
 import { Suspense, useEffect, useRef, useState } from "react";
-import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
+import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiRefreshCw, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi";
 import WelcomeNotification from './components/WelcomeNotification';
 import { getPlaceImageByCategory } from '@/lib/placeImages';
@@ -360,15 +360,15 @@ function HomeContent() {
             </motion.button>
 
             {/* Contenedor de Categorías */}
-            <div className="w-full overflow-hidden px-8 sm:px-12 md:px-16">
-              <div className="mx-auto w-full max-w-5xl relative" onMouseEnter={() => setIsAutoPlay(false)} onMouseLeave={resetAutoPlay}>
+            <div className="w-full px-8 sm:px-12 md:px-16 pt-4" style={{ overflowX: 'hidden' }}>
+              <div className="mx-auto w-full max-w-3xl relative" onMouseEnter={() => setIsAutoPlay(false)} onMouseLeave={resetAutoPlay}>
                 <div className="hidden lg:block pointer-events-none">
                   <motion.div
                     key={`peek-left-${prevCategory.name}-${currentIndex}`}
                     initial={{ x: direction > 0 ? -30 : 10, opacity: 0.2, scale: 0.9 }}
                     animate={{ x: direction > 0 ? -18 : -24, opacity: 0.45, scale: 0.94 }}
                     transition={{ duration: 0.45, ease: "easeOut" }}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[30%] w-[28%] h-28 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[30%] w-[28%] h-24 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
                   >
                     <img src={prevCategory.img} alt={getCategoryName(prevCategory.name)} className="w-full h-full object-cover" loading="lazy" />
                   </motion.div>
@@ -377,7 +377,7 @@ function HomeContent() {
                     initial={{ x: direction > 0 ? -10 : 30, opacity: 0.2, scale: 0.9 }}
                     animate={{ x: direction > 0 ? 24 : 18, opacity: 0.45, scale: 0.94 }}
                     transition={{ duration: 0.45, ease: "easeOut" }}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[30%] w-[28%] h-28 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[30%] w-[28%] h-24 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
                   >
                     <img src={nextCategory.img} alt={getCategoryName(nextCategory.name)} className="w-full h-full object-cover" loading="lazy" />
                   </motion.div>
@@ -395,7 +395,7 @@ function HomeContent() {
                     <Link href={categoryRoutes[activeCategory.name] || "/mapa"}>
                       <motion.div
                         whileHover={{ y: -12, scale: 1.01 }}
-                        className="relative h-32 md:h-40 rounded-[28px] overflow-hidden shadow-xl border-2 border-[#F6F0E6] cursor-pointer group"
+                        className="relative h-28 md:h-36 rounded-[28px] overflow-hidden shadow-xl border-2 border-[#F6F0E6] cursor-pointer group"
                       >
                         <img
                           src={activeCategory.img}
@@ -463,10 +463,25 @@ function HomeContent() {
     );
   };
 
-  const RecommendationsComponent = ({ places }: { places: RecommendedPlace[] }) => {
+  const RecommendationsComponent = ({ places, onRefresh }: { places: RecommendedPlace[]; onRefresh: () => void }) => {
+    const [refreshing, setRefreshing] = useState(false);
+    const handleRefresh = async () => {
+      setRefreshing(true);
+      await onRefresh();
+      setTimeout(() => setRefreshing(false), 600);
+    };
     return (
       <div className="flex flex-col w-full md:w-3/5">
-        <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-[#1A4D2E] px-1">{tHome('recommendations')}</h2>
+        <div className="flex items-center gap-2 mb-3 md:mb-4 px-1">
+          <h2 className="text-xl md:text-2xl font-bold text-[#1A4D2E]">{tHome('recommendations')}</h2>
+          <button
+            onClick={handleRefresh}
+            title="Recargar recomendaciones"
+            className="p-1.5 rounded-full text-[#1A4D2E] hover:bg-[#E0F2F1] transition-colors"
+          >
+            <FiRefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+          </button>
+        </div>
         <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
           {places.map((place) => (
             <PlaceCard2
@@ -753,7 +768,7 @@ function HomeContent() {
           })()}
         </div>
 
-        <RecommendationsComponent places={recommendedPlaces} />
+        <RecommendationsComponent places={recommendedPlaces} onRefresh={cargarRecomendaciones} />
       </main>
     </div>
   );

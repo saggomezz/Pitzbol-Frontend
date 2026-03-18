@@ -102,8 +102,8 @@ export default function InformacionLugar() {
           console.log("No se pudo buscar en backend, intentando CSV:", backendError);
         }
 
-        // 2. Si no se encontró en backend, buscar en CSV
-        if (!lugarEncontrado) {
+        // 2. Buscar en CSV: si no se encontró en backend, o si el costo es genérico ("$$")
+        if (!lugarEncontrado || lugarEncontrado.costoEstimado === '$$') {
           const response = await fetch("/datosLugares.csv");
           const text = await response.text();
           const lineas = text.split("\n");
@@ -114,16 +114,20 @@ export default function InformacionLugar() {
             const nombreLugar = valores[0];
 
             if (nombreLugar === nombreBuscado) {
-              lugarEncontrado = {
-                nombre: nombreLugar,
-                categoria: valores[1] || "",
-                direccion: valores[2] || "",
-                latitud: parseFloat((valores[3] || "0").replace(',', '.')) || 0,
-                longitud: parseFloat((valores[4] || "0").replace(',', '.')) || 0,
-                tiempoEstancia: parseInt(valores[5] || "0") || 0,
-                costoEstimado: valores[6] || "",
-                notaIA: valores[7] || "",
-              };
+              if (!lugarEncontrado) {
+                lugarEncontrado = {
+                  nombre: nombreLugar,
+                  categoria: valores[1] || "",
+                  direccion: valores[2] || "",
+                  latitud: parseFloat((valores[3] || "0").replace(',', '.')) || 0,
+                  longitud: parseFloat((valores[4] || "0").replace(',', '.')) || 0,
+                  tiempoEstancia: parseInt(valores[5] || "0") || 0,
+                  costoEstimado: valores[6] || "",
+                  notaIA: valores[7] || "",
+                };
+              } else {
+                lugarEncontrado.costoEstimado = valores[6] || lugarEncontrado.costoEstimado;
+              }
               break;
             }
           }
@@ -323,7 +327,7 @@ export default function InformacionLugar() {
 
           {/* Carrusel de fotos */}
           {fotos.length > 0 && (
-            <div style={{ position: 'relative', marginBottom: '1.5rem', borderRadius: '0.875rem', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.15)', aspectRatio: '4/3' }}>
+            <div style={{ position: 'relative', marginBottom: '1.5rem', borderRadius: '0.875rem', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.15)', aspectRatio: '16/9', maxHeight: '210px' }}>
               <img
                 src={fotos[fotoIdx]}
                 alt={`${lugar.nombre} foto ${fotoIdx + 1}`}
