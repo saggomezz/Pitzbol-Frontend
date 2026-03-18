@@ -151,21 +151,21 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
 
       // El backend ya normaliza todos los campos
       const userRole = loginData.user?.role || "turista";
-      const especialidadesData = loginData.user?.especialidades || [];
+      const interesesData = loginData.user?.["07_intereses"] || loginData.user?.especialidades || loginData.user?.["07_especialidades"] || [];
 
       if (loginData.token) {
         localStorage.setItem("pitzbol_token", loginData.token);
       }
 
-      localStorage.setItem("pitzbol_user", JSON.stringify({ 
-        email: loginData.user?.email || regEmail, 
+      localStorage.setItem("pitzbol_user", JSON.stringify({
+        email: loginData.user?.email || regEmail,
         uid: loginData.user?.uid,
         nombre: loginData.user?.nombre || regNombre,
         apellido: loginData.user?.apellido || regApellido,
         fotoPerfil: loginData.user?.fotoPerfil || null,
         telefono: loginData.user?.telefono || telefono || "No registrado",
         nacionalidad: loginData.user?.nacionalidad || nacionalidad || "No registrado",
-        especialidades: especialidadesData,
+        "07_intereses": interesesData,
         role: userRole,
         guide_status: loginData.user?.guide_status || "ninguno",
       }));
@@ -241,7 +241,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
       if (response.ok) {
         // El backend ya normaliza todos los campos, usar directamente
         const userRole = data.user.role || "turista";
-        const especialidadesData = data.user.especialidades || [];
+        const interesesData = data.user["07_intereses"] || data.user.especialidades || data.user["07_especialidades"] || [];
 
         const nombre = data.user.nombre || data.user["01_nombre"] || "Usuario";
         const apellido = data.user.apellido || data.user["02_apellido"] || "";
@@ -251,15 +251,15 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
         if (data.token) {
           localStorage.setItem("pitzbol_token", data.token);
         }
-        localStorage.setItem("pitzbol_user", JSON.stringify({ 
-          email: data.user.email, 
-          uid: data.user.uid, 
+        localStorage.setItem("pitzbol_user", JSON.stringify({
+          email: data.user.email,
+          uid: data.user.uid,
           nombre,
           apellido,
           fotoPerfil: data.user.fotoPerfil || null,
           telefono,
           nacionalidad,
-          especialidades: especialidadesData,
+          "07_intereses": interesesData,
           role: userRole,
           guide_status: data.user.guide_status || "ninguno"
         }));

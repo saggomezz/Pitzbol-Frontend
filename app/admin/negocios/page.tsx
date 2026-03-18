@@ -5,6 +5,7 @@ import { editarNegocio } from "@/lib/editarNegocioApi";
 import EliminarNegocioModal from "@/app/components/EliminarNegocioModal";
 import { archivarNegocio } from "@/lib/adminNegociosApi";
 import { gestionarNegocioPendiente } from "@/lib/gestionarNegocioApi";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { FaTrash, FaEdit, FaCheckCircle, FaTimesCircle, FaEye, FaHourglassHalf, FaArchive, FaHistory, FaStore, FaSearch, FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe } from "react-icons/fa";
 import { MdBusiness, MdPerson, MdCategory, MdImage } from "react-icons/md";
 import { IoMdClose } from "react-icons/io";
@@ -112,38 +113,17 @@ const AdminNegociosPage = () => {
     setLoading(true);
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      let token = '';
-      if (typeof window !== 'undefined') {
-        token = localStorage.getItem('pitzbol_token') || '';
-      }
+      const headers = { "Content-Type": "application/json" };
       // Registrados
-      const resReg = await fetch(`${API_BASE}/api/admin/negocios`, {
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-      });
+      const resReg = await fetchWithAuth(`${API_BASE}/api/admin/negocios`, { headers });
       const dataReg = await resReg.json();
       setNegocios(dataReg.success ? dataReg.negocios : []);
       // Pendientes
-      const resPend = await fetch(`${API_BASE}/api/admin/negocios/pendientes`, {
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-      });
+      const resPend = await fetchWithAuth(`${API_BASE}/api/admin/negocios/pendientes`, { headers });
       const dataPend = await resPend.json();
       setPendientes(dataPend.success ? dataPend.negocios : []);
       // Archivados
-      const resArch = await fetch(`${API_BASE}/api/admin/negocios/archivados`, {
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-      });
+      const resArch = await fetchWithAuth(`${API_BASE}/api/admin/negocios/archivados`, { headers });
       const dataArch = await resArch.json();
       setArchivados(dataArch.success ? dataArch.negocios : []);
     } catch (err) {

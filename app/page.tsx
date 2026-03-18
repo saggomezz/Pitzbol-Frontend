@@ -162,6 +162,62 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time, tHome }: 
   </div>
 );
 
+// Componente de tarjeta con fotos ciclables en hover
+function PlaceCard2({ place, photos, noImageText }: {
+  place: RecommendedPlace;
+  photos: string[];
+  noImageText: string;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [photoIdx, setPhotoIdx] = useState(0);
+
+  useEffect(() => {
+    if (!isHovered || photos.length <= 1) { setPhotoIdx(0); return; }
+    const len = photos.length;
+    const t = setInterval(() => setPhotoIdx(p => (p + 1) % len), 900);
+    return () => clearInterval(t);
+  }, [isHovered, photos]);
+
+  const displayImg = photos.length > 0 ? photos[photoIdx] : place.img;
+
+  return (
+    <div
+      className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => { setIsHovered(false); setPhotoIdx(0); }}
+    >
+      <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
+        {displayImg
+          ? <div className="absolute inset-0">
+              <img src={displayImg} alt={place.name} className="w-full h-full object-cover transition-opacity duration-500" />
+            </div>
+          : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
+        }
+        {/* Dots indicador (solo con múltiples fotos y hover) */}
+        {isHovered && photos.length > 1 && (
+          <div className="absolute bottom-9 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
+            {photos.map((_, i) => (
+              <div key={i} className={`rounded-full transition-all duration-300 ${i === photoIdx ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/60'}`} />
+            ))}
+          </div>
+        )}
+        {/* Botón Ubicar */}
+        <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 z-10">
+          <Link href="/mapa">
+            <button className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors">
+              <FiMapPin size={14} />
+              Ubicar
+            </button>
+          </Link>
+        </div>
+      </div>
+      <div className="p-3">
+        <h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#FDFCF9] flex items-center justify-center font-bold">Cargando...</div>}>
@@ -178,7 +234,13 @@ function HomeContent() {
   const router = useRouter();
   const hasCheckedWelcome = useRef(false);
   const [isNewWelcome, setIsNewWelcome] = useState(false);
+<<<<<<< HEAD
   
+=======
+  const [recommendedPlaces, setRecommendedPlaces] = useState<RecommendedPlace[]>(DEFAULT_RECOMMENDATIONS);
+  const [recommendedPhotos, setRecommendedPhotos] = useState<Record<string, string[]>>({});
+
+>>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
   // Traducciones
   const tCat = useTranslations('categories');
   const tHome = useTranslations('home');
@@ -397,6 +459,7 @@ function HomeContent() {
       <div className="flex flex-col w-full md:w-3/5">
         <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-[#1A4D2E] px-1">{tHome('recommendations')}</h2>
         <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
+<<<<<<< HEAD
           {recommendations.map((place) => (
             <div key={place.name} className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105">
               <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
@@ -405,6 +468,15 @@ function HomeContent() {
               </div>
               <div className="p-4"><h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{getPlaceName(place.name)}</h3></div>
             </div>
+=======
+          {places.map((place) => (
+            <PlaceCard2
+              key={place.name}
+              place={place}
+              photos={recommendedPhotos[place.name] || []}
+              noImageText={tCommon('noImage')}
+            />
+>>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
           ))}
         </div>
       </div>
@@ -456,6 +528,7 @@ function HomeContent() {
     }
   }, []);
 
+<<<<<<< HEAD
   const toggleLugar = (lugar: Lugar) => {
     setSeleccionados(prev => {
       const existe = prev.find(s => s.nombre === lugar.nombre);
@@ -464,14 +537,76 @@ function HomeContent() {
         return prev.filter(s => s.nombre !== lugar.nombre);
       } else {
         return [...prev, lugar];
+=======
+  const cargarRecomendaciones = async () => {
+    try {
+      const userLocal = localStorage.getItem('pitzbol_user');
+      if (!userLocal) return;
+
+      const user = JSON.parse(userLocal);
+      const intereses: string[] = user["07_intereses"] || user.especialidades || user["07_especialidades"] || [];
+      if (!intereses.length) return;
+
+      const targetCategories = new Set<string>();
+      intereses.forEach((interes: string) => {
+        (INTERES_TO_CATEGORIES[interes] || []).forEach((cat: string) => targetCategories.add(cat));
+      });
+      if (targetCategories.size === 0) return;
+
+      const res = await fetch('/datosLugares.csv');
+      const text = await res.text();
+      const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
+
+      const scored = (data as any[])
+        .filter((row) => row['Nombre del Lugar'] && row['Categoría'])
+        .map((row) => {
+          const placeCategories = (row['Categoría'] as string).split(',').map((c: string) => c.trim());
+          const matches = placeCategories.filter((c: string) => targetCategories.has(c)).length;
+          return { row, matches };
+        })
+        .filter(({ matches }) => matches > 0)
+        .sort((a, b) => b.matches - a.matches);
+
+      if (scored.length === 0) return;
+
+      // Mezclar dentro del mismo puntaje para variar resultados
+      const shuffled: typeof scored = [];
+      let i = 0;
+      while (i < scored.length) {
+        const score = scored[i].matches;
+        const group: typeof scored = [];
+        while (i < scored.length && scored[i].matches === score) { group.push(scored[i]); i++; }
+        for (let j = group.length - 1; j > 0; j--) {
+          const k = Math.floor(Math.random() * (j + 1));
+          [group[j], group[k]] = [group[k], group[j]];
+        }
+        shuffled.push(...group);
+>>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
       }
     });
   };
 
+<<<<<<< HEAD
   const finalizarRuta = () => {
     const texto = construirItinerarioElegido(seleccionados);
     setItinerarioFinal(texto);
     setMostrarOpciones(false);
+=======
+      const top6: RecommendedPlace[] = shuffled.slice(0, 6).map(({ row }) => {
+        const firstCat = (row['Categoría'] as string).split(',')[0].trim();
+        const csvImg = (row['Imagen'] as string)?.trim() || null;
+        return { name: row['Nombre del Lugar'] as string, img: csvImg || getPlaceImageByCategory(firstCat), categoria: firstCat };
+      });
+
+      if (top6.length < 6) {
+        top6.push(...DEFAULT_RECOMMENDATIONS.slice(0, 6 - top6.length));
+      }
+
+      setRecommendedPlaces(top6);
+    } catch {
+      // Mantener defaults en caso de error
+    }
+>>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
   };
 
   const cargarItinerarioHome = async () => {
@@ -554,12 +689,22 @@ function HomeContent() {
     
     // Verificar inmediatamente
     checkWelcome();
-    
+
     // También verificar con un pequeño delay
     const timer = setTimeout(checkWelcome, 100);
-    
-    return () => clearTimeout(timer);
+
+    // Re-sincronizar recomendaciones cuando el usuario actualiza sus intereses
+    const handleInteresesChange = () => cargarRecomendaciones();
+    window.addEventListener("especialidadesActualizadas", handleInteresesChange);
+    window.addEventListener("storage", handleInteresesChange);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("especialidadesActualizadas", handleInteresesChange);
+      window.removeEventListener("storage", handleInteresesChange);
+    };
   }, []);
+<<<<<<< HEAD
   
   useEffect(() => {
     if (mostrarOpciones && navigator.geolocation) {
@@ -576,6 +721,24 @@ function HomeContent() {
       );
     }
   }, [mostrarOpciones]); 
+=======
+
+  // Fetch fotos de backend cuando cambian las recomendaciones
+  useEffect(() => {
+    if (!recommendedPlaces.length) return;
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+    recommendedPlaces.forEach(place => {
+      fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(place.name)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.fotos?.length > 0) {
+            setRecommendedPhotos(prev => ({ ...prev, [place.name]: data.fotos.slice(0, 3) }));
+          }
+        })
+        .catch(() => {});
+    });
+  }, [recommendedPlaces]);
+>>>>>>> 56282d318155b7bccec083686ef2422e2925ae6b
 
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">

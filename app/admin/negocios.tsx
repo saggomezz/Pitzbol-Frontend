@@ -2,8 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "../styles/Negocios.module.css";
-// import { db } from "../../lib/firebase";
-// import { collection, query, getDocs, updateDoc, doc, Timestamp } from "firebase/firestore";
+import { fetchWithAuth } from "../../lib/fetchWithAuth";
 import { enviarNotificacion } from "../../lib/notificaciones";
 
 export default function AdminNegociosPage() {
@@ -24,11 +23,8 @@ export default function AdminNegociosPage() {
     if (tab === 'pendientes') endpoint = `${API_BASE}/api/admin/negocios/pendientes`;
     if (tab === 'archivados') endpoint = `${API_BASE}/api/admin/negocios/archivados`;
     try {
-      const res = await fetch(endpoint, {
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const res = await fetchWithAuth(endpoint, {
+        headers: { "Content-Type": "application/json" },
       });
       const data = await res.json();
       if (data.success) {

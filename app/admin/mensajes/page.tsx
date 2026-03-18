@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { fetchWithAuth } from "../../../lib/fetchWithAuth";
 import { FiMail, FiArrowLeft, FiPhone, FiUser, FiMessageSquare, FiCalendar, FiAlertCircle } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -36,12 +37,8 @@ export default function AdminMensajes() {
   const fetchMensajes = async () => {
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-      const token = localStorage.getItem("pitzbol_token");
       
-      const response = await fetch(`${API_BASE}/api/support/contact-forms`, {
-        credentials: "include",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const response = await fetchWithAuth(`${API_BASE}/api/support/contact-forms`);
 
       if (response.ok) {
         const data = await response.json();
@@ -60,14 +57,11 @@ export default function AdminMensajes() {
     setDeleting(true);
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-      const token = localStorage.getItem("pitzbol_token");
 
-      console.log("🗑️ Eliminando mensaje:", selectedMensaje.id);
+      console.log("\uD83D\uDDD1\uFE0F Eliminando mensaje:", selectedMensaje.id);
 
-      const response = await fetch(`${API_BASE}/api/support/contact-forms/${selectedMensaje.id}`, {
+      const response = await fetchWithAuth(`${API_BASE}/api/support/contact-forms/${selectedMensaje.id}`, {
         method: "DELETE",
-        credentials: "include",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       const data = await response.json();
