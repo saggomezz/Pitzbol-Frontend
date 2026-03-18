@@ -288,15 +288,16 @@ export default function AdminViewBusinessPage() {
 
   // Archivar negocio activo
   const handleArchivarNegocio = async () => {
-    if (!business || !motivoArchivo.trim()) return;
+    if (!business) return;
     setProcesandoAccion(true);
     try {
       const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
+      const motivoFinal = motivoArchivo.trim() || "Archivado por administrador";
       const response = await fetch(`${BACKEND_URL}/api/admin/negocios/${business.id}/archivar`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ motivo: motivoArchivo, adminUid }),
+        body: JSON.stringify({ motivo: motivoFinal, adminUid }),
       });
       const data = await response.json();
       if (data.success) {
@@ -1128,19 +1129,19 @@ export default function AdminViewBusinessPage() {
                 <h3 className="text-2xl font-black text-gray-800">Archivar negocio</h3>
               </div>
               <p className="text-gray-600 mb-4">
-                Indica el motivo por el cual deseas archivar este negocio. El negocio dejará de estar visible para los usuarios.
+                Puedes indicar el motivo por el cual deseas archivar este negocio (opcional). El negocio dejará de estar visible para los usuarios.
               </p>
               <textarea
                 value={motivoArchivo}
                 onChange={(e) => setMotivoArchivo(e.target.value)}
-                placeholder="Escribe el motivo del archivado..."
+                placeholder="Escribe el motivo del archivado (opcional)..."
                 className="w-full border border-gray-300 rounded-xl p-3 mb-4 min-h-[100px] text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400"
                 disabled={procesandoAccion}
               />
               <div className="flex gap-3">
                 <button
                   onClick={handleArchivarNegocio}
-                  disabled={!motivoArchivo.trim() || procesandoAccion}
+                  disabled={procesandoAccion}
                   className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {procesandoAccion ? "Archivando..." : "Archivar"}
