@@ -1,7 +1,6 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState, useEffect, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import {
   FiChevronLeft, FiChevronRight, FiPlus, FiSun, FiX, FiTrash2, FiClock, FiMapPin, FiDollarSign
@@ -38,15 +37,12 @@ function formatTime12(t: string) {
   return `${h}:${m} ${ampm}`;
 }
 
-function CalendarioInner() {
+export default function CalendarioPage() {
   const [currentDate, setCurrentDate] = useState(new Date(2026, 5, 1));
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showOptions, setShowOptions] = useState(false);
   const [itinerarios, setItinerarios] = useState<CalendarEntry[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const initialized = useRef(false);
-
-  const searchParams = useSearchParams();
 
   const t = useTranslations('calendar');
   const tMonths = useTranslations('calendar.months');
@@ -75,10 +71,8 @@ function CalendarioInner() {
   ];
 
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-
-    const saveParam = searchParams.get('save');
+    const params = new URLSearchParams(window.location.search);
+    const saveParam = params.get('save');
     let stored: CalendarEntry[] = [];
     try {
       stored = JSON.parse(localStorage.getItem('pitzbol_calendario') || '[]');
@@ -87,12 +81,13 @@ function CalendarioInner() {
     if (saveParam) {
       try {
         const entry: CalendarEntry = JSON.parse(decodeURIComponent(saveParam));
-        const count = stored.length + 1;
-        entry.nombre = `Itinerario #${count}`;
-        const updated = [...stored, entry];
-        localStorage.setItem('pitzbol_calendario', JSON.stringify(updated));
-        setItinerarios(updated);
-        // Navegar al mes del itinerario
+        if (!stored.find(e => e.id === entry.id)) {
+          const count = stored.length + 1;
+          entry.nombre = `Itinerario #${count}`;
+          stored = [...stored, entry];
+          localStorage.setItem('pitzbol_calendario', JSON.stringify(stored));
+        }
+        setItinerarios(stored);
         const [y, m] = entry.fecha.split('-').map(Number);
         if (y && m) setCurrentDate(new Date(y, m - 1, 1));
         window.history.replaceState(null, '', '/calendario');
@@ -288,22 +283,11 @@ function CalendarioInner() {
                 ))}
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="pl-5 border-l-2 border-[#769C7B] relative">
-                  <div className="absolute w-2 h-2 bg-[#F00808] rounded-full -left-[5px] top-1" />
-                  <p className="font-bold text-base">Arribo a GDL</p>
-                </div>
-                {itinerarios.length === 0 && (
-                  <p className="text-green-200 text-xs mt-2">
-                    Genera un itinerario en la IA y agrégalo aquí.
-                  </p>
-                )}
-                {itinerarios.length > 0 && !selectedDay && (
-                  <p className="text-green-200 text-xs mt-2">
-                    Selecciona un día marcado para ver tu itinerario.
-                  </p>
-                )}
-              </div>
+              <p className="text-green-200 text-xs">
+                {itinerarios.length === 0
+                  ? 'Genera un itinerario en la IA y agrégalo aquí.'
+                  : 'Selecciona un día marcado para ver tu itinerario.'}
+              </p>
             )}
           </section>
         </div>
@@ -334,10 +318,3 @@ function CalendarioInner() {
   );
 }
 
-export default function CalendarioPage() {
-  return (
-    <Suspense fallback={null}>
-      <CalendarioInner />
-    </Suspense>
-  );
-}
