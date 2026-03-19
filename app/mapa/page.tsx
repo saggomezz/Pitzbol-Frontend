@@ -34,6 +34,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { 
     FiMapPin, 
@@ -64,6 +65,7 @@ import "leaflet/dist/leaflet.css";
 import styles from "./mapa.module.css";
 import { getPlaceImageUrlSync, getPlaceImageByCategory } from "@/lib/placeImages";
 import { useFavoritesSync } from "@/lib/favoritesApi";
+import PlaceRating from "@/app/components/PlaceRating";
 
 interface Lugar {
     nombre: string;
@@ -295,6 +297,7 @@ const MapComponent = dynamic(
 );
 
 export default function MapaPage() {
+    const router = useRouter();
     const [lugares, setLugares] = useState<Lugar[]>([]);
     const [filteredLugares, setFilteredLugares] = useState<Lugar[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>("Todos Los Lugares");
@@ -808,26 +811,16 @@ export default function MapaPage() {
                                                             {(lugar.descripcion?.length || 0) > 60 ? "..." : ""}
                                                         </p>
                                                     </div>
-                                                    <motion.button
-                                                        className={`${styles.favoriteButton} ${
-                                                            favorites.includes(lugar.nombre) ? styles.active : ""
-                                                        }`}
-                                                        onClick={(e) => toggleFavorite(e, lugar.nombre)}
-                                                        whileTap={{ scale: 0.85 }}
-                                                        animate={{ 
-                                                            scale: favorites.includes(lugar.nombre) ? [1, 1.2, 1] : 1 
-                                                        }}
-                                                        transition={{ duration: 0.3 }}
-                                                    >
-                                                        <FiHeart
-                                                            size={16}
-                                                            fill={
-                                                                favorites.includes(lugar.nombre)
-                                                                    ? "currentColor"
-                                                                    : "none"
-                                                            }
-                                                        />
-                                                    </motion.button>
+                                                    <div className={styles.placeActions}>
+                                                        <div className={styles.placeRatingBadge}>
+                                                            <PlaceRating
+                                                                placeName={lugar.nombre}
+                                                                showLabel={true}
+                                                                size="small"
+                                                                readonly={true}
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div className={styles.placeFooter}>
                                                     <div className={styles.placeLocation}>
@@ -836,6 +829,26 @@ export default function MapaPage() {
                                                     </div>
                                                 </div>
                                             </div>
+                                            <motion.button
+                                                className={`${styles.favoriteButton} ${styles.favoriteButtonFloating} ${
+                                                    favorites.includes(lugar.nombre) ? styles.active : ""
+                                                }`}
+                                                onClick={(e) => toggleFavorite(e, lugar.nombre)}
+                                                whileTap={{ scale: 0.85 }}
+                                                animate={{ 
+                                                    scale: favorites.includes(lugar.nombre) ? [1, 1.2, 1] : 1 
+                                                }}
+                                                transition={{ duration: 0.3 }}
+                                            >
+                                                <FiHeart
+                                                    size={16}
+                                                    fill={
+                                                        favorites.includes(lugar.nombre)
+                                                            ? "currentColor"
+                                                            : "none"
+                                                    }
+                                                />
+                                            </motion.button>
                                         </motion.div>
                                     ))}
                                 </div>
@@ -899,7 +912,7 @@ export default function MapaPage() {
                                         <div className={styles.infoContent}>
                                             <h3 
                                                 className={styles.infoTitle}
-                                                onClick={() => window.location.href = `/informacion/${selectedPlace.nombre}`}
+                                                onClick={() => router.push(`/informacion/${encodeURIComponent(selectedPlace.nombre)}`)}
                                             >
                                                 {selectedPlace.nombre}
                                             </h3>
@@ -923,7 +936,7 @@ export default function MapaPage() {
                                             {/* Botón de acción mejorado */}
                                             <button
                                                 className={styles.btnPrimary}
-                                                onClick={() => window.location.href = `/informacion/${selectedPlace.nombre}`}
+                                                onClick={() => router.push(`/informacion/${encodeURIComponent(selectedPlace.nombre)}`)}
                                             >
                                                 <span>Detalles</span>
                                                 <FiExternalLink size={18} />
