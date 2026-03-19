@@ -80,10 +80,21 @@ export default function CalendarioPage() {
 
     if (saveParam) {
       try {
-        const entry: CalendarEntry = JSON.parse(decodeURIComponent(saveParam));
+        const raw = JSON.parse(decodeURIComponent(atob(saveParam)));
+        const entry: CalendarEntry = {
+          id: raw.id,
+          nombre: '',
+          fecha: raw.fecha,
+          meta: raw.meta,
+          stops: (raw.stops || []).map((s: any) => ({
+            place: { nombre: s.n, direccion: s.d, costo: s.c, isMatch: s.m, categoria: '' },
+            horaLlegada: s.a,
+            horaSalida: s.z,
+            traslado: '',
+          })),
+        };
         if (!stored.find(e => e.id === entry.id)) {
-          const count = stored.length + 1;
-          entry.nombre = `Itinerario #${count}`;
+          entry.nombre = `Itinerario #${stored.length + 1}`;
           stored = [...stored, entry];
           localStorage.setItem('pitzbol_calendario', JSON.stringify(stored));
         }
