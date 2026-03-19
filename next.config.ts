@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: ['69.30.204.56'],
     webpack: (config: any) => {
       config.resolve.alias = {
         ...config.resolve.alias,
