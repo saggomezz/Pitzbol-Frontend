@@ -3,11 +3,12 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2 } from "react-icons/fi";
+import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2, FiPhone, FiGlobe, FiMail } from "react-icons/fi";
 import styles from "../informacion.module.css";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import PlaceRating from "@/app/components/PlaceRating";
 import { usePlaceView } from "@/lib/usePlaceView";
+import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
 
 interface Lugar {
   nombre: string;
@@ -15,9 +16,59 @@ interface Lugar {
   direccion: string;
   latitud: number;
   longitud: number;
+  telefono?: string;
+  website?: string;
+  email?: string;
+  codigoPostal?: string;
   tiempoEstancia: number;
   costoEstimado: string;
   notaIA: string;
+  fotos: string[];
+}
+
+function normalizeName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function mapPlaceToPublicDetail(place: PlaceRecord): Lugar {
+  const lat = parseFloat(place.latitud || "");
+  const lng = parseFloat(place.longitud || "");
+  const placeAsAny = place as PlaceRecord & {
+    tiempoEstancia?: number;
+    costoEstimado?: string;
+  };
+
+  return {
+    nombre: place.nombre,
+    categoria: place.categoria || "Negocio",
+    direccion: place.ubicacion || "Ubicacion no disponible",
+    latitud: Number.isFinite(lat) ? lat : 0,
+    longitud: Number.isFinite(lng) ? lng : 0,
+    telefono: place.telefono || (place as PlaceRecord & { phone?: string }).phone,
+    website: place.website,
+    email:
+      place.email ||
+      (place as PlaceRecord & { ownerEmail?: string; contactEmail?: string }).ownerEmail ||
+      (place as PlaceRecord & { ownerEmail?: string; contactEmail?: string }).contactEmail,
+    codigoPostal: place.codigoPostal,
+    tiempoEstancia: placeAsAny.tiempoEstancia && placeAsAny.tiempoEstancia > 0 ? placeAsAny.tiempoEstancia : 60,
+    costoEstimado: placeAsAny.costoEstimado || "No especificado",
+    notaIA: place.descripcion || "",
+    fotos: Array.isArray(place.fotos) ? place.fotos : [],
+  };
+}
+
+function getMapEmbedSrc(lugar: Lugar): string {
+  const hasCoordinates = lugar.latitud !== 0 && lugar.longitud !== 0;
+  const query = hasCoordinates
+    ? `${lugar.latitud},${lugar.longitud}`
+    : encodeURIComponent(lugar.direccion || lugar.nombre);
+
+  return `https://maps.google.com/maps?q=${query}&z=15&output=embed`;
 }
 
 export default function InformacionLugar() {
@@ -32,99 +83,43 @@ export default function InformacionLugar() {
   const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
 
   // Registrar vista del lugar
-  const nombreLugar = params.nombre ? decodeURIComponent(params.nombre as string) : null;
+  const nombreRaw = params.nombre;
+  const nombreLugar = typeof nombreRaw === "string" ? decodeURIComponent(nombreRaw) : null;
   usePlaceView(nombreLugar);
-
-  // Fetch fotos del lugar
-  useEffect(() => {
-    if (!nombreLugar) return;
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-    fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(nombreLugar)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.fotos?.length > 0) setFotos(data.fotos.slice(0, 3)); })
-      .catch(() => {});
-  }, [nombreLugar]);
 
   useEffect(() => {
     const cargarLugar = async () => {
+      if (!nombreLugar) {
+        setLugar(null);
+        setFotos([]);
+        setLoading(false);
+        return;
+      }
+
       try {
-        const nombreBuscado = decodeURIComponent(params.nombre as string);
-        let lugarEncontrado: Lugar | null = null;
+        const mergedPlaces = await getMergedPlaces();
+        const lugarRecord = mergedPlaces.find(
+          (candidate) => normalizeName(candidate.nombre) === normalizeName(nombreLugar)
+        );
 
-        // 1. Primero intentar buscar en el backend (Firestore)
-        try {
-          const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-          const backendResponse = await fetch(`${BACKEND_URL}/api/lugares?includeApprovedBusinesses=true`);
-          
-          if (backendResponse.ok) {
-            const data = await backendResponse.json();
-            const lugares = data.lugares || [];
-            
-            const lugarBackend = lugares.find((l: any) => l.nombre === nombreBuscado);
-            
-            if (lugarBackend) {
-              lugarEncontrado = {
-                nombre: lugarBackend.nombre || nombreBuscado,
-                categoria: lugarBackend.categoria || "",
-                direccion: lugarBackend.ubicacion || "",
-                latitud: parseFloat(lugarBackend.latitud) || 0,
-                longitud: parseFloat(lugarBackend.longitud) || 0,
-                tiempoEstancia: 60, // Valor por defecto
-                costoEstimado: "$$", // Valor por defecto
-                notaIA: lugarBackend.descripcion || "",
-              };
-            }
-          }
-        } catch (backendError) {
-          console.log("No se pudo buscar en backend, intentando CSV:", backendError);
-        }
-
-        // 2. Si no se encontró en backend, buscar en CSV
-        if (!lugarEncontrado) {
-          const response = await fetch("/datosLugares.csv");
-          const text = await response.text();
-          const lineas = text.split("\n");
-
-          for (let i = 1; i < lineas.length; i++) {
-            const valores = lineas[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-            
-            if (valores) {
-              const nombreLugar = valores[0].replace(/"/g, "");
-              
-              if (nombreLugar === nombreBuscado) {
-                lugarEncontrado = {
-                  nombre: nombreLugar,
-                  categoria: valores[1]?.replace(/"/g, "") || "",
-                  direccion: valores[2]?.replace(/"/g, "") || "",
-                  latitud: parseFloat(valores[3]) || 0,
-                  longitud: parseFloat(valores[4]) || 0,
-                  tiempoEstancia: parseInt(valores[5]) || 0,
-                  costoEstimado: valores[6]?.replace(/"/g, "") || "",
-                  notaIA: valores[7]?.replace(/"/g, "") || "",
-                };
-                break;
-              }
-            }
-          }
-        }
-
-        // 3. Establecer el lugar encontrado (o null si no se encontró)
+        const lugarEncontrado = lugarRecord ? mapPlaceToPublicDetail(lugarRecord) : null;
         setLugar(lugarEncontrado);
+        setFotos((lugarEncontrado?.fotos || []).slice(0, 6));
 
-        // 4. Verificar si está en favoritos
+        // Verificar si esta en favoritos
         try {
           if (isAuthenticated()) {
             await syncLocalFavorites();
           }
           const favorites = await getFavorites();
-          setIsFavorite(favorites.includes(nombreBuscado));
+          setIsFavorite(favorites.includes(nombreLugar));
         } catch (error) {
           console.error("Error al cargar favoritos:", error);
           // Fallback a localStorage
           const storedFavorites = localStorage.getItem("pitzbol_favorites");
           if (storedFavorites) {
             const favorites = JSON.parse(storedFavorites);
-            setIsFavorite(favorites.includes(nombreBuscado));
+            setIsFavorite(favorites.includes(nombreLugar));
           }
         }
       } catch (error) {
@@ -135,17 +130,21 @@ export default function InformacionLugar() {
     };
 
     cargarLugar();
-  }, [params.nombre]);
+  }, [nombreLugar, getFavorites, isAuthenticated, syncLocalFavorites]);
 
   const abrirEnMaps = () => {
     if (lugar) {
-      const url = `https://www.google.com/maps/search/?api=1&query=${lugar.latitud},${lugar.longitud}`;
+      const hasCoordinates = lugar.latitud !== 0 && lugar.longitud !== 0;
+      const query = hasCoordinates
+        ? `${lugar.latitud},${lugar.longitud}`
+        : encodeURIComponent(lugar.direccion || lugar.nombre);
+      const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
       window.open(url, "_blank");
     }
   };
 
   const toggleFavorite = async () => {
-    const nombreLugar = decodeURIComponent(params.nombre as string);
+    if (!nombreLugar) return;
     
     try {
       if (isFavorite) {
@@ -189,6 +188,12 @@ export default function InformacionLugar() {
     }
   };
 
+  const normalizedWebsite = lugar?.website
+    ? (lugar.website.startsWith("http://") || lugar.website.startsWith("https://")
+        ? lugar.website
+        : `https://${lugar.website}`)
+    : null;
+
   if (loading) {
     return (
       <div className={styles.container}>
@@ -204,8 +209,8 @@ export default function InformacionLugar() {
     return (
       <div className={styles.container}>
         <div className={styles.notFound}>
-          <h1>😕 Lugar no encontrado</h1>
-          <p>No pudimos encontrar información sobre este lugar.</p>
+          <h1>Lugar o negocio no encontrado</h1>
+          <p>No pudimos encontrar informacion publica sobre este lugar.</p>
           <button onClick={() => router.push("/mapa")} className={styles.backButton}>
             <FiArrowLeft /> Volver al mapa
           </button>
@@ -271,113 +276,170 @@ export default function InformacionLugar() {
         {/* Información principal */}
         <div className={styles.mainContent}>
           <div className={styles.titleSection}>
-            <span className={styles.categoryBadge}>{lugar.categoria}</span>
+            <div className={styles.titleTopRow}>
+              <span className={styles.categoryBadge}>{lugar.categoria}</span>
+              <div className={styles.titleRatingCorner}>
+                <PlaceRating
+                  placeName={lugar.nombre}
+                  showLabel={true}
+                  size="large"
+                  displayMode="split"
+                />
+              </div>
+            </div>
             <h1 className={styles.title}>{lugar.nombre}</h1>
-            
-            {/* Calificación del lugar */}
-            <div style={{ marginTop: '1rem' }}>
-              <PlaceRating 
-                placeName={lugar.nombre} 
-                showLabel={true}
-                size="large"
-              />
-            </div>
           </div>
 
-          {/* Carrusel de fotos */}
+          {/* Galería dividida: visor principal + miniaturas */}
           {fotos.length > 0 && (
-            <div style={{ position: 'relative', marginBottom: '1.5rem', borderRadius: '0.875rem', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.15)', aspectRatio: '4/3' }}>
-              <img
-                src={fotos[fotoIdx]}
-                alt={`${lugar.nombre} foto ${fotoIdx + 1}`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.3s ease' }}
-              />
+            <section className={styles.gallerySplit}>
+              <div className={styles.galleryViewer}>
+                <img
+                  src={fotos[fotoIdx]}
+                  alt={`${lugar.nombre} imagen ${fotoIdx + 1}`}
+                  className={styles.galleryMainImage}
+                />
+              </div>
+
               {fotos.length > 1 && (
-                <>
-                  <button
-                    onClick={() => setFotoIdx(i => (i - 1 + fotos.length) % fotos.length)}
-                    style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', color: 'white', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >‹</button>
-                  <button
-                    onClick={() => setFotoIdx(i => (i + 1) % fotos.length)}
-                    style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', color: 'white', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >›</button>
-                  <div style={{ position: 'absolute', bottom: '0.75rem', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '6px' }}>
-                    {fotos.map((_, i) => (
+                <aside className={styles.galleryThumbsColumn}>
+                  {fotos
+                    .map((foto, idx) => ({ foto, idx }))
+                    .map((item) => (
                       <button
-                        key={i}
-                        onClick={() => setFotoIdx(i)}
-                        style={{ width: i === fotoIdx ? '20px' : '8px', height: '8px', borderRadius: '4px', background: i === fotoIdx ? 'white' : 'rgba(255,255,255,0.5)', border: 'none', cursor: 'pointer', transition: 'all 0.3s ease', padding: 0 }}
-                      />
+                        key={`${item.foto}-${item.idx}`}
+                        type="button"
+                        className={`${styles.galleryThumbButton} ${item.idx === fotoIdx ? styles.galleryThumbButtonActive : ''}`}
+                        onClick={() => setFotoIdx(item.idx)}
+                        aria-label={`Ver imagen ${item.idx + 1}`}
+                        aria-pressed={item.idx === fotoIdx}
+                      >
+                        <img
+                          src={item.foto}
+                          alt={`${lugar.nombre} miniatura ${item.idx + 1}`}
+                          className={styles.galleryThumbImage}
+                        />
+                      </button>
                     ))}
-                  </div>
-                </>
+                </aside>
               )}
-            </div>
+            </section>
           )}
 
-          {/* Stats Cards */}
-          <div className={styles.statsGrid}>
-            <div className={styles.statCard}>
-              <div className={styles.statIcon}>
-                <FiClock />
+          {/* Descripcion + panel derecho (tiempo/costo/contacto) */}
+          <div className={styles.overviewLayout}>
+            <section className={styles.descriptionColumn}>
+              <div className={styles.descriptionCard}>
+                <div className={styles.infoHeader}>
+                  <FiInfo />
+                  <h2>Descripción</h2>
+                </div>
+                <p className={styles.infoText}>
+                  {lugar.notaIA || "Este lugar o negocio no tiene descripción pública disponible por el momento."}
+                </p>
               </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statLabel}>Tiempo sugerido</span>
-                <span className={styles.statValue}>{lugar.tiempoEstancia} min</span>
-              </div>
-            </div>
+            </section>
 
-            <div className={styles.statCard}>
-              <div className={styles.statIcon}>
-                <FiDollarSign />
+            <aside className={styles.quickInfoColumn}>
+              <div className={styles.quickInfoStack}>
+                <div className={styles.statCard}>
+                  <div className={styles.statIcon}>
+                    <FiClock />
+                  </div>
+                  <div className={styles.statInfo}>
+                    <span className={styles.statLabel}>Tiempo sugerido</span>
+                    <span className={styles.statValue}>{lugar.tiempoEstancia} min</span>
+                  </div>
+                </div>
+
+                <div className={styles.statCard}>
+                  <div className={styles.statIcon}>
+                    <FiDollarSign />
+                  </div>
+                  <div className={styles.statInfo}>
+                    <span className={styles.statLabel}>Costo estimado</span>
+                    <span className={styles.statValue}>{lugar.costoEstimado}</span>
+                  </div>
+                </div>
               </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statLabel}>Costo estimado</span>
-                <span className={styles.statValue}>{lugar.costoEstimado}</span>
-              </div>
-            </div>
+
+              {(lugar.telefono || normalizedWebsite || lugar.email) && (
+                <div className={styles.quickContactCard}>
+                  <div className={styles.infoHeader}>
+                    <FiInfo />
+                    <h2>Contacto</h2>
+                  </div>
+                  <div style={{ display: "grid", gap: "0.75rem" }}>
+                    {lugar.telefono && (
+                      <a
+                        href={`tel:${lugar.telefono}`}
+                        style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1A4D2E", fontWeight: 600 }}
+                      >
+                        <FiPhone /> {lugar.telefono}
+                      </a>
+                    )}
+
+                    {normalizedWebsite && (
+                      <a
+                        href={normalizedWebsite}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1A4D2E", fontWeight: 600, wordBreak: "break-all" }}
+                      >
+                        <FiGlobe /> {lugar.website}
+                      </a>
+                    )}
+
+                    {lugar.email && (
+                      <a
+                        href={`mailto:${lugar.email}`}
+                        style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1A4D2E", fontWeight: 600, wordBreak: "break-all" }}
+                      >
+                        <FiMail /> {lugar.email}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </aside>
           </div>
 
-          {/* Dirección */}
-          <div className={styles.locationCard}>
-            <div className={styles.locationHeader}>
-              <FiMapPin />
-              <h2>Ubicación</h2>
-            </div>
-            <p className={styles.address}>{lugar.direccion}</p>
-            <button onClick={abrirEnMaps} className={styles.directionsBtn}>
-              <FiNavigation /> Cómo llegar
-            </button>
-          </div>
-
-          {/* Información adicional */}
-          {lugar.notaIA && (
-            <div className={styles.infoCard}>
-              <div className={styles.infoHeader}>
-                <FiInfo />
-                <h2>Información adicional</h2>
-              </div>
-              <p className={styles.infoText}>{lugar.notaIA}</p>
-            </div>
-          )}
-
-          {/* Mapa */}
-          <div className={styles.mapSection}>
+          {/* Mapa + Sidebar de ubicacion */}
+          <section className={styles.mapSection}>
             <h2 className={styles.mapTitle}>Mapa</h2>
-            <div className={styles.mapContainer}>
-              <iframe
-                src={`https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY&q=${lugar.latitud},${lugar.longitud}&zoom=15`}
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title={`Mapa de ${lugar.nombre}`}
-              />
+            <div className={styles.mapAndSidebar}>
+              <div className={styles.mapColumn}>
+                <div className={styles.mapContainer}>
+                  <iframe
+                    src={getMapEmbedSrc(lugar)}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title={`Mapa de ${lugar.nombre}`}
+                  />
+                </div>
+              </div>
+
+              <aside className={styles.sidebarColumn}>
+                <div className={styles.locationCard}>
+                  <div className={styles.locationHeader}>
+                    <FiMapPin />
+                    <h2>Ubicación</h2>
+                  </div>
+                  <p className={styles.locationAddress}>{lugar.direccion}</p>
+                  {lugar.codigoPostal && (
+                    <p className={styles.locationMeta}>CP: {lugar.codigoPostal}</p>
+                  )}
+                  <button onClick={abrirEnMaps} className={styles.directionsBtn}>
+                    <FiNavigation /> Cómo llegar
+                  </button>
+                </div>
+              </aside>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </div>
