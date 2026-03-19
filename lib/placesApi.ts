@@ -11,6 +11,15 @@ export interface PlaceRecord {
   ubicacion: string;
   latitud: string;
   longitud: string;
+  telefono?: string;
+  phone?: string;
+  website?: string;
+  email?: string;
+  ownerEmail?: string;
+  contactEmail?: string;
+  codigoPostal?: string;
+  tiempoEstancia?: number;
+  costoEstimado?: string;
   fotos: string[];
   rating: number;
   views: number;
@@ -23,6 +32,19 @@ interface FirestorePlace {
   ubicacion?: string;
   latitud?: string;
   longitud?: string;
+  telefono?: string;
+  phone?: string;
+  website?: string;
+  web?: string;
+  sitioWeb?: string;
+  email?: string;
+  ownerEmail?: string;
+  contactEmail?: string;
+  userEmail?: string;
+  codigoPostal?: string;
+  cp?: string;
+  tiempoEstancia?: number | string;
+  costoEstimado?: string;
   fotos?: string[];
   rating?: number | string;
   views?: number | string;
@@ -71,6 +93,21 @@ function parseCsvPlaces(csvText: string): PlaceRecord[] {
       ubicacion: String(row["Dirección"] || "").trim(),
       latitud: String(row["Latitud"] || "").replace(",", ".").trim(),
       longitud: String(row["Longitud"] || "").replace(",", ".").trim(),
+      telefono:
+        String(row["Teléfono"] || row["Telefono"] || row["Phone"] || "").trim() || undefined,
+      phone:
+        String(row["Phone"] || row["Teléfono"] || row["Telefono"] || "").trim() || undefined,
+      website:
+        String(row["Sitio Web"] || row["Website"] || row["Web"] || "").trim() || undefined,
+      email:
+        String(row["Email"] || row["Correo"] || row["Correo electrónico"] || "").trim() || undefined,
+      codigoPostal:
+        String(row["Código Postal"] || row["Codigo Postal"] || row["CP"] || "").trim() || undefined,
+      tiempoEstancia:
+        parseNumber(row["Tiempo de Estancia"]) ??
+        parseNumber(row["Tiempo estimado de visita"]) ??
+        undefined,
+      costoEstimado: String(row["Costo Estimado"] || "").trim() || undefined,
       fotos: [],
       rating:
         parseNumber(row["Rating"]) ??
@@ -124,6 +161,41 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
         ubicacion: String(firestorePlace.ubicacion || existing?.ubicacion || "").trim(),
         latitud: String(firestorePlace.latitud || existing?.latitud || "").trim(),
         longitud: String(firestorePlace.longitud || existing?.longitud || "").trim(),
+        telefono:
+          String(
+            firestorePlace.telefono || firestorePlace.phone || existing?.telefono || ""
+          ).trim() || undefined,
+        phone:
+          String(
+            firestorePlace.phone || firestorePlace.telefono || existing?.phone || ""
+          ).trim() || undefined,
+        website:
+          String(
+            firestorePlace.website || firestorePlace.sitioWeb || firestorePlace.web || existing?.website || ""
+          ).trim() || undefined,
+        email:
+          String(
+            firestorePlace.email ||
+            firestorePlace.ownerEmail ||
+            firestorePlace.contactEmail ||
+            firestorePlace.userEmail ||
+            existing?.email ||
+            ""
+          ).trim() || undefined,
+        ownerEmail:
+          String(firestorePlace.ownerEmail || existing?.ownerEmail || "").trim() || undefined,
+        contactEmail:
+          String(firestorePlace.contactEmail || existing?.contactEmail || "").trim() || undefined,
+        codigoPostal:
+          String(
+            firestorePlace.codigoPostal || firestorePlace.cp || existing?.codigoPostal || ""
+          ).trim() || undefined,
+        tiempoEstancia:
+          parseNumber(firestorePlace.tiempoEstancia) ??
+          existing?.tiempoEstancia,
+        costoEstimado:
+          String(firestorePlace.costoEstimado || existing?.costoEstimado || "").trim() ||
+          undefined,
         fotos: Array.isArray(firestorePlace.fotos) ? firestorePlace.fotos : existing?.fotos || [],
         // Prioridad: datos reales > CSV > fallback
         rating: realRating ?? existing?.rating ?? fallbackRating(nombre),
