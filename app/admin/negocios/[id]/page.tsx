@@ -117,6 +117,10 @@ interface BusinessData {
     local?: string;
     referencias?: string;
   };
+  archivedReason?: string;
+  archivedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string | null;
 }
 
 type SectionKey = "solicitante" | "negocio" | "galeria";
@@ -139,6 +143,7 @@ export default function AdminViewBusinessPage() {
   });
   const [modalOpen, setModalOpen] = useState(false);
   const [modalAccion, setModalAccion] = useState<"aprobar" | "rechazar">("aprobar");
+  const [motivoRechazo, setMotivoRechazo] = useState("");
   const [resultadoMensaje, setResultadoMensaje] = useState<{ tipo: "exito" | "error"; mensaje: string } | null>(null);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [locationDraftCoords, setLocationDraftCoords] = useState<{ latitud: string; longitud: string } | null>(null);
@@ -214,6 +219,9 @@ export default function AdminViewBusinessPage() {
   const handleGestionarNegocio = async (accion: "aprobar" | "rechazar") => {
     if (!business) return;
     setModalAccion(accion);
+    if (accion === "aprobar") {
+      setMotivoRechazo("");
+    }
     setModalOpen(true);
   };
 
@@ -227,12 +235,14 @@ export default function AdminViewBusinessPage() {
         negocioId: business.id,
         accion: modalAccion,
         adminUid,
+        motivoRechazo: modalAccion === "rechazar" ? motivoRechazo.trim() : undefined,
       });
       setResultadoMensaje({
         tipo: "exito",
         mensaje: `Negocio ${modalAccion === "aprobar" ? "aprobado" : "rechazado"} exitosamente`,
       });
       setModalOpen(false);
+      setMotivoRechazo("");
       setTimeout(() => {
         // Redirigir según la acción: aprobados → registrados, rechazados → archivados
         const targetTab = modalAccion === "aprobar" ? "registrados" : "archivados";
@@ -278,15 +288,16 @@ export default function AdminViewBusinessPage() {
 
   // Archivar negocio activo
   const handleArchivarNegocio = async () => {
-    if (!business || !motivoArchivo.trim()) return;
+    if (!business) return;
     setProcesandoAccion(true);
     try {
       const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
+      const motivoFinal = motivoArchivo.trim() || "Archivado por administrador";
       const response = await fetch(`${BACKEND_URL}/api/admin/negocios/${business.id}/archivar`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ motivo: motivoArchivo, adminUid }),
+        body: JSON.stringify({ motivo: motivoFinal, adminUid }),
       });
       const data = await response.json();
       if (data.success) {
@@ -1078,10 +1089,15 @@ export default function AdminViewBusinessPage() {
 
       <GestionarNegocioModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setMotivoRechazo("");
+        }}
         onConfirm={handleConfirmarGestion}
         accion={modalAccion}
         loading={procesando}
+        motivoRechazo={motivoRechazo}
+        onMotivoRechazoChange={setMotivoRechazo}
       />
 
       {/* Modal para archivar negocio activo */}
@@ -1113,19 +1129,19 @@ export default function AdminViewBusinessPage() {
                 <h3 className="text-2xl font-black text-gray-800">Archivar negocio</h3>
               </div>
               <p className="text-gray-600 mb-4">
-                Indica el motivo por el cual deseas archivar este negocio. El negocio dejará de estar visible para los usuarios.
+                Puedes indicar el motivo por el cual deseas archivar este negocio (opcional). El negocio dejará de estar visible para los usuarios.
               </p>
               <textarea
                 value={motivoArchivo}
                 onChange={(e) => setMotivoArchivo(e.target.value)}
-                placeholder="Escribe el motivo del archivado..."
+                placeholder="Escribe el motivo del archivado (opcional)..."
                 className="w-full border border-gray-300 rounded-xl p-3 mb-4 min-h-[100px] text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400"
                 disabled={procesandoAccion}
               />
               <div className="flex gap-3">
                 <button
                   onClick={handleArchivarNegocio}
-                  disabled={!motivoArchivo.trim() || procesandoAccion}
+                  disabled={procesandoAccion}
                   className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {procesandoAccion ? "Archivando..." : "Archivar"}

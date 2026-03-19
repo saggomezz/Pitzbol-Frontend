@@ -68,6 +68,7 @@ import { useFavoritesSync } from "@/lib/favoritesApi";
 interface Lugar {
     nombre: string;
     categoria: string;
+    categorias?: string[];
     descripcion: string;
     ubicacion: string;
     imagen?: string;
@@ -324,6 +325,26 @@ export default function MapaPage() {
         { name: "Médico", icon: GiStethoscope },
     ];
 
+    const normalizeText = (value: string) =>
+        value
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9\s]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+
+    const CATEGORY_FILTER_ALIASES: Record<string, string[]> = {
+        futbol: ["futbol", "soccer", "deporte", "deportefutbol"],
+        gastronomia: ["gastronomia", "gastronomia mexicana", "comida", "postre", "vegana"],
+        arte: ["arte", "arte e historia", "arquitectura", "museos", "fotografia"],
+        cultura: ["cultura", "museos", "arquitectura", "religion"],
+        eventos: ["eventos", "musica", "vida nocturna", "conciertos"],
+        "casas de cambio": ["casas de cambio", "cambio"],
+        hospitales: ["hospitales", "hospital", "salud"],
+        medico: ["medico", "salud", "clinica", "doctor"],
+    };
+
     useEffect(() => {
         const loadInitialData = async () => {
             // Cargar favoritos sincronizados solo si está autenticado
@@ -354,9 +375,13 @@ export default function MapaPage() {
                     dynamicTyping: false, // Mantener todo como string
                     complete: (results) => {
                         console.log("📊 CSV parseado - Total filas:", results.data.length);
-                        
-                        if (results.errors && results.errors.length > 0) {
-                            console.error("⚠️ Errores en parseo CSV:", results.errors);
+
+                        const parseErrors = (results.errors || []).filter(
+                            (error) => error.code !== "TooFewFields"
+                        );
+                        if (parseErrors.length > 0) {
+                            console.error("⚠️ Errores en parseo CSV (muestra):", parseErrors.slice(0, 5));
+                            console.error("⚠️ Total de errores de parseo:", parseErrors.length);
                         }
                         
                         const data = results.data.filter((row: any) => {
@@ -368,17 +393,20 @@ export default function MapaPage() {
                         });
                         
                         console.log("📊 Filas con nombre válido:", data.length);
-                        
-                        const parsed = data.map((row: any) => {
+
+                        const parsed: Lugar[] = data.map((row: any) => {
                             const nombre = String(row["Nombre del Lugar"] || "").trim();
-                            const categoria = String(row["Categoría"] || "").trim();
-                            // Tomar solo la primera categoría si hay múltiples separadas por coma
-                            const categoriaPrimera = categoria.split(",")[0].trim();
-                            
+                            const categoriaRaw = String(row["Categoría"] || "").trim();
+                            const categorias = categoriaRaw
+                                .split(",")
+                                .map((c) => c.trim())
+                                .filter(Boolean);
+
                             return {
                                 nombre,
-                                categoria: categoriaPrimera, // Usar solo la primera categoría para el filtro
-                                descripcion: String(row["Nota para IA"] || "").trim(),
+                                categoria: categorias[0] || categoriaRaw || "Cultura",
+                                categorias,
+                                descripcion: String(row["Nota para IA"] || row["Subcategoría"] || "").trim(),
                                 ubicacion: String(row["Dirección"] || "").trim(),
                                 latitud: String(row["Latitud"] || "").replace(",", ".").trim(),
                                 longitud: String(row["Longitud"] || "").replace(",", ".").trim(),
@@ -406,7 +434,7 @@ export default function MapaPage() {
                         
                         // Buscar lugares y fotos guardadas en Firestore (lugares creados manualmente + fotos)
                         const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-                        fetch(`${BACKEND_URL}/api/lugares`)
+                        fetch(`${BACKEND_URL}/api/lugares?includeApprovedBusinesses=true`)
                             .then(response => {
                                 if (response.ok) {
                                     return response.json();
@@ -423,9 +451,16 @@ export default function MapaPage() {
                                 lugaresFirestore.forEach((lugarFirestore: any) => {
                                     if (lugarFirestore.nombre && !nombresCSV.has(lugarFirestore.nombre)) {
                                         // Este es un lugar creado manualmente, agregarlo
+                                        const categoriaFirestore = String(lugarFirestore.categoria || "Cultura").trim();
+                                        const categoriasFirestore = categoriaFirestore
+                                            .split(",")
+                                            .map((c) => c.trim())
+                                            .filter(Boolean);
+
                                         lugaresCSV.push({
                                             nombre: lugarFirestore.nombre,
-                                            categoria: lugarFirestore.categoria || 'Cultura',
+                                            categoria: categoriasFirestore[0] || categoriaFirestore || 'Cultura',
+                                            categorias: categoriasFirestore,
                                             descripcion: lugarFirestore.descripcion || '',
                                             ubicacion: lugarFirestore.ubicacion || '',
                                             latitud: lugarFirestore.latitud || '',
@@ -488,7 +523,23 @@ export default function MapaPage() {
 
         if (selectedCategory !== "Todos Los Lugares" && selectedCategory !== "Más Populares") {
             const antes = filtered.length;
-            filtered = filtered.filter((lugar) => lugar.categoria === selectedCategory);
+            const normalizedSelected = normalizeText(selectedCategory);
+            const targetAliases = CATEGORY_FILTER_ALIASES[normalizedSelected] || [normalizedSelected];
+
+            filtered = filtered.filter((lugar) => {
+                const placeCategories = (lugar.categorias && lugar.categorias.length > 0
+                    ? lugar.categorias
+                    : [lugar.categoria]
+                )
+                    .map((category) => normalizeText(category))
+                    .filter(Boolean);
+
+                return placeCategories.some((cat) =>
+                    targetAliases.some(
+                        (target) => cat === target || cat.includes(target) || target.includes(cat)
+                    )
+                );
+            });
             console.log(`🔍 Filtrado por categoría: ${antes} → ${filtered.length}`);
         }
 

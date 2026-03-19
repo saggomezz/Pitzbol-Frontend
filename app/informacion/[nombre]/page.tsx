@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2 } from "react-icons/fi";
@@ -39,32 +39,9 @@ interface Lugar {
   notaIA: string;
 }
 
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
-      else { inQuotes = !inQuotes; }
-    } else if (char === ',' && !inQuotes) {
-      result.push(current.trim());
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  result.push(current.trim());
-  return result;
-}
-
 export default function InformacionLugar() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const fromItinerario = searchParams.get('from') === 'itinerario';
-  const backUrl = searchParams.get('back');
   const [lugar, setLugar] = useState<Lugar | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -96,7 +73,7 @@ export default function InformacionLugar() {
         // 1. Primero intentar buscar en el backend (Firestore)
         try {
           const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-          const backendResponse = await fetch(`${BACKEND_URL}/api/lugares`);
+          const backendResponse = await fetch(`${BACKEND_URL}/api/lugares?includeApprovedBusinesses=true`);
           
           if (backendResponse.ok) {
             const data = await backendResponse.json();
@@ -121,33 +98,31 @@ export default function InformacionLugar() {
           console.log("No se pudo buscar en backend, intentando CSV:", backendError);
         }
 
-        // 2. Buscar en CSV: si no se encontró en backend, o si el costo es genérico ("$$")
-        if (!lugarEncontrado || lugarEncontrado.costoEstimado === '$$') {
+        // 2. Si no se encontró en backend, buscar en CSV
+        if (!lugarEncontrado) {
           const response = await fetch("/datosLugares.csv");
           const text = await response.text();
           const lineas = text.split("\n");
 
           for (let i = 1; i < lineas.length; i++) {
-            if (!lineas[i].trim()) continue;
-            const valores = parseCSVLine(lineas[i]);
-            const nombreLugar = valores[0];
-
-            if (nombreLugar === nombreBuscado) {
-              if (!lugarEncontrado) {
+            const valores = lineas[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+            
+            if (valores) {
+              const nombreLugar = valores[0].replace(/"/g, "");
+              
+              if (nombreLugar === nombreBuscado) {
                 lugarEncontrado = {
                   nombre: nombreLugar,
-                  categoria: valores[1] || "",
-                  direccion: valores[2] || "",
-                  latitud: parseFloat((valores[3] || "0").replace(',', '.')) || 0,
-                  longitud: parseFloat((valores[4] || "0").replace(',', '.')) || 0,
-                  tiempoEstancia: parseInt(valores[5] || "0") || 0,
-                  costoEstimado: valores[6] || "",
-                  notaIA: valores[7] || "",
+                  categoria: valores[1]?.replace(/"/g, "") || "",
+                  direccion: valores[2]?.replace(/"/g, "") || "",
+                  latitud: parseFloat(valores[3]) || 0,
+                  longitud: parseFloat(valores[4]) || 0,
+                  tiempoEstancia: parseInt(valores[5]) || 0,
+                  costoEstimado: valores[6]?.replace(/"/g, "") || "",
+                  notaIA: valores[7]?.replace(/"/g, "") || "",
                 };
-              } else {
-                lugarEncontrado.costoEstimado = valores[6] || lugarEncontrado.costoEstimado;
+                break;
               }
-              break;
             }
           }
         }
@@ -287,25 +262,9 @@ export default function InformacionLugar() {
           </p>
         </div>
         <div className={styles.heroContent}>
-          <div className="flex flex-col items-center gap-1">
-            <button
-              onClick={() => {
-                if (fromItinerario && backUrl) {
-                  window.location.href = decodeURIComponent(backUrl);
-                } else {
-                  router.back();
-                }
-              }}
-              className={styles.backBtn}
-            >
-              <FiArrowLeft />
-            </button>
-            {fromItinerario && (
-              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.85)', fontWeight: 600, letterSpacing: '0.05em', textAlign: 'center', lineHeight: 1.2 }}>
-                Itinerario
-              </span>
-            )}
-          </div>
+          <button onClick={() => router.back()} className={styles.backBtn}>
+            <FiArrowLeft />
+          </button>
           <div className={styles.heroActions}>
             <motion.button 
               onClick={toggleFavorite} 
@@ -451,33 +410,6 @@ export default function InformacionLugar() {
               />
             </div>
           </div>
-
-          {/* Botón de regreso al itinerario */}
-          {fromItinerario && backUrl && (
-            <div style={{ marginTop: '2rem' }}>
-              <button
-                onClick={() => { window.location.href = decodeURIComponent(backUrl); }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  width: '100%',
-                  padding: '0.875rem 1.5rem',
-                  backgroundColor: '#1A4D2E',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '0.75rem',
-                  fontSize: '0.875rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  justifyContent: 'center',
-                }}
-              >
-                <FiArrowLeft />
-                Volver al itinerario
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

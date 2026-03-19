@@ -6,11 +6,10 @@ import {
   FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
   FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
 } from "react-icons/fa";
-import { FiAward, FiCamera, FiCheck, FiDollarSign, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
+import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
   FiPlus, FiShield, FiUser, FiX, FiCreditCard
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
-import { getItinerariosUsuario, type ItinerarioGuardado } from "@/lib/itinerariosApi";
 
 import WalletModal from "@/app/components/WalletModal";
 
@@ -119,15 +118,6 @@ export default function PerfilDetallado() {
   const [editandoDescripcion, setEditandoDescripcion] = useState(false);
   const [descripcionTemp, setDescripcionTemp] = useState("");
   const [errorDescripcion, setErrorDescripcion] = useState("");
-
-  const [editandoTarifa, setEditandoTarifa] = useState(false);
-  const [tarifaTemp, setTarifaTemp] = useState("");
-  const [tarifaDiaCompletoTemp, setTarifaDiaCompletoTemp] = useState("");
-  const [errorTarifa, setErrorTarifa] = useState("");
-
-  const [editandoRuta, setEditandoRuta] = useState(false);
-  const [rutaTourTemp, setRutaTourTemp] = useState("");
-  const [errorRuta, setErrorRuta] = useState("");
   
   const [editandoEspecialidades, setEditandoEspecialidades] = useState(false);
   const [especialidadesTemp, setEspecialidadesTemp] = useState<string[]>([]);
@@ -143,9 +133,6 @@ export default function PerfilDetallado() {
   const [guardando, setGuardando] = useState(false);
   const [exito, setExito] = useState("");
   const [error, setError] = useState("");
-  const [itinerarios, setItinerarios] = useState<ItinerarioGuardado[]>([]);
-  const [loadingItin, setLoadingItin] = useState(false);
-  const [expandedItinId, setExpandedItinId] = useState<string | null>(null);
   const [mostrarNotificacionAprobado, setMostrarNotificacionAprobado] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
 
@@ -192,8 +179,6 @@ export default function PerfilDetallado() {
         fotoUrl: userLocal["14_foto_perfil"]?.url || userLocal.fotoPerfil || null,
         guide_status: guideStatus,
         tarifa: userLocal["17_tarifa_mxn"] || userLocal.tarifa || 0,
-        tarifaDiaCompleto: userLocal["19_tarifa_dia_completo"] || userLocal.tarifaDiaCompleto || 0,
-        rutaTour: userLocal["20_ruta_tour"] || userLocal.rutaTour || "",
             });
 
       setEspecialidades(initialEspecialidades);
@@ -269,14 +254,6 @@ export default function PerfilDetallado() {
         console.error("Error de sincronización con Pitzbol Server:", error);
       }
       setLoading(false);
-      // Cargar itinerarios guardados en Firebase
-      if (userLocal.uid) {
-        setLoadingItin(true);
-        getItinerariosUsuario(userLocal.uid, userLocal.role || 'turista')
-          .then(setItinerarios)
-          .catch(() => {})
-          .finally(() => setLoadingItin(false));
-      }
     };
     cargarDatos();
   }, []);
@@ -548,151 +525,6 @@ export default function PerfilDetallado() {
     setErrorDescripcion("");
   };
 
-  const guardarTarifa = async () => {
-    setErrorTarifa("");
-
-    const tarifaNum = tarifaTemp ? Number(tarifaTemp) : 0;
-    const tarifaDiaNum = tarifaDiaCompletoTemp ? Number(tarifaDiaCompletoTemp) : 0;
-
-    if (!tarifaTemp && !tarifaDiaCompletoTemp) {
-      setErrorTarifa(t('rateMustBePositive'));
-      return;
-    }
-
-    if (tarifaTemp && (isNaN(tarifaNum) || tarifaNum < 0)) {
-      setErrorTarifa(t('rateMustBePositive'));
-      return;
-    }
-
-    if (tarifaDiaCompletoTemp && (isNaN(tarifaDiaNum) || tarifaDiaNum < 0)) {
-      setErrorTarifa(t('rateMustBePositive'));
-      return;
-    }
-
-    setGuardando(true);
-    setExito("");
-
-    try {
-      const token = localStorage.getItem("pitzbol_token");
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-
-      if (!token) {
-        throw new Error(t('noSession'));
-      }
-
-      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
-        method: "PATCH",
-        credentials: 'include',
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          tarifa: tarifaNum,
-          tarifaDiaCompleto: tarifaDiaNum || 0,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.msg || t('errorServer'));
-      }
-
-      const perfilActualizado = { ...perfil, tarifa: tarifaNum, tarifaDiaCompleto: tarifaDiaNum || 0 };
-      setPerfil(perfilActualizado);
-
-      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-      userLocal["17_tarifa_mxn"] = tarifaNum;
-      userLocal.tarifa = tarifaNum;
-      userLocal["19_tarifa_dia_completo"] = tarifaDiaNum || 0;
-      userLocal.tarifaDiaCompleto = tarifaDiaNum || 0;
-      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
-
-      window.dispatchEvent(new Event('guideProfileUpdated'));
-
-      setExito(t('rateUpdated'));
-      setEditandoTarifa(false);
-      setTimeout(() => setExito(""), 3000);
-    } catch (err: any) {
-      console.error("❌ Error al guardar tarifa:", err);
-      setErrorTarifa(err.message || t('errorUpdating'));
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  const cancelarTarifa = () => {
-    setTarifaTemp(String(perfil?.tarifa || ""));
-    setTarifaDiaCompletoTemp(String(perfil?.tarifaDiaCompleto || ""));
-    setEditandoTarifa(false);
-    setErrorTarifa("");
-  };
-
-  const guardarRutaTour = async () => {
-    setErrorRuta("");
-
-    if (rutaTourTemp.trim().length > 1000) {
-      setErrorRuta(t('tourRouteMaxLength'));
-      return;
-    }
-
-    setGuardando(true);
-    setExito("");
-
-    try {
-      const token = localStorage.getItem("pitzbol_token");
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-
-      if (!token) {
-        throw new Error(t('noSession'));
-      }
-
-      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
-        method: "PATCH",
-        credentials: 'include',
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          rutaTour: rutaTourTemp,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.msg || t('errorServer'));
-      }
-
-      const perfilActualizado = { ...perfil, rutaTour: rutaTourTemp };
-      setPerfil(perfilActualizado);
-
-      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-      userLocal["20_ruta_tour"] = rutaTourTemp;
-      userLocal.rutaTour = rutaTourTemp;
-      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
-
-      window.dispatchEvent(new Event('guideProfileUpdated'));
-
-      setExito(t('tourRouteUpdated'));
-      setEditandoRuta(false);
-      setTimeout(() => setExito(""), 3000);
-    } catch (err: any) {
-      console.error("❌ Error al guardar ruta:", err);
-      setErrorRuta(err.message || t('errorUpdating'));
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  const cancelarRuta = () => {
-    setRutaTourTemp(perfil?.rutaTour || "");
-    setEditandoRuta(false);
-    setErrorRuta("");
-  };
-
   const agregarEspecialidad = (interes: string) => {
     setErrorEspecialidades("");
     if (especialidadesTemp.includes(interes)) {
@@ -716,18 +548,16 @@ export default function PerfilDetallado() {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
 
     try {
-      const token = localStorage.getItem('pitzbol_token');
-      const response = await fetch(`${API_BASE}/api/guides/update`, {
+      const response = await fetch('http://localhost:3001/api/guides/update', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           uid: userLocal.uid,
-          categorias: especialidadesTemp,
+          categorias: especialidadesTemp 
         })
       });
+      
+      // TODO: backend debe proteger este endpoint; incluir credenciales y token si existe
 
       if (response.ok) {
         setEspecialidades([...especialidadesTemp]);
@@ -878,18 +708,13 @@ export default function PerfilDetallado() {
 
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-gradient-to-br from-[#F6F0E6] to-[#FDFCF9]">
-      <motion.div
+      <motion.div 
         animate={{ rotate: 360 }}
         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         className="w-16 h-16 border-4 border-[#0D601E] border-t-transparent rounded-full"
       />
     </div>
   );
-
-  if (!perfil) {
-    if (typeof window !== 'undefined') window.location.replace('/login');
-    return null;
-  }
 
   const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1341,145 +1166,6 @@ export default function PerfilDetallado() {
                         <p className="text-sm font-medium text-[#1A4D2E] pl-12 break-all">{perfil?.telefono}</p>
                       )}
                     </motion.div>
-
-                    {/* Card de Tarifa - Solo para Guías */}
-                    {esGuia && (
-                      <motion.div 
-                        whileHover={{ y: -1 }}
-                        className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="p-2 bg-[#F1F8F6] rounded-lg">
-                              <FiDollarSign size={16} className="text-[#66BB6A]" />
-                            </div>
-                            <h3 className="text-xs font-medium text-[#81C784] tracking-wide">{t('rateLabel')}</h3>
-                          </div>
-                          {!editandoTarifa && (
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => {
-                                setTarifaTemp(String(perfil?.tarifa || ""));
-                                setTarifaDiaCompletoTemp(String(perfil?.tarifaDiaCompleto || ""));
-                                setEditandoTarifa(true);
-                              }}
-                              className="px-2.5 py-1 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1"
-                            >
-                              <FiEdit2 size={12} /> {t('edit')}
-                            </motion.button>
-                          )}
-                        </div>
-                        
-                        {editandoTarifa ? (
-                          <div className="space-y-3">
-                            <div>
-                              <label className="text-xs text-[#81C784] mb-1 block">{t('rateLabel')}</label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-[#1A4D2E]">$</span>
-                                <input
-                                  type="number"
-                                  value={tarifaTemp}
-                                  onChange={(e) => setTarifaTemp(e.target.value)}
-                                  placeholder={t('ratePlaceholder')}
-                                  min="0"
-                                  className="flex-1 px-3 py-2 border border-[#C8E6C9] rounded-lg text-sm text-[#1A4D2E] focus:outline-none focus:ring-2 focus:ring-[#0D601E]/20"
-                                />
-                                <span className="text-xs text-[#81C784]">{t('mxnPerHour')}</span>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-xs text-[#81C784] mb-1 block">{t('fullDayRateLabel')}</label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-[#1A4D2E]">$</span>
-                                <input
-                                  type="number"
-                                  value={tarifaDiaCompletoTemp}
-                                  onChange={(e) => setTarifaDiaCompletoTemp(e.target.value)}
-                                  placeholder={t('fullDayRatePlaceholder')}
-                                  min="0"
-                                  className="flex-1 px-3 py-2 border border-[#C8E6C9] rounded-lg text-sm text-[#1A4D2E] focus:outline-none focus:ring-2 focus:ring-[#0D601E]/20"
-                                />
-                                <span className="text-xs text-[#81C784]">{t('mxnFullDay')}</span>
-                              </div>
-                            </div>
-                            {errorTarifa && (
-                              <p className="text-xs text-red-600">{errorTarifa}</p>
-                            )}
-                            <div className="flex gap-2">
-                              <button onClick={guardarTarifa} disabled={guardando} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50">{t('save')}</button>
-                              <button onClick={cancelarTarifa} disabled={guardando} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors disabled:opacity-50">{tCommon('cancel')}</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="pl-12 space-y-1">
-                            {perfil?.tarifa ? (
-                              <>
-                                <p className="text-sm font-medium text-[#1A4D2E]">${Number(perfil.tarifa).toLocaleString('es-MX')} <span className="text-xs text-[#81C784]">{t('mxnPerHour')}</span></p>
-                                {perfil?.tarifaDiaCompleto > 0 && (
-                                  <p className="text-sm font-medium text-[#1A4D2E]">${Number(perfil.tarifaDiaCompleto).toLocaleString('es-MX')} <span className="text-xs text-[#81C784]">{t('mxnFullDay')}</span></p>
-                                )}
-                              </>
-                            ) : (
-                              <p className="text-sm text-gray-400">{t('noRateYet')}</p>
-                            )}
-                          </div>
-                        )}
-                      </motion.div>
-                    )}
-
-                    {/* Card de Ruta del Tour - Solo para Guías */}
-                    {esGuia && (
-                      <motion.div 
-                        whileHover={{ y: -1 }}
-                        className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="p-2 bg-[#F1F8F6] rounded-lg">
-                              <FiMap size={16} className="text-[#66BB6A]" />
-                            </div>
-                            <h3 className="text-xs font-medium text-[#81C784] tracking-wide">{t('tourRouteLabel')}</h3>
-                          </div>
-                          {!editandoRuta && (
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => {
-                                setRutaTourTemp(perfil?.rutaTour || "");
-                                setEditandoRuta(true);
-                              }}
-                              className="px-2.5 py-1 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1"
-                            >
-                              <FiEdit2 size={12} /> {t('edit')}
-                            </motion.button>
-                          )}
-                        </div>
-                        
-                        {editandoRuta ? (
-                          <div className="space-y-3">
-                            <textarea
-                              className="w-full bg-[#FDFCF9] border border-[#1A4D2E]/20 rounded-2xl p-4 text-[#1A4D2E] min-h-[120px] focus:ring-2 focus:ring-[#0D601E]/20 outline-none resize-none transition-all text-sm"
-                              placeholder={t('tourRoutePlaceholder')}
-                              value={rutaTourTemp}
-                              onChange={(e) => setRutaTourTemp(e.target.value)}
-                            />
-                            <p className="text-xs text-[#81C784]">{rutaTourTemp.length}/1000</p>
-                            {errorRuta && (
-                              <p className="text-xs text-red-600">{errorRuta}</p>
-                            )}
-                            <div className="flex gap-2">
-                              <button onClick={guardarRutaTour} disabled={guardando} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50">{t('save')}</button>
-                              <button onClick={cancelarRuta} disabled={guardando} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors disabled:opacity-50">{tCommon('cancel')}</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-sm font-normal text-[#1A4D2E] pl-12 whitespace-pre-wrap">
-                            {perfil?.rutaTour || t('noTourRouteYet')}
-                          </p>
-                        )}
-                      </motion.div>
-                    )}
 
                     {/* Card de Billetera */}
                     <button 
@@ -1938,99 +1624,6 @@ export default function PerfilDetallado() {
                       {t('explore')}
                     </button>
                   </div>
-                </div>
-              )}
-            </motion.div>
-
-            {/* Mis Itinerarios */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]"
-            >
-              <div className="mb-5 flex items-start justify-between">
-                <div>
-                  <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Itinerarios</h3>
-                  <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">Generados con PitzBot</p>
-                </div>
-                <a
-                  href={`http://69.30.204.56:3003${perfil?.id ? `?uid=${perfil.id}` : ''}`}
-                  title="Nuevo itinerario"
-                  className="w-9 h-9 rounded-xl bg-[#1A4D2E] text-white flex items-center justify-center hover:bg-[#0D601E] transition-colors shrink-0"
-                >
-                  <FiPlus size={18} />
-                </a>
-              </div>
-              {loadingItin ? (
-                <div className="flex items-center gap-2 text-[#81C784] text-sm py-4">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#81C784] border-t-transparent" />
-                  <span>Cargando itinerarios...</span>
-                </div>
-              ) : itinerarios.length === 0 ? (
-                <div className="py-8 flex flex-col items-center text-center">
-                  <div className="w-12 h-12 bg-[#F1F8F6] rounded-xl flex items-center justify-center mb-3 border border-[#E0F2F1]">
-                    <FiMap size={22} className="text-[#81C784]" />
-                  </div>
-                  <p className="text-sm text-[#81C784]">Aún no tienes itinerarios guardados.</p>
-                  <a href="http://69.30.204.56:3003" className="mt-3 text-xs font-semibold text-[#1A4D2E] underline">
-                    Crear con PitzBot →
-                  </a>
-                </div>
-              ) : expandedItinId ? (
-                (() => {
-                  const it = itinerarios.find(i => i.id === expandedItinId)!;
-                  const fechaLabel = it.fecha
-                    ? new Date(it.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-                    : it.fecha;
-                  return (
-                    <div>
-                      <button
-                        onClick={() => setExpandedItinId(null)}
-                        className="text-xs text-[#1A4D2E] font-semibold hover:underline mb-4 flex items-center gap-1"
-                      >
-                        ← Volver a mis itinerarios
-                      </button>
-                      <p className="font-bold text-[#1A4D2E] text-base mb-1">Itinerario para {fechaLabel}</p>
-                      <div className="flex flex-wrap gap-3 mb-4">
-                        {it.meta?.duration && <span className="text-xs bg-[#E0F2F1] text-[#1A4D2E] px-2 py-0.5 rounded-full">{it.meta.duration}</span>}
-                        {it.stops && <span className="text-xs bg-[#E0F2F1] text-[#1A4D2E] px-2 py-0.5 rounded-full">{it.stops.length} paradas</span>}
-                      </div>
-                      <div className="space-y-2">
-                        {it.stops?.map((s, i) => (
-                          <div key={i} className="border border-[#E0F2F1] rounded-xl p-3">
-                            <div className="flex justify-between items-start">
-                              <p className="font-semibold text-[#1A4D2E] text-sm">{s.nombre}</p>
-                              <span className="text-xs text-gray-400 whitespace-nowrap ml-2">{s.horaLlegada} – {s.horaSalida}</span>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-0.5">{s.direccion}</p>
-                            {s.costo && <p className="text-xs text-[#81C784] mt-0.5">{s.costo}</p>}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()
-              ) : (
-                <div className="space-y-3">
-                  {itinerarios.map(it => {
-                    const fechaLabel = it.fecha
-                      ? new Date(it.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-                      : it.fecha;
-                    return (
-                      <button
-                        key={it.id}
-                        onClick={() => setExpandedItinId(it.id)}
-                        className="w-full text-left border border-[#E0F2F1] rounded-xl p-4 hover:border-[#81C784] hover:bg-[#F9FFFE] transition-colors"
-                      >
-                        <p className="font-bold text-[#1A4D2E] text-sm leading-snug">Itinerario para {fechaLabel}</p>
-                        <div className="flex flex-wrap gap-3 mt-1.5">
-                          {it.meta?.duration && <span className="text-xs text-gray-500">⏱ {it.meta.duration}</span>}
-                          {it.stops && <span className="text-xs text-gray-500">📍 {it.stops.length} paradas</span>}
-                        </div>
-                      </button>
-                    );
-                  })}
                 </div>
               )}
             </motion.div>
