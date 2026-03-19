@@ -80,7 +80,7 @@ export default function CalendarioPage() {
 
     if (saveParam) {
       try {
-        const raw = JSON.parse(decodeURIComponent(atob(saveParam)));
+        const raw = JSON.parse(decodeURIComponent(saveParam));
         const entry: CalendarEntry = {
           id: raw.id,
           nombre: '',
