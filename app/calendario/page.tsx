@@ -1,7 +1,7 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState, useEffect, useRef, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   FiChevronLeft, FiChevronRight, FiPlus, FiSun, FiX, FiTrash2, FiClock, FiMapPin, FiDollarSign
@@ -47,7 +47,6 @@ function CalendarioInner() {
   const initialized = useRef(false);
 
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const t = useTranslations('calendar');
   const tMonths = useTranslations('calendar.months');
@@ -96,7 +95,7 @@ function CalendarioInner() {
         // Navegar al mes del itinerario
         const [y, m] = entry.fecha.split('-').map(Number);
         if (y && m) setCurrentDate(new Date(y, m - 1, 1));
-        router.replace('/calendario');
+        window.history.replaceState(null, '', '/calendario');
       } catch {
         setItinerarios(stored);
       }
