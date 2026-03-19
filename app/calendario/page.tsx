@@ -71,8 +71,7 @@ export default function CalendarioPage() {
   ];
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const saveParam = params.get('save');
+    const saveParam = window.location.hash ? decodeURIComponent(window.location.hash.slice(1)) : null;
     let stored: CalendarEntry[] = [];
     try {
       stored = JSON.parse(localStorage.getItem('pitzbol_calendario') || '[]');
@@ -80,7 +79,7 @@ export default function CalendarioPage() {
 
     if (saveParam) {
       try {
-        const raw = JSON.parse(decodeURIComponent(saveParam));
+        const raw = JSON.parse(saveParam);
         const entry: CalendarEntry = {
           id: raw.id,
           nombre: '',
@@ -101,7 +100,7 @@ export default function CalendarioPage() {
         setItinerarios(stored);
         const [y, m] = entry.fecha.split('-').map(Number);
         if (y && m) setCurrentDate(new Date(y, m - 1, 1));
-        window.history.replaceState(null, '', '/calendario');
+        window.history.replaceState(null, '', window.location.pathname);
       } catch {
         setItinerarios(stored);
       }
