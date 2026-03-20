@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import {
     FiBriefcase, FiCalendar, FiClock, FiCreditCard, FiHeart, FiHome, FiInfo,
     FiLogOut, FiMapPin, FiMenu, FiMessageSquare, FiPlusCircle, FiSearch, FiShield, FiUser,
-    FiX, FiAward, FiFileText, FiCompass, FiImage
+    FiX, FiAward, FiFileText, FiCompass, FiShoppingBag, FiChevronLeft, FiChevronDown, FiImage
 } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
@@ -37,12 +37,45 @@ interface User {
 
 export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpenAuthAsGuide, onOpenAuthAsBusiness }: NavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isBusinessSubmenuOpen, setIsBusinessSubmenuOpen] = useState(false);
+    const [businessSubmenuPosition, setBusinessSubmenuPosition] = useState({ top: 0, left: 0 });
     const [user, setUser] = useState<User | null>(null);
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [showHistorialModal, setShowHistorialModal] = useState(false);
+    const [hasBusinessRequests, setHasBusinessRequests] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
+    const businessTriggerRef = useRef<HTMLDivElement | null>(null);
+    const businessCloseTimeoutRef = useRef<number | null>(null);
     const t = useTranslations('navbar');
     const tRoles = useTranslations('roles');
+
+    const clearBusinessCloseTimeout = () => {
+        if (businessCloseTimeoutRef.current !== null) {
+            window.clearTimeout(businessCloseTimeoutRef.current);
+            businessCloseTimeoutRef.current = null;
+        }
+    };
+
+    const openBusinessSubmenuDesktop = () => {
+        if (typeof window === "undefined" || window.innerWidth < 768) return;
+        clearBusinessCloseTimeout();
+        const rect = businessTriggerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const submenuWidth = 240;
+        const gap = 8;
+        setBusinessSubmenuPosition({
+            top: rect.top,
+            left: Math.max(8, rect.left - submenuWidth - gap),
+        });
+        setIsBusinessSubmenuOpen(true);
+    };
+
+    const scheduleBusinessSubmenuClose = () => {
+        clearBusinessCloseTimeout();
+        businessCloseTimeoutRef.current = window.setTimeout(() => {
+            setIsBusinessSubmenuOpen(false);
+        }, 120);
+    };
 
     useEffect(() => {
         // Prevenir scroll cuando el menú está abierto en móvil
@@ -61,7 +94,38 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         if (!isMenuOpen) return;
         const storedUser = localStorage.getItem("pitzbol_user");
         setUser(storedUser ? JSON.parse(storedUser) : null);
+
+        // Check if user has any business requests
+        const checkBusinessRequests = async () => {
+            const token = localStorage.getItem("pitzbol_token");
+            if (!token) return;
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/business/my-requests`, {
+                    credentials: "include",
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    setHasBusinessRequests((data.solicitudes?.length || 0) > 0);
+                }
+            } catch {
+                // Silently fail
+            }
+        };
+        checkBusinessRequests();
     }, [isMenuOpen]);
+
+    useEffect(() => {
+        if (!isMenuOpen) {
+            setIsBusinessSubmenuOpen(false);
+        }
+    }, [isMenuOpen]);
+
+    useEffect(() => {
+        return () => {
+            clearBusinessCloseTimeout();
+        };
+    }, []);
 
     // Determinar tipo de usuario para notificaciones
     const isGuide = user?.role === "guide" || user?.role === "guia" || user?.guide_status === "aprobado";
@@ -133,6 +197,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
 
     const role = user?.role || "visitor";
     const guideStatus = user?.guide_status || "ninguno";
+    const shouldShowBusinessManager = !!user && hasBusinessRequests;
     const guideSubmissionKey = user?.uid ? `pitzbol_guide_submitted_${user.uid}` : null;
     const hasGuideSubmissionFlag = !!guideSubmissionKey && localStorage.getItem(guideSubmissionKey) === "true";
     const isPendingVerification = !!user?.uid && (
@@ -156,7 +221,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         <nav className="flex justify-between items-center bg-[#F6F0E6] px-3 md:px-8 h-16 md:h-20 lg:h-24 sticky top-0 z-[100] shadow-sm text-[#1A4D2E]">
             {/* LOGO Y NOMBRE */}
             <div className="flex items-center h-full gap-1">
-                <motion.div whileHover={{ rotate: 190 }} transition={{ duration: 2.0, ease: "easeInOut" }} className="relative h-16 w-16 md:h-24 md:w-24 lg:h-32 lg:w-32 flex-shrink-0 cursor-pointer">
+                <motion.div whileHover={{ rotate: 190 }} transition={{ duration: 2.0, ease: "easeInOut" }} className="relative h-14 w-14 md:h-20 md:w-20 lg:h-28 lg:w-28 flex-shrink-0 cursor-pointer">
                     <Link href="/"><Image src={imglogo} alt="logo" fill className="object-contain" priority /></Link>
                 </motion.div>
                 <div className="relative flex items-center h-full pointer-events-none">
@@ -296,13 +361,23 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             ) : role === "guia" ? (
                                 <>
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('guidePanel')}</p>
-                                    <Link href="/guide/solicitudes" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium group w-full text-left">
+                                    <button className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group w-full text-left">
                                         <FiClock className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
                                         <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('tourRequests')}</span>
-                                    </Link>
+                                    </button>
                                     <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left">
                                         <FiCreditCard /> {t('myPayments')}
                                     </button>
+                                    {user && hasBusinessRequests && (
+                                        <Link
+                                            href="/negocio/mis-solicitudes"
+                                            onClick={() => setIsMenuOpen(false)}
+                                            className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left"
+                                        >
+                                            <FiShoppingBag className="text-[#0D601E]" />
+                                            <span>Gestionar mis negocios</span>
+                                        </Link>
+                                    )}
                                 </>
                             ) : (
                                 <>
@@ -328,12 +403,113 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                             <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('becomeGuide')}</span>
                                         </button>
                                     )}
-                                    <button onClick={() => { setIsMenuOpen(false); user ? onOpenBusiness() : onOpenAuthAsBusiness(); }}
-                                        className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group"
-                                    >
-                                        <FiBriefcase className="text-[#0D601E] group-hover:text-[#F00808]" />
-                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808]">{t('publishBusiness')}</span>
-                                    </button>
+                                    {shouldShowBusinessManager ? (
+                                        <div
+                                            ref={businessTriggerRef}
+                                            className="relative"
+                                            onMouseEnter={openBusinessSubmenuDesktop}
+                                            onMouseLeave={scheduleBusinessSubmenuClose}
+                                        >
+                                            <button
+                                                onClick={() => {
+                                                    if (typeof window !== "undefined" && window.innerWidth < 768) {
+                                                        setIsBusinessSubmenuOpen((prev) => !prev);
+                                                        return;
+                                                    }
+                                                    setIsMenuOpen(false);
+                                                    user ? onOpenBusiness() : onOpenAuthAsBusiness();
+                                                }}
+                                                className="flex items-center justify-between gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group hover:bg-[#F6F0E6] transition-all"
+                                            >
+                                                <span className="flex items-center gap-3">
+                                                    <FiBriefcase className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
+                                                    <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('publishBusiness')}</span>
+                                                </span>
+                                                <motion.span
+                                                    animate={{ rotate: isBusinessSubmenuOpen ? 180 : 0, x: isBusinessSubmenuOpen ? -2 : 0 }}
+                                                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                                                    className="text-[#0D601E] group-hover:text-[#F00808]"
+                                                >
+                                                    <FiChevronLeft className="hidden md:block" />
+                                                    <FiChevronDown className="md:hidden" />
+                                                </motion.span>
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {isBusinessSubmenuOpen && (
+                                                    <>
+                                                        <motion.div
+                                                            initial={{ opacity: 0, x: -12 }}
+                                                            animate={{ opacity: 1, x: 0 }}
+                                                            exit={{ opacity: 0, x: -12 }}
+                                                            transition={{ duration: 0.2, ease: "easeOut" }}
+                                                            style={{ top: businessSubmenuPosition.top, left: businessSubmenuPosition.left }}
+                                                            onMouseEnter={clearBusinessCloseTimeout}
+                                                            onMouseLeave={scheduleBusinessSubmenuClose}
+                                                            className="hidden md:block fixed w-60 z-[200] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+                                                        >
+                                                            <button
+                                                                onClick={() => {
+                                                                    setIsMenuOpen(false);
+                                                                    user ? onOpenBusiness() : onOpenAuthAsBusiness();
+                                                                }}
+                                                                className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] text-sm font-medium w-full text-left transition-all"
+                                                            >
+                                                                <FiPlusCircle className="text-[#0D601E]" />
+                                                                <span>{t('publishBusiness')}</span>
+                                                            </button>
+                                                            <Link
+                                                                href="/negocio/mis-solicitudes"
+                                                                onClick={() => setIsMenuOpen(false)}
+                                                                className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] text-sm font-medium w-full text-left transition-all"
+                                                            >
+                                                                <FiShoppingBag className="text-[#0D601E]" />
+                                                                <span>Gestionar mis negocios</span>
+                                                            </Link>
+                                                        </motion.div>
+
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: -4, height: 0 }}
+                                                            animate={{ opacity: 1, y: 0, height: "auto" }}
+                                                            exit={{ opacity: 0, y: -4, height: 0 }}
+                                                            transition={{ duration: 0.2, ease: "easeOut" }}
+                                                            className="md:hidden bg-[#F6F0E6] rounded-2xl overflow-hidden"
+                                                        >
+                                                            <button
+                                                                onClick={() => {
+                                                                    setIsMenuOpen(false);
+                                                                    user ? onOpenBusiness() : onOpenAuthAsBusiness();
+                                                                }}
+                                                                className="flex items-center gap-3 p-3 hover:bg-white text-sm font-medium w-full text-left transition-all"
+                                                            >
+                                                                <FiPlusCircle className="text-[#0D601E]" />
+                                                                <span>{t('publishBusiness')}</span>
+                                                            </button>
+                                                            <Link
+                                                                href="/negocio/mis-solicitudes"
+                                                                onClick={() => setIsMenuOpen(false)}
+                                                                className="flex items-center gap-3 p-3 hover:bg-white text-sm font-medium w-full text-left transition-all"
+                                                            >
+                                                                <FiShoppingBag className="text-[#0D601E]" />
+                                                                <span>Gestionar mis negocios</span>
+                                                            </Link>
+                                                        </motion.div>
+                                                    </>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                setIsMenuOpen(false);
+                                                user ? onOpenBusiness() : onOpenAuthAsBusiness();
+                                            }}
+                                            className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group hover:bg-[#F6F0E6] transition-all"
+                                        >
+                                            <FiBriefcase className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
+                                            <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('publishBusiness')}</span>
+                                        </button>
+                                    )}
                                 </>
                             )}
                             <div className="h-[1px] bg-gray-100 my-3 mx-2" />

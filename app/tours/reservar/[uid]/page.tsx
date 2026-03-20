@@ -41,9 +41,7 @@ export default function BookTourPage() {
   const [notas, setNotas] = useState("");
 
   useEffect(() => {
-    // Check localStorage directly to avoid race condition with usePitzbolUser hook
-    const storedUser = localStorage.getItem("pitzbol_user");
-    if (!storedUser) {
+    if (!user) {
       alert("Debes iniciar sesión para reservar un tour");
       router.push("/");
       return;
@@ -73,7 +71,7 @@ export default function BookTourPage() {
     if (guideId) {
       fetchGuideInfo();
     }
-  }, [guideId, router]);
+  }, [guideId, user, router]);
 
   const calcularTotal = () => {
     if (!guide) return 0;
@@ -135,8 +133,8 @@ export default function BookTourPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Redirigir a la página de confirmación de que la solicitud fue enviada
-        router.push(`/tours/confirmacion/${data.bookingId}`);
+        // Redirigir al pago
+        router.push(`/tours/pago/${data.bookingId}`);
       } else {
         alert("Error al crear la reserva: " + (data.message || "Error desconocido"));
       }

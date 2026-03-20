@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import { Geist, Geist_Mono, Jockey_One, JetBrains_Mono, Roboto } from "next/font/google";
 import { AnimatePresence } from "framer-motion";
 import { NextIntlClientProvider } from 'next-intl';
+import dynamic from "next/dynamic";
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthModal from "./components/AuthModal";
 import BecomeGuideFlow from "./components/BecomeGuideFlow";
-import PublishBusinessFlow from "./components/PublishBusinessFlow";
+const PublishBusinessFlow = dynamic(() => import("./components/PublishBusinessFlow"), { ssr: false });
 
 declare global {
   interface Window {

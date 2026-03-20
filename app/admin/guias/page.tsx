@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { fetchWithAuth } from "../../../lib/fetchWithAuth";
 import { FaSearch, FaCheckCircle, FaHourglassHalf, FaUserTie, FaPhone, FaEnvelope, FaMapMarkerAlt, FaGlobe, FaStar, FaMoneyBillWave, FaIdCard } from "react-icons/fa";
 import { MdPerson, MdCategory } from "react-icons/md";
 import Image from "next/image";
@@ -61,18 +62,10 @@ const AdminGuiasPage = () => {
     setLoading(true);
     try {
       const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-      let token = "";
-      if (typeof window !== "undefined") {
-        token = localStorage.getItem("pitzbol_token") || "";
-      }
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
 
       const [resAprobados, resPendientes] = await Promise.all([
-        fetch(`${API_BASE}/api/admin/guias/aprobados`, { credentials: "include", headers }),
-        fetch(`${API_BASE}/api/admin/guias/pendientes`, { credentials: "include", headers }),
+        fetchWithAuth(`${API_BASE}/api/admin/guias/aprobados`, { headers: { "Content-Type": "application/json" } }),
+        fetchWithAuth(`${API_BASE}/api/admin/guias/pendientes`, { headers: { "Content-Type": "application/json" } }),
       ]);
 
       const dataAprobados = await resAprobados.json();

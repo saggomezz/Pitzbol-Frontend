@@ -9,8 +9,6 @@ import {
   FiUser,
   FiMapPin,
   FiMessageSquare,
-  FiDollarSign,
-  FiLoader,
 } from "react-icons/fi";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
@@ -85,49 +83,6 @@ export default function BookingConfirmationPage() {
     );
   }
 
-  const isPending = booking.status === "pendiente";
-  const isConfirmed = booking.status === "confirmado";
-  const isPaid = booking.status === "pagado";
-  const isCompleted = booking.status === "completado";
-  const isCanceled = booking.status === "cancelado";
-
-  const getHeaderContent = () => {
-    if (isPending) {
-      return {
-        icon: <FiClock className="text-yellow-500" size={56} />,
-        title: "Solicitud Enviada",
-        subtitle: "Tu solicitud fue enviada al guía. Espera su confirmación.",
-        bgClass: "bg-gradient-to-r from-[#1A4D2E] to-[#0D601E]",
-      };
-    }
-    if (isConfirmed) {
-      return {
-        icon: <FiCheckCircle className="text-blue-500" size={56} />,
-        title: "¡Reserva Confirmada!",
-        subtitle: "El guía aceptó tu solicitud. Procede al pago para asegurar tu lugar.",
-        bgClass: "bg-gradient-to-r from-blue-600 to-blue-800",
-      };
-    }
-    if (isPaid || isCompleted) {
-      return {
-        icon: <FiCheckCircle className="text-green-500" size={56} />,
-        title: isPaid ? "¡Pago Exitoso!" : "¡Tour Completado!",
-        subtitle: isPaid
-          ? "Tu reserva está pagada y confirmada."
-          : "Esperamos que hayas disfrutado tu experiencia.",
-        bgClass: "bg-gradient-to-r from-[#1A4D2E] to-[#0D601E]",
-      };
-    }
-    return {
-      icon: <FiCheckCircle className="text-red-400" size={56} />,
-      title: "Reserva Cancelada",
-      subtitle: "Esta reserva fue cancelada.",
-      bgClass: "bg-gradient-to-r from-gray-600 to-gray-800",
-    };
-  };
-
-  const header = getHeaderContent();
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-12">
       <div className="max-w-3xl mx-auto px-4">
@@ -137,20 +92,20 @@ export default function BookingConfirmationPage() {
           transition={{ duration: 0.5 }}
           className="bg-white rounded-3xl shadow-2xl overflow-hidden"
         >
-          {/* Header dinámico según estado */}
-          <div className={`${header.bgClass} p-8 text-white text-center`}>
+          {/* Header con animación de éxito */}
+          <div className="bg-gradient-to-r from-[#1A4D2E] to-[#0D601E] p-8 text-white text-center">
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
               className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-6"
             >
-              {header.icon}
+              <FiCheckCircle className="text-green-500" size={56} />
             </motion.div>
             
-            <h1 className="text-4xl font-bold mb-3">{header.title}</h1>
+            <h1 className="text-4xl font-bold mb-3">¡Reserva Confirmada!</h1>
             <p className="text-lg text-white/90">
-              {header.subtitle}
+              Tu tour ha sido reservado exitosamente
             </p>
           </div>
 
@@ -226,89 +181,47 @@ export default function BookingConfirmationPage() {
               </div>
             </div>
 
-            {/* Total */}
+            {/* Total pagado */}
             <div className="bg-gradient-to-br from-[#F6F0E6] to-white p-6 rounded-2xl border-2 border-[#1A4D2E] mb-6">
               <div className="flex justify-between items-center">
-                <span className="text-xl font-bold text-gray-800">
-                  {isPaid || isCompleted ? "Total Pagado" : "Total Estimado"}
-                </span>
+                <span className="text-xl font-bold text-gray-800">Total Pagado</span>
                 <span className="text-3xl font-bold text-[#1A4D2E]">
                   ${booking.total.toLocaleString("es-MX")} MXN
                 </span>
               </div>
             </div>
 
-            {/* Información según estado */}
-            {isPending && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-                <h3 className="font-bold text-yellow-900 mb-2">Tu solicitud está en espera</h3>
-                <ul className="space-y-2 text-sm text-yellow-800">
-                  <li className="flex items-start gap-2">
-                    <FiClock className="text-yellow-600 mt-0.5 flex-shrink-0" size={16} />
-                    <span>El guía revisará tu solicitud y la confirmará pronto</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <FiClock className="text-yellow-600 mt-0.5 flex-shrink-0" size={16} />
-                    <span>Recibirás una notificación cuando el guía responda</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <FiClock className="text-yellow-600 mt-0.5 flex-shrink-0" size={16} />
-                    <span>Una vez confirmada, podrás proceder al pago</span>
-                  </li>
-                </ul>
-              </div>
-            )}
-
-            {isConfirmed && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                <h3 className="font-bold text-blue-900 mb-2">¡El guía aceptó tu solicitud!</h3>
-                <p className="text-sm text-blue-800">
-                  Procede al pago para asegurar tu lugar. Tu reserva se mantendrá confirmada
-                  hasta que completes el pago.
-                </p>
-              </div>
-            )}
-
-            {(isPaid || isCompleted) && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-                <h3 className="font-bold text-green-900 mb-2">¿Qué sigue?</h3>
-                <ul className="space-y-2 text-sm text-green-800">
-                  <li className="flex items-start gap-2">
-                    <FiCheckCircle className="text-green-600 mt-0.5 flex-shrink-0" size={16} />
-                    <span>Tu reserva está confirmada y pagada</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <FiCheckCircle className="text-green-600 mt-0.5 flex-shrink-0" size={16} />
-                    <span>Puedes contactar al guía en cualquier momento por chat</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <FiCheckCircle className="text-green-600 mt-0.5 flex-shrink-0" size={16} />
-                    <span>Puedes cancelar hasta 24 horas antes sin cargo</span>
-                  </li>
-                </ul>
-              </div>
-            )}
-
-            {isCanceled && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-                <h3 className="font-bold text-red-900 mb-2">Reserva cancelada</h3>
-                <p className="text-sm text-red-800">
-                  Esta reserva fue cancelada. Puedes buscar otro guía disponible.
-                </p>
-              </div>
-            )}
+            {/* Información adicional */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+              <h3 className="font-bold text-blue-900 mb-2">¿Qué sigue?</h3>
+              <ul className="space-y-2 text-sm text-blue-800">
+                <li className="flex items-start gap-2">
+                  <FiCheckCircle className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+                  <span>El guía ha recibido tu solicitud y la confirmará pronto</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <FiCheckCircle className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+                  <span>Recibirás una notificación cuando el guía confirme</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <FiCheckCircle className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+                  <span>Puedes contactar al guía en cualquier momento por chat</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <FiCheckCircle className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+                  <span>Puedes cancelar hasta 24 horas antes sin cargo</span>
+                </li>
+              </ul>
+            </div>
 
             {/* Botones de acción */}
             <div className="flex flex-col sm:flex-row gap-4">
-              {isConfirmed && (
-                <button
-                  onClick={() => router.push(`/tours/pago/${bookingId}`)}
-                  className="flex-1 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] hover:from-[#1A4D2E] hover:to-[#0D601E] text-white py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl"
-                >
-                  <FiDollarSign size={20} />
-                  Proceder al Pago
-                </button>
-              )}
+              <button
+                onClick={() => router.push("/perfil")}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-4 px-6 rounded-xl font-bold transition-all duration-300"
+              >
+                Ver Mis Reservas
+              </button>
               <button
                 onClick={() => router.push("/tours")}
                 className="flex-1 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] hover:from-[#1A4D2E] hover:to-[#0D601E] text-white py-4 px-6 rounded-xl font-bold transition-all duration-300 shadow-lg hover:shadow-xl"

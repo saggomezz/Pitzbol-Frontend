@@ -8,9 +8,11 @@ interface BusinessInfoProps {
   isOpen: boolean;
   onClose: () => void;
   onContinue: () => void;
+  onViewRequests?: () => void;
+  hasPendingRequests?: boolean;
 }
 
-const BusinessInfo: React.FC<BusinessInfoProps> = ({ isOpen, onClose, onContinue }) => {
+const BusinessInfo: React.FC<BusinessInfoProps> = ({ isOpen, onClose, onContinue, onViewRequests, hasPendingRequests }) => {
   const t = useTranslations('businessInfo');
   const contentRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLDivElement>(null);
@@ -103,8 +105,31 @@ const BusinessInfo: React.FC<BusinessInfoProps> = ({ isOpen, onClose, onContinue
             <b>¿Listo para destacar?</b> Da el primer paso y haz que tu negocio forme parte de la experiencia de miles de turistas.<br/>
             <span style={{color:'#769C7B'}}>¡No estás solo! Nuestro equipo te acompaña en todo el proceso.</span>
           </div>
-          <div ref={btnRef} className={styles.guideInfoActions}>
-            <button className={styles.guideInfoBtn} onClick={onContinue}>
+          <div ref={btnRef} className={styles.guideInfoActions} style={{flexDirection:'row', justifyContent: onViewRequests ? 'space-between' : 'flex-end', flexWrap:'wrap', gap:'0.7rem'}}>
+            {onViewRequests && (
+              <button
+                onClick={onViewRequests}
+                style={{
+                  background: 'none',
+                  border: '2px solid #3B5D50',
+                  color: '#3B5D50',
+                  borderRadius: '1.2rem',
+                  padding: '0.55rem 1.4rem',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  transition: 'background 0.18s, color 0.18s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+                onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background='#3B5D50'; (e.currentTarget as HTMLButtonElement).style.color='#fff'; }}
+                onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background='none'; (e.currentTarget as HTMLButtonElement).style.color='#3B5D50'; }}
+              >
+                📋 Ver mis solicitudes
+              </button>
+            )}
+            <button className={styles.guideInfoBtn} onClick={onContinue} style={{marginLeft:0, marginRight:0}}>
               ¡Quiero publicar mi negocio!
             </button>
           </div>

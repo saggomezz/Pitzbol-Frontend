@@ -1,8 +1,10 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { io, Socket } from "socket.io-client";
 
-import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase, FiTrash2 } from "react-icons/fi";
+import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 
 interface Notification {
@@ -13,6 +15,9 @@ interface Notification {
   fecha: string;
   leido: boolean;
   enlace?: string;
+  negocioId?: string;
+  rejectionReason?: string;
+  rejectedAt?: string;
   solicitudId?: string;
   uidSolicitante?: string;
 }
@@ -21,12 +26,70 @@ interface NotificationsPanelProps {
   userId?: string;
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+
+const BUSINESS_NOTIF_TYPES = new Set([
+  'solicitud_negocio_enviada', 'negocio_aprobado', 'negocio_rechazado', 'negocio_archivado', 'negocio_editado', 'nueva_solicitud_negocio',
+]);
+
+function extractBusinessIdFromNotification(notif: Notification): string | undefined {
+  const fromFields = notif.solicitudId || notif.negocioId || notif.uidSolicitante;
+  if (fromFields) return String(fromFields);
+
+  const enlace = notif.enlace || "";
+  if (!enlace) return undefined;
+
+  const directAdmin = enlace.match(/\/admin\/negocios\/([^/?#]+)/);
+  if (directAdmin?.[1]) return decodeURIComponent(directAdmin[1]);
+
+  const userBusinessDetail = enlace.match(/\/negocio\/mis-solicitudes\/([^/?#]+)/);
+  if (userBusinessDetail?.[1]) return decodeURIComponent(userBusinessDetail[1]);
+
+  const previewQuery = enlace.match(/[?&]id=([^&#]+)/);
+  if (previewQuery?.[1]) return decodeURIComponent(previewQuery[1]);
+
+  const anyBusinessQuery = enlace.match(/[?&](negocioId|solicitudId)=([^&#]+)/);
+  if (anyBusinessQuery?.[2]) return decodeURIComponent(anyBusinessQuery[2]);
+
+  return undefined;
+}
+
+/** Convierte enlaces viejos y normaliza navegación por ID de negocio según rol */
+function resolveNotifLink(notif: Notification, userRole?: string): string | undefined {
+  const enlace = notif.enlace;
+  const businessId = extractBusinessIdFromNotification(notif);
+  const isAdmin = (userRole || "").toLowerCase() === "admin";
+
+  if (!enlace) {
+    if (!businessId) return undefined;
+    return isAdmin ? `/admin/negocios/${businessId}` : `/negocio/mis-solicitudes/${businessId}`;
+  }
+
+  // Para admins: siempre abrir detalle admin de solicitud por ID, independientemente del estatus
+  if (isAdmin && BUSINESS_NOTIF_TYPES.has(notif.tipo) && businessId) {
+    return `/admin/negocios/${businessId}`;
+  }
+
+  // Reescribir URLs antiguas de preview para notificaciones de negocio
+  if (BUSINESS_NOTIF_TYPES.has(notif.tipo)) {
+    const previewMatch = enlace.match(/\/negocio\/preview\?id=([^&]+)/);
+    if (previewMatch) {
+      const id = notif.solicitudId || notif.negocioId || previewMatch[1];
+      return `/negocio/mis-solicitudes/${id}`;
+    }
+  }
+
+  return enlace;
+}
+
 export default function NotificationsPanel({ userId }: NotificationsPanelProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [notificaciones, setNotificaciones] = useState<Notification[]>([]);
   const [noLeidas, setNoLeidas] = useState(0);
   const [cargando, setCargando] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   // Cargar notificaciones del backend (Firestore)
   const cargarNotificacionesDelBackend = async () => {
@@ -61,6 +124,9 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
               fecha: notif.fecha,
               leido: notif.leido || false,
               enlace: notif.enlace,
+              negocioId: notif.negocioId,
+              rejectionReason: notif.rejectionReason,
+              rejectedAt: notif.rejectedAt,
               solicitudId: notif.solicitudId,
               uidSolicitante: notif.uidSolicitante
             };
@@ -217,6 +283,47 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     };
   }, [userId]);
 
+  // Notificaciones en tiempo real por Socket.IO
+  useEffect(() => {
+    if (!userId) return;
+
+    const token = localStorage.getItem("pitzbol_token") || "";
+    socketRef.current = io(BACKEND_URL, {
+      auth: {
+        token,
+        userId,
+        userType: "tourist",
+      },
+    });
+
+    socketRef.current.on("new-notification", (notif: Notification) => {
+      setNotificaciones((prev) => {
+        const alreadyExists = prev.some((item) => item.id === notif.id);
+        if (alreadyExists) {
+          return prev;
+        }
+        const updated = [notif, ...prev].sort(
+          (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+        );
+
+        if (userId) {
+          const key = `pitzbol_notifications_${userId}`;
+          localStorage.setItem(key, JSON.stringify(updated));
+        }
+
+        return updated;
+      });
+
+      setNoLeidas((prev) => prev + (notif.leido ? 0 : 1));
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [userId]);
+
   const marcarComoLeida = async (id: string) => {
     if (!userId) return;
 
@@ -236,10 +343,11 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
     // Actualizar en el backend
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      const response = await fetch(`${API_BASE}/api/admin/notifications/${id}/marcar-leida/${userId}`, {
+      const token = localStorage.getItem('pitzbol_token');
+      const response = await fetch(`${BACKEND_URL}/api/admin/notifications/${id}/marcar-leida/${userId}`, {
         method: 'PUT',
         credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       
       if (response.ok) {
@@ -264,8 +372,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
     // Eliminar en el backend
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      await fetch(`${API_BASE}/api/notifications/${id}`, {
+      await fetch(`${BACKEND_URL}/api/notifications/${id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -274,27 +381,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     }
   };
 
-  const eliminarTodasLasNotificaciones = async () => {
-    if (!userId) return;
 
-    const key = `pitzbol_notifications_${userId}`;
-    localStorage.setItem(key, JSON.stringify([]));
-    setNotificaciones([]);
-    setNoLeidas(0);
-
-    // Eliminar todas en el backend
-    try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      const token = localStorage.getItem('pitzbol_token');
-      await fetch(`${API_BASE}/api/admin/notifications/user/${userId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
-      });
-    } catch (error) {
-      console.error("Error al eliminar todas las notificaciones en backend:", error);
-    }
-  };
 
   const getIconoNotificacion = (tipo: string) => {
     switch(tipo) {
@@ -411,23 +498,12 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                   {noLeidas > 0 ? `${noLeidas} sin leer` : 'Todo al día'}
                 </p>
               </div>
-              <div className="flex items-center gap-1">
-                {notificaciones.length > 0 && (
-                  <button
-                    onClick={eliminarTodasLasNotificaciones}
-                    className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-                    title="Borrar todas las notificaciones"
-                  >
-                    <FiTrash2 size={18} />
-                  </button>
-                )}
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-                >
-                  <FiX size={20} />
-                </button>
-              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <FiX size={20} />
+              </button>
             </div>
 
             {/* Contenido */}
@@ -461,14 +537,12 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                         !notif.leido ? 'border-l-[#F00808] bg-opacity-60' : 'border-l-gray-200'
                       }`}
                       onClick={() => {
-                        console.log(`🔔 Clic en notificación:`, notif);
-                        console.log(`🔗 Enlace de notificación:`, notif.enlace);
                         marcarComoLeida(notif.id);
-                        if (notif.enlace) {
-                          console.log(`➡️ Navegando a:`, notif.enlace);
-                          window.location.href = notif.enlace;
-                        } else {
-                          console.warn(`⚠️ La notificación no tiene enlace`);
+                        setIsOpen(false);
+                        const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
+                        const targetLink = resolveNotifLink(notif, user?.role);
+                        if (targetLink) {
+                          router.push(targetLink);
                         }
                       }}
                     >

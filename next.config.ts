@@ -13,7 +13,8 @@ const nextConfig = {
     ];
   },
   reactStrictMode: true,
-  turbopack: {}, // Silenciar warning de Turbopack en Next.js 16
+  allowedDevOrigins: ['69.30.204.56'],
+  turbopack: {},
   webpack: (config: any) => {
     config.resolve.alias = {
       ...config.resolve.alias,
