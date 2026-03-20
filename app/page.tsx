@@ -11,6 +11,7 @@ import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiR
 import { GiSoccerBall } from "react-icons/gi";
 import { construirItinerarioElegido, ordenarPorCercania } from '../lib/pitzbol-engine';
 import WelcomeNotification from './components/WelcomeNotification';
+import PlaceRating from './components/PlaceRating';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -252,6 +253,32 @@ function PlaceCard2({ place, photos, noImageText, displayName }: {
                 <div key={i} className={`rounded-full transition-all duration-300 ${i === photoIdx ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/60'}`} />
               ))}
             </div>
+          : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
+        }
+        <div className="absolute top-3 right-3 z-20 bg-white/95 border border-[#E8E8E8] rounded-full px-2 py-1 shadow-md">
+          <PlaceRating
+            placeName={place.name}
+            showLabel={true}
+            size="small"
+            readonly={true}
+          />
+        </div>
+        {/* Dots indicador (solo con múltiples fotos y hover) */}
+        {isHovered && photos.length > 1 && (
+          <div className="absolute bottom-9 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
+            {photos.map((_, i) => (
+              <div key={i} className={`rounded-full transition-all duration-300 ${i === photoIdx ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/60'}`} />
+            ))}
+          </div>
+        )}
+        {/* Botón Ubicar */}
+        <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 z-10">
+          <Link href="/mapa">
+            <button className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors">
+              <FiMapPin size={14} />
+              Ubicar
+            </button>
+          </Link>
           )}
         </div>
         <div className="p-3">
