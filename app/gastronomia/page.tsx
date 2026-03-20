@@ -217,7 +217,7 @@ export default function GastronomiaPage() {
               Gastronomía Tapatía
             </h1>
             <p className="text-sm md:text-base text-[#F6F0E6] max-w-2xl">
-              Explora comida tradicional, spots gourmet y mercados locales con una interfaz clara, visual y súper amigable.
+              Explora comida tradicional, spots gourmet, mercados locales y postres de Guadalajara.
             </p>
           </div>
         </section>

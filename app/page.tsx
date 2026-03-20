@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import Papa from 'papaparse';
 import { Suspense, useEffect, useRef, useState } from "react";
-import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiSearch, FiUser, FiX } from "react-icons/fi";
+import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiRefreshCw, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi";
 import { construirItinerarioElegido, ordenarPorCercania } from '../lib/pitzbol-engine';
 import WelcomeNotification from './components/WelcomeNotification';
@@ -233,15 +233,25 @@ function PlaceCard2({ place, photos, noImageText, displayName }: {
   const nameForUi = displayName || place.name;
 
   return (
-    <div
-      className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setPhotoIdx(0); }}
-    >
-      <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
-        {displayImg
-          ? <div className="absolute inset-0">
-              <img src={displayImg} alt={nameForUi} className="w-full h-full object-cover transition-opacity duration-500" />
+    <Link href={`/informacion/${encodeURIComponent(place.name)}`} className="block">
+      <div
+        className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105 cursor-pointer"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => { setIsHovered(false); setPhotoIdx(0); }}
+      >
+        <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
+          {displayImg
+            ? <div className="absolute inset-0">
+                <img src={displayImg} alt={nameForUi} className="w-full h-full object-cover transition-opacity duration-500" />
+              </div>
+            : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
+          }
+          {/* Dots indicador (solo con múltiples fotos y hover) */}
+          {isHovered && photos.length > 1 && (
+            <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
+              {photos.map((_, i) => (
+                <div key={i} className={`rounded-full transition-all duration-300 ${i === photoIdx ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/60'}`} />
+              ))}
             </div>
           : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
         }
@@ -269,12 +279,13 @@ function PlaceCard2({ place, photos, noImageText, displayName }: {
               Ubicar
             </button>
           </Link>
+          )}
+        </div>
+        <div className="p-3">
+          <h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{nameForUi}</h3>
         </div>
       </div>
-      <div className="p-3">
-        <h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{nameForUi}</h3>
-      </div>
-    </div>
+    </Link>
   );
 }
 
@@ -373,7 +384,7 @@ function HomeContent() {
       <section className="relative bg-gradient-to-r from-[#FDFCF9] via-white to-[#FDFCF9] py-6 md:py-12 px-3 md:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-6 md:mb-8">
+          <div className="text-center mb-1 md:mb-2">
             <h2 className="text-2xl md:text-4xl font-black text-[#1A4D2E] uppercase mb-2" style={{ fontFamily: "var(--font-jockey)" }}>
               Categorías
             </h2>
@@ -501,7 +512,7 @@ function HomeContent() {
     );
   };
 
-  const RecommendationsComponent = ({ recommendations }: { recommendations: RecommendedPlace[] }) => {
+  const RecommendationsComponent = ({ recommendations, onRefresh }: { recommendations: RecommendedPlace[]; onRefresh?: () => void }) => {
     const getPlaceName = (name: string) => {
       const placeMap: { [key: string]: string } = {
         "Centro de Guadalajara": tPlaces('centralGuadalajara'),
@@ -513,7 +524,14 @@ function HomeContent() {
 
     return (
       <div className="flex flex-col w-full md:w-3/5">
-        <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-[#1A4D2E] px-1">{tHome('recommendations')}</h2>
+        <div className="flex items-center gap-2 mb-3 md:mb-4 px-1">
+          <h2 className="text-xl md:text-2xl font-bold text-[#1A4D2E]">{tHome('recommendations')}</h2>
+          {onRefresh && (
+            <button onClick={onRefresh} className="text-[#1A4D2E] hover:text-[#0D601E] transition-colors" title="Actualizar recomendaciones">
+              <FiRefreshCw size={18} />
+            </button>
+          )}
+        </div>
         <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
           {recommendations.map((place) => (
             <PlaceCard2
@@ -928,7 +946,7 @@ function HomeContent() {
           </div>
         </div>
 
-        <RecommendationsComponent recommendations={recommendedPlaces} />
+        <RecommendationsComponent recommendations={recommendedPlaces} onRefresh={cargarRecomendaciones} />
       </main>
     </div>
   );

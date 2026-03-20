@@ -1,14 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-    webpack: (config: any) => {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        '@tensorflow/tfjs': false,
-      };
-      config.externals = [...(config.externals || []), { canvas: 'canvas' }];
-      return config;
-    },
+  allowedDevOrigins: ['69.30.204.56'],
+  webpack: (config: any) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@tensorflow/tfjs': false,
+    };
+    config.externals = [...(config.externals || []), { canvas: 'canvas' }];
+    return config;
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'res.cloudinary.com' },
@@ -28,6 +29,10 @@ const nextConfig = {
       { protocol: 'https', hostname: 'arquitecturaviva.com' },
       { protocol: 'https', hostname: 'A.espncdn.com' },
       { protocol: 'https', hostname: 'flagcdn.com' },
+      { protocol: 'https', hostname: 'noticiasgdl.com' },
+      { protocol: 'https', hostname: 'offloadmedia.feverup.com' },
+      { protocol: 'https', hostname: 'www.entornoturistico.com' },
+      { protocol: 'https', hostname: 'www.buenosviajes.co' },
     ],
   },
 };
