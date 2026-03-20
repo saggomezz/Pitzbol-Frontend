@@ -2,14 +2,15 @@
 const nextConfig = {
   reactStrictMode: true,
   allowedDevOrigins: ['69.30.204.56'],
-    webpack: (config: any) => {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        '@tensorflow/tfjs': false,
-      };
-      config.externals = [...(config.externals || []), { canvas: 'canvas' }];
-      return config;
-    },
+  turbopack: false,
+  webpack: (config: any) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@tensorflow/tfjs': false,
+    };
+    config.externals = [...(config.externals || []), { canvas: 'canvas' }];
+    return config;
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'res.cloudinary.com' },
