@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import {
-  FiChevronLeft, FiChevronRight, FiPlus, FiSun, FiX, FiTrash2, FiClock, FiMapPin, FiDollarSign
+  FiChevronLeft, FiChevronRight, FiPlus, FiSun, FiX, FiTrash2, FiClock, FiMapPin, FiDollarSign, FiEdit3
 } from "react-icons/fi";
 
 interface SavedStop {
@@ -40,13 +40,17 @@ function formatTime12(t: string) {
 export default function CalendarioPage() {
   const [currentDate, setCurrentDate] = useState(new Date(2026, 5, 1));
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [showOptions, setShowOptions] = useState(false);
   const [itinerarios, setItinerarios] = useState<CalendarEntry[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [showDayModal, setShowDayModal] = useState(false);
+  const [addingNote, setAddingNote] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [notas, setNotas] = useState<{ [key: string]: string[] }>({});
+
+  const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
 
   const t = useTranslations('calendar');
   const tMonths = useTranslations('calendar.months');
-  const tCat = useTranslations('calendar.planCategories');
 
   const months = [
     tMonths('january'), tMonths('february'), tMonths('march'), tMonths('april'),
@@ -61,20 +65,16 @@ export default function CalendarioPage() {
     "6-30": ["DIECISEISAVOS"]
   };
 
-  const planCategories = [
-    { id: 'gastro', title: tCat('gastronomy'), img: 'https://cdn-icons-png.flaticon.com/128/4372/4372203.png', desc: tCat('gastronomyDesc') },
-    { id: 'cultura', title: tCat('culture'), img: 'https://cdn-icons-png.flaticon.com/512/3659/3659831.png', desc: tCat('cultureDesc') },
-    { id: 'noche', title: tCat('party'), img: 'https://cdn-icons-png.flaticon.com/128/1355/1355079.png', desc: tCat('partyDesc') },
-    { id: 'guia', title: tCat('guides'), img: 'https://cdn-icons-png.flaticon.com/128/3284/3284649.png', desc: tCat('guidesDesc') },
-    { id: 'tequila', title: tCat('tequila'), img: 'https://cdn-icons-png.flaticon.com/512/920/920605.png', desc: tCat('tequilaDesc') },
-    { id: 'shop', title: tCat('shopping'), img: 'https://cdn-icons-png.flaticon.com/512/3081/3081648.png', desc: tCat('shoppingDesc') }
-  ];
-
   useEffect(() => {
     const saveParam = window.location.hash ? decodeURIComponent(window.location.hash.slice(1)) : null;
     let stored: CalendarEntry[] = [];
     try {
       stored = JSON.parse(localStorage.getItem('pitzbol_calendario') || '[]');
+    } catch {}
+
+    try {
+      const storedNotas = JSON.parse(localStorage.getItem('pitzbol_notas') || '{}');
+      setNotas(storedNotas);
     } catch {}
 
     if (saveParam) {
@@ -114,7 +114,6 @@ export default function CalendarioPage() {
     localStorage.setItem('pitzbol_calendario', JSON.stringify(updated));
     setItinerarios(updated);
     setDeleteConfirm(null);
-    // Si no hay más itinerarios en ese día, deseleccionar
     const remaining = updated.filter(e => {
       const [y, m, d] = e.fecha.split('-').map(Number);
       return m - 1 === currentDate.getMonth() && d === selectedDay && y === currentDate.getFullYear();
@@ -122,10 +121,27 @@ export default function CalendarioPage() {
     if (remaining.length === 0) setSelectedDay(null);
   };
 
+  const saveNota = () => {
+    if (!noteText.trim() || !selectedDateStr) return;
+    const updated = { ...notas, [selectedDateStr]: [...(notas[selectedDateStr] || []), noteText.trim()] };
+    setNotas(updated);
+    localStorage.setItem('pitzbol_notas', JSON.stringify(updated));
+    setNoteText('');
+    setAddingNote(false);
+    setShowDayModal(false);
+  };
+
+  const deleteNota = (dateStr: string, idx: number) => {
+    const updated = { ...notas };
+    updated[dateStr] = updated[dateStr].filter((_, i) => i !== idx);
+    if (updated[dateStr].length === 0) delete updated[dateStr];
+    setNotas(updated);
+    localStorage.setItem('pitzbol_notas', JSON.stringify(updated));
+  };
+
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
 
-  // Itinerarios del día seleccionado
   const selectedDateStr = selectedDay
     ? `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`
     : null;
@@ -133,7 +149,6 @@ export default function CalendarioPage() {
     ? itinerarios.filter(e => e.fecha === selectedDateStr)
     : [];
 
-  // Días con itinerarios este mes
   const daysWithItinerary = new Set(
     itinerarios
       .filter(e => {
@@ -142,6 +157,8 @@ export default function CalendarioPage() {
       })
       .map(e => parseInt(e.fecha.split('-')[2]))
   );
+
+  const selectedNotas = selectedDateStr ? (notas[selectedDateStr] || []) : [];
 
   return (
     <div className="h-screen bg-[#FDFCF9] flex flex-col font-sans overflow-hidden">
@@ -155,12 +172,12 @@ export default function CalendarioPage() {
             <FiSun size={12} className="text-[#F00808]" /> GDL 28°C • Soleado
           </div>
         </div>
-        <button
-          onClick={() => { setSelectedDay(null); setShowOptions(true); }}
+        <a
+          href={IA_URL}
           className="bg-[#0D601E] hover:bg-[#094d18] text-white px-6 py-3 rounded-full font-bold shadow-xl transition-all flex items-center gap-3 text-xs uppercase tracking-[0.2em]"
         >
           <FiPlus size={16} /> {t('createPlan')}
-        </button>
+        </a>
       </div>
 
       <main className="flex-1 p-4 max-w-[1700px] mx-auto w-full grid grid-cols-1 lg:grid-cols-4 gap-6 overflow-hidden">
@@ -195,7 +212,12 @@ export default function CalendarioPage() {
                   <motion.div
                     key={i}
                     whileHover={{ scale: 1.02, y: -5 }}
-                    onClick={() => { setSelectedDay(day); if (!hasItinerary) setShowOptions(true); }}
+                    onClick={() => {
+                      setSelectedDay(day);
+                      setShowDayModal(true);
+                      setAddingNote(false);
+                      setNoteText('');
+                    }}
                     className={`rounded-[25px] p-2 transition-all cursor-pointer relative flex flex-col justify-between border
                       ${isSelected && hasItinerary ? 'bg-[#1A4D2E] border-[#1A4D2E]' : ''}
                       ${!isSelected && hasItinerary ? 'bg-[#E0F2F1] border-[#81C784]' : ''}
@@ -224,25 +246,48 @@ export default function CalendarioPage() {
           </div>
         </div>
 
-        {/* Panel lateral: Próximas Citas */}
+        {/* Panel lateral */}
         <div className="lg:col-span-1 space-y-4 flex flex-col h-full overflow-hidden">
-          <section className="bg-white rounded-[30px] p-5 border border-[#F6F0E6] shadow-sm flex-shrink-0">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#769C7B] mb-3 block">Plan del día</span>
-            <div className="flex justify-between gap-1">
-              {['Chill', 'Explorar', 'Fiesta'].map(mood => (
-                <button key={mood} className="flex-1 py-2 rounded-xl border border-[#F6F0E6] text-[8px] font-bold uppercase hover:bg-[#1A4D2E] hover:text-white transition-all">{mood}</button>
-              ))}
+
+          {/* Notas */}
+          <section className="bg-white rounded-[30px] p-5 border border-[#F6F0E6] shadow-sm flex-shrink-0" style={{ minHeight: '180px' }}>
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#769C7B]">Notas</span>
+              {selectedDateStr && (
+                <button
+                  onClick={() => { setShowDayModal(true); setAddingNote(true); setNoteText(''); }}
+                  className="p-1.5 rounded-lg bg-[#E0F2F1] hover:bg-[#1A4D2E] hover:text-white text-[#1A4D2E] transition-all"
+                >
+                  <FiPlus size={12} />
+                </button>
+              )}
             </div>
+            {selectedNotas.length > 0 ? (
+              <div className="space-y-2">
+                {selectedNotas.map((nota, i) => (
+                  <div key={i} className="flex justify-between items-start gap-2 bg-[#FDFCF9] rounded-xl p-2">
+                    <p className="text-[11px] text-[#1A4D2E] leading-snug flex-1">{nota}</p>
+                    <button onClick={() => deleteNota(selectedDateStr!, i)} className="text-[#769C7B] hover:text-[#F00808] transition-colors flex-shrink-0">
+                      <FiX size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] text-[#769C7B]">
+                {selectedDateStr ? 'Sin notas para este día.' : 'Selecciona un día para ver notas.'}
+              </p>
+            )}
           </section>
 
+          {/* Mi itinerario */}
           <section className="bg-[#1A4D2E] rounded-[35px] p-5 text-white shadow-xl flex-1 overflow-y-auto">
-            <h3 className="text-xl mb-3 uppercase flex-shrink-0" style={{ fontFamily: "'Jockey One', sans-serif" }}>Próximas Citas</h3>
+            <h3 className="text-xl mb-3 uppercase flex-shrink-0" style={{ fontFamily: "'Jockey One', sans-serif" }}>Mi itinerario</h3>
 
             {selectedItinerarios.length > 0 ? (
               <div className="space-y-4">
                 {selectedItinerarios.map(entry => (
                   <div key={entry.id} className="bg-white/10 rounded-2xl p-3">
-                    {/* Header del itinerario */}
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <p className="font-bold text-sm">{entry.nombre}</p>
@@ -263,7 +308,6 @@ export default function CalendarioPage() {
                       )}
                     </div>
 
-                    {/* Paradas */}
                     <div className="space-y-2">
                       {entry.stops.map((stop, i) => (
                         <div key={i} className="flex gap-2 items-start pl-1 border-l-2 border-[#769C7B] relative">
@@ -303,23 +347,77 @@ export default function CalendarioPage() {
         </div>
       </main>
 
-      {/* Modal de opciones */}
+      {/* Modal día seleccionado */}
       <AnimatePresence>
-        {showOptions && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-[#1A4D2E]/60 backdrop-blur-md">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white w-full max-w-5xl rounded-[50px] shadow-3xl overflow-hidden">
-              <div className="p-8 flex justify-between items-center bg-[#FDFCF9]">
-                <h2 className="text-4xl font-black text-[#1A4D2E] uppercase" style={{ fontFamily: "'Jockey One', sans-serif" }}>¿Qué sigue, Pitzboler?</h2>
-                <button onClick={() => setShowOptions(false)} className="bg-[#F6F0E6] p-3 rounded-full text-[#F00808]"><FiX size={24} /></button>
+        {showDayModal && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-[#1A4D2E]/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white w-full max-w-sm rounded-[32px] shadow-2xl p-7"
+            >
+              <div className="flex justify-between items-center mb-5">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#769C7B]">
+                    {selectedDateStr ? selectedDateStr.split('-').reverse().join('/') : ''}
+                  </p>
+                  <h3 className="text-xl font-black text-[#1A4D2E] uppercase mt-0.5" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    {addingNote ? 'Nueva nota' : '¿Qué hacemos?'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => { setShowDayModal(false); setAddingNote(false); setNoteText(''); }}
+                  className="bg-[#F6F0E6] p-2 rounded-full text-[#F00808] hover:bg-[#fde8e8] transition-all"
+                >
+                  <FiX size={18} />
+                </button>
               </div>
-              <div className="p-10 grid grid-cols-2 md:grid-cols-3 gap-6">
-                {planCategories.map((cat) => (
-                  <button key={cat.id} className="group bg-white p-6 rounded-[40px] border-2 border-[#F6F0E6] hover:border-[#0D601E] transition-all text-center">
-                    <img src={cat.img} alt={cat.title} className="w-12 h-12 mx-auto mb-4" />
-                    <span className="text-lg font-black text-[#1A4D2E] uppercase block" style={{ fontFamily: "'Jockey One', sans-serif" }}>{cat.title}</span>
+
+              {!addingNote ? (
+                <div className="flex flex-col gap-3">
+                  <a
+                    href={IA_URL}
+                    className="flex items-center gap-3 bg-[#1A4D2E] hover:bg-[#0D601E] text-white px-5 py-4 rounded-2xl font-bold text-sm transition-all"
+                  >
+                    <FiPlus size={18} />
+                    Crear itinerario
+                  </a>
+                  <button
+                    onClick={() => setAddingNote(true)}
+                    className="flex items-center gap-3 bg-[#E0F2F1] hover:bg-[#c8ece9] text-[#1A4D2E] px-5 py-4 rounded-2xl font-bold text-sm transition-all"
+                  >
+                    <FiEdit3 size={18} />
+                    Agregar nota
                   </button>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <textarea
+                    value={noteText}
+                    onChange={e => setNoteText(e.target.value)}
+                    placeholder="Escribe tu nota aquí..."
+                    className="w-full border border-[#E0F2F1] rounded-2xl p-3 text-sm text-[#1A4D2E] resize-none focus:outline-none focus:border-[#1A4D2E] transition-colors"
+                    rows={4}
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setAddingNote(false)}
+                      className="flex-1 py-3 rounded-2xl border border-[#F6F0E6] text-[#769C7B] text-sm font-bold hover:bg-[#FDFCF9] transition-all"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={saveNota}
+                      disabled={!noteText.trim()}
+                      className="flex-1 py-3 rounded-2xl bg-[#1A4D2E] text-white text-sm font-bold hover:bg-[#0D601E] transition-all disabled:opacity-40"
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         )}
