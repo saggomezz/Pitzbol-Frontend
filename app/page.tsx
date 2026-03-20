@@ -9,20 +9,46 @@ import Papa from 'papaparse';
 import { Suspense, useEffect, useRef, useState } from "react";
 import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiRefreshCw, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi";
-import { construirItinerarioElegido, ordenarPorCercania } from '../lib/pitzbol-engine';
 import WelcomeNotification from './components/WelcomeNotification';
+import { getPlaceImageByCategory } from '@/lib/placeImages';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
-type Recommendation = { name: string; img: string | null; };
-type RecommendedPlace = Recommendation & { categoria?: string };
+type RecommendedPlace = { name: string; img: string | null; categoria?: string; };
+
+const INTERES_TO_CATEGORIES: Record<string, string[]> = {
+  "Arte e Historia": ["Arte e Historia"],
+  "Arquitectura": ["Arquitectura"],
+  "Cultura": ["Cultura"],
+  "Gastronomía": ["Gastronomía", "Gastronomía Mexicana"],
+  "Deporte Fútbol": ["Fútbol"],
+  "Música": ["Música"],
+  "Naturaleza": ["Naturaleza"],
+  "Fotografía": ["Fotografía"],
+  "Vida Nocturna": ["Vida Nocturna"],
+  "Compras": ["Compras"],
+  "Museos": ["Museos"],
+  "Tours Guiados": ["Cultura", "Arte e Historia", "Museos"],
+  "Aventura": ["Aventura"],
+  "Religión": ["Cultura"],
+  "Mercados Locales": ["Mercados Locales"],
+};
+
+const DEFAULT_RECOMMENDATIONS: RecommendedPlace[] = [
+  { name: "Centro de Guadalajara", img: "https://www.liderempresarial.com/wp-content/uploads/2025/07/Asi-se-transformara-el-centro-de-Guadalajara-%C2%BFcuando-estara-listo.jpg" },
+  { name: "Tlaquepaque", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
+  { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
+  { name: "Hueso Restaurante", img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800", categoria: "Gastronomía" },
+  { name: "Mutante Restaurante", img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800", categoria: "Gastronomía" },
+  { name: "Cuerno Andares", img: "https://images.unsplash.com/photo-1484659619207-9165d119dafe?auto=format&fit=crop&q=80&w=800", categoria: "Gastronomía" },
+];
 
 const ALL_CATEGORIES: Category[] = [
   { name: "Fútbol", img: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&q=80&w=2070" },
   { name: "Gastronomía", img: "https://images.unsplash.com/photo-1711306722944-70b776bb4394?auto=format&fit=crop&q=80&w=1528" },
   { name: "Arte", img: "https://museocabanas.jalisco.gob.mx/wp-content/uploads/2024/08/1.png" },
   { name: "Cultura", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Voladores_de_Papantla.png/1200px-Voladores_de_Papantla.png" },
-  { name: "Eventos", img: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=1528" },
+  { name: "Eventos", img: "https://www.buenosviajes.co/wp-content/uploads/2024/03/Guadalajara2.jpg" },
   { name: "Casas de Cambio", img: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1528" },
   { name: "Hospitales", img: "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=1700" },
   { name: "Médico", img: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&q=80&w=1528" },
@@ -45,58 +71,6 @@ interface MatchProps {
   flag2: string;
   time: string;
 }
-const recommendations: Recommendation[] = [
-  { name: "Centro de Guadalajara", img: "https://www.liderempresarial.com/wp-content/uploads/2025/07/Asi-se-transformara-el-centro-de-Guadalajara-%C2%BFcuando-estara-listo.jpg" },
-  { name: "Tlaquepaque", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
-  { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
-];
-
-const DEFAULT_RECOMMENDATIONS: RecommendedPlace[] = recommendations.map((r) => ({ ...r }));
-
-const INTERES_TO_CATEGORIES: Record<string, string[]> = {
-  // Valores reales desde app/perfil/page.tsx (INTERESES_DISPONIBLES)
-  arteehistoria: ["Arte", "Cultura", "Museos"],
-  arquitectura: ["Cultura", "Arte"],
-  deportefutbol: ["Fútbol"],
-  musica: ["Eventos", "Cultura"],
-  naturaleza: ["Cultura", "Aventura"],
-  fotografia: ["Arte", "Cultura"],
-  vidanocturna: ["Eventos", "Gastronomía"],
-  compras: ["Mercados Locales", "Casas de Cambio"],
-  museos: ["Arte", "Cultura", "Museos"],
-  toursguiados: ["Cultura", "Tours Guiados"],
-  aventura: ["Aventura", "Cultura"],
-  religion: ["Religión", "Cultura"],
-  mercadoslocales: ["Mercados Locales", "Gastronomía"],
-
-  // Sinónimos/compatibilidad previa
-  futbol: ["Fútbol"],
-  soccer: ["Fútbol"],
-  gastronomia: ["Gastronomía"],
-  comida: ["Gastronomía"],
-  arte: ["Arte"],
-  cultura: ["Cultura"],
-  eventos: ["Eventos"],
-  conciertos: ["Eventos"],
-  hospitales: ["Hospitales"],
-  medico: ["Médico"],
-  salud: ["Médico", "Hospitales"],
-  casasdecambio: ["Casas de Cambio"],
-  cambio: ["Casas de Cambio"],
-};
-
-const normalizeText = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-
-const getPlaceImageByCategory = (category: string): string | null => {
-  const normalizedCategory = normalizeText(category);
-  const found = ALL_CATEGORIES.find((c) => normalizeText(c.name) === normalizedCategory);
-  return found?.img ?? null;
-};
 
 const DateSlider = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false); // Estado para el modal
@@ -211,11 +185,10 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time, tHome }: 
 );
 
 // Componente de tarjeta con fotos ciclables en hover
-function PlaceCard2({ place, photos, noImageText, displayName }: {
-  place: Recommendation;
+function PlaceCard2({ place, photos, noImageText }: {
+  place: RecommendedPlace;
   photos: string[];
   noImageText: string;
-  displayName?: string;
 }) {
   const [isHovered, setIsHovered] = useState(false);
   const [photoIdx, setPhotoIdx] = useState(0);
@@ -229,8 +202,6 @@ function PlaceCard2({ place, photos, noImageText, displayName }: {
 
   const displayImg = photos.length > 0 ? photos[photoIdx] : place.img;
 
-  const nameForUi = displayName || place.name;
-
   return (
     <Link href={`/informacion/${encodeURIComponent(place.name)}`} className="block">
       <div
@@ -241,7 +212,7 @@ function PlaceCard2({ place, photos, noImageText, displayName }: {
         <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
           {displayImg
             ? <div className="absolute inset-0">
-                <img src={displayImg} alt={nameForUi} className="w-full h-full object-cover transition-opacity duration-500" />
+                <img src={displayImg} alt={place.name} className="w-full h-full object-cover transition-opacity duration-500" />
               </div>
             : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
           }
@@ -255,7 +226,7 @@ function PlaceCard2({ place, photos, noImageText, displayName }: {
           )}
         </div>
         <div className="p-3">
-          <h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{nameForUi}</h3>
+          <h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3>
         </div>
       </div>
     </Link>
@@ -354,7 +325,7 @@ function HomeContent() {
     const nextCategory = allCategories[nextIndex];
 
     return (
-      <section className="relative bg-gradient-to-r from-[#FDFCF9] via-white to-[#FDFCF9] py-6 md:py-12 px-3 md:px-8">
+      <section className="relative bg-gradient-to-r from-[#FDFCF9] via-white to-[#FDFCF9] py-3 md:py-5 px-3 md:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-1 md:mb-2">
@@ -382,15 +353,15 @@ function HomeContent() {
             </motion.button>
 
             {/* Contenedor de Categorías */}
-            <div className="w-full overflow-hidden px-8 sm:px-12 md:px-16">
-              <div className="mx-auto w-full max-w-5xl relative" onMouseEnter={() => setIsAutoPlay(false)} onMouseLeave={resetAutoPlay}>
+            <div className="w-full px-8 sm:px-12 md:px-16 pt-4" style={{ overflowX: 'hidden' }}>
+              <div className="mx-auto w-full max-w-3xl relative" onMouseEnter={() => setIsAutoPlay(false)} onMouseLeave={resetAutoPlay}>
                 <div className="hidden lg:block pointer-events-none">
                   <motion.div
                     key={`peek-left-${prevCategory.name}-${currentIndex}`}
                     initial={{ x: direction > 0 ? -30 : 10, opacity: 0.2, scale: 0.9 }}
                     animate={{ x: direction > 0 ? -18 : -24, opacity: 0.45, scale: 0.94 }}
                     transition={{ duration: 0.45, ease: "easeOut" }}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[30%] w-[28%] h-44 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[30%] w-[28%] h-32 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
                   >
                     <img src={prevCategory.img} alt={getCategoryName(prevCategory.name)} className="w-full h-full object-cover" loading="lazy" />
                   </motion.div>
@@ -399,7 +370,7 @@ function HomeContent() {
                     initial={{ x: direction > 0 ? -10 : 30, opacity: 0.2, scale: 0.9 }}
                     animate={{ x: direction > 0 ? 24 : 18, opacity: 0.45, scale: 0.94 }}
                     transition={{ duration: 0.45, ease: "easeOut" }}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[30%] w-[28%] h-44 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[30%] w-[28%] h-32 rounded-[24px] overflow-hidden saturate-50 blur-[1px] shadow-lg"
                   >
                     <img src={nextCategory.img} alt={getCategoryName(nextCategory.name)} className="w-full h-full object-cover" loading="lazy" />
                   </motion.div>
@@ -417,19 +388,19 @@ function HomeContent() {
                     <Link href={categoryRoutes[activeCategory.name] || "/mapa"}>
                       <motion.div
                         whileHover={{ y: -12, scale: 1.01 }}
-                        className="relative h-48 md:h-56 rounded-[28px] overflow-hidden shadow-xl border-2 border-[#F6F0E6] cursor-pointer group"
+                        className="relative h-36 md:h-44 rounded-[28px] overflow-hidden shadow-xl border-2 border-[#F6F0E6] cursor-pointer group"
                       >
                         <img
                           src={activeCategory.img}
                           alt={getCategoryName(activeCategory.name)}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${activeCategory.name === "Fútbol" ? "[object-position:center_75%]" : activeCategory.name === "Arte" ? "[object-position:center_60%]" : "object-center"}`}
                           loading="lazy"
                         />
 
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-70 group-hover:opacity-50 transition-opacity duration-300"></div>
 
                         <div className="absolute inset-0 flex flex-col items-center justify-end p-6 text-center">
-                          <h3 className="text-xl md:text-2xl font-black text-white uppercase drop-shadow-lg leading-tight" style={{ fontFamily: "var(--font-jockey)" }}>
+                          <h3 className="text-xl md:text-2xl font-black text-white uppercase drop-shadow-lg leading-tight tracking-wide" style={{ fontFamily: "var(--font-jockey)" }}>
                             {getCategoryName(activeCategory.name)}
                           </h3>
                           <p className="text-xs md:text-sm text-white/80 mt-2 font-medium">Descubre más →</p>
@@ -462,7 +433,7 @@ function HomeContent() {
           </div>
 
           {/* Indicadores */}
-          <div className="flex justify-center items-center gap-2 mt-6 md:mt-8">
+          <div className="flex justify-center items-center gap-2 mt-3 md:mt-4">
             {allCategories.map((_, idx) => (
               <motion.button
                 key={idx}
@@ -485,34 +456,32 @@ function HomeContent() {
     );
   };
 
-  const RecommendationsComponent = ({ recommendations, onRefresh }: { recommendations: RecommendedPlace[]; onRefresh?: () => void }) => {
-    const getPlaceName = (name: string) => {
-      const placeMap: { [key: string]: string } = {
-        "Centro de Guadalajara": tPlaces('centralGuadalajara'),
-        "Tlaquepaque": tPlaces('tlaquepaque'),
-        "Tequila, Jalisco": tPlaces('tequila')
-      };
-      return placeMap[name] || name;
+  const RecommendationsComponent = ({ places, onRefresh }: { places: RecommendedPlace[]; onRefresh: () => void }) => {
+    const [refreshing, setRefreshing] = useState(false);
+    const handleRefresh = async () => {
+      setRefreshing(true);
+      await onRefresh();
+      setTimeout(() => setRefreshing(false), 600);
     };
-
     return (
       <div className="flex flex-col w-full md:w-3/5">
         <div className="flex items-center gap-2 mb-3 md:mb-4 px-1">
           <h2 className="text-xl md:text-2xl font-bold text-[#1A4D2E]">{tHome('recommendations')}</h2>
-          {onRefresh && (
-            <button onClick={onRefresh} className="text-[#1A4D2E] hover:text-[#0D601E] transition-colors" title="Actualizar recomendaciones">
-              <FiRefreshCw size={18} />
-            </button>
-          )}
+          <button
+            onClick={handleRefresh}
+            title="Recargar recomendaciones"
+            className="p-1.5 rounded-full text-[#1A4D2E] hover:bg-[#E0F2F1] transition-colors"
+          >
+            <FiRefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+          </button>
         </div>
         <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
-          {recommendations.map((place) => (
+          {places.map((place) => (
             <PlaceCard2
               key={place.name}
               place={place}
               photos={recommendedPhotos[place.name] || []}
               noImageText={tCommon('noImage')}
-              displayName={getPlaceName(place.name)}
             />
           ))}
         </div>
@@ -523,23 +492,6 @@ function HomeContent() {
   // ESTADOS PARA LA IA
   const [itinerarioTxt, setItinerarioTxt] = useState("");
   const [loadingIA, setLoadingIA] = useState(true);
-  const [lugaresBD, setLugaresBD] = useState<Lugar[]>([]);
-  const [seleccionados, setSeleccionados] = useState<Lugar[]>([]);
-  const [mostrarOpciones, setMostrarOpciones] = useState(false);
-  const [itinerarioFinal, setItinerarioFinal] = useState("");
-
-  // Cargar la base de datos al inicio
-  useEffect(() => {
-    const cargarDatos = async () => {
-      const res = await fetch('/datosLugares.csv');
-      const reader = res.body?.getReader();
-      const result = await reader?.read();
-      const csv = new TextDecoder('utf-8').decode(result?.value);
-      const { data } = Papa.parse(csv, { header: true, dynamicTyping: true, skipEmptyLines: true });
-      setLugaresBD((data as Lugar[]).filter(l => l.nombre));
-    };
-    cargarDatos();
-  }, []);
 
   // Detectar si el usuario acaba de iniciar sesión
   useEffect(() => {
@@ -565,98 +517,45 @@ function HomeContent() {
     }
   }, []);
 
-  const toggleLugar = (lugar: Lugar) => {
-    setSeleccionados(prev => {
-      const existe = prev.find(s => s.nombre === lugar.nombre);
-      if (existe) {
-        return prev.filter(s => s.nombre !== lugar.nombre);
-      }
-      return [...prev, lugar];
-    });
-  };
-
-  const finalizarRuta = () => {
-    const texto = construirItinerarioElegido(seleccionados);
-    setItinerarioFinal(texto);
-    setMostrarOpciones(false);
-  };
-
   const cargarRecomendaciones = async () => {
     try {
       const userLocal = localStorage.getItem('pitzbol_user');
-      if (!userLocal) {
-        setRecommendedPlaces(DEFAULT_RECOMMENDATIONS);
-        return;
-      }
+      if (!userLocal) return;
 
       const user = JSON.parse(userLocal);
-      const rawIntereses = user["07_intereses"] || user.especialidades || user["07_especialidades"] || [];
-      const intereses: string[] = Array.isArray(rawIntereses)
-        ? rawIntereses
-        : typeof rawIntereses === "string"
-          ? rawIntereses.split(",")
-          : [];
+      const intereses: string[] = user["07_intereses"] || user.especialidades || user["07_especialidades"] || [];
+      if (!intereses.length) return;
 
-      const normalizedIntereses = intereses
-        .map((x) => normalizeText(String(x || "")))
-        .filter(Boolean);
-
-      if (!normalizedIntereses.length) {
-        setRecommendedPlaces(DEFAULT_RECOMMENDATIONS);
-        return;
-      }
-
-      const targetKeywords = new Set<string>();
-      normalizedIntereses.forEach((interes) => {
-        targetKeywords.add(interes);
-        (INTERES_TO_CATEGORIES[interes] || []).forEach((cat) => targetKeywords.add(normalizeText(cat)));
+      const targetCategories = new Set<string>();
+      intereses.forEach((interes: string) => {
+        (INTERES_TO_CATEGORIES[interes] || []).forEach((cat: string) => targetCategories.add(cat));
       });
-
-      if (targetKeywords.size === 0) {
-        setRecommendedPlaces(DEFAULT_RECOMMENDATIONS);
-        return;
-      }
+      if (targetCategories.size === 0) return;
 
       const res = await fetch('/datosLugares.csv');
       const text = await res.text();
-      const { data } = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true });
+      const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
 
-      const scored = (data || [])
+      const scored = (data as any[])
         .filter((row) => row['Nombre del Lugar'] && row['Categoría'])
         .map((row) => {
-          const placeCategoriesNormalized = String(row['Categoría'] || "")
-            .split(',')
-            .map((c) => normalizeText(c.trim()))
-            .filter(Boolean);
-
-          const matches = placeCategoriesNormalized.filter((categoryToken) =>
-            Array.from(targetKeywords).some((targetToken) =>
-              categoryToken === targetToken ||
-              categoryToken.includes(targetToken) ||
-              targetToken.includes(categoryToken)
-            )
-          ).length;
-
+          const placeCategories = (row['Categoría'] as string).split(',').map((c: string) => c.trim());
+          const matches = placeCategories.filter((c: string) => targetCategories.has(c)).length;
           return { row, matches };
         })
         .filter(({ matches }) => matches > 0)
         .sort((a, b) => b.matches - a.matches);
 
-      if (!scored.length) {
-        setRecommendedPlaces(DEFAULT_RECOMMENDATIONS);
-        return;
-      }
+      if (scored.length === 0) return;
 
+      // Mezclar dentro del mismo puntaje para variar resultados
       const shuffled: typeof scored = [];
       let i = 0;
       while (i < scored.length) {
         const score = scored[i].matches;
         const group: typeof scored = [];
-        while (i < scored.length && scored[i].matches === score) {
-          group.push(scored[i]);
-          i += 1;
-        }
-        for (let j = group.length - 1; j > 0; j -= 1) {
+        while (i < scored.length && scored[i].matches === score) { group.push(scored[i]); i++; }
+        for (let j = group.length - 1; j > 0; j--) {
           const k = Math.floor(Math.random() * (j + 1));
           [group[j], group[k]] = [group[k], group[j]];
         }
@@ -664,14 +563,9 @@ function HomeContent() {
       }
 
       const top6: RecommendedPlace[] = shuffled.slice(0, 6).map(({ row }) => {
-        const firstCat = String(row['Categoría'] || "").split(',')[0]?.trim() || "";
-        const csvImg = String(row['Imagen'] || "").trim() || null;
-
-        return {
-          name: String(row['Nombre del Lugar'] || "Lugar"),
-          img: csvImg || getPlaceImageByCategory(firstCat),
-          categoria: firstCat,
-        };
+        const firstCat = (row['Categoría'] as string).split(',')[0].trim();
+        const csvImg = (row['Imagen'] as string)?.trim() || null;
+        return { name: row['Nombre del Lugar'] as string, img: csvImg || getPlaceImageByCategory(firstCat), categoria: firstCat };
       });
 
       if (top6.length < 6) {
@@ -680,17 +574,17 @@ function HomeContent() {
 
       setRecommendedPlaces(top6);
     } catch {
-      setRecommendedPlaces(DEFAULT_RECOMMENDATIONS);
+      // Mantener defaults en caso de error
     }
   };
 
   const cargarItinerarioHome = async () => {
     setLoadingIA(true);
-
+    
     // Coordenadas por defecto (Centro de GDL)
     let ubicacionUsuario = { lat: 20.6767, lng: -103.3371 };
 
-    // Intentar detectar ubicacion real
+    // INTENTAR DETECTAR UBICACIÓN REAL
     if ("geolocation" in navigator) {
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -700,9 +594,9 @@ function HomeContent() {
           lat: position.coords.latitude,
           lng: position.coords.longitude
         };
-        console.log("Ubicacion detectada con exito");
-      } catch {
-        console.log("Usando ubicacion por defecto (GPS desactivado o timeout)");
+        console.log("Ubicación detectada con éxito");
+      } catch (error) {
+        console.log("Usando ubicación por defecto (GPS desactivado o timeout)");
       }
     }
 
@@ -716,24 +610,23 @@ function HomeContent() {
       const dataLimpia = (data as Lugar[]).filter(l => l.nombre && l.lat);
 
       const resultIA = generarItinerarioManual(
-        dataLimpia,
-        ["futbol", "gastronomia", "postres"],
-        300,
-        ubicacionUsuario
+        dataLimpia, 
+        ["futbol", "gastronomia", "postres"], 
+        300, 
+        ubicacionUsuario 
       );
 
       setItinerarioTxt(resultIA);
-    } catch {
+    } catch (error) {
       setItinerarioTxt("Error al sincronizar con Pitzbol.");
     } finally {
       setLoadingIA(false);
     }
   };
-
   useEffect(() => {
     cargarItinerarioHome();
     cargarRecomendaciones();
-    
+
     // Detectar si viene de un login exitoso
     const checkWelcome = () => {
       if (hasCheckedWelcome.current) return;
@@ -771,9 +664,7 @@ function HomeContent() {
     const timer = setTimeout(checkWelcome, 100);
 
     // Re-sincronizar recomendaciones cuando el usuario actualiza sus intereses
-    const handleInteresesChange = () => {
-      cargarRecomendaciones();
-    };
+    const handleInteresesChange = () => cargarRecomendaciones();
     window.addEventListener("especialidadesActualizadas", handleInteresesChange);
     window.addEventListener("storage", handleInteresesChange);
 
@@ -788,35 +679,17 @@ function HomeContent() {
   useEffect(() => {
     if (!recommendedPlaces.length) return;
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-
-    recommendedPlaces.forEach((place) => {
+    recommendedPlaces.forEach(place => {
       fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(place.name)}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
           if (data?.fotos?.length > 0) {
-            setRecommendedPhotos((prev) => ({ ...prev, [place.name]: data.fotos.slice(0, 3) }));
+            setRecommendedPhotos(prev => ({ ...prev, [place.name]: data.fotos.slice(0, 3) }));
           }
         })
         .catch(() => {});
     });
   }, [recommendedPlaces]);
-
-  
-  useEffect(() => {
-    if (mostrarOpciones && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const miPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setLugaresBD((prevLugares) => ordenarPorCercania(prevLugares, miPos));
-          console.log("Lugares ordenados por tu GPS");
-        },
-        (error) => {
-          console.log("No se pudo obtener ubicación, usando orden alfabético.");
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
-    }
-  }, [mostrarOpciones]); 
 
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
@@ -843,7 +716,7 @@ function HomeContent() {
             time="13:00"
             tHome={tHome}
           />
-          <MatchItem 
+          <MatchItem
             location="GDL"
             date="11 de Junio"
             team1="Corea"
@@ -853,73 +726,42 @@ function HomeContent() {
             time="20:00"
             tHome={tHome}
           />
-          {/* CONTENEDOR DE ITINERARIO */}
-          <div className="bg-[#FAF9F2] rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm min-h-[280px] md:min-h-[300px] border border-[#1A4D2E]/10 flex flex-col relative">
-            <h2 className="font-black text-[#1A4D2E] uppercase text-[10px] md:text-xs tracking-widest mb-3 md:mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-              {itinerarioFinal ? tHome('yourChosenRoute') : tHome('buildYourItinerary')}
-            </h2>
-
-            {!itinerarioFinal && !mostrarOpciones && (
-              <button 
-                onClick={() => setMostrarOpciones(true)}
-                className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#769C7B]/30 rounded-2xl hover:bg-[#F6F0E6] transition-all group"
-              >
-                <FiMapPin className="text-[#769C7B] group-hover:text-[#F00808] mb-2" size={24} />
-                <p className="text-[11px] font-bold text-[#769C7B] uppercase">{tHome('pressToChoosePlaces')}</p>
-              </button>
-            )}
-
-            {mostrarOpciones && (
-              <div className="flex-1 flex flex-col">
-                <div className="flex-1 overflow-y-auto max-h-60 mb-4 space-y-2 pr-2 custom-scrollbar">
-                  {lugaresBD.map((lugar) => (
-                    <div 
-                      key={lugar.nombre}
-                      onClick={() => toggleLugar(lugar)}
-                      className={`p-3 rounded-xl cursor-pointer border transition-all flex justify-between items-center ${
-                        seleccionados.find(s => s.nombre === lugar.nombre) 
-                        ? "bg-[#1A4D2E] border-[#1A4D2E] text-white" 
-                        : "bg-white border-[#F6F0E6] text-[#1A4D2E]"
-                      }`}
-                    >
-                      <span className="text-[11px] font-bold uppercase">{lugar.nombre}</span>
-                      <span className="text-[9px] opacity-70">{lugar.tiempoEstancia} min</span>
+          {/* PITZBOT — IA de Itinerarios */}
+          {(() => {
+            let pitzUrl = 'http://69.30.204.56:3003';
+            try {
+              const raw = localStorage.getItem('pitzbol_user');
+              if (raw) { const uid = JSON.parse(raw).uid; if (uid) pitzUrl = `http://69.30.204.56:3003?uid=${uid}`; }
+            } catch {}
+            return (
+              <div className="bg-white rounded-3xl p-4 shadow-lg border border-gray-100 relative overflow-hidden hover:shadow-xl transition-all duration-300">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h2 className="text-base font-bold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                        PitzBot
+                      </h2>
+                      <p className="text-xs text-gray-600 font-medium">Crear itinerario con IA</p>
                     </div>
-                  ))}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#769C7B]">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>IA disponible</span>
+                  </div>
+                  <a
+                    href={pitzUrl}
+                    className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <span>Crear Itinerario</span>
+                    <span>→</span>
+                  </a>
                 </div>
-                <button
-                  onClick={finalizarRuta}
-                  disabled={seleccionados.length === 0} 
-                  className={`w-full py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
-                    seleccionados.length > 0
-                      ? "bg-[#F00808] text-white shadow-lg active:scale-95" 
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  {seleccionados.length > 0
-                    ? `${tHome('generateItinerary')} (${seleccionados.length})`
-                    : tHome('selectAtLeastOnePlace')}
-                </button>
               </div>
-            )}
-
-            {itinerarioFinal && (
-              <div className="flex-1 flex flex-col">
-                <div className="text-[13px] leading-relaxed text-[#1A4D2E]/80 font-medium whitespace-pre-wrap flex-1 overflow-y-auto max-h-64">
-                  {itinerarioFinal}
-                </div>
-                <button 
-                  onClick={() => {setItinerarioFinal(""); setSeleccionados([]);}}
-                  className="mt-4 text-[10px] font-bold text-[#769C7B] uppercase hover:text-[#F00808]"
-                >
-                  Reiniciar selección
-                </button>
-              </div>
-            )}
-          </div>
+            );
+          })()}
         </div>
 
-        <RecommendationsComponent recommendations={recommendedPlaces} onRefresh={cargarRecomendaciones} />
+        <RecommendationsComponent places={recommendedPlaces} onRefresh={cargarRecomendaciones} />
       </main>
     </div>
   );
