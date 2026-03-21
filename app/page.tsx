@@ -11,6 +11,7 @@ import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiR
 import { GiSoccerBall } from "react-icons/gi";
 import WelcomeNotification from './components/WelcomeNotification';
 import { getPlaceImageByCategory } from '@/lib/placeImages';
+import PlaceRating from './components/PlaceRating';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };

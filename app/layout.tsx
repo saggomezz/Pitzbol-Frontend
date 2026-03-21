@@ -5,7 +5,6 @@ import { Geist, Geist_Mono, Jockey_One, JetBrains_Mono, Roboto } from "next/font
 import { AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import { NextIntlClientProvider } from 'next-intl';
-import dynamic from "next/dynamic";
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
