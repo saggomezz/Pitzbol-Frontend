@@ -63,7 +63,7 @@ export default function CalendarioPage() {
   const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
 
   const getToken = () => {
-    try { return JSON.parse(localStorage.getItem('pitzbol_token') || 'null'); } catch { return null; }
+    return localStorage.getItem('pitzbol_token');
   };
 
   const fetchFirestore = async () => {
