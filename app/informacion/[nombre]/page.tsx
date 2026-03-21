@@ -311,13 +311,15 @@ export default function InformacionLugar() {
 
           {/* Galería dividida: visor principal + miniaturas */}
           {fotos.length > 0 && (
-            <div style={{ padding: '0 2rem 1.5rem' }}>
-            <div style={{ position: 'relative', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', aspectRatio: '16/9', maxHeight: '340px', margin: '0 auto' }}>
-              <img
-                src={fotos[fotoIdx]}
-                alt={`${lugar.nombre} foto ${fotoIdx + 1}`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.3s ease' }}
-              />
+            <section className={styles.gallerySplit}>
+              <div className={styles.galleryViewer}>
+                <img
+                  src={fotos[fotoIdx]}
+                  alt={`${lugar.nombre} imagen ${fotoIdx + 1}`}
+                  className={styles.galleryMainImage}
+                />
+              </div>
+
               {fotos.length > 1 && (
                 <aside className={styles.galleryThumbsColumn}>
                   {fotos
@@ -340,8 +342,7 @@ export default function InformacionLugar() {
                     ))}
                 </aside>
               )}
-            </div>
-            </div>
+            </section>
           )}
 
           {/* Descripcion + panel derecho (tiempo/costo/contacto) */}
@@ -420,6 +421,8 @@ export default function InformacionLugar() {
                 </div>
               )}
             </aside>
+          </div>
+
           {/* Descripción cultural */}
           {CULTURA_DESCRIPTIONS[lugar.nombre] && (
             <div className={styles.infoCard}>
@@ -430,18 +433,6 @@ export default function InformacionLugar() {
               <p className={styles.infoText}>{CULTURA_DESCRIPTIONS[lugar.nombre]}</p>
             </div>
           )}
-
-          {/* Dirección */}
-          <div className={styles.locationCard}>
-            <div className={styles.locationHeader}>
-              <FiMapPin />
-              <h2>Ubicación</h2>
-            </div>
-            <p className={styles.address}>{lugar.direccion}</p>
-            <button onClick={abrirEnMaps} className={styles.directionsBtn}>
-              <FiNavigation /> Cómo llegar
-            </button>
-          </div>
 
           {/* Mapa + Sidebar de ubicacion */}
           <section className={styles.mapSection}>
