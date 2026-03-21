@@ -3,6 +3,7 @@ import { ensureFaceApiReady } from "./initTF";
 import { useState, useEffect } from "react";
 import { Geist, Geist_Mono, Jockey_One, JetBrains_Mono, Roboto } from "next/font/google";
 import { AnimatePresence } from "framer-motion";
+import dynamic from "next/dynamic";
 import { NextIntlClientProvider } from 'next-intl';
 import dynamic from "next/dynamic";
 import "./globals.css";

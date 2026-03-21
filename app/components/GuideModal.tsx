@@ -1,5 +1,4 @@
 "use client";
-import { ensureFaceApiReady } from "../initTF";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -33,17 +32,14 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
   const [errorMsg, setErrorMsg] = useState("");
   const [formData, setFormData] = useState({ codigoPostal: "", clabe: "" });
   const [verifyingOCR, setVerifyingOCR] = useState(false);
+  const [verifyingFace, setVerifyingFace] = useState(false);
   const [isUploading, setIsUploading] = useState({ frente: false, vuelta: false });
   const [docsUploaded, setDocsUploaded] = useState({ frente: false, vuelta: false });
-  const [imgFrenteBase64, setImgFrenteBase64] = useState<string | null>(null);  //para guardar las imágenes y enviarlas al final
+  const [imgFrenteBase64, setImgFrenteBase64] = useState<string | null>(null);  
   const [imgVueltaBase64, setImgVueltaBase64] = useState<string | null>(null);
-  const [faceCaptured, setFaceCaptured] = useState<string | null>(null);
   const webcamRef = useRef<Webcam | null>(null);
   const [imgRostro, setImgRostro] = useState<string | null>(null);
-  const [verifyingFace, setVerifyingFace] = useState(false); 
   const [isScannerActive, setIsScannerActive] = useState(false);
-
-  // Función para guardar automáticamente los intereses en la BD
   const guardarInteresesEnBD = async (nuevosIntereses: string[]) => {
     try {
       const token = localStorage.getItem("pitzbol_token");
@@ -80,11 +76,6 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
       console.error("Error al guardar intereses en BD:", error);
     }
   };
-  const [statusMsg, setStatusMsg] = useState("Esperando inicio...");
-  const [matchingScore, setMatchingScore] = useState(0);
-  const [ineDescriptor, setIneDescriptor] = useState<any>(null);
-  const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [faceapi, setFaceapi] = useState<any>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -105,147 +96,32 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
       setImgFrenteBase64(null);
       setImgVueltaBase64(null);
       setImgRostro(null);
+      setVerifyingFace(false);
       setIsScannerActive(false);
-      setMatchingScore(0);
-      setStatusMsg("Esperando inicio...");
     }
   }, [isOpen]);
 
-  const verificarEnVivo = async () => {
-    const video = webcamRef.current?.video;
-
-    if (!video || video.readyState !== 4 || video.videoWidth === 0 || !isScannerActive || !modelsLoaded || imgRostro || !faceapi) return;
-
-    try {
-      const detection = await faceapi.detectSingleFace(
-        video,
-        new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })
-      ).withFaceLandmarks().withFaceDescriptor();
-
-      if (detection) {
-        let score = 0;
-        if (ineDescriptor) {
-          try {
-            const distance = faceapi.euclideanDistance(ineDescriptor, detection.descriptor);
-            // Mantenemos la fórmula original para el cálculo que verá el admin
-            score = Math.round(Math.max(0, (1 - (distance / 0.8)) * 100));
-          } catch (e) {
-            score = 0;
-          }
+  // Función auxiliar para capturar foto automáticamente después de que se activa el escáner
+  const capturePhotoAutomatically = () => {
+    const timeoutId = setTimeout(() => {
+      if (isScannerActive && !imgRostro && webcamRef.current) {
+        const screenshot = webcamRef.current.getScreenshot();
+        if (screenshot) {
+          setImgRostro(screenshot);
+          setIsScannerActive(false);
+          console.log("✅ Foto de rostro capturada automáticamente");
         }
-
-        setMatchingScore(score);
-        setStatusMsg("Analizando rostro...");
-
-        // DAMOS 2 SEGUNDOS (2000ms) de escaneo para que el usuario se acomode bien
-        // y luego tomamos la foto automáticamente para que el admin la revise
-        const timeoutId = setTimeout(() => {
-          if (isScannerActive && !imgRostro && webcamRef.current) {
-            const screenshot = webcamRef.current.getScreenshot();
-            if (screenshot) {
-              setImgRostro(screenshot);
-              setIsScannerActive(false);
-              setStatusMsg(t('captureComplete'));
-              // Aquí el matchingScore actual se queda guardado para enviarse al backend
-            }
-          }
-        }, 2500); // 2.5 segundos es el tiempo ideal de espera
-
-        return () => clearTimeout(timeoutId);
-      } else {
-        setMatchingScore(0);
-        setStatusMsg(t('centerFace'));
       }
-    } catch (err) {
-      console.error("Error en detección:", err);
-    }
+    }, 2500); // Captura después de 2.5 segundos
+
+    return () => clearTimeout(timeoutId);
   };
 
   useEffect(() => {
-    let interval: any;
-    if (step === 4 && isScannerActive && !imgRostro && modelsLoaded && faceapi) {
-      interval = setInterval(() => {
-        verificarEnVivo();
-      }, 500);
+    if (step === 4 && isScannerActive && !imgRostro) {
+      return capturePhotoAutomatically();
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [step, isScannerActive, imgRostro, modelsLoaded, ineDescriptor, faceapi]);
-
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        console.log("🔄 Cargando modelos de reconocimiento facial...");
-        
-        // Inicializar face-api usando la función de inicialización
-        const faceapiModule = await ensureFaceApiReady();
-        
-        if (!faceapiModule) {
-          throw new Error("No se pudo inicializar face-api");
-        }
-        
-        setFaceapi(faceapiModule);
-        
-        const MODEL_URL = "/models";
-        
-        // Esperar a que el backend de TensorFlow esté listo antes de cargar los modelos
-        if (typeof window !== 'undefined' && (window as any).tf) {
-          await (window as any).tf.ready();
-          console.log("✅ Backend de TensorFlow listo:", (window as any).tf.getBackend());
-        }
-        
-        await faceapiModule.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-        await faceapiModule.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-        await faceapiModule.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-        
-        console.log("✅ Modelos cargados exitosamente");
-        setModelsLoaded(true);
-        setStatusMsg("Sistema listo");
-      } catch (err) {
-        console.error("❌ Error al inicializar:", err);
-        setStatusMsg("Error al cargar modelos");
-        // Permitir continuar sin reconocimiento facial
-        setModelsLoaded(true);
-      }
-    };
-    
-    if (isOpen && !modelsLoaded && !faceapi) {
-      loadModels();
-    }
-  }, [isOpen, modelsLoaded, faceapi]);
-
-  useEffect(() => {
-    if (imgFrenteBase64 && step === 4 && modelsLoaded && faceapi) {
-      const extract = async () => {
-        setVerifyingFace(true); 
-        try {
-          // Crear imagen del DOM
-          const img = document.createElement('img');
-          
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-            img.src = imgFrenteBase64;
-          });
-          
-          const detection = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
-          
-          if (detection) {
-            setIneDescriptor(detection.descriptor);
-            console.log("✅ Descriptor de INE generado");
-          } else {
-            console.warn("⚠️ No se detectó rostro en INE, continuando sin validación facial");
-          }
-        } catch (e) { 
-          console.error("Error procesando INE:", e); 
-        } finally {
-          setVerifyingFace(false);
-        }
-      };
-      extract();
-    }
-  }, [imgFrenteBase64, step, modelsLoaded, faceapi]);
+  }, [step, isScannerActive, imgRostro]);
 
   const nextStep = () => {
     if (step === 1 && selectedCats.length === 0) {
@@ -331,6 +207,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
       let bioData = { confidence: "0", nivelPrioridad: "BAJA", isMatch: false };
 
       try {
+        setVerifyingFace(true);
         const bioRes = await fetch('http://localhost:3001/api/ocr/compare-biometry', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -345,6 +222,8 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         }
       } catch (e) { 
         console.error("Biometría omitida, se requiere revisión manual.", e); 
+      } finally {
+        setVerifyingFace(false);
       }
 
       console.log("📤 Enviando datos de registro de guía...");
@@ -365,13 +244,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
           ineFrente: imgFrenteBase64,
           ineReverso: imgVueltaBase64,
           facePhoto: imgRostro,
-          validacion_biometrica: {
-            porcentaje: bioData.confidence || matchingScore.toString(),
-            nivel: matchingScore > 60 ? "ALTA" : "BAJA", 
-            mensaje: matchingScore > 60 
-              ? "Coincidencia probable" 
-              : "Revisión manual necesaria (Diferencias detectadas)"
-          }
+          // Backend validará biometría automáticamente via POST /api/ocr/compare-biometry
         }),
       });
 
@@ -703,17 +576,17 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
                           <FiShield className="text-[#0D601E]" size={30} />
                         </div>
                         <p className="text-[#1A4D2E] text-[15px] font-bold leading-relaxed">
-                          Último paso: Verificación de Identidad
+                          Último paso: Foto de tu Rostro
                         </p>
                         <p className="text-[#1A4D2E] text-[14px] leading-relaxed italic">
-                          "Para tu seguridad, compararemos tu rostro con la fotografía de tu identificación oficial."
+                          "Capturaremos tu rostro para validar tu identidad. La foto se tomará automáticamente."
                         </p>
                         <div className="bg-[#FDFCF9] p-2 rounded-2xl border border-[#0D601E]/10">
                           <p className="text-[#0D601E] text-[15px] font-bold">
                             Instrucciones:
                           </p>
                           <p className="text-[#1A4D2E]/90 text-[14px]">
-                            Ubícate en un lugar iluminado y mantén tu rostro centrado en el óvalo.
+                            Ubícate en un lugar bien iluminado y mantén tu rostro centrado. La foto se capturará automáticamente.
                           </p>
                         </div>
                       </motion.div>
@@ -750,11 +623,8 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
                         animate={{ opacity: 1 }} 
                         className="w-full max-w-[200px] space-y-2"
                       >
-                        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                          <motion.div className="h-full bg-[#0D601E]" animate={{ width: `${matchingScore}%` }} />
-                        </div>
                         <p className={`text-[12px] font-black text-center ${imgRostro ? 'text-[#0D601E]' : 'text-gray-500'}`}>
-                          {imgRostro ? "✓ Captura realizada con éxito" : statusMsg}
+                          {imgRostro ? "✓ Foto capturada exitosamente" : "◉ Escaneando..."}
                         </p>
                       </motion.div>
                     )}
@@ -780,14 +650,14 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
                 {!imgRostro ? (
                   <button 
                     onClick={() => setIsScannerActive(true)} 
-                    disabled={!modelsLoaded || isScannerActive}
-                    className={`${btnPrimary} ${(!modelsLoaded || isScannerActive) ? 'opacity-70' : ''}`}
+                    disabled={isScannerActive}
+                    className={`${btnPrimary} ${isScannerActive ? 'opacity-70' : ''}`}
                   >
-                    {!modelsLoaded ? "Cargando..." : isScannerActive ? "Escaneando..." : "Empezar Validación"}
+                    {isScannerActive ? "Capturando rostro..." : "Iniciar Captura"}
                   </button>
                 ) : (
                   <>
-                    <button onClick={() => { setImgRostro(null); setIsScannerActive(false); setMatchingScore(0); }} className="text-[#8B0000] text-[12px] mb-4 font-bold underline">Repetir Escaneo</button>
+                    <button onClick={() => { setImgRostro(null); setIsScannerActive(false); }} className="text-[#8B0000] text-[12px] mb-4 font-bold underline">Repetir Captura</button>
                     <button onClick={handleFinish} className={btnPrimary}>Finalizar Registro</button>
                   </>
                 )}
