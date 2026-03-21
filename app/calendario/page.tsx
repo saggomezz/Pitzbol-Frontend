@@ -56,6 +56,7 @@ export default function CalendarioPage() {
   const [noteText, setNoteText] = useState('');
   const [notas, setNotas] = useState<{ [key: string]: string[] }>({});
   const [firestoreEntries, setFirestoreEntries] = useState<FirestoreEntry[]>([]);
+  const [notasFirestore, setNotasFirestore] = useState<Array<{id: string; fecha: string; texto: string}>>([]);
 
   const user = usePitzbolUser();
   const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://69.30.204.56:3001';
@@ -68,17 +69,22 @@ export default function CalendarioPage() {
   const fetchFirestore = async () => {
     const token = getToken();
     if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
     try {
-      const res = await fetch(`${BACKEND}/api/itinerarios`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data: FirestoreEntry[] = await res.json();
-        setFirestoreEntries(data);
-        const its: CalendarEntry[] = data
-          .filter(e => e.tipo === 'itinerario')
-          .map(e => ({ id: e.id, nombre: e.meta?.title || 'Itinerario', fecha: e.fecha, meta: e.meta!, stops: e.stops || [] }));
-        setItinerarios(its);
+      const [resIts, resNotas] = await Promise.all([
+        fetch(`${BACKEND}/api/itinerarios/itinerarios`, { headers }),
+        fetch(`${BACKEND}/api/itinerarios/notas`, { headers }),
+      ]);
+      if (resIts.ok) {
+        const its: FirestoreEntry[] = await resIts.json();
+        setFirestoreEntries(its);
+        setItinerarios(its.map(e => ({ id: e.id, nombre: e.meta?.title || 'Itinerario', fecha: e.fecha, meta: e.meta!, stops: e.stops || [] })));
+      }
+      if (resNotas.ok) {
+        const notasData: Array<{id: string; fecha: string; texto: string}> = await resNotas.json();
+        setNotasFirestore(notasData);
         const notasMap: { [key: string]: string[] } = {};
-        data.filter(e => e.tipo === 'nota').forEach(e => {
+        notasData.forEach(e => {
           if (!notasMap[e.fecha]) notasMap[e.fecha] = [];
           notasMap[e.fecha].push(e.texto || '');
         });
@@ -123,10 +129,10 @@ export default function CalendarioPage() {
         horaLlegada: s.a, horaSalida: s.z, traslado: '',
       }));
       if (token) {
-        await fetch(`${BACKEND}/api/itinerarios`, {
+        await fetch(`${BACKEND}/api/itinerarios/itinerarios`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ tipo: 'itinerario', fecha: raw.fecha, meta: raw.meta, stops: stop }),
+          body: JSON.stringify({ fecha: raw.fecha, meta: raw.meta, stops: stop }),
         });
         await fetchFirestore();
       } else {
@@ -156,7 +162,7 @@ export default function CalendarioPage() {
   const deleteItinerario = async (id: string) => {
     const token = getToken();
     if (token) {
-      await fetch(`${BACKEND}/api/itinerarios/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      await fetch(`${BACKEND}/api/itinerarios/itinerarios/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
       await fetchFirestore();
     } else {
       const updated = itinerarios.filter(e => e.id !== id);
@@ -170,10 +176,10 @@ export default function CalendarioPage() {
     if (!noteText.trim() || !selectedDateStr) return;
     const token = getToken();
     if (token) {
-      await fetch(`${BACKEND}/api/itinerarios`, {
+      await fetch(`${BACKEND}/api/itinerarios/notas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ tipo: 'nota', fecha: selectedDateStr, texto: noteText.trim() }),
+        body: JSON.stringify({ fecha: selectedDateStr, texto: noteText.trim() }),
       });
       await fetchFirestore();
     } else {
@@ -188,9 +194,9 @@ export default function CalendarioPage() {
   const deleteNota = async (dateStr: string, idx: number) => {
     const token = getToken();
     if (token) {
-      const notaEntry = firestoreEntries.filter(e => e.tipo === 'nota' && e.fecha === dateStr)[idx];
+      const notaEntry = notasFirestore.filter(e => e.fecha === dateStr)[idx];
       if (notaEntry) {
-        await fetch(`${BACKEND}/api/itinerarios/${notaEntry.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+        await fetch(`${BACKEND}/api/itinerarios/notas/${notaEntry.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
         await fetchFirestore();
         return;
       }
