@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import {
   FiChevronLeft, FiChevronRight, FiPlus, FiSun, FiX, FiTrash2, FiClock, FiMapPin, FiDollarSign, FiEdit3
 } from "react-icons/fi";
+import { usePitzbolUser } from "@/lib/usePitzbolUser";
 
 interface SavedStop {
   place: {
@@ -37,6 +38,15 @@ function formatTime12(t: string) {
   return `${h}:${m} ${ampm}`;
 }
 
+interface FirestoreEntry {
+  id: string;
+  tipo: 'itinerario' | 'nota';
+  fecha: string;
+  meta?: { title: string; budget: string; groupSize: string; duration: string };
+  stops?: SavedStop[];
+  texto?: string;
+}
+
 export default function CalendarioPage() {
   const [currentDate, setCurrentDate] = useState(new Date(2026, 5, 1));
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
@@ -46,8 +56,37 @@ export default function CalendarioPage() {
   const [addingNote, setAddingNote] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [notas, setNotas] = useState<{ [key: string]: string[] }>({});
+  const [firestoreEntries, setFirestoreEntries] = useState<FirestoreEntry[]>([]);
 
+  const user = usePitzbolUser();
+  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://69.30.204.56:3001';
   const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
+
+  const getToken = () => {
+    try { return JSON.parse(localStorage.getItem('pitzbol_token') || 'null'); } catch { return null; }
+  };
+
+  const fetchFirestore = async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`${BACKEND}/api/itinerarios`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const data: FirestoreEntry[] = await res.json();
+        setFirestoreEntries(data);
+        const its: CalendarEntry[] = data
+          .filter(e => e.tipo === 'itinerario')
+          .map(e => ({ id: e.id, nombre: e.meta?.title || 'Itinerario', fecha: e.fecha, meta: e.meta!, stops: e.stops || [] }));
+        setItinerarios(its);
+        const notasMap: { [key: string]: string[] } = {};
+        data.filter(e => e.tipo === 'nota').forEach(e => {
+          if (!notasMap[e.fecha]) notasMap[e.fecha] = [];
+          notasMap[e.fecha].push(e.texto || '');
+        });
+        setNotas(notasMap);
+      }
+    } catch {}
+  };
 
   const t = useTranslations('calendar');
   const tMonths = useTranslations('calendar.months');
@@ -67,71 +106,97 @@ export default function CalendarioPage() {
 
   useEffect(() => {
     const saveParam = window.location.hash ? decodeURIComponent(window.location.hash.slice(1)) : null;
-    let stored: CalendarEntry[] = [];
-    try {
-      stored = JSON.parse(localStorage.getItem('pitzbol_calendario') || '[]');
-    } catch {}
 
-    try {
-      const storedNotas = JSON.parse(localStorage.getItem('pitzbol_notas') || '{}');
-      setNotas(storedNotas);
-    } catch {}
-
-    if (saveParam) {
+    const loadLocal = () => {
       try {
-        const raw = JSON.parse(saveParam);
-        const entry: CalendarEntry = {
-          id: raw.id,
-          nombre: '',
-          fecha: raw.fecha,
-          meta: raw.meta,
-          stops: (raw.stops || []).map((s: any) => ({
-            place: { nombre: s.n, direccion: s.d, costo: s.c, isMatch: s.m, categoria: '' },
-            horaLlegada: s.a,
-            horaSalida: s.z,
-            traslado: '',
-          })),
-        };
-        if (!stored.find(e => e.id === entry.id)) {
-          entry.nombre = `Itinerario #${stored.length + 1}`;
-          stored = [...stored, entry];
+        const stored = JSON.parse(localStorage.getItem('pitzbol_calendario') || '[]');
+        setItinerarios(stored);
+      } catch {}
+      try {
+        const storedNotas = JSON.parse(localStorage.getItem('pitzbol_notas') || '{}');
+        setNotas(storedNotas);
+      } catch {}
+    };
+
+    const handleHashEntry = async (raw: any, token: string | null) => {
+      const stop: SavedStop[] = (raw.stops || []).map((s: any) => ({
+        place: { nombre: s.n, direccion: s.d, costo: s.c, isMatch: s.m, categoria: '' },
+        horaLlegada: s.a, horaSalida: s.z, traslado: '',
+      }));
+      if (token) {
+        await fetch(`${BACKEND}/api/itinerarios`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ tipo: 'itinerario', fecha: raw.fecha, meta: raw.meta, stops: stop }),
+        });
+        await fetchFirestore();
+      } else {
+        const stored: CalendarEntry[] = JSON.parse(localStorage.getItem('pitzbol_calendario') || '[]');
+        if (!stored.find(e => e.id === raw.id)) {
+          const entry: CalendarEntry = { id: raw.id, nombre: `Itinerario #${stored.length + 1}`, fecha: raw.fecha, meta: raw.meta, stops: stop };
+          stored.push(entry);
           localStorage.setItem('pitzbol_calendario', JSON.stringify(stored));
         }
-        setItinerarios(stored);
-        const [y, m] = entry.fecha.split('-').map(Number);
-        if (y && m) setCurrentDate(new Date(y, m - 1, 1));
-        window.history.replaceState(null, '', window.location.pathname);
-      } catch {
-        setItinerarios(stored);
+        loadLocal();
       }
+      const [y, m] = raw.fecha.split('-').map(Number);
+      if (y && m) setCurrentDate(new Date(y, m - 1, 1));
+      window.history.replaceState(null, '', window.location.pathname);
+    };
+
+    const token = getToken();
+    if (saveParam) {
+      try { handleHashEntry(JSON.parse(saveParam), token); } catch { loadLocal(); }
+    } else if (token) {
+      fetchFirestore();
     } else {
-      setItinerarios(stored);
+      loadLocal();
     }
   }, []);
 
-  const deleteItinerario = (id: string) => {
-    const updated = itinerarios.filter(e => e.id !== id);
-    localStorage.setItem('pitzbol_calendario', JSON.stringify(updated));
-    setItinerarios(updated);
+  const deleteItinerario = async (id: string) => {
+    const token = getToken();
+    if (token) {
+      await fetch(`${BACKEND}/api/itinerarios/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      await fetchFirestore();
+    } else {
+      const updated = itinerarios.filter(e => e.id !== id);
+      localStorage.setItem('pitzbol_calendario', JSON.stringify(updated));
+      setItinerarios(updated);
+    }
     setDeleteConfirm(null);
-    const remaining = updated.filter(e => {
-      const [y, m, d] = e.fecha.split('-').map(Number);
-      return m - 1 === currentDate.getMonth() && d === selectedDay && y === currentDate.getFullYear();
-    });
-    if (remaining.length === 0) setSelectedDay(null);
   };
 
-  const saveNota = () => {
+  const saveNota = async () => {
     if (!noteText.trim() || !selectedDateStr) return;
-    const updated = { ...notas, [selectedDateStr]: [...(notas[selectedDateStr] || []), noteText.trim()] };
-    setNotas(updated);
-    localStorage.setItem('pitzbol_notas', JSON.stringify(updated));
+    const token = getToken();
+    if (token) {
+      await fetch(`${BACKEND}/api/itinerarios`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tipo: 'nota', fecha: selectedDateStr, texto: noteText.trim() }),
+      });
+      await fetchFirestore();
+    } else {
+      const updated = { ...notas, [selectedDateStr]: [...(notas[selectedDateStr] || []), noteText.trim()] };
+      setNotas(updated);
+      localStorage.setItem('pitzbol_notas', JSON.stringify(updated));
+    }
     setNoteText('');
     setAddingNote(false);
     setShowDayModal(false);
   };
 
-  const deleteNota = (dateStr: string, idx: number) => {
+  const deleteNota = async (dateStr: string, idx: number) => {
+    const token = getToken();
+    if (token) {
+      const notaEntry = firestoreEntries.filter(e => e.tipo === 'nota' && e.fecha === dateStr)[idx];
+      if (notaEntry) {
+        await fetch(`${BACKEND}/api/itinerarios/${notaEntry.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+        await fetchFirestore();
+        return;
+      }
+    }
     const updated = { ...notas };
     updated[dateStr] = updated[dateStr].filter((_, i) => i !== idx);
     if (updated[dateStr].length === 0) delete updated[dateStr];
