@@ -35,12 +35,14 @@ export async function ensureTensorFlowReady() {
     (window as any).tf = tf;
     
     // Intentar usar WebGL, pero fallback a CPU si no está disponible
-    try {
-      await tf.setBackend('webgl');
-    } catch (e) {
-      await tf.setBackend('cpu');
+    if (typeof tf.setBackend === 'function') {
+      try {
+        await tf.setBackend('webgl');
+      } catch (e) {
+        try { await tf.setBackend('cpu'); } catch {}
+      }
     }
-    
+
     // Esperar a que esté listo
     await tf.ready();
     
