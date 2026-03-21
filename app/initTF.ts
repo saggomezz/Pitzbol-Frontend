@@ -28,26 +28,25 @@ export async function ensureTensorFlowReady() {
       originalWarn.apply(console, args);
     };
 
-    // Importar TensorFlow.js y normalizar acceso ESM/CJS
-    const tfModule = await import('@tensorflow/tfjs');
-    const tf = (tfModule as any).default ?? tfModule;
-
-    if (typeof tf?.setBackend !== 'function' || typeof tf?.ready !== 'function') {
-      throw new Error('TensorFlow module inválido: faltan setBackend/ready');
-    }
+    // Importar TensorFlow.js y hacer que esté disponible globalmente
+    const tfRaw = await import('@tensorflow/tfjs');
+    const tf: any = (tfRaw as any).default ?? tfRaw;
 
     // Asignar a window para que face-api.js lo encuentre
     (window as any).tf = tf;
 
-    try {
-      await tf.setBackend('webgl');
-    } catch {
-      await tf.setBackend('cpu');
+    // Intentar usar WebGL, pero fallback a CPU si no está disponible
+    if (typeof tf.setBackend === 'function') {
+      try {
+        await tf.setBackend('webgl');
+      } catch (e) {
+        try { await tf.setBackend('cpu'); } catch {}
+      }
     }
 
-    // Esperar a que TensorFlow esté listo
-    await tf.ready();
-
+    // Esperar a que esté listo
+    if (typeof tf.ready === 'function') await tf.ready();
+    
     tfInstance = tf;
     tfInitialized = true;
 
@@ -86,9 +85,9 @@ export async function ensureFaceApiReady() {
     // Primero asegurar que TensorFlow.js esté completamente inicializado
     await ensureTensorFlowReady();
 
-    // Importar @vladmandic/face-api y normalizar acceso ESM/CJS
-    const faceapiModule = await import('@vladmandic/face-api');
-    const faceapi = (faceapiModule as any).default ?? faceapiModule;
+    // Importar @vladmandic/face-api que no tiene conflictos con TensorFlow
+    const faceapiRaw = await import('@vladmandic/face-api');
+    const faceapi: any = (faceapiRaw as any).default ?? faceapiRaw;
 
     faceapiInstance = faceapi;
     faceapiInitialized = true;

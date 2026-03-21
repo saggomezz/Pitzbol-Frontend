@@ -1,7 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://69.30.204.56:3001',
+  },
+  async rewrites() {
+    const backendUrl = process.env.BACKEND_INTERNAL_URL || 'http://69.30.204.56:3001';
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
+      },
+    ];
+  },
   reactStrictMode: true,
   allowedDevOrigins: ['69.30.204.56'],
+  turbopack: {},
   webpack: (config: any) => {
     config.resolve.alias = {
       ...config.resolve.alias,

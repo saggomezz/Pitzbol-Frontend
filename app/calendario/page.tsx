@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import {
   FiChevronLeft, FiChevronRight, FiPlus, FiSun, FiX, FiTrash2, FiClock, FiMapPin, FiDollarSign
 } from "react-icons/fi";
+import { usePitzbolUser } from "@/lib/usePitzbolUser";
 
 interface SavedStop {
   place: {
@@ -37,16 +38,63 @@ function formatTime12(t: string) {
   return `${h}:${m} ${ampm}`;
 }
 
+interface FirestoreEntry {
+  id: string;
+  tipo: 'itinerario' | 'nota';
+  fecha: string;
+  meta?: { title: string; budget: string; groupSize: string; duration: string };
+  stops?: SavedStop[];
+  texto?: string;
+}
+
 export default function CalendarioPage() {
   const [currentDate, setCurrentDate] = useState(new Date(2026, 5, 1));
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [showOptions, setShowOptions] = useState(false);
   const [itinerarios, setItinerarios] = useState<CalendarEntry[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [addingNote, setAddingNote] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [notas, setNotas] = useState<{ [key: string]: string[] }>({});
+  const [firestoreEntries, setFirestoreEntries] = useState<FirestoreEntry[]>([]);
+  const [notasFirestore, setNotasFirestore] = useState<Array<{id: string; fecha: string; texto: string}>>([]);
+
+  const user = usePitzbolUser();
+  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://69.30.204.56:3001';
+  const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
+
+  const getToken = () => {
+    return localStorage.getItem('pitzbol_token');
+  };
+
+  const fetchFirestore = async () => {
+    const token = getToken();
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    try {
+      const [resIts, resNotas] = await Promise.all([
+        fetch(`${BACKEND}/api/itinerarios/itinerarios`, { headers }),
+        fetch(`${BACKEND}/api/itinerarios/notas`, { headers }),
+      ]);
+      if (resIts.ok) {
+        const its: FirestoreEntry[] = await resIts.json();
+        setFirestoreEntries(its);
+        setItinerarios(its.map(e => ({ id: e.id, nombre: e.meta?.title || 'Itinerario', fecha: e.fecha, meta: e.meta!, stops: e.stops || [] })));
+      }
+      if (resNotas.ok) {
+        const notasData: Array<{id: string; fecha: string; texto: string}> = await resNotas.json();
+        setNotasFirestore(notasData);
+        const notasMap: { [key: string]: string[] } = {};
+        notasData.forEach(e => {
+          if (!notasMap[e.fecha]) notasMap[e.fecha] = [];
+          notasMap[e.fecha].push(e.texto || '');
+        });
+        setNotas(notasMap);
+      }
+    } catch {}
+  };
 
   const t = useTranslations('calendar');
   const tMonths = useTranslations('calendar.months');
-  const tCat = useTranslations('calendar.planCategories');
 
   const months = [
     tMonths('january'), tMonths('february'), tMonths('march'), tMonths('april'),
@@ -61,71 +109,108 @@ export default function CalendarioPage() {
     "6-30": ["DIECISEISAVOS"]
   };
 
-  const planCategories = [
-    { id: 'gastro', title: tCat('gastronomy'), img: 'https://cdn-icons-png.flaticon.com/128/4372/4372203.png', desc: tCat('gastronomyDesc') },
-    { id: 'cultura', title: tCat('culture'), img: 'https://cdn-icons-png.flaticon.com/512/3659/3659831.png', desc: tCat('cultureDesc') },
-    { id: 'noche', title: tCat('party'), img: 'https://cdn-icons-png.flaticon.com/128/1355/1355079.png', desc: tCat('partyDesc') },
-    { id: 'guia', title: tCat('guides'), img: 'https://cdn-icons-png.flaticon.com/128/3284/3284649.png', desc: tCat('guidesDesc') },
-    { id: 'tequila', title: tCat('tequila'), img: 'https://cdn-icons-png.flaticon.com/512/920/920605.png', desc: tCat('tequilaDesc') },
-    { id: 'shop', title: tCat('shopping'), img: 'https://cdn-icons-png.flaticon.com/512/3081/3081648.png', desc: tCat('shoppingDesc') }
-  ];
-
   useEffect(() => {
     const saveParam = window.location.hash ? decodeURIComponent(window.location.hash.slice(1)) : null;
-    let stored: CalendarEntry[] = [];
-    try {
-      stored = JSON.parse(localStorage.getItem('pitzbol_calendario') || '[]');
-    } catch {}
 
-    if (saveParam) {
+    const loadLocal = () => {
       try {
-        const raw = JSON.parse(saveParam);
-        const entry: CalendarEntry = {
-          id: raw.id,
-          nombre: '',
-          fecha: raw.fecha,
-          meta: raw.meta,
-          stops: (raw.stops || []).map((s: any) => ({
-            place: { nombre: s.n, direccion: s.d, costo: s.c, isMatch: s.m, categoria: '' },
-            horaLlegada: s.a,
-            horaSalida: s.z,
-            traslado: '',
-          })),
-        };
-        if (!stored.find(e => e.id === entry.id)) {
-          entry.nombre = `Itinerario #${stored.length + 1}`;
-          stored = [...stored, entry];
+        const stored = JSON.parse(localStorage.getItem('pitzbol_calendario') || '[]');
+        setItinerarios(stored);
+      } catch {}
+      try {
+        const storedNotas = JSON.parse(localStorage.getItem('pitzbol_notas') || '{}');
+        setNotas(storedNotas);
+      } catch {}
+    };
+
+    const handleHashEntry = async (raw: any, token: string | null) => {
+      const stop: SavedStop[] = (raw.stops || []).map((s: any) => ({
+        place: { nombre: s.n, direccion: s.d, costo: s.c, isMatch: s.m, categoria: '' },
+        horaLlegada: s.a, horaSalida: s.z, traslado: '',
+      }));
+      if (token) {
+        await fetch(`${BACKEND}/api/itinerarios/itinerarios`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ fecha: raw.fecha, meta: raw.meta, stops: stop }),
+        });
+        await fetchFirestore();
+      } else {
+        const stored: CalendarEntry[] = JSON.parse(localStorage.getItem('pitzbol_calendario') || '[]');
+        if (!stored.find(e => e.id === raw.id)) {
+          const entry: CalendarEntry = { id: raw.id, nombre: `Itinerario #${stored.length + 1}`, fecha: raw.fecha, meta: raw.meta, stops: stop };
+          stored.push(entry);
           localStorage.setItem('pitzbol_calendario', JSON.stringify(stored));
         }
-        setItinerarios(stored);
-        const [y, m] = entry.fecha.split('-').map(Number);
-        if (y && m) setCurrentDate(new Date(y, m - 1, 1));
-        window.history.replaceState(null, '', window.location.pathname);
-      } catch {
-        setItinerarios(stored);
+        loadLocal();
       }
+      const [y, m] = raw.fecha.split('-').map(Number);
+      if (y && m) setCurrentDate(new Date(y, m - 1, 1));
+      window.history.replaceState(null, '', window.location.pathname);
+    };
+
+    const token = getToken();
+    if (saveParam) {
+      try { handleHashEntry(JSON.parse(saveParam), token); } catch { loadLocal(); }
+    } else if (token) {
+      fetchFirestore();
     } else {
-      setItinerarios(stored);
+      loadLocal();
     }
   }, []);
 
-  const deleteItinerario = (id: string) => {
-    const updated = itinerarios.filter(e => e.id !== id);
-    localStorage.setItem('pitzbol_calendario', JSON.stringify(updated));
-    setItinerarios(updated);
+  const deleteItinerario = async (id: string) => {
+    const token = getToken();
+    if (token) {
+      await fetch(`${BACKEND}/api/itinerarios/itinerarios/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      await fetchFirestore();
+    } else {
+      const updated = itinerarios.filter(e => e.id !== id);
+      localStorage.setItem('pitzbol_calendario', JSON.stringify(updated));
+      setItinerarios(updated);
+    }
     setDeleteConfirm(null);
-    // Si no hay más itinerarios en ese día, deseleccionar
-    const remaining = updated.filter(e => {
-      const [y, m, d] = e.fecha.split('-').map(Number);
-      return m - 1 === currentDate.getMonth() && d === selectedDay && y === currentDate.getFullYear();
-    });
-    if (remaining.length === 0) setSelectedDay(null);
+  };
+
+  const saveNota = async () => {
+    if (!noteText.trim() || !selectedDateStr) return;
+    const token = getToken();
+    if (token) {
+      await fetch(`${BACKEND}/api/itinerarios/notas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ fecha: selectedDateStr, texto: noteText.trim() }),
+      });
+      await fetchFirestore();
+    } else {
+      const updated = { ...notas, [selectedDateStr]: [...(notas[selectedDateStr] || []), noteText.trim()] };
+      setNotas(updated);
+      localStorage.setItem('pitzbol_notas', JSON.stringify(updated));
+    }
+    setNoteText('');
+    setAddingNote(false);
+  };
+
+  const deleteNota = async (dateStr: string, idx: number) => {
+    const token = getToken();
+    if (token) {
+      const notaEntry = notasFirestore.filter(e => e.fecha === dateStr)[idx];
+      if (notaEntry) {
+        await fetch(`${BACKEND}/api/itinerarios/notas/${notaEntry.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+        await fetchFirestore();
+        return;
+      }
+    }
+    const updated = { ...notas };
+    updated[dateStr] = updated[dateStr].filter((_, i) => i !== idx);
+    if (updated[dateStr].length === 0) delete updated[dateStr];
+    setNotas(updated);
+    localStorage.setItem('pitzbol_notas', JSON.stringify(updated));
   };
 
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
 
-  // Itinerarios del día seleccionado
   const selectedDateStr = selectedDay
     ? `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`
     : null;
@@ -133,7 +218,6 @@ export default function CalendarioPage() {
     ? itinerarios.filter(e => e.fecha === selectedDateStr)
     : [];
 
-  // Días con itinerarios este mes
   const daysWithItinerary = new Set(
     itinerarios
       .filter(e => {
@@ -142,6 +226,8 @@ export default function CalendarioPage() {
       })
       .map(e => parseInt(e.fecha.split('-')[2]))
   );
+
+  const selectedNotas = selectedDateStr ? (notas[selectedDateStr] || []) : [];
 
   return (
     <div className="h-screen bg-[#FDFCF9] flex flex-col font-sans overflow-hidden">
@@ -155,12 +241,12 @@ export default function CalendarioPage() {
             <FiSun size={12} className="text-[#F00808]" /> GDL 28°C • Soleado
           </div>
         </div>
-        <button
-          onClick={() => { setSelectedDay(null); setShowOptions(true); }}
+        <a
+          href={IA_URL}
           className="bg-[#0D601E] hover:bg-[#094d18] text-white px-6 py-3 rounded-full font-bold shadow-xl transition-all flex items-center gap-3 text-xs uppercase tracking-[0.2em]"
         >
           <FiPlus size={16} /> {t('createPlan')}
-        </button>
+        </a>
       </div>
 
       <main className="flex-1 p-4 max-w-[1700px] mx-auto w-full grid grid-cols-1 lg:grid-cols-4 gap-6 overflow-hidden">
@@ -195,7 +281,11 @@ export default function CalendarioPage() {
                   <motion.div
                     key={i}
                     whileHover={{ scale: 1.02, y: -5 }}
-                    onClick={() => { setSelectedDay(day); if (!hasItinerary) setShowOptions(true); }}
+                    onClick={() => {
+                      setSelectedDay(day);
+                      setAddingNote(false);
+                      setNoteText('');
+                    }}
                     className={`rounded-[25px] p-2 transition-all cursor-pointer relative flex flex-col justify-between border
                       ${isSelected && hasItinerary ? 'bg-[#1A4D2E] border-[#1A4D2E]' : ''}
                       ${!isSelected && hasItinerary ? 'bg-[#E0F2F1] border-[#81C784]' : ''}
@@ -224,25 +314,66 @@ export default function CalendarioPage() {
           </div>
         </div>
 
-        {/* Panel lateral: Próximas Citas */}
+        {/* Panel lateral */}
         <div className="lg:col-span-1 space-y-4 flex flex-col h-full overflow-hidden">
-          <section className="bg-white rounded-[30px] p-5 border border-[#F6F0E6] shadow-sm flex-shrink-0">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#769C7B] mb-3 block">Plan del día</span>
-            <div className="flex justify-between gap-1">
-              {['Chill', 'Explorar', 'Fiesta'].map(mood => (
-                <button key={mood} className="flex-1 py-2 rounded-xl border border-[#F6F0E6] text-[8px] font-bold uppercase hover:bg-[#1A4D2E] hover:text-white transition-all">{mood}</button>
-              ))}
+
+          {/* Notas */}
+          <section className="bg-white rounded-[30px] p-5 border border-[#F6F0E6] shadow-sm flex-shrink-0" style={{ minHeight: '180px' }}>
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#769C7B]">Notas</span>
+              {selectedDateStr && !addingNote && (
+                <button
+                  onClick={() => setAddingNote(true)}
+                  className="p-1.5 rounded-lg bg-[#E0F2F1] hover:bg-[#1A4D2E] hover:text-white text-[#1A4D2E] transition-all"
+                >
+                  <FiPlus size={12} />
+                </button>
+              )}
             </div>
+
+            {addingNote && (
+              <div className="flex flex-col gap-2 mb-3">
+                <textarea
+                  value={noteText}
+                  onChange={e => setNoteText(e.target.value)}
+                  placeholder="Escribe tu nota..."
+                  className="w-full border border-[#E0F2F1] rounded-xl p-2 text-xs text-[#1A4D2E] resize-none focus:outline-none focus:border-[#1A4D2E] transition-colors"
+                  rows={3}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => { setAddingNote(false); setNoteText(''); }} className="flex-1 py-1.5 rounded-xl border border-[#F6F0E6] text-[#769C7B] text-[10px] font-bold hover:bg-[#FDFCF9] transition-all">Cancelar</button>
+                  <button onClick={saveNota} disabled={!noteText.trim()} className="flex-1 py-1.5 rounded-xl bg-[#1A4D2E] text-white text-[10px] font-bold hover:bg-[#0D601E] transition-all disabled:opacity-40">Guardar</button>
+                </div>
+              </div>
+            )}
+
+            {selectedNotas.length > 0 ? (
+              <div className="space-y-2">
+                {selectedNotas.map((nota, i) => (
+                  <div key={i} className="flex justify-between items-start gap-2 bg-[#FDFCF9] rounded-xl p-2">
+                    <p className="text-[11px] text-[#1A4D2E] leading-snug flex-1">{nota}</p>
+                    <button onClick={() => deleteNota(selectedDateStr!, i)} className="text-[#769C7B] hover:text-[#F00808] transition-colors flex-shrink-0">
+                      <FiX size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] text-[#769C7B]">
+                {selectedDateStr ? 'No tienes notas para este día.' : 'Selecciona un día para ver notas.'}
+              </p>
+            )}
           </section>
 
+          {/* Mi itinerario */}
           <section className="bg-[#1A4D2E] rounded-[35px] p-5 text-white shadow-xl flex-1 overflow-y-auto">
-            <h3 className="text-xl mb-3 uppercase flex-shrink-0" style={{ fontFamily: "'Jockey One', sans-serif" }}>Próximas Citas</h3>
+            <h3 className="text-xl mb-3 uppercase flex-shrink-0" style={{ fontFamily: "'Jockey One', sans-serif" }}>Mi itinerario</h3>
 
             {selectedItinerarios.length > 0 ? (
               <div className="space-y-4">
                 {selectedItinerarios.map(entry => (
                   <div key={entry.id} className="bg-white/10 rounded-2xl p-3">
-                    {/* Header del itinerario */}
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <p className="font-bold text-sm">{entry.nombre}</p>
@@ -263,67 +394,51 @@ export default function CalendarioPage() {
                       )}
                     </div>
 
-                    {/* Paradas */}
                     <div className="space-y-2">
-                      {entry.stops.map((stop, i) => (
+                      {entry.stops.map((stop, i) => {
+                        const s = stop as any;
+                        const nombre = s.place?.nombre ?? s.nombre ?? '';
+                        const direccion = s.place?.direccion ?? s.direccion ?? '';
+                        const costo = s.place?.costo ?? s.costo ?? '';
+                        return (
                         <div key={i} className="flex gap-2 items-start pl-1 border-l-2 border-[#769C7B] relative">
                           <div className="absolute w-2 h-2 bg-[#F00808] rounded-full -left-[5px] top-1" />
                           <div className="flex-1 min-w-0 pl-1">
-                            <p className="font-bold text-xs text-white leading-snug">{stop.place.nombre}</p>
+                            <p className="font-bold text-xs text-white leading-snug">{nombre}</p>
                             <div className="flex flex-col gap-0.5 mt-0.5">
                               <span className="text-[9px] text-green-200 flex items-center gap-1">
                                 <FiClock size={8} /> {formatTime12(stop.horaLlegada)} → {formatTime12(stop.horaSalida)}
                               </span>
-                              {stop.place.direccion && (
+                              {direccion && (
                                 <span className="text-[9px] text-green-200 flex items-center gap-1 truncate">
-                                  <FiMapPin size={8} /> {stop.place.direccion}
+                                  <FiMapPin size={8} /> {direccion}
                                 </span>
                               )}
-                              {stop.place.costo && (
+                              {costo && (
                                 <span className="text-[9px] text-green-200 flex items-center gap-1">
-                                  <FiDollarSign size={8} /> {stop.place.costo}
+                                  <FiDollarSign size={8} /> {costo}
                                 </span>
                               )}
                             </div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <p className="text-green-200 text-xs">
-                {itinerarios.length === 0
-                  ? 'Genera un itinerario en la IA y agrégalo aquí.'
-                  : 'Selecciona un día marcado para ver tu itinerario.'}
+                {!selectedDateStr
+                  ? 'Selecciona un día para ver tu itinerario.'
+                  : 'No tienes itinerarios para este día.'}
               </p>
             )}
           </section>
         </div>
       </main>
 
-      {/* Modal de opciones */}
-      <AnimatePresence>
-        {showOptions && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-[#1A4D2E]/60 backdrop-blur-md">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white w-full max-w-5xl rounded-[50px] shadow-3xl overflow-hidden">
-              <div className="p-8 flex justify-between items-center bg-[#FDFCF9]">
-                <h2 className="text-4xl font-black text-[#1A4D2E] uppercase" style={{ fontFamily: "'Jockey One', sans-serif" }}>¿Qué sigue, Pitzboler?</h2>
-                <button onClick={() => setShowOptions(false)} className="bg-[#F6F0E6] p-3 rounded-full text-[#F00808]"><FiX size={24} /></button>
-              </div>
-              <div className="p-10 grid grid-cols-2 md:grid-cols-3 gap-6">
-                {planCategories.map((cat) => (
-                  <button key={cat.id} className="group bg-white p-6 rounded-[40px] border-2 border-[#F6F0E6] hover:border-[#0D601E] transition-all text-center">
-                    <img src={cat.img} alt={cat.title} className="w-12 h-12 mx-auto mb-4" />
-                    <span className="text-lg font-black text-[#1A4D2E] uppercase block" style={{ fontFamily: "'Jockey One', sans-serif" }}>{cat.title}</span>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
