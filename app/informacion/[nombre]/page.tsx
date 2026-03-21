@@ -420,6 +420,8 @@ export default function InformacionLugar() {
                 </div>
               )}
             </aside>
+          </div>
+
           {/* Descripción cultural */}
           {CULTURA_DESCRIPTIONS[lugar.nombre] && (
             <div className={styles.infoCard}>
