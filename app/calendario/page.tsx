@@ -183,7 +183,6 @@ export default function CalendarioPage() {
     }
     setNoteText('');
     setAddingNote(false);
-    setShowDayModal(false);
   };
 
   const deleteNota = async (dateStr: string, idx: number) => {
