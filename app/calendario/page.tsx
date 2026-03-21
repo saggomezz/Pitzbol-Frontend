@@ -395,29 +395,35 @@ export default function CalendarioPage() {
                     </div>
 
                     <div className="space-y-2">
-                      {entry.stops.map((stop, i) => (
+                      {entry.stops.map((stop, i) => {
+                        const s = stop as any;
+                        const nombre = s.place?.nombre ?? s.nombre ?? '';
+                        const direccion = s.place?.direccion ?? s.direccion ?? '';
+                        const costo = s.place?.costo ?? s.costo ?? '';
+                        return (
                         <div key={i} className="flex gap-2 items-start pl-1 border-l-2 border-[#769C7B] relative">
                           <div className="absolute w-2 h-2 bg-[#F00808] rounded-full -left-[5px] top-1" />
                           <div className="flex-1 min-w-0 pl-1">
-                            <p className="font-bold text-xs text-white leading-snug">{stop.place.nombre}</p>
+                            <p className="font-bold text-xs text-white leading-snug">{nombre}</p>
                             <div className="flex flex-col gap-0.5 mt-0.5">
                               <span className="text-[9px] text-green-200 flex items-center gap-1">
                                 <FiClock size={8} /> {formatTime12(stop.horaLlegada)} → {formatTime12(stop.horaSalida)}
                               </span>
-                              {stop.place.direccion && (
+                              {direccion && (
                                 <span className="text-[9px] text-green-200 flex items-center gap-1 truncate">
-                                  <FiMapPin size={8} /> {stop.place.direccion}
+                                  <FiMapPin size={8} /> {direccion}
                                 </span>
                               )}
-                              {stop.place.costo && (
+                              {costo && (
                                 <span className="text-[9px] text-green-200 flex items-center gap-1">
-                                  <FiDollarSign size={8} /> {stop.place.costo}
+                                  <FiDollarSign size={8} /> {costo}
                                 </span>
                               )}
                             </div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
