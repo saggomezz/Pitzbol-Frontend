@@ -29,11 +29,12 @@ export async function ensureTensorFlowReady() {
     };
 
     // Importar TensorFlow.js y hacer que esté disponible globalmente
-    const tf = await import('@tensorflow/tfjs');
-    
+    const tfRaw = await import('@tensorflow/tfjs');
+    const tf: any = (tfRaw as any).default ?? tfRaw;
+
     // Asignar a window para que face-api.js lo encuentre
     (window as any).tf = tf;
-    
+
     // Intentar usar WebGL, pero fallback a CPU si no está disponible
     if (typeof tf.setBackend === 'function') {
       try {
@@ -44,7 +45,7 @@ export async function ensureTensorFlowReady() {
     }
 
     // Esperar a que esté listo
-    await tf.ready();
+    if (typeof tf.ready === 'function') await tf.ready();
     
     tfInstance = tf;
     tfInitialized = true;
@@ -84,10 +85,11 @@ export async function ensureFaceApiReady() {
     
     // Primero asegurar que TensorFlow.js esté completamente inicializado
     await ensureTensorFlowReady();
-    
+
     // Importar @vladmandic/face-api que no tiene conflictos con TensorFlow
-    const faceapi = await import('@vladmandic/face-api');
-    
+    const faceapiRaw = await import('@vladmandic/face-api');
+    const faceapi: any = (faceapiRaw as any).default ?? faceapiRaw;
+
     faceapiInstance = faceapi;
     faceapiInitialized = true;
     
