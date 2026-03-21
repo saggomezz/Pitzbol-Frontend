@@ -310,13 +310,21 @@ export default function FutbolPage() {
                                                 event.stopPropagation();
                                                 handleFavoriteClick(place.nombre);
                                             }}
-                                            className="absolute top-4 right-4 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg z-10 transition-all active:scale-90"
+                                            className="absolute top-14 right-4 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg z-10 transition-all active:scale-90"
                                         >
                                             <FiHeart
                                                 className={`transition-colors ${favorites.includes(place.nombre) ? "text-[#F00808] fill-[#F00808]" : "text-[#769C7B]"}`}
                                                 size={18}
                                             />
                                         </button>
+                                        <div className="absolute top-4 right-4 z-10 bg-white/95 border border-[#E8E8E8] rounded-full px-2 py-1 shadow-md">
+                                            <PlaceRating
+                                                placeName={place.nombre}
+                                                showLabel={true}
+                                                size="small"
+                                                readonly={true}
+                                            />
+                                        </div>
                                     </div>
 
                                     <div className="p-6 flex flex-col flex-1">
@@ -324,12 +332,6 @@ export default function FutbolPage() {
                                             {place.nombre}
                                         </h3>
                                         <div className="mb-3">
-                                            <PlaceRating 
-                                                placeName={place.nombre} 
-                                                showLabel={false}
-                                                size="small"
-                                                readonly={true}
-                                            />
                                             <p className="text-[10px] text-[#769C7B] mt-1">
                                                 {place.views.toLocaleString("es-MX")} vistas
                                             </p>

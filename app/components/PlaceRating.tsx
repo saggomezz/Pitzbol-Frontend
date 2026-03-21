@@ -10,6 +10,7 @@ interface PlaceRatingProps {
   showLabel?: boolean;
   size?: "small" | "medium" | "large";
   readonly?: boolean;
+  displayMode?: "single" | "split";
   onRatingChange?: (newRating: number) => void;
 }
 
@@ -18,6 +19,7 @@ export default function PlaceRating({
   showLabel = true,
   size = "medium",
   readonly = false,
+  displayMode = "single",
   onRatingChange,
 }: PlaceRatingProps) {
   const [averageRating, setAverageRating] = useState<number>(0);
@@ -127,6 +129,7 @@ export default function PlaceRating({
 
   const displayRating = userRating || averageRating;
   const activeRating = hoverRating || displayRating;
+  const hasAverageRatings = totalRatings > 0;
 
   if (isLoading) {
     return (
@@ -140,12 +143,30 @@ export default function PlaceRating({
     );
   }
 
-  return (
-    <div className={`flex items-center gap-2 ${sizeClasses[size]}`}>
+  const renderStars = ({
+    value,
+    filledClass,
+    interactive,
+  }: {
+    value: number;
+    filledClass: string;
+    interactive: boolean;
+  }) => {
+    return (
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((star) => {
-          const isFilled = star <= activeRating;
-          const isUserRated = star <= userRating;
+          const isFilled = star <= value;
+
+          if (!interactive) {
+            return (
+              <FiStar
+                key={star}
+                size={starSizes[size]}
+                className={`transition-colors ${isFilled ? filledClass : "text-gray-300"}`}
+                fill={isFilled ? "currentColor" : "none"}
+              />
+            );
+          }
 
           return (
             <motion.button
@@ -162,37 +183,87 @@ export default function PlaceRating({
               title={
                 !isAuthenticated
                   ? "Inicia sesión para calificar"
-                  : isUserRated
-                  ? "Tu calificación"
                   : "Calificar con " + star + " estrellas"
               }
             >
               <FiStar
                 size={starSizes[size]}
-                className={`transition-colors ${
-                  isFilled
-                    ? isUserRated
-                      ? "text-[#F00808] fill-[#F00808]"
-                      : "text-[#FDB813] fill-[#FDB813]"
-                    : "text-gray-300"
-                }`}
+                className={`transition-colors ${isFilled ? filledClass : "text-gray-300"}`}
                 fill={isFilled ? "currentColor" : "none"}
               />
             </motion.button>
           );
         })}
       </div>
+    );
+  };
 
-      {showLabel && (
+  if (displayMode === "split") {
+    const myActiveRating = hoverRating || userRating;
+
+    return (
+      <div className="grid gap-2 text-sm text-[#1A4D2E]">
+        <div className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1">
+          <span className="font-semibold whitespace-nowrap">Promedio:</span>
+          {hasAverageRatings ? (
+            <>
+              <div className="min-w-0">
+                {renderStars({
+                  value: averageRating,
+                  filledClass: "text-[#FDB813] fill-[#FDB813]",
+                  interactive: false,
+                })}
+              </div>
+              {showLabel && (
+                <div className="flex items-baseline gap-1 justify-self-end whitespace-nowrap">
+                  <span className="font-bold text-[#1A4D2E]">
+                    {averageRating.toFixed(1)}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    ({totalRatings})
+                  </span>
+                </div>
+              )}
+            </>
+          ) : (
+            <span className="font-semibold text-[#1A4D2E] col-span-2 whitespace-nowrap">Sin calificaciones.</span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-2 gap-y-1">
+          <span className="font-semibold whitespace-nowrap">Tu calificación:</span>
+          <div className="min-w-0">
+            {renderStars({
+              value: myActiveRating,
+              filledClass: "text-[#F00808] fill-[#F00808]",
+              interactive: !readonly,
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex items-center gap-2 ${sizeClasses[size]}`}>
+      {hasAverageRatings ? (
+        renderStars({
+          value: activeRating,
+          filledClass: userRating > 0 ? "text-[#F00808] fill-[#F00808]" : "text-[#FDB813] fill-[#FDB813]",
+          interactive: !readonly,
+        })
+      ) : (
+        <span className="font-bold text-[#1A4D2E] whitespace-nowrap">Sin calificaciones.</span>
+      )}
+
+      {showLabel && hasAverageRatings && (
         <div className="flex flex-col leading-none">
           <span className="font-bold text-[#1A4D2E]">
-            {averageRating > 0 ? averageRating.toFixed(1) : "N/A"}
+            {averageRating.toFixed(1)}
           </span>
-          {totalRatings > 0 && (
-            <span className="text-xs text-gray-500">
-              ({totalRatings} {totalRatings === 1 ? "calificación" : "calificaciones"})
-            </span>
-          )}
+          <span className="text-xs text-gray-500">
+            ({totalRatings} {totalRatings === 1 ? "calificación" : "calificaciones"})
+          </span>
         </div>
       )}
 
