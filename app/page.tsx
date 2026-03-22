@@ -1,5 +1,5 @@
 "use client";
-import { generarItinerarioManual, Lugar } from '@/lib/pitzbol-engine';
+import { generarItinerarioManual, Lugar, construirItinerarioElegido, ordenarPorCercania } from '@/lib/pitzbol-engine';
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -511,6 +511,73 @@ function HomeContent() {
   const [itinerarioTxt, setItinerarioTxt] = useState("");
   const [loadingIA, setLoadingIA] = useState(true);
 
+  // ESTADOS PARA ITINERARIO MANUAL (feature Manuel Mendoza)
+  const [lugaresBD, setLugaresBD] = useState<Lugar[]>([]);
+  const [seleccionados, setSeleccionados] = useState<Lugar[]>([]);
+  const [mostrarOpciones, setMostrarOpciones] = useState(false);
+  const [itinerarioFinal, setItinerarioFinal] = useState("");
+
+  // Cargar lugares del CSV para el constructor manual de itinerario
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        const res = await fetch('/datosLugares.csv');
+        const text = await res.text();
+        const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
+        const lugares: Lugar[] = (data as any[])
+          .filter(row => row['Nombre del Lugar'])
+          .map(row => ({
+            nombre: row['Nombre del Lugar'] as string,
+            categoria: (row['Categoría'] as string) || '',
+            direccion: (row['Dirección'] as string) || '',
+            lat: parseFloat((row['Latitud'] as string || '0').replace(',', '.')),
+            lng: parseFloat((row['Longitud'] as string || '0').replace(',', '.')),
+            tiempoEstancia: parseInt(row['Tiempo de Estancia'] as string, 10) || 60,
+            costo: (row['Costo Estimado'] as string) || '',
+            notaIA: (row['Nota para IA'] as string) || '',
+          }))
+          .filter(l => !isNaN(l.lat) && !isNaN(l.lng));
+        setLugaresBD(lugares);
+      } catch (err) {
+        console.error('Error al cargar lugares para el itinerario:', err);
+      }
+    };
+    cargarDatos();
+  }, []);
+
+  // Ordenar lugares por cercanía al GPS cuando se muestran las opciones
+  useEffect(() => {
+    if (mostrarOpciones && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const miPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setLugaresBD((prevLugares) => ordenarPorCercania(prevLugares, miPos));
+        },
+        () => {
+          // No se pudo obtener ubicación, usar orden original
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  }, [mostrarOpciones]);
+
+  const toggleLugar = (lugar: Lugar) => {
+    setSeleccionados(prev => {
+      const existe = prev.find(s => s.nombre === lugar.nombre);
+      if (existe) {
+        return prev.filter(s => s.nombre !== lugar.nombre);
+      } else {
+        return [...prev, lugar];
+      }
+    });
+  };
+
+  const finalizarRuta = () => {
+    const texto = construirItinerarioElegido(seleccionados);
+    setItinerarioFinal(texto);
+    setMostrarOpciones(false);
+  };
+
   // Detectar si el usuario acaba de iniciar sesión
   useEffect(() => {
     if (hasCheckedWelcome.current) return;
@@ -777,6 +844,71 @@ function HomeContent() {
               </div>
             );
           })()}
+
+          {/* CONSTRUCTOR MANUAL DE ITINERARIO (feature Manuel Mendoza) */}
+          <div className="bg-[#FAF9F2] rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm min-h-[280px] md:min-h-[300px] border border-[#1A4D2E]/10 flex flex-col relative">
+            <h2 className="font-black text-[#1A4D2E] uppercase text-[10px] md:text-xs tracking-widest mb-3 md:mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+              {itinerarioFinal ? tHome('yourChosenRoute') : tHome('buildYourItinerary')}
+            </h2>
+
+            {!itinerarioFinal && !mostrarOpciones && (
+              <button
+                onClick={() => setMostrarOpciones(true)}
+                className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#769C7B]/30 rounded-2xl hover:bg-[#F6F0E6] transition-all group"
+              >
+                <FiMapPin className="text-[#769C7B] group-hover:text-[#F00808] mb-2" size={24} />
+                <p className="text-[11px] font-bold text-[#769C7B] uppercase">{tHome('pressToChoosePlaces')}</p>
+              </button>
+            )}
+
+            {mostrarOpciones && (
+              <div className="flex-1 flex flex-col">
+                <div className="flex-1 overflow-y-auto max-h-60 mb-4 space-y-2 pr-2">
+                  {lugaresBD.map((lugar) => (
+                    <div
+                      key={lugar.nombre}
+                      onClick={() => toggleLugar(lugar)}
+                      className={`p-3 rounded-xl cursor-pointer border transition-all flex justify-between items-center ${
+                        seleccionados.find(s => s.nombre === lugar.nombre)
+                          ? "bg-[#1A4D2E] border-[#1A4D2E] text-white"
+                          : "bg-white border-[#F6F0E6] text-[#1A4D2E]"
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold uppercase">{lugar.nombre}</span>
+                      <span className="text-[9px] opacity-70">{lugar.tiempoEstancia} min</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={finalizarRuta}
+                  disabled={seleccionados.length === 0}
+                  className={`w-full py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
+                    seleccionados.length > 0
+                      ? "bg-[#F00808] text-white shadow-lg active:scale-95"
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  {seleccionados.length > 0
+                    ? `${tHome('generateItinerary')} (${seleccionados.length})`
+                    : tHome('selectAtLeastOnePlace')}
+                </button>
+              </div>
+            )}
+
+            {itinerarioFinal && (
+              <div className="flex-1 flex flex-col">
+                <div className="text-[13px] leading-relaxed text-[#1A4D2E]/80 font-medium whitespace-pre-wrap flex-1 overflow-y-auto max-h-64">
+                  {itinerarioFinal}
+                </div>
+                <button
+                  onClick={() => { setItinerarioFinal(""); setSeleccionados([]); }}
+                  className="mt-4 text-[10px] font-bold text-[#769C7B] uppercase hover:text-[#F00808]"
+                >
+                  {tHome('resetSelection')}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <RecommendationsComponent places={recommendedPlaces} onRefresh={cargarRecomendaciones} />

@@ -124,6 +124,7 @@
     "pressToChoosePlaces": "Press to choose places",
     "generateItinerary": "Generate Itinerary",
     "selectAtLeastOnePlace": "Select at least 1 place",
+    "resetSelection": "Reset selection",
     "hours": "hrs"
   },
   "categories": {
