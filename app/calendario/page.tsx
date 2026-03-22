@@ -291,6 +291,7 @@ export default function CalendarioPage() {
                       ${!isSelected && hasItinerary ? 'bg-[#E0F2F1] border-[#81C784]' : ''}
                       ${events && !hasItinerary ? 'bg-[#FDF2F2] border-[#F00808]/20' : ''}
                       ${!hasItinerary && !events ? 'bg-white border-[#FDFCF9]' : ''}
+                      ${isSelected ? 'ring-2 ring-[#1A4D2E] ring-offset-1' : ''}
                     `}
                   >
                     <span className={`text-lg font-black
@@ -319,19 +320,11 @@ export default function CalendarioPage() {
 
           {/* Notas */}
           <section className="bg-white rounded-[30px] p-5 border border-[#F6F0E6] shadow-sm flex-shrink-0" style={{ minHeight: '180px' }}>
-            <div className="flex justify-between items-center mb-3">
+            <div className="mb-3">
               <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#769C7B]">Notas</span>
-              {selectedDateStr && !addingNote && (
-                <button
-                  onClick={() => setAddingNote(true)}
-                  className="p-1.5 rounded-lg bg-[#E0F2F1] hover:bg-[#1A4D2E] hover:text-white text-[#1A4D2E] transition-all"
-                >
-                  <FiPlus size={12} />
-                </button>
-              )}
             </div>
 
-            {addingNote && (
+            {selectedDateStr && (
               <div className="flex flex-col gap-2 mb-3">
                 <textarea
                   value={noteText}
@@ -339,12 +332,13 @@ export default function CalendarioPage() {
                   placeholder="Escribe tu nota..."
                   className="w-full border border-[#E0F2F1] rounded-xl p-2 text-xs text-[#1A4D2E] resize-none focus:outline-none focus:border-[#1A4D2E] transition-colors"
                   rows={3}
-                  autoFocus
                 />
-                <div className="flex gap-2">
-                  <button onClick={() => { setAddingNote(false); setNoteText(''); }} className="flex-1 py-1.5 rounded-xl border border-[#F6F0E6] text-[#769C7B] text-[10px] font-bold hover:bg-[#FDFCF9] transition-all">Cancelar</button>
-                  <button onClick={saveNota} disabled={!noteText.trim()} className="flex-1 py-1.5 rounded-xl bg-[#1A4D2E] text-white text-[10px] font-bold hover:bg-[#0D601E] transition-all disabled:opacity-40">Guardar</button>
-                </div>
+                {noteText.trim() && (
+                  <div className="flex gap-2">
+                    <button onClick={() => setNoteText('')} className="flex-1 py-1.5 rounded-xl border border-[#F6F0E6] text-[#769C7B] text-[10px] font-bold hover:bg-[#FDFCF9] transition-all">Cancelar</button>
+                    <button onClick={saveNota} className="flex-1 py-1.5 rounded-xl bg-[#1A4D2E] text-white text-[10px] font-bold hover:bg-[#0D601E] transition-all">Guardar</button>
+                  </div>
+                )}
               </div>
             )}
 
