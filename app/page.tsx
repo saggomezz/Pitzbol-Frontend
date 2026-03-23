@@ -12,6 +12,7 @@ import { GiSoccerBall } from "react-icons/gi";
 import WelcomeNotification from './components/WelcomeNotification';
 import { getPlaceImageByCategory } from '@/lib/placeImages';
 import PlaceRating from './components/PlaceRating';
+import { getMergedPlaces } from '@/lib/placesApi';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -710,17 +711,48 @@ function HomeContent() {
   // Fetch fotos de backend cuando cambian las recomendaciones
   useEffect(() => {
     if (!recommendedPlaces.length) return;
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-    recommendedPlaces.forEach(place => {
-      fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(place.name)}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (data?.fotos?.length > 0) {
-            setRecommendedPhotos(prev => ({ ...prev, [place.name]: data.fotos.slice(0, 3) }));
+    let cancelled = false;
+
+    const normalizeName = (value: string) =>
+      value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+
+    const loadRecommendedPhotos = async () => {
+      try {
+        const mergedPlaces = await getMergedPlaces();
+        if (cancelled) return;
+
+        const photosByNormalizedName = new Map<string, string[]>();
+        mergedPlaces.forEach((place) => {
+          if (Array.isArray(place.fotos) && place.fotos.length > 0) {
+            photosByNormalizedName.set(normalizeName(place.nombre), place.fotos.slice(0, 3));
           }
-        })
-        .catch(() => {});
-    });
+        });
+
+        const nextPhotos: Record<string, string[]> = {};
+        recommendedPlaces.forEach((place) => {
+          const photos = photosByNormalizedName.get(normalizeName(place.name));
+          if (photos && photos.length > 0) {
+            nextPhotos[place.name] = photos;
+          }
+        });
+
+        setRecommendedPhotos(nextPhotos);
+      } catch {
+        if (!cancelled) {
+          setRecommendedPhotos({});
+        }
+      }
+    };
+
+    loadRecommendedPhotos();
+
+    return () => {
+      cancelled = true;
+    };
   }, [recommendedPlaces]);
 
   return (
