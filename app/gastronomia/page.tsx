@@ -314,10 +314,18 @@ export default function GastronomiaPage() {
                         event.stopPropagation();
                         handleFavoriteClick(place.nombre);
                       }}
-                      className="absolute top-4 right-4 p-3 bg-white/90 rounded-full shadow-lg transition-all active:scale-90"
+                      className="absolute top-14 right-4 p-3 bg-white/90 rounded-full shadow-lg transition-all active:scale-90"
                     >
                       <FiHeart className={favorites.includes(place.nombre) ? "text-[#F00808] fill-[#F00808]" : "text-[#769C7B]"} size={18} />
                     </button>
+                    <div className="absolute top-4 right-4 z-10 bg-white/95 border border-[#E8E8E8] rounded-full px-2 py-1 shadow-md">
+                      <PlaceRating
+                        placeName={place.nombre}
+                        showLabel={true}
+                        size="small"
+                        readonly={true}
+                      />
+                    </div>
                   </div>
 
                   <div className="p-5 md:p-6 flex flex-col flex-1">
@@ -326,12 +334,6 @@ export default function GastronomiaPage() {
                     </h3>
                     <p className="text-xs uppercase tracking-widest text-[#0D601E] font-bold mb-2">{place.ubicacion || "Guadalajara"}</p>
                     <div className="mb-3">
-                      <PlaceRating 
-                        placeName={place.nombre} 
-                        showLabel={false}
-                        size="small"
-                        readonly={true}
-                      />
                       <p className="text-[10px] text-[#769C7B] mt-1">
                         {place.views.toLocaleString("es-MX")} vistas
                       </p>
