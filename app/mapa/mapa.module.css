@@ -321,25 +321,12 @@
     gap: 1rem;
     padding: 1.25rem;
     min-height: 0;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 .placesListMap::-webkit-scrollbar {
-    width: 8px;
-}
-
-.placesListMap::-webkit-scrollbar-track {
-    background: rgba(26, 77, 46, 0.05);
-    border-radius: 10px;
-}
-
-.placesListMap::-webkit-scrollbar-thumb {
-    background: #1A4D2E;
-    border-radius: 10px;
-    transition: background 0.2s ease;
-}
-
-.placesListMap::-webkit-scrollbar-thumb:hover {
-    background: #0D601E;
+    display: none;
 }
 
 .placeCardMap {
@@ -430,6 +417,7 @@
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     line-height: 1.35;
     word-wrap: break-word;
@@ -443,6 +431,7 @@
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 4;
+    line-clamp: 4;
     -webkit-box-orient: vertical;
     margin: 0.1rem 0 0 0;
 }
