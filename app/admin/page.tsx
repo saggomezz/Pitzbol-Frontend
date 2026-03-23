@@ -18,7 +18,7 @@ type ManagedUser = {
   apellido?: string;
   correo?: string;
   telefono?: string;
-  role: 'guia' | 'negociante';
+  role: 'guia';
 };
 
 const getBackendBaseUrl = () => {
@@ -46,7 +46,6 @@ export default function AdminPerfil() {
   const [notificacion, setNotificacion] = useState<NotificationType | null>(null);
   const [showHistorialModal, setShowHistorialModal] = useState(false);
   const [guias, setGuias] = useState<ManagedUser[]>([]);
-  const [negociantes, setNegociantes] = useState<ManagedUser[]>([]);
   const [loadingUsuarios, setLoadingUsuarios] = useState(true);
   const [eliminandoUid, setEliminandoUid] = useState<string | null>(null);
 
@@ -71,9 +70,9 @@ export default function AdminPerfil() {
         enviarNotificacion(
           'admin',
           'info',
-          'Nueva solicitud de negocio',
-          'Ha llegado una nueva solicitud de negocio pendiente.',
-          '/admin/negocios'
+          'Nueva solicitud de guia',
+          'Ha llegado una nueva solicitud de guia pendiente.',
+          '/admin/guias?tab=pendientes'
         );
       }
       setSolicitudes(data.solicitudes || []);
@@ -105,22 +104,18 @@ export default function AdminPerfil() {
             window.location.href = '/';
           }, 1200);
           setGuias([]);
-          setNegociantes([]);
           return;
         }
         const serverMessage = data?.msg || data?.message || data?.error;
         mostrarNotificacion('error', serverMessage || t('managedUsersLoadError'));
         setGuias([]);
-        setNegociantes([]);
         return;
       }
 
       setGuias(data.guias || []);
-      setNegociantes(data.negociantes || []);
     } catch (error) {
       mostrarNotificacion('error', t('managedUsersLoadError'));
       setGuias([]);
-      setNegociantes([]);
     } finally {
       setLoadingUsuarios(false);
     }
@@ -130,7 +125,7 @@ export default function AdminPerfil() {
     const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || usuario.correo || usuario.uid;
     const confirmar = window.confirm(
       t('confirmDeleteUser', {
-        role: usuario.role === 'guia' ? t('guideSingular') : t('businessSingular'),
+        role: t('guideSingular'),
         user: nombreCompleto,
       })
     );
@@ -157,11 +152,7 @@ export default function AdminPerfil() {
         throw new Error(data.message || data.msg || t('userDeletedError'));
       }
 
-      if (usuario.role === 'guia') {
-        setGuias(prev => prev.filter(item => item.uid !== usuario.uid));
-      } else {
-        setNegociantes(prev => prev.filter(item => item.uid !== usuario.uid));
-      }
+      setGuias(prev => prev.filter(item => item.uid !== usuario.uid));
 
       mostrarNotificacion('exito', t('userDeletedSuccess'));
     } catch (error: any) {
@@ -196,11 +187,11 @@ export default function AdminPerfil() {
         enviarNotificacion(
           uid,
           accion === 'aprobar' ? 'aprobado' : 'rechazado',
-          accion === 'aprobar' ? 'Negocio aprobado' : 'Negocio rechazado',
+          accion === 'aprobar' ? 'Solicitud de guia aprobada' : 'Solicitud de guia rechazada',
           accion === 'aprobar'
-            ? '¡Tu negocio ha sido aprobado y ya es visible para los usuarios!'
-            : 'Tu solicitud de negocio fue rechazada. Puedes revisar y volver a intentarlo.',
-          '/negocio/estatus'
+            ? 'Tu perfil de guia ha sido aprobado y ya puede recibir reservas.'
+            : 'Tu solicitud de guia fue rechazada. Puedes revisar tus datos y volver a intentarlo.',
+          '/perfil'
         );
         // Mostrar notificación de éxito
         mostrarNotificacion(
@@ -339,7 +330,7 @@ export default function AdminPerfil() {
                 {t('loadingManagedUsers')}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 <div className="bg-white rounded-[28px] border border-gray-100 p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-gray-700 font-medium">{t('guidesListTitle')}</h3>
@@ -362,35 +353,6 @@ export default function AdminPerfil() {
                           >
                             <FiTrash2 size={14} />
                             {eliminandoUid === guia.uid ? tCommon('processing') : t('deleteUser')}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-white rounded-[28px] border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-gray-700 font-medium">{t('businessUsersTitle')}</h3>
-                    <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">{negociantes.length}</span>
-                  </div>
-                  {negociantes.length === 0 ? (
-                    <p className="text-sm text-gray-400 italic">{t('noBusinessesToManage')}</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {negociantes.map((negociante) => (
-                        <div key={negociante.uid} className="flex items-center justify-between gap-3 border border-gray-100 rounded-2xl p-3">
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">{`${negociante.nombre || ''} ${negociante.apellido || ''}`.trim() || t('noName')}</p>
-                            <p className="text-xs text-gray-400">{negociante.correo || negociante.uid}</p>
-                          </div>
-                          <button
-                            onClick={() => handleEliminarUsuario(negociante)}
-                            disabled={eliminandoUid === negociante.uid}
-                            className="px-3 py-2 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 text-xs font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                          >
-                            <FiTrash2 size={14} />
-                            {eliminandoUid === negociante.uid ? tCommon('processing') : t('deleteUser')}
                           </button>
                         </div>
                       ))}
@@ -613,7 +575,13 @@ export default function AdminPerfil() {
         )}
       </AnimatePresence>
 
-      <AdminHistorialSolicitudesModal open={showHistorialModal} onClose={() => setShowHistorialModal(false)} token={token} />
+      <AdminHistorialSolicitudesModal
+        open={showHistorialModal}
+        onClose={() => setShowHistorialModal(false)}
+        token={token}
+        targetHref="/admin/guias/historial"
+        description="Abre el historial de solicitudes de guias."
+      />
     </div>
   );
 }
