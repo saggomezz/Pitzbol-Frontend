@@ -10,6 +10,9 @@ import PlaceRating from "@/app/components/PlaceRating";
 import { usePlaceView } from "@/lib/usePlaceView";
 import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
 
+const APPROVED_TOAST_DISMISSED_KEY = "pitzbol_approved_business_toast_dismissed_public_v1";
+const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v1";
+
 const CULTURA_DESCRIPTIONS: Record<string, string> = {
   "Instituto Cultural Cabañas, Guadalajara":
     "Declarado Patrimonio de la Humanidad por la UNESCO en 1997, el Hospicio Cabañas fue fundado en 1810 por el obispo Juan Cruz Ruiz de Cabañas como casa de beneficencia. Su capilla alberga los célebres murales de José Clemente Orozco pintados entre 1938 y 1939, considerados una de las obras cumbres del muralismo mexicano. La figura del Hombre de Fuego en la cúpula central es su imagen más emblemática.",
@@ -98,13 +101,58 @@ export default function InformacionLugar() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [fotos, setFotos] = useState<string[]>([]);
   const [fotoIdx, setFotoIdx] = useState(0);
-
-  const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
-
   // Registrar vista del lugar
   const nombreRaw = params.nombre;
   const nombreLugar = typeof nombreRaw === "string" ? decodeURIComponent(nombreRaw) : null;
   usePlaceView(nombreLugar);
+
+  const [showApprovedToast, setShowApprovedToast] = useState(false);
+  // Estado de depuración para mostrar condiciones del toast
+  const [debugToast, setDebugToast] = useState({
+    cameFromBusinessManagement: false,
+    hasPendingTrigger: false,
+    dismissed: false,
+    nombreLugar: nombreLugar || '',
+    urlParams: '',
+    localStoragePending: '',
+    localStorageDismissed: '',
+  });
+
+  const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
+
+  useEffect(() => {
+    if (!nombreLugar || typeof window === "undefined") return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const cameFromBusinessManagement = urlParams.get("origen") === "gestion-negocios-activo";
+    const hasPendingTrigger = localStorage.getItem(APPROVED_TOAST_PENDING_KEY) === "1";
+    const dismissed = localStorage.getItem(APPROVED_TOAST_DISMISSED_KEY) === "1";
+
+    setDebugToast({
+      cameFromBusinessManagement,
+      hasPendingTrigger,
+      dismissed,
+      nombreLugar: nombreLugar || '',
+      urlParams: window.location.search,
+      localStoragePending: localStorage.getItem(APPROVED_TOAST_PENDING_KEY) || '',
+      localStorageDismissed: localStorage.getItem(APPROVED_TOAST_DISMISSED_KEY) || '',
+    });
+
+    if ((cameFromBusinessManagement || hasPendingTrigger) && !dismissed) {
+      setShowApprovedToast(true);
+    }
+
+    if (hasPendingTrigger) {
+      localStorage.removeItem(APPROVED_TOAST_PENDING_KEY);
+    }
+  }, [nombreLugar]);
+
+  const dismissApprovedToast = () => {
+    setShowApprovedToast(false);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(APPROVED_TOAST_DISMISSED_KEY, "1");
+    }
+  };
 
   useEffect(() => {
     const cargarLugar = async () => {
@@ -240,6 +288,34 @@ export default function InformacionLugar() {
 
   return (
     <div className={styles.container}>
+      {showApprovedToast && (
+        <motion.div
+          initial={{ opacity: 0, y: -24, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 320, damping: 24 }}
+          className={styles.toastAprobado}
+          role="status"
+          aria-live="polite"
+        >
+          <div className={styles.toastAprobadoIcon}>✓</div>
+          <div className={styles.toastAprobadoContent}>
+            <p className={styles.toastAprobadoTitle}>Negocio aprobado y publicado</p>
+            <p className={styles.toastAprobadoMessage}>
+              Tu negocio fue aprobado por el admin y ahora se encuentra visible para todos los usuarios.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={dismissApprovedToast}
+            className={styles.toastAprobadoClose}
+            aria-label="Cerrar mensaje"
+          >
+            ×
+          </button>
+        </motion.div>
+      )}
+
+
       {/* Header con imagen de fondo */}
       <div className={styles.heroHeader}>
         {fotos.length > 0 && (
