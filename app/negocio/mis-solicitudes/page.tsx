@@ -12,6 +12,7 @@ import { MdBusiness, MdCategory, MdImage } from "react-icons/md";
 import { FiArrowLeft } from "react-icons/fi";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v1";
 
 type TabKey = "todas" | "pendiente" | "aprobado" | "rechazado" | "archivado";
 
@@ -116,6 +117,29 @@ export default function MisSolicitudesPage() {
       ? requestsPool.length
       : solicitudes.filter((s) => s.estado === key).length;
 
+  const getCardNavigationHref = (sol: any, kind: "activo" | "solicitud") => {
+    const estado = String(sol?.estado || "").toLowerCase();
+    const businessName = sol?.business?.name;
+
+    if (kind === "activo" && estado === "aprobado" && businessName) {
+      return `/informacion/${encodeURIComponent(String(businessName))}?origen=gestion-negocios-activo`;
+    }
+
+    return `/negocio/mis-solicitudes/${sol.id}`;
+  };
+
+  const shouldTriggerApprovedToast = (sol: any, kind: "activo" | "solicitud") => {
+    const estado = String(sol?.estado || "").toLowerCase();
+    return kind === "activo" && estado === "aprobado";
+  };
+
+  const navigateFromCard = (sol: any, kind: "activo" | "solicitud", targetHref: string) => {
+    if (typeof window !== "undefined" && shouldTriggerApprovedToast(sol, kind)) {
+      localStorage.setItem(APPROVED_TOAST_PENDING_KEY, "1");
+    }
+    router.push(targetHref);
+  };
+
   const renderCard = (sol: any, index: number, kind: "activo" | "solicitud" = "solicitud") => {
     const business = sol.business || {};
     const logo: string = business.logo || "";
@@ -123,6 +147,7 @@ export default function MisSolicitudesPage() {
       ? business.images.filter((img: string) => !!img)
       : [];
     const estado: string = sol.estado || "pendiente";
+    const targetHref = getCardNavigationHref(sol, kind);
 
     return (
       <motion.div
@@ -132,11 +157,11 @@ export default function MisSolicitudesPage() {
         exit={{ opacity: 0, scale: 0.9 }}
         transition={{ delay: index * 0.04 }}
         layout
-        onClick={() => router.push(`/negocio/mis-solicitudes/${sol.id}`)}
+        onClick={() => navigateFromCard(sol, kind, targetHref)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            router.push(`/negocio/mis-solicitudes/${sol.id}`);
+            navigateFromCard(sol, kind, targetHref);
           }
         }}
         role="button"
