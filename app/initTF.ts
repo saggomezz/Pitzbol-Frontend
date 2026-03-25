@@ -13,13 +13,13 @@ export async function ensureTensorFlowReady() {
     return null;
   }
 
+  const originalWarn = console.warn;
   try {
     // Suprimir warnings de TensorFlow durante inicialización
-    const originalWarn = console.warn;
     console.warn = function(...args: any[]) {
       const message = args[0]?.toString?.() || '';
       // Ignorar warnings específicos de TensorFlow
-      if (message.includes('already been set') || 
+      if (message.includes('already been set') ||
           message.includes('already registered') ||
           message.includes('backend') ||
           message.includes('kernel')) {
@@ -49,14 +49,13 @@ export async function ensureTensorFlowReady() {
     
     tfInstance = tf;
     tfInitialized = true;
-    
-    // Restaurar console.warn
-    console.warn = originalWarn;
-    
+
     return tf;
   } catch (error) {
     console.error("❌ Error inicializando TensorFlow.js:", error);
     throw error;
+  } finally {
+    console.warn = originalWarn;
   }
 }
 
@@ -69,12 +68,12 @@ export async function ensureFaceApiReady() {
     return null;
   }
 
+  const originalWarn = console.warn;
   try {
     // Suprimir warnings durante inicialización
-    const originalWarn = console.warn;
     console.warn = function(...args: any[]) {
       const message = args[0]?.toString?.() || '';
-      if (message.includes('already been set') || 
+      if (message.includes('already been set') ||
           message.includes('already registered') ||
           message.includes('backend') ||
           message.includes('kernel')) {
@@ -82,7 +81,7 @@ export async function ensureFaceApiReady() {
       }
       originalWarn.apply(console, args);
     };
-    
+
     // Primero asegurar que TensorFlow.js esté completamente inicializado
     await ensureTensorFlowReady();
 
@@ -92,13 +91,12 @@ export async function ensureFaceApiReady() {
 
     faceapiInstance = faceapi;
     faceapiInitialized = true;
-    
-    // Restaurar console.warn
-    console.warn = originalWarn;
-    
+
     return faceapi;
   } catch (error) {
     console.error("❌ Error inicializando face-api.js:", error);
     throw error;
+  } finally {
+    console.warn = originalWarn;
   }
 }

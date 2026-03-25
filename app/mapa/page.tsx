@@ -378,14 +378,6 @@ export default function MapaPage() {
                     dynamicTyping: false, // Mantener todo como string
                     complete: (results) => {
                         console.log("📊 CSV parseado - Total filas:", results.data.length);
-
-                        const parseErrors = (results.errors || []).filter(
-                            (error) => error.code !== "TooFewFields"
-                        );
-                        if (parseErrors.length > 0) {
-                            console.error("⚠️ Errores en parseo CSV (muestra):", parseErrors.slice(0, 5));
-                            console.error("⚠️ Total de errores de parseo:", parseErrors.length);
-                        }
                         
                         const data = results.data.filter((row: any) => {
                             const tieneNombre = row && row["Nombre del Lugar"] && String(row["Nombre del Lugar"]).trim() !== "";

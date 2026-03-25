@@ -3,7 +3,20 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiExternalLink, FiFileText, FiX } from "react-icons/fi";
 
-export default function AdminHistorialSolicitudesModal({ open, onClose }: { open: boolean; onClose: () => void; token?: string }) {
+interface AdminHistorialSolicitudesModalProps {
+  open: boolean;
+  onClose: () => void;
+  token?: string;
+  targetHref?: string;
+  description?: string;
+}
+
+export default function AdminHistorialSolicitudesModal({
+  open,
+  onClose,
+  targetHref = "/admin/historial-solicitudes",
+  description = "Este modal es legacy. El historial completo ahora vive en una pagina dedicada.",
+}: AdminHistorialSolicitudesModalProps) {
   const router = useRouter();
 
   return (
@@ -28,7 +41,7 @@ export default function AdminHistorialSolicitudesModal({ open, onClose }: { open
               </div>
               <div>
                 <h2 className="text-3xl font-black text-[#1A4D2E]">Historial de Solicitudes</h2>
-                <p className="text-[#769C7B]">Este modal es legacy. El historial completo ahora vive en una pagina dedicada.</p>
+                <p className="text-[#769C7B]">{description}</p>
               </div>
             </div>
 
@@ -39,7 +52,7 @@ export default function AdminHistorialSolicitudesModal({ open, onClose }: { open
               <button
                 onClick={() => {
                   onClose();
-                  router.push("/admin/historial-solicitudes");
+                  router.push(targetHref);
                 }}
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#0D601E] px-4 py-3 font-bold text-white transition hover:bg-[#1A4D2E]"
               >
