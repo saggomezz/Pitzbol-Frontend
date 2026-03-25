@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import Papa from 'papaparse';
 import { Suspense, useEffect, useRef, useState } from "react";
-import { FiBriefcase, FiCalendar, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiRefreshCw, FiSearch, FiUser, FiX } from "react-icons/fi";
+import { FiBriefcase, FiCalendar, FiChevronLeft, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiRefreshCw, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi";
 import WelcomeNotification from './components/WelcomeNotification';
 import { getPlaceImageByCategory } from '@/lib/placeImages';
@@ -55,6 +55,19 @@ const ALL_CATEGORIES: Category[] = [
   { name: "Hospitales", img: "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=1700" },
   { name: "Médico", img: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&q=80&w=1528" },
 ];
+
+type Partido = { fecha: string; fechaDisplay: string; hora: string; equipo1: string; bandera1: string; equipo2: string; bandera2: string; sede?: string; };
+
+const PARTIDOS_GDL: Partido[] = [
+  { fecha: "2026-06-11", fechaDisplay: "11 de Junio", hora: "20:00", equipo1: "Corea del Sur", bandera1: "https://flagcdn.com/kr.svg", equipo2: "Dinamarca", bandera2: "https://flagcdn.com/dk.svg" },
+  { fecha: "2026-06-15", fechaDisplay: "15 de Junio", hora: "16:00", equipo1: "Portugal", bandera1: "https://flagcdn.com/pt.svg", equipo2: "Marruecos", bandera2: "https://flagcdn.com/ma.svg" },
+  { fecha: "2026-06-19", fechaDisplay: "19 de Junio", hora: "19:00", equipo1: "Argentina", bandera1: "https://flagcdn.com/ar.svg", equipo2: "Chile", bandera2: "https://flagcdn.com/cl.svg" },
+  { fecha: "2026-06-22", fechaDisplay: "22 de Junio", hora: "20:00", equipo1: "España", bandera1: "https://flagcdn.com/es.svg", equipo2: "Croacia", bandera2: "https://flagcdn.com/hr.svg" },
+  { fecha: "2026-06-26", fechaDisplay: "26 de Junio", hora: "18:00", equipo1: "Brasil", bandera1: "https://flagcdn.com/br.svg", equipo2: "Uruguay", bandera2: "https://flagcdn.com/uy.svg" },
+  { fecha: "2026-07-02", fechaDisplay: "2 de Julio", hora: "20:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
+];
+
+const PROXIMO_OTRO: Partido = { fecha: "2026-06-11", fechaDisplay: "11 de Junio", hora: "13:00", equipo1: "México", bandera1: "https://flagcdn.com/mx.svg", equipo2: "Sudáfrica", bandera2: "https://flagcdn.com/za.svg", sede: "CDMX" };
 
 const dates: DateInfo[] = [
   { day: "10", weekday: "MIE", fullDate: "2026-06-10", isGdlMatch: false, isActive: false },
@@ -144,6 +157,57 @@ return (
       </div>
 
     </>
+  );
+};
+
+const GdlMatchCarousel = ({ partidos, tHome }: { partidos: Partido[]; tHome: any }) => {
+  const [idx, setIdx] = useState(0);
+  const [dir, setDir] = useState(1);
+  const current = partidos[idx];
+  const prev = () => { setDir(-1); setIdx(i => Math.max(0, i - 1)); };
+  const next = () => { setDir(1); setIdx(i => Math.min(partidos.length - 1, i + 1)); };
+  return (
+    <div className="w-full mb-2">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-center text-[#0D601E] text-xs md:text-sm font-medium flex-1" style={{ fontFamily: 'var(--font-roboto)' }}>
+          {tHome('nextMatchIn')} <span className="font-bold">GDL</span> - {current.fechaDisplay}
+        </h3>
+        <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+          <button onClick={prev} disabled={idx === 0} className="p-0.5 rounded-full hover:bg-[#E0F2F1] disabled:opacity-30 transition-all text-[#0D601E]"><FiChevronLeft size={14} /></button>
+          <span className="text-[10px] text-[#769C7B] font-medium">{idx + 1}/{partidos.length}</span>
+          <button onClick={next} disabled={idx === partidos.length - 1} className="p-0.5 rounded-full hover:bg-[#E0F2F1] disabled:opacity-30 transition-all text-[#0D601E]"><FiChevronRight size={14} /></button>
+        </div>
+      </div>
+      <div className="overflow-hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={idx}
+            initial={{ x: dir * 60, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -dir * 60, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-2 shadow-md min-h-[60px] md:min-h-[50px]"
+          >
+            <div className="flex flex-1 items-center justify-end gap-2">
+              <span className="text-xs md:text-base font-normal text-right leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>{current.equipo1}</span>
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
+                <Image src={current.bandera1} alt={current.equipo1} fill className="object-cover" />
+              </div>
+            </div>
+            <div className="flex flex-col items-center justify-center px-2 md:px-4 border-x border-white/20 mx-2">
+              <span className="text-base md:text-xl font-bold text-black leading-none" style={{ fontFamily: 'var(--font-roboto)' }}>{current.hora}</span>
+              <span className="text-[10px] md:text-xs font-medium text-black" style={{ fontFamily: 'var(--font-roboto)' }}>{tHome('hours')}</span>
+            </div>
+            <div className="flex flex-1 items-center justify-start gap-2">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
+                <Image src={current.bandera2} alt={current.equipo2} fill className="object-cover" />
+              </div>
+              <span className="text-xs md:text-base font-normal text-left leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>{current.equipo2}</span>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </div>
   );
 };
 
@@ -770,26 +834,17 @@ function HomeContent() {
       <DateSlider />
       <main className="flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-10 px-3 md:px-8 lg:px-22 w-full max-w-[1600px] mx-auto">
         <div className="flex flex-col gap-3 md:gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
-          <MatchItem 
-            location="CDMX"
-            date="11 de Junio"
-            team1="México"
-            flag1="https://flagcdn.com/mx.svg"
-            team2="Sudáfrica"
-            flag2="https://flagcdn.com/za.svg"
-            time="13:00"
-            tHome={tHome}
-          />
           <MatchItem
-            location="GDL"
-            date="11 de Junio"
-            team1="Corea"
-            flag1="https://flagcdn.com/kr.svg"
-            team2="Dinamarca"
-            flag2="https://flagcdn.com/dk.svg"
-            time="20:00"
+            location={PROXIMO_OTRO.sede!}
+            date={PROXIMO_OTRO.fechaDisplay}
+            team1={PROXIMO_OTRO.equipo1}
+            flag1={PROXIMO_OTRO.bandera1}
+            team2={PROXIMO_OTRO.equipo2}
+            flag2={PROXIMO_OTRO.bandera2}
+            time={PROXIMO_OTRO.hora}
             tHome={tHome}
           />
+          <GdlMatchCarousel partidos={PARTIDOS_GDL} tHome={tHome} />
           {/* PITZBOT — IA de Itinerarios */}
           {(() => {
             let pitzUrl = 'http://69.30.204.56:3003';
