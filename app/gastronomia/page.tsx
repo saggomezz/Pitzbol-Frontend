@@ -19,7 +19,7 @@ type FilterOptions = {
   soloFavoritos?: boolean;
 };
 
-const quickFilters = ["Tradicional", "Gourmet", "Callejero", "Mercados", "Cafeterías", "Vegana"];
+const quickFilters = ["Tradicional", "Gourmet", "Callejero", "Mercados", "Cafeterías", "Vegana", "Vida Nocturna"];
 
 const normalizeText = (value: string) =>
   value
@@ -65,7 +65,7 @@ export default function GastronomiaPage() {
         const mergedPlaces = await getMergedPlaces();
         setPlaces(mergedPlaces.filter((place) => {
           const raw = (place.rawCategoria || place.categoria).toLowerCase();
-          return raw.includes("gastronomía") || raw.includes("gastronomia") || raw.includes("vegana");
+          return raw.includes("gastronomía") || raw.includes("gastronomia") || raw.includes("vegana") || raw.includes("cafeter") || raw.includes("vida nocturna");
         }));
       } catch (error) {
         console.error("Error cargando lugares de gastronomía:", error);
