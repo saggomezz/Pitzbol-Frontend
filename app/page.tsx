@@ -12,6 +12,7 @@ import { GiSoccerBall } from "react-icons/gi";
 import WelcomeNotification from './components/WelcomeNotification';
 import { getPlaceImageByCategory } from '@/lib/placeImages';
 import PlaceRating from './components/PlaceRating';
+import { getMergedPlaces } from '@/lib/placesApi';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -191,6 +192,7 @@ function PlaceCard2({ place, photos, noImageText }: {
   photos: string[];
   noImageText: string;
 }) {
+  const router = useRouter();
   const [isHovered, setIsHovered] = useState(false);
   const [photoIdx, setPhotoIdx] = useState(0);
 
@@ -202,36 +204,31 @@ function PlaceCard2({ place, photos, noImageText }: {
   }, [isHovered, photos]);
 
   const displayImg = photos.length > 0 ? photos[photoIdx] : place.img;
+  const infoHref = `/informacion/${encodeURIComponent(place.name)}`;
+  const handleCardNavigation = () => router.push(infoHref);
 
   return (
-    <Link href={`/informacion/${encodeURIComponent(place.name)}`} className="block">
-      <div
-        className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105 cursor-pointer"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => { setIsHovered(false); setPhotoIdx(0); }}
-      >
-        <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
-          {displayImg
-            ? <div className="absolute inset-0">
-                <img src={displayImg} alt={place.name} className="w-full h-full object-cover transition-opacity duration-500" />
-              </div>
-            : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
-          }
-          <div className="absolute top-3 right-3 z-20 bg-white/95 border border-[#E8E8E8] rounded-full px-2 py-1 shadow-md">
-            <PlaceRating
-              placeName={place.name}
-              showLabel={true}
-              size="small"
-              readonly={true}
-            />
-          </div>
-          {/* Dots indicador (solo con múltiples fotos y hover) */}
-          {isHovered && photos.length > 1 && (
-            <div className="absolute bottom-9 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
-              {photos.map((_, i) => (
-                <div key={i} className={`rounded-full transition-all duration-300 ${i === photoIdx ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/60'}`} />
-              ))}
+    <div
+      className="bg-white shadow-md rounded-lg overflow-hidden flex-shrink-0 w-56 sm:w-64 md:w-auto group transition-transform duration-300 md:hover:scale-105 cursor-pointer"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => { setIsHovered(false); setPhotoIdx(0); }}
+      onClick={handleCardNavigation}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleCardNavigation();
+        }
+      }}
+      role="link"
+      tabIndex={0}
+      aria-label={`Ver información de ${place.name}`}
+    >
+      <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
+        {displayImg
+          ? <div className="absolute inset-0">
+              <img src={displayImg} alt={place.name} className="w-full h-full object-cover transition-opacity duration-500" />
             </div>
+<<<<<<< HEAD
           )}
           {/* Botón Ubicar */}
           <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 z-10">
@@ -243,12 +240,43 @@ function PlaceCard2({ place, photos, noImageText }: {
               Ubicar
             </button>
           </div>
+=======
+          : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
+        }
+        <div className="absolute top-3 right-3 z-20 bg-white/95 border border-[#E8E8E8] rounded-full px-2 py-1 shadow-md">
+          <PlaceRating
+            placeName={place.name}
+            showLabel={true}
+            size="small"
+            readonly={true}
+          />
+>>>>>>> 327351d294ca4b6769872efffc0a2acf2736d529
         </div>
-        <div className="p-3">
-          <h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3>
+        {/* Dots indicador (solo con múltiples fotos y hover) */}
+        {isHovered && photos.length > 1 && (
+          <div className="absolute bottom-9 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
+            {photos.map((_, i) => (
+              <div key={i} className={`rounded-full transition-all duration-300 ${i === photoIdx ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/60'}`} />
+            ))}
+          </div>
+        )}
+        {/* Botón Ubicar */}
+        <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 z-10">
+          <Link
+            href="/mapa"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors"
+            aria-label="Abrir mapa"
+          >
+            <FiMapPin size={14} />
+            Ubicar
+          </Link>
         </div>
       </div>
-    </Link>
+      <div className="p-3">
+        <h3 className="font-semibold text-[#1A4D2E] truncate text-center uppercase text-xs">{place.name}</h3>
+      </div>
+    </div>
   );
 }
 
@@ -494,7 +522,7 @@ function HomeContent() {
             <FiRefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
           </button>
         </div>
-        <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
+        <div className="flex overflow-x-auto scrollbar-hidden md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
           {places.map((place) => (
             <PlaceCard2
               key={place.name}
@@ -697,17 +725,48 @@ function HomeContent() {
   // Fetch fotos de backend cuando cambian las recomendaciones
   useEffect(() => {
     if (!recommendedPlaces.length) return;
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-    recommendedPlaces.forEach(place => {
-      fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(place.name)}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (data?.fotos?.length > 0) {
-            setRecommendedPhotos(prev => ({ ...prev, [place.name]: data.fotos.slice(0, 3) }));
+    let cancelled = false;
+
+    const normalizeName = (value: string) =>
+      value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+
+    const loadRecommendedPhotos = async () => {
+      try {
+        const mergedPlaces = await getMergedPlaces();
+        if (cancelled) return;
+
+        const photosByNormalizedName = new Map<string, string[]>();
+        mergedPlaces.forEach((place) => {
+          if (Array.isArray(place.fotos) && place.fotos.length > 0) {
+            photosByNormalizedName.set(normalizeName(place.nombre), place.fotos.slice(0, 3));
           }
-        })
-        .catch(() => {});
-    });
+        });
+
+        const nextPhotos: Record<string, string[]> = {};
+        recommendedPlaces.forEach((place) => {
+          const photos = photosByNormalizedName.get(normalizeName(place.name));
+          if (photos && photos.length > 0) {
+            nextPhotos[place.name] = photos;
+          }
+        });
+
+        setRecommendedPhotos(nextPhotos);
+      } catch {
+        if (!cancelled) {
+          setRecommendedPhotos({});
+        }
+      }
+    };
+
+    loadRecommendedPhotos();
+
+    return () => {
+      cancelled = true;
+    };
   }, [recommendedPlaces]);
 
   return (
