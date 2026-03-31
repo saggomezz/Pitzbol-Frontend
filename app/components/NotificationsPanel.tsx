@@ -91,6 +91,26 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   const panelRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
 
+  // Heurística para detectar notificaciones de negocio equivalentes aunque falte `negocioId`
+  const areBusinessMessagesSimilar = (localNotif: Notification, backendNotif: Notification) => {
+    if (!localNotif?.mensaje || !backendNotif?.mensaje) return false;
+    if (localNotif.tipo !== backendNotif.tipo) return false;
+    const tipo = localNotif.tipo;
+    const msgA = (localNotif.mensaje || '').toLowerCase();
+    const msgB = (backendNotif.mensaje || '').toLowerCase();
+
+    // Caso: 'Se ha recibido una nueva solicitud de negocio: <nombre>' -> comparar prefijo antes de ':'
+    if (tipo === 'nueva_solicitud_negocio') {
+      const pa = msgA.split(':')[0].trim();
+      const pb = msgB.split(':')[0].trim();
+      return pa === pb;
+    }
+
+    // Para mensajes que contienen el nombre entre comillas, normalizar reemplazando el nombre por un placeholder
+    const normalize = (m: string) => m.replace(/".*?"/g, '""').replace(/\s+/g, ' ').trim();
+    return normalize(msgA) === normalize(msgB);
+  };
+
   // Cargar notificaciones del backend (Firestore)
   const cargarNotificacionesDelBackend = async () => {
     if (!userId) return;
@@ -130,7 +150,6 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
               solicitudId: notif.solicitudId,
               uidSolicitante: notif.uidSolicitante
             };
-            console.log(`📩 Notificación del backend:`, mapped);
             return mapped;
           });
         }
@@ -167,21 +186,66 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       // Combinar con localStorage y eliminar duplicados
       const key = `pitzbol_notifications_${userId}`;
       const notificacionesLocal = JSON.parse(localStorage.getItem(key) || '[]');
-      
-      // Crear un mapa de notificaciones locales por ID para priorizar cambios locales
+
+      // Mapas auxiliares
       const localMap = new Map((notificacionesLocal as Notification[]).map((n: Notification) => [n.id, n]));
-      
-      // Combinar: Firestore como base, pero localStorage sobrescribe si existe
-      const notificacionesCombinadas: Notification[] = notificacionesDelBackend.map((notif: Notification) => 
-        localMap.get(notif.id) || notif
-      );
-      
-      // Agregar notificaciones locales que no están en Firestore
+      // Mapear backend por negocioId para poder deduplicar locales que tengan distinto id
+      const backendByBusiness = new Map<string, Notification>();
+      for (const b of notificacionesDelBackend) {
+        if (b.negocioId) {
+          const prev = backendByBusiness.get(b.negocioId);
+          if (!prev || new Date(b.fecha).getTime() > new Date(prev.fecha).getTime()) {
+            backendByBusiness.set(b.negocioId, b);
+          }
+        }
+      }
+
+      // Construir lista base usando back-end como fuente de verdad, preservando `leido` local si existe
+      const notificacionesCombinadas: Notification[] = notificacionesDelBackend.map((notif: Notification) => {
+        const local = localMap.get(notif.id);
+        const leido = local ? (local.leido ?? notif.leido) : (notif.leido ?? false);
+        return { ...notif, leido };
+      });
+
+      // Añadir locales que no están en backend y no corresponden a un negocio ya representado por backend
       const idsBackend = new Set(notificacionesDelBackend.map((n: Notification) => n.id));
       for (const localNotif of notificacionesLocal as Notification[]) {
-        if (!idsBackend.has(localNotif.id)) {
-          notificacionesCombinadas.push(localNotif);
+        if (idsBackend.has(localNotif.id)) continue;
+        // Si localNotif tiene negocioId y backend ya contiene una notificación para ese negocio,
+        // preferimos la versión del backend (solo preservar `leido`)
+        if (localNotif.negocioId && backendByBusiness.has(localNotif.negocioId)) {
+          const backendNotif = backendByBusiness.get(localNotif.negocioId)!;
+          const idx = notificacionesCombinadas.findIndex(n => n.id === backendNotif.id);
+          if (idx >= 0) {
+            notificacionesCombinadas[idx] = { ...notificacionesCombinadas[idx], leido: localNotif.leido ?? notificacionesCombinadas[idx].leido };
+          } else {
+            notificacionesCombinadas.push({ ...backendNotif, leido: localNotif.leido ?? backendNotif.leido });
+          }
+          continue;
         }
+
+        // Si la notificación local no tiene negocioId, intentar emparejarla heurísticamente
+        let matchedByHeuristic = false;
+        if (!localNotif.negocioId && BUSINESS_NOTIF_TYPES.has(localNotif.tipo)) {
+          for (const [bizId, backendNotif] of backendByBusiness.entries()) {
+            if (areBusinessMessagesSimilar(localNotif, backendNotif)) {
+              // remplazar/actualizar la notificación backend con el estado `leido` local
+              const idx = notificacionesCombinadas.findIndex(n => n.id === backendNotif.id);
+              if (idx >= 0) {
+                notificacionesCombinadas[idx] = { ...notificacionesCombinadas[idx], leido: localNotif.leido ?? notificacionesCombinadas[idx].leido };
+              } else {
+                notificacionesCombinadas.push({ ...backendNotif, leido: localNotif.leido ?? backendNotif.leido });
+              }
+              matchedByHeuristic = true;
+              break;
+            }
+          }
+        }
+
+        if (matchedByHeuristic) continue;
+
+        // Local-only notification (no backend match): include it
+        notificacionesCombinadas.push(localNotif);
       }
 
       // Ordenar por fecha (más recientes primero)
@@ -298,23 +362,47 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
     socketRef.current.on("new-notification", (notif: Notification) => {
       setNotificaciones((prev) => {
-        const alreadyExists = prev.some((item) => item.id === notif.id);
-        if (alreadyExists) {
-          return prev;
+        const key = `pitzbol_notifications_${userId}`;
+        // Try to match incoming notif by id first
+        let idx = prev.findIndex((item) => item.id === notif.id);
+        let updated = [...prev];
+
+        if (idx >= 0) {
+          const leido = prev[idx].leido ?? notif.leido ?? false;
+          updated[idx] = { ...updated[idx], ...notif, leido };
+        } else {
+          // If not found by id, try to match by negocioId to replace stale local entries
+          if (notif.negocioId) {
+            idx = prev.findIndex((item) => item.negocioId && item.negocioId === notif.negocioId);
+          }
+
+          if (idx >= 0) {
+            const leido = prev[idx].leido ?? notif.leido ?? false;
+            updated[idx] = { ...notif, leido };
+          } else {
+            updated = [{ ...notif, leido: notif.leido ?? false }, ...prev];
+          }
         }
-        const updated = [notif, ...prev].sort(
-          (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-        );
+
+        // Remove duplicates by id (keep first occurrence)
+        const seen = new Set<string>();
+        updated = updated.filter(n => {
+          if (seen.has(n.id)) return false;
+          seen.add(n.id);
+          return true;
+        });
+
+        updated = updated.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
         if (userId) {
-          const key = `pitzbol_notifications_${userId}`;
           localStorage.setItem(key, JSON.stringify(updated));
         }
 
+        // Update unread count based on the new array
+        setNoLeidas(updated.filter((n) => !n.leido).length);
+
         return updated;
       });
-
-      setNoLeidas((prev) => prev + (notif.leido ? 0 : 1));
     });
 
     return () => {
@@ -326,9 +414,6 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
   const marcarComoLeida = async (id: string) => {
     if (!userId) return;
-
-    console.log(`📌 Marcando notificación como leída: ${id}`);
-
     // Usar la función centralizada de notificaciones
     marcarNotificacionComoLeida(userId, id);
 
@@ -339,7 +424,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     
     setNotificaciones(actualizadas);
     setNoLeidas(actualizadas.filter(n => !n.leido).length);
-    console.log(`✅ Notificación marcada localmente. No leídas: ${actualizadas.filter(n => !n.leido).length}`);
+    
 
     // Actualizar en el backend
     try {
@@ -350,11 +435,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       
-      if (response.ok) {
-        console.log(`✅ Notificación actualizada en el backend`);
-      } else {
-        console.warn(`⚠️ Error en la respuesta del backend:`, response.status);
-      }
+      // response handled silently; UI already updated locally
     } catch (error) {
       console.error("❌ Error al marcar como leída en backend:", error);
     }
