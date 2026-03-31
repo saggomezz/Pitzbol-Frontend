@@ -235,12 +235,13 @@ function PlaceCard2({ place, photos, noImageText }: {
           )}
           {/* Botón Ubicar */}
           <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 z-10">
-            <Link href="/mapa">
-              <button className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors">
-                <FiMapPin size={14} />
-                Ubicar
-              </button>
-            </Link>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = "/mapa"; }}
+              className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors"
+            >
+              <FiMapPin size={14} />
+              Ubicar
+            </button>
           </div>
         </div>
         <div className="p-3">

@@ -6,8 +6,9 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiMapPin, FiPhone, FiGlobe, FiFileText, FiImage, FiClock,
-  FiCheckCircle, FiAlertCircle, FiArrowLeft, FiShare2, FiEdit, FiMail
+  FiCheckCircle, FiAlertCircle, FiArrowLeft, FiShare2, FiEdit, FiMail, FiCreditCard
 } from "react-icons/fi";
+import WalletModal from "@/app/components/WalletModal";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 
@@ -48,6 +49,7 @@ export default function BusinessPreviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -502,6 +504,12 @@ export default function BusinessPreviewPage() {
               >
                 <FiArrowLeft /> Atrás
               </button>
+              <button
+                onClick={() => setShowWalletModal(true)}
+                className="flex-1 bg-white border-2 border-[#0D601E]/20 hover:border-[#0D601E] text-[#1A4D2E] font-bold py-3 px-6 rounded-full transition-colors flex items-center justify-center gap-2"
+              >
+                <FiCreditCard /> Métodos de Pago
+              </button>
               {business.status !== "PENDING" && (
                 <button
                   onClick={() => {
@@ -521,6 +529,8 @@ export default function BusinessPreviewPage() {
           </div>
         </motion.div>
       </div>
+
+      <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
 
       {/* Modal de imagen */}
       <AnimatePresence>

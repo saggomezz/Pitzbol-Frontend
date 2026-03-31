@@ -6,6 +6,7 @@ import {
 } from "react-icons/fi";
 import { loadStripe } from "@stripe/stripe-js";
 import { CardElement, Elements, useStripe, useElements } from "@stripe/react-stripe-js";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY!
@@ -53,12 +54,11 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
         return;
       }
 
-      const response = await fetch(
+      const response = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/perfil/wallet`,
         {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         }
@@ -104,12 +104,11 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
         return;
       }
 
-      const response = await fetch(
+      const response = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/perfil/card/${cardId}`,
         {
           method: "DELETE",
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         }
@@ -140,12 +139,11 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
         return;
       }
 
-      const response = await fetch(
+      const response = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/perfil/card/${cardId}/default`,
         {
           method: "POST",
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         }
@@ -432,13 +430,12 @@ const AddCardForm = ({ onSuccess }: { onSuccess: () => void }) => {
 
       // Crear setup intent para guardar la tarjeta
       console.log('📋 [AddCardForm] Crear setup intent...');
-      const setupRes = await fetch(
+      const setupRes = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/perfil/setup-intent`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify({ uid: userLocal.uid }),
         }
@@ -488,13 +485,12 @@ const AddCardForm = ({ onSuccess }: { onSuccess: () => void }) => {
         console.log(`   - Payment Method ID: ${paymentMethodId}`);
         console.log(`   - Token (primeros 30 chars): ${token.substring(0, 30) + '...'}`);
 
-        const saveCardRes = await fetch(
+        const saveCardRes = await fetchWithAuth(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/perfil/save-card`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`,
             },
             body: JSON.stringify({ 
               paymentMethodId,

@@ -259,7 +259,7 @@ export default function AdminGuiaDetallePage() {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
-            guiaDocId: guide.id,
+            uid: guide.uid,
             accion,
             adminUid: getAdminUid(),
           }),

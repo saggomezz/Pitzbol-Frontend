@@ -32,6 +32,7 @@ export default function BookTourPage() {
   const [guide, setGuide] = useState<GuideInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [userChecked, setUserChecked] = useState(false);
 
   // Datos del formulario
   const [fecha, setFecha] = useState("");
@@ -40,12 +41,18 @@ export default function BookTourPage() {
   const [numPersonas, setNumPersonas] = useState(1);
   const [notas, setNotas] = useState("");
 
+  // Esperar a que el hook cargue el usuario de localStorage antes de verificar
   useEffect(() => {
-    if (!user) {
+    const stored = localStorage.getItem("pitzbol_user");
+    if (!stored) {
       alert("Debes iniciar sesión para reservar un tour");
       router.push("/");
-      return;
     }
+    setUserChecked(true);
+  }, [router]);
+
+  useEffect(() => {
+    if (!userChecked || !user) return;
 
     const fetchGuideInfo = async () => {
       try {
@@ -71,7 +78,7 @@ export default function BookTourPage() {
     if (guideId) {
       fetchGuideInfo();
     }
-  }, [guideId, user, router]);
+  }, [guideId, user, userChecked, router]);
 
   const calcularTotal = () => {
     if (!guide) return 0;
