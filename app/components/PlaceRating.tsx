@@ -132,6 +132,7 @@ export default function PlaceRating({
   const hasAverageRatings = totalRatings > 0;
 
   if (isLoading) {
+    if (readonly) return null;
     return (
       <div className={`flex items-center gap-1 ${sizeClasses[size]}`}>
         <div className="flex gap-1">
@@ -142,6 +143,8 @@ export default function PlaceRating({
       </div>
     );
   }
+
+  if (readonly && !hasAverageRatings) return null;
 
   const renderStars = ({
     value,
