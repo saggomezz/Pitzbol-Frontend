@@ -294,7 +294,7 @@ function PlaceCard2({ place, photos, noImageText }: {
             </div>
           : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
         }
-        <div className="absolute top-3 right-3 z-20 bg-white/95 border border-[#E8E8E8] rounded-full px-2 py-1 shadow-md">
+        <div className="absolute top-3 right-3 z-20 bg-white/95 border border-[#E8E8E8] rounded-full px-2 py-1 shadow-md empty:hidden">
           <PlaceRating
             placeName={place.name}
             showLabel={true}
@@ -304,7 +304,7 @@ function PlaceCard2({ place, photos, noImageText }: {
         </div>
         {/* Dots indicador (solo con múltiples fotos y hover) */}
         {isHovered && photos.length > 1 && (
-          <div className="absolute bottom-9 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
             {photos.map((_, i) => (
               <div key={i} className={`rounded-full transition-all duration-300 ${i === photoIdx ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/60'}`} />
             ))}

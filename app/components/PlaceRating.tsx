@@ -226,7 +226,7 @@ export default function PlaceRating({
               )}
             </>
           ) : (
-            <span className="font-semibold text-[#1A4D2E] col-span-2 whitespace-nowrap"></span>
+            {null}
           )}
         </div>
 
@@ -253,7 +253,7 @@ export default function PlaceRating({
           interactive: !readonly,
         })
       ) : (
-        <span className="font-bold text-[#1A4D2E] whitespace-nowrap"></span>
+        null
       )}
 
       {showLabel && hasAverageRatings && (
