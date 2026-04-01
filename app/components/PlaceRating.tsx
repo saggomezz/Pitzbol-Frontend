@@ -225,9 +225,7 @@ export default function PlaceRating({
                 </div>
               )}
             </>
-          ) : (
-            {null}
-          )}
+          ) : null}
         </div>
 
         <div className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-2 gap-y-1">
