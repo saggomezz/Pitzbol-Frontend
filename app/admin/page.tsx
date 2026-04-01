@@ -1,4 +1,8 @@
 "use client";
+<<<<<<< HEAD
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+=======
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { enviarNotificacion } from "../../lib/notificaciones";
@@ -26,17 +30,25 @@ const getBackendBaseUrl = () => {
   const normalized = rawBase.replace(/\/+$/, '');
   return normalized.endsWith('/api') ? normalized.slice(0, -4) : normalized;
 };
+>>>>>>> 327351d294ca4b6769872efffc0a2acf2736d529
 
 export default function AdminPerfil() {
-  const t = useTranslations('admin');
-  const tCommon = useTranslations('common');
-  
+  const router = useRouter();
+
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-    
     if (!user.uid || user.role !== "admin") {
-      window.location.href = "/"; 
+      router.replace("/");
+      return;
     }
+<<<<<<< HEAD
+    router.replace("/admin/guias");
+  }, [router]);
+
+  return (
+    <div className="h-screen flex items-center justify-center bg-[#FDFCF9]">
+      <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#0D601E]/20 border-t-[#0D601E]" />
+=======
   }, []);
 
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
@@ -582,6 +594,7 @@ export default function AdminPerfil() {
         targetHref="/admin/guias/historial"
         description="Abre el historial de solicitudes de guias."
       />
+>>>>>>> 327351d294ca4b6769872efffc0a2acf2736d529
     </div>
   );
 }

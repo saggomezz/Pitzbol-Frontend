@@ -361,13 +361,13 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             ) : role === "guia" ? (
                                 <>
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('guidePanel')}</p>
-                                    <button className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group w-full text-left">
+                                    <Link href="/guide/solicitudes" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium group w-full text-left">
                                         <FiClock className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
                                         <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('tourRequests')}</span>
-                                    </button>
-                                    <button className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left">
+                                    </Link>
+                                    <Link href="/guide/solicitudes" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium w-full text-left">
                                         <FiCreditCard /> {t('myPayments')}
-                                    </button>
+                                    </Link>
                                     {user && hasBusinessRequests && (
                                         <Link
                                             href="/negocio/mis-solicitudes"

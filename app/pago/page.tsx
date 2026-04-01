@@ -8,11 +8,15 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 import { useState } from "react";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 // Carga Stripe con tu public key
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY!
 );
+
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
 // ===============================
 // Checkout Form
@@ -33,9 +37,9 @@ function CheckoutForm() {
     setMessage("");
 
     try {
-      // 1️⃣ Crear PaymentIntent en el backend
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/payments/create-payment-intent`,
+      // 1️⃣ Crear PaymentIntent en el backend (ruta simple sin reserva)
+      const res = await fetchWithAuth(
+        `${BACKEND_URL}/api/payments/create-simple-payment`,
         {
           method: "POST",
           headers: {

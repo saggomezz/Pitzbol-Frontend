@@ -1,8 +1,9 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { fetchWithAuth } from "../../../lib/fetchWithAuth";
-import { FaSearch, FaCheckCircle, FaHourglassHalf, FaUserTie, FaPhone, FaEnvelope, FaMapMarkerAlt, FaGlobe, FaStar, FaMoneyBillWave, FaIdCard } from "react-icons/fa";
-import { MdPerson, MdCategory } from "react-icons/md";
+import { FiSearch, FiCheckCircle, FiClock, FiUser, FiPhone, FiMail, FiGlobe, FiStar, FiDollarSign, FiArrowLeft, FiShield, FiMapPin, FiFileText, FiImage } from "react-icons/fi";
+import { FaUserTie, FaHistory } from "react-icons/fa";
+import { HiSparkles } from "react-icons/hi";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -109,16 +110,14 @@ const AdminGuiasClient = () => {
               <h1 className="text-3xl md:text-4xl font-extrabold text-[#1A4D2E] flex items-center gap-2">
                 Gestionar Guías
               </h1>
-              <p className="text-gray-600 text-sm mt-1">
-                Administra y supervisa a los guías turísticos registrados
-              </p>
+              <p className="text-gray-600 text-sm mt-1">Administra y supervisa todos los guías turísticos</p>
             </div>
           </div>
           <button
             className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white border-2 border-[#0D601E]/20 text-[#0D601E] font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
-            onClick={() => router.push("/admin")}
+            onClick={() => router.push('/admin/historial-solicitudes')}
           >
-            ← Volver al Panel
+            <FaHistory /> Historial
           </button>
         </motion.div>
 
@@ -137,7 +136,7 @@ const AdminGuiasClient = () => {
             }`}
             onClick={() => setTab("aprobados")}
           >
-            <FaCheckCircle /> Aprobados ({aprobados.length})
+            <FiCheckCircle /> Aprobados ({aprobados.length})
           </button>
           <button
             className={`px-6 py-3 rounded-xl font-bold shadow-md transition-all duration-300 flex items-center gap-2 ${
@@ -147,7 +146,7 @@ const AdminGuiasClient = () => {
             }`}
             onClick={() => setTab("pendientes")}
           >
-            <FaHourglassHalf /> Pendientes ({pendientes.length})
+            <FiClock /> Pendientes ({pendientes.length})
           </button>
         </motion.div>
 
@@ -159,10 +158,10 @@ const AdminGuiasClient = () => {
           className="mb-6"
         >
           <div className="relative">
-            <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
-              placeholder="Buscar guías por nombre, correo, especialidad o nacionalidad..."
+              placeholder="Buscar guías por nombre, especialidad o correo..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-[#0D601E]/20 focus:border-[#0D601E] focus:outline-none bg-white shadow-md text-gray-700 placeholder-gray-400 transition-all"
@@ -190,22 +189,21 @@ const AdminGuiasClient = () => {
             className="text-center py-20 flex flex-col items-center gap-4"
           >
             <div className="bg-white p-8 rounded-full shadow-lg">
-              <FaUserTie className="text-gray-300 text-6xl" />
+              <FiUser className="text-gray-300 text-6xl" />
             </div>
             <div>
               <h3 className="text-xl font-bold text-gray-600 mb-2">
-                No hay guías {tab}
+                {searchQuery ? "Sin resultados" : `No hay guías ${tab}`}
               </h3>
               <p className="text-gray-500">
-                {searchQuery
-                  ? "Intenta con otra búsqueda"
-                  : "Aún no hay guías en esta categoría"}
+                {searchQuery ? "Intenta con otra búsqueda" : "Aún no hay guías en esta categoría"}
               </p>
             </div>
           </motion.div>
         ) : (
           <>
-            {tab === "pendientes" && (
+            {/* Pending banner */}
+            {tab === "pendientes" && pendientes.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -214,32 +212,26 @@ const AdminGuiasClient = () => {
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl border border-white/30">
-                      <FaHourglassHalf className="text-white text-3xl" />
+                      <FiClock className="text-white text-3xl" />
                     </div>
                     <div>
-                      <h2 className="text-3xl font-black text-white">
-                        Pendientes por Aprobar
-                      </h2>
+                      <h2 className="text-3xl font-black text-white">Pendientes por Aprobar</h2>
                       <p className="text-white/90 text-sm font-semibold mt-1">
-                        Tienes {pendientes.length} guía
-                        {pendientes.length !== 1 ? "s" : ""} esperando aprobación
+                        Tienes {pendientes.length} guía{pendientes.length !== 1 ? "s" : ""} esperando aprobación
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/30">
-                      <span className="text-white font-black text-2xl">
-                        {pendientes.length}
-                      </span>
-                      <p className="text-white/80 text-xs font-semibold">
-                        Pendientes
-                      </p>
+                      <span className="text-white font-black text-2xl">{pendientes.length}</span>
+                      <p className="text-white/80 text-xs font-semibold">Pendientes</p>
                     </div>
                   </div>
                 </div>
               </motion.div>
             )}
 
+            {/* Cards Grid */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -266,8 +258,8 @@ const AdminGuiasClient = () => {
                     tabIndex={0}
                     className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group border-2 border-transparent hover:border-[#0D601E]/20 cursor-pointer"
                   >
-                    {/* Guide Header */}
-                    <div className="relative h-32 bg-gradient-to-br from-[#0D601E]/5 to-[#1A4D2E]/10 flex items-center justify-center overflow-hidden">
+                    {/* Card Header — profile photo */}
+                    <div className="relative h-36 bg-gradient-to-br from-[#0D601E]/5 to-[#1A4D2E]/10 flex items-center justify-center overflow-hidden">
                       {guia.fotoPerfil ? (
                         <div className="relative w-full h-full">
                           <Image
@@ -276,17 +268,15 @@ const AdminGuiasClient = () => {
                             fill
                             className="object-cover group-hover:scale-110 transition-transform duration-300"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center">
-                          <MdPerson className="text-[#0D601E]/30 text-6xl mb-2" />
-                          <span className="text-xs text-gray-400 font-medium">
-                            Sin foto
-                          </span>
+                          <FiUser className="text-[#0D601E]/30 text-6xl mb-2" />
+                          <span className="text-xs text-gray-400 font-medium">Sin foto</span>
                         </div>
                       )}
-                      {/* Status Badge */}
+                      {/* Status badge */}
                       <div className="absolute top-3 right-3">
                         {guia.status === "activo" ? (
                           <motion.span
@@ -294,8 +284,7 @@ const AdminGuiasClient = () => {
                             animate={{ scale: 1 }}
                             className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg"
                           >
-                            <FaCheckCircle />
-                            Aprobado
+                            <FiCheckCircle size={13} /> Aprobado
                           </motion.span>
                         ) : (
                           <motion.span
@@ -303,49 +292,47 @@ const AdminGuiasClient = () => {
                             animate={{ scale: 1 }}
                             className="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg"
                           >
-                            <FaHourglassHalf />
-                            En revisión
+                            <FiClock size={13} /> Pendiente
                           </motion.span>
                         )}
                       </div>
-
-                      {/* Biometric Badge */}
+                      {/* Biometric badge */}
                       {guia.validacionBiometrica && (
                         <div className="absolute top-3 left-3">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-bold shadow-lg ${
-                              guia.validacionBiometrica.porcentaje >= 70
-                                ? "bg-green-500 text-white"
-                                : guia.validacionBiometrica.porcentaje >= 40
-                                ? "bg-yellow-500 text-black"
-                                : "bg-red-500 text-white"
-                            }`}
-                          >
-                            🔐 {guia.validacionBiometrica.porcentaje}%
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg ${
+                            guia.validacionBiometrica.porcentaje >= 70
+                              ? "bg-green-500 text-white"
+                              : guia.validacionBiometrica.porcentaje >= 40
+                              ? "bg-yellow-500 text-white"
+                              : "bg-red-500 text-white"
+                          }`}>
+                            <FiShield size={12} /> {guia.validacionBiometrica.porcentaje}%
                           </span>
                         </div>
                       )}
                     </div>
 
-                    {/* Guide Content */}
+                    {/* Card Content */}
                     <div className="p-5">
                       <h3 className="font-bold text-xl text-[#1A4D2E] mb-1 line-clamp-1">
                         {guia.nombre} {guia.apellido}
                       </h3>
 
-                      {/* Rating & Reviews */}
+                      {/* Rating & tours */}
                       {tab === "aprobados" && (
-                        <div className="flex items-center gap-2 mb-3">
-                          <FaStar className="text-amber-400 text-sm" />
-                          <span className="text-sm font-semibold text-gray-700">
-                            {guia.calificacion > 0
-                              ? guia.calificacion.toFixed(1)
-                              : "Sin calificación"}
-                          </span>
-                          {guia.resenas > 0 && (
-                            <span className="text-xs text-gray-500">
-                              ({guia.resenas} reseña
-                              {guia.resenas !== 1 ? "s" : ""})
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex items-center gap-1 text-sm">
+                            <FiStar className="text-amber-400" size={14} />
+                            <span className="font-semibold text-gray-700">
+                              {guia.calificacion > 0 ? guia.calificacion.toFixed(1) : "—"}
+                            </span>
+                            {guia.resenas > 0 && (
+                              <span className="text-gray-400 text-xs">({guia.resenas})</span>
+                            )}
+                          </div>
+                          {guia.tours && guia.tours.length > 0 && (
+                            <span className="text-xs text-gray-400 flex items-center gap-1">
+                              <FiMapPin size={12} /> {guia.tours.length} tours
                             </span>
                           )}
                         </div>
@@ -353,81 +340,72 @@ const AdminGuiasClient = () => {
 
                       {/* Specialties */}
                       {guia.especialidades.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {guia.especialidades.slice(0, 3).map((esp, i) => (
-                            <span
-                              key={i}
-                              className="text-xs font-medium text-gray-600 bg-[#0D601E]/10 px-2 py-1 rounded-lg flex items-center gap-1"
-                            >
-                              <MdCategory className="text-[#0D601E] text-xs" />
-                              {esp}
-                            </span>
-                          ))}
-                          {guia.especialidades.length > 3 && (
-                            <span className="text-xs font-bold text-[#0D601E] bg-[#0D601E]/10 px-2 py-1 rounded-lg">
-                              +{guia.especialidades.length - 3}
-                            </span>
-                          )}
+                        <div className="flex items-center gap-2 pb-3 mb-3 border-b border-gray-200">
+                          <HiSparkles className="text-[#0D601E] shrink-0" size={14} />
+                          <div className="flex flex-wrap gap-1">
+                            {guia.especialidades.slice(0, 3).map((esp, i) => (
+                              <span key={i} className="text-xs font-medium text-[#1A4D2E] bg-[#0D601E]/5 px-2 py-0.5 rounded-lg">
+                                {esp}
+                              </span>
+                            ))}
+                            {guia.especialidades.length > 3 && (
+                              <span className="text-xs font-bold text-gray-400">+{guia.especialidades.length - 3}</span>
+                            )}
+                          </div>
                         </div>
                       )}
 
-                      {/* Tarifa */}
-                      <div className="flex items-center gap-2 mb-3 bg-emerald-50 px-3 py-2 rounded-lg">
-                        <FaMoneyBillWave className="text-emerald-600 text-sm" />
-                        <span className="text-sm font-bold text-emerald-700">
-                          ${guia.tarifaMxn} MXN/hr
-                        </span>
-                        {guia.tarifaDiaCompleto && (
-                          <span className="text-xs text-emerald-600">
-                            · ${guia.tarifaDiaCompleto} día completo
-                          </span>
-                        )}
-                      </div>
-
                       {/* Description */}
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-2 min-h-[40px]">
-                        {guia.biografia || guia.descripcion || "Sin descripción"}
-                      </p>
+                      {guia.descripcion && (
+                        <p className="text-sm text-gray-600 line-clamp-2 mb-3">{guia.descripcion}</p>
+                      )}
 
-                      {/* Contact Info */}
-                      <div className="space-y-2 text-xs mb-4">
+                      {/* Contact info */}
+                      <div className="space-y-1.5 text-sm text-gray-600">
                         {guia.correo && (
-                          <div className="flex items-center gap-2 text-gray-500">
-                            <FaEnvelope className="text-[#0D601E]" />
+                          <div className="flex items-center gap-2">
+                            <FiMail className="text-gray-400 shrink-0" size={14} />
                             <span className="truncate">{guia.correo}</span>
                           </div>
                         )}
                         {guia.telefono && (
-                          <div className="flex items-center gap-2 text-gray-500">
-                            <FaPhone className="text-[#0D601E]" />
+                          <div className="flex items-center gap-2">
+                            <FiPhone className="text-gray-400 shrink-0" size={14} />
                             <span>{guia.telefono}</span>
                           </div>
                         )}
                         {guia.nacionalidad && (
-                          <div className="flex items-center gap-2 text-gray-500">
-                            <FaGlobe className="text-[#0D601E]" />
+                          <div className="flex items-center gap-2">
+                            <FiGlobe className="text-gray-400 shrink-0" size={14} />
                             <span>{guia.nacionalidad}</span>
                           </div>
                         )}
                       </div>
 
-                      {/* Tours count (for approved) */}
-                      {tab === "aprobados" && guia.tours && (
-                        <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 p-2 rounded-lg">
-                          <FaMapMarkerAlt className="text-[#0D601E]" />
-                          <span className="font-medium">
-                            {guia.tours.length} tour
-                            {guia.tours.length !== 1 ? "s" : ""} publicado
-                            {guia.tours.length !== 1 ? "s" : ""}
-                          </span>
+                      {/* Tarifa */}
+                      <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <FiDollarSign className="text-[#0D601E]" size={16} />
+                          <span className="font-bold text-[#1A4D2E]">${guia.tarifaMxn}</span>
+                          <span className="text-gray-400 text-xs">/hr</span>
+                          {guia.tarifaDiaCompleto && (
+                            <span className="text-gray-400 text-xs ml-1">· ${guia.tarifaDiaCompleto} día completo</span>
+                          )}
                         </div>
-                      )}
+                        {tab === "pendientes" && guia.rfc && (
+                          <span className="text-xs text-gray-400 flex items-center gap-1">
+                            <FiFileText size={12} /> {guia.rfc}
+                          </span>
+                        )}
+                      </div>
 
-                      {/* RFC for pending */}
-                      {tab === "pendientes" && guia.rfc && (
-                        <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 p-2 rounded-lg">
-                          <FaIdCard className="text-[#0D601E]" />
-                          <span className="font-medium">RFC: {guia.rfc}</span>
+                      {/* Documents indicator for pending */}
+                      {tab === "pendientes" && (
+                        <div className="mt-3 flex items-center gap-2">
+                          <FiImage className="text-gray-400" size={14} />
+                          <span className="text-xs text-gray-400">
+                            {[guia.fotoFrente, guia.fotoReverso, guia.fotoRostro].filter(Boolean).length} documentos adjuntos
+                          </span>
                         </div>
                       )}
                     </div>

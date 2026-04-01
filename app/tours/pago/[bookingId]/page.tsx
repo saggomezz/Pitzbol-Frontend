@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   FiCheckCircle,
   FiCreditCard,
@@ -10,11 +10,22 @@ import {
   FiUser,
   FiDollarSign,
   FiAlertCircle,
+  FiPlus,
+  FiLock,
+  FiArrowLeft,
 } from "react-icons/fi";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { loadStripe } from "@stripe/stripe-js";
+import {
+  CardElement,
+  Elements,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY!);
 
 interface BookingData {
@@ -34,12 +45,146 @@ interface BookingData {
 
 interface SavedCard {
   id: string;
+  stripePaymentMethodId: string;
   brand: string;
   last4: string;
-  exp_month: number;
-  exp_year: number;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
 }
 
+/* ─── Inline Add Card Form ─── */
+function InlineAddCardForm({
+  onSuccess,
+  onCancel,
+}: {
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    setLoading(true);
+    setCardError(null);
+
+    try {
+      const setupRes = await fetchWithAuth(`${BACKEND_URL}/api/perfil/setup-intent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      if (!setupRes.ok) {
+        const errData = await setupRes.json().catch(() => null);
+        throw new Error(
+          errData?.error || `Error al crear setup intent (${setupRes.status})`
+        );
+      }
+
+      const { clientSecret } = await setupRes.json();
+
+      const result = await stripe.confirmCardSetup(clientSecret, {
+        payment_method: { card: elements.getElement(CardElement)! },
+      });
+
+      if (result.error) {
+        setCardError(result.error.message || "Error al procesar tarjeta");
+        return;
+      }
+
+      if (
+        result.setupIntent?.status === "succeeded" &&
+        result.setupIntent?.payment_method
+      ) {
+        const paymentMethodId =
+          typeof result.setupIntent.payment_method === "string"
+            ? result.setupIntent.payment_method
+            : (result.setupIntent.payment_method as { id: string }).id;
+
+        const saveRes = await fetchWithAuth(`${BACKEND_URL}/api/perfil/save-card`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentMethodId }),
+        });
+
+        if (!saveRes.ok) {
+          const errData = await saveRes.json().catch(() => null);
+          throw new Error(errData?.error || "Error al guardar tarjeta");
+        }
+
+        onSuccess();
+      }
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Error al procesar tarjeta";
+      setCardError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="bg-white border-2 border-gray-200 focus-within:border-[#1A4D2E] rounded-xl p-4 transition-all">
+        <CardElement
+          options={{
+            style: {
+              base: {
+                fontSize: "16px",
+                color: "#1A4D2E",
+                fontWeight: "500",
+                "::placeholder": { color: "#aaa" },
+              },
+              invalid: { color: "#FA755A" },
+            },
+          }}
+        />
+      </div>
+
+      {cardError && (
+        <p className="text-sm text-red-600 flex items-center gap-1.5">
+          <FiAlertCircle size={14} />
+          {cardError}
+        </p>
+      )}
+
+      <div className="flex items-center gap-2 text-xs text-gray-400">
+        <FiLock size={12} />
+        Protegido por Stripe · Encriptación 256 bits
+      </div>
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-sm transition-all"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          disabled={!stripe || loading}
+          className="flex-1 py-3 bg-[#1A4D2E] hover:bg-[#0D601E] text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+          ) : (
+            <FiCreditCard size={16} />
+          )}
+          {loading ? "Guardando..." : "Guardar tarjeta"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/* ─── Main Payment Page ─── */
 export default function TourPaymentPage() {
   const params = useParams();
   const router = useRouter();
@@ -53,20 +198,44 @@ export default function TourPaymentPage() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showAddCard, setShowAddCard] = useState(false);
+
+  const fetchCards = async () => {
+    if (!user) return;
+    try {
+      const cardsResponse = await fetchWithAuth(
+        `${BACKEND_URL}/api/perfil/wallet`
+      );
+      if (cardsResponse.ok) {
+        const cardsData = await cardsResponse.json();
+        if (cardsData.cards?.length > 0) {
+          setSavedCards(cardsData.cards);
+          const defaultCard = cardsData.cards.find((c: SavedCard) => c.isDefault);
+          if (!selectedCard) setSelectedCard((defaultCard || cardsData.cards[0]).stripePaymentMethodId);
+        }
+      }
+    } catch {
+      /* silently fail — cards section will show empty state */
+    }
+  };
 
   useEffect(() => {
-    if (!user) {
+    const stored = localStorage.getItem("pitzbol_user");
+    if (!stored) {
       alert("Debes iniciar sesión");
       router.push("/");
       return;
     }
+  }, [router]);
+
+  useEffect(() => {
+    if (!user) return;
 
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        // Obtener datos de la reserva
-        const bookingResponse = await fetch(
+        const bookingResponse = await fetchWithAuth(
           `${BACKEND_URL}/api/bookings/${bookingId}`
         );
         const bookingData = await bookingResponse.json();
@@ -76,33 +245,16 @@ export default function TourPaymentPage() {
         }
 
         setBooking(bookingData.booking);
-
-        // Obtener tarjetas guardadas del usuario
-        // Aquí deberías hacer una llamada al endpoint que devuelve las tarjetas guardadas
-        // Por ahora, simulamos que hay tarjetas guardadas
-        const cardsResponse = await fetch(
-          `${BACKEND_URL}/api/payments/cards/${user.uid}`
-        );
-        
-        if (cardsResponse.ok) {
-          const cardsData = await cardsResponse.json();
-          if (cardsData.success && cardsData.cards.length > 0) {
-            setSavedCards(cardsData.cards);
-            setSelectedCard(cardsData.cards[0].id);
-          }
-        }
-      } catch (error) {
-        console.error("Error al cargar datos:", error);
+        await fetchCards();
+      } catch {
         setError("Error al cargar información de pago");
       } finally {
         setLoading(false);
       }
     };
 
-    if (bookingId) {
-      fetchData();
-    }
-  }, [bookingId, user, router]);
+    if (bookingId) fetchData();
+  }, [bookingId, user]);
 
   const handlePayment = async () => {
     if (!selectedCard || !booking) {
@@ -114,20 +266,18 @@ export default function TourPaymentPage() {
     setError(null);
 
     try {
-      // Crear payment intent
-      const paymentResponse = await fetch(
+      // 1. Crear Payment Intent (sin confirmar)
+      const paymentResponse = await fetchWithAuth(
         `${BACKEND_URL}/api/payments/create-payment-intent`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            amount: booking.total * 100, // Convertir a centavos
-            currency: "mxn",
-            customerId: user?.uid,
-            paymentMethodId: selectedCard,
             bookingId: booking.id,
+            userId: user?.uid,
+            amount: booking.total,
+            currency: "mxn",
+            paymentMethodId: selectedCard,
           }),
         }
       );
@@ -135,53 +285,60 @@ export default function TourPaymentPage() {
       const paymentData = await paymentResponse.json();
 
       if (!paymentData.success) {
-        throw new Error(paymentData.message || "Error al procesar el pago");
+        throw new Error(paymentData.message || "Error al crear el pago");
       }
 
-      // Actualizar estado de la reserva
-      await fetch(`${BACKEND_URL}/api/bookings/${bookingId}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          status: "pagado",
-          paymentId: paymentData.paymentIntentId,
-        }),
-      });
+      // 2. Confirmar pago con tarjeta guardada
+      const confirmResponse = await fetchWithAuth(
+        `${BACKEND_URL}/api/payments/confirm-with-saved-card`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentIntentId: paymentData.paymentIntentId,
+            paymentMethodId: selectedCard,
+            userId: user?.uid,
+          }),
+        }
+      );
+
+      const confirmData = await confirmResponse.json();
+
+      if (!confirmData.success) {
+        throw new Error(confirmData.message || "Error al confirmar el pago");
+      }
 
       setSuccess(true);
-
-      // Redirigir a página de confirmación después de 2 segundos
-      setTimeout(() => {
-        router.push(`/tours/confirmacion/${bookingId}`);
-      }, 2000);
-    } catch (error: any) {
-      console.error("Error al procesar pago:", error);
-      setError(error.message || "Error al procesar el pago");
+      setTimeout(() => router.push(`/tours/confirmacion/${bookingId}`), 2000);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Error al procesar el pago";
+      setError(message);
     } finally {
       setProcessing(false);
     }
   };
 
+  /* ── Loading state ── */
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-16 w-16 border-4 border-[#1A4D2E] border-t-transparent"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFCF9]">
+        <div className="animate-spin rounded-full h-12 w-12 border-3 border-gray-200 border-t-[#1A4D2E]" />
       </div>
     );
   }
 
+  /* ── Booking not found ── */
   if (!booking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFCF9]">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
             Reserva no encontrada
           </h2>
           <button
             onClick={() => router.push("/tours")}
-            className="bg-[#1A4D2E] text-white px-6 py-3 rounded-xl font-bold"
+            className="bg-[#1A4D2E] text-white px-6 py-3 rounded-xl font-semibold text-sm"
           >
             Volver a Tours
           </button>
@@ -190,200 +347,270 @@ export default function TourPaymentPage() {
     );
   }
 
+  /* ── Success state ── */
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFCF9]">
         <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
+          initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-white rounded-3xl shadow-2xl p-12 text-center max-w-md"
+          className="bg-white rounded-3xl border border-gray-100 p-12 text-center max-w-md"
         >
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <FiCheckCircle className="text-green-600" size={48} />
+          <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <FiCheckCircle className="text-green-600" size={36} />
           </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
             ¡Pago Exitoso!
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-sm text-gray-500 mb-6">
             Tu reserva ha sido confirmada. El guía recibirá la notificación.
           </p>
-          <div className="animate-spin rounded-full h-8 w-8 border-4 border-[#1A4D2E] border-t-transparent mx-auto"></div>
+          <div className="animate-spin rounded-full h-6 w-6 border-3 border-gray-200 border-t-[#1A4D2E] mx-auto" />
         </motion.div>
       </div>
     );
   }
 
+  /* ── Main Payment View ── */
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl shadow-lg p-8"
-        >
-          <h1 className="text-3xl font-bold text-[#1A4D2E] mb-8">
-            Confirmar Pago
-          </h1>
+    <div className="min-h-screen bg-[#FDFCF9]">
+      {/* Header */}
+      <header className="border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-20">
+        <div className="max-w-3xl mx-auto px-4 py-5 flex items-center gap-3">
+          <button
+            onClick={() => router.push(`/tours/reservar/${booking.guideId}`)}
+            className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+          >
+            <FiArrowLeft size={20} className="text-gray-600" />
+          </button>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-800">
+              Confirmar Pago
+            </h1>
+            <p className="text-sm text-gray-400">
+              Reserva con {booking.guideName}
+            </p>
+          </div>
+        </div>
+      </header>
 
-          {/* Resumen de la reserva */}
-          <div className="bg-gray-50 rounded-2xl p-6 mb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
-              Resumen de Reserva
-            </h2>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-gray-700">
-                <div className="flex items-center gap-2">
-                  <FiUser size={18} />
-                  <span>Guía:</span>
-                </div>
-                <span className="font-semibold">{booking.guideName}</span>
-              </div>
+      <main className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+        {/* Booking Summary */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">
+            Resumen de Reserva
+          </h2>
 
-              <div className="flex items-center justify-between text-gray-700">
-                <div className="flex items-center gap-2">
-                  <FiCalendar size={18} />
-                  <span>Fecha:</span>
-                </div>
-                <span className="font-semibold">
-                  {new Date(booking.fecha).toLocaleDateString("es-MX", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </span>
-              </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-sm text-gray-500">
+                <FiUser size={15} /> Guía
+              </span>
+              <span className="text-sm font-semibold text-gray-800">
+                {booking.guideName}
+              </span>
+            </div>
 
-              <div className="flex items-center justify-between text-gray-700">
-                <div className="flex items-center gap-2">
-                  <FiClock size={18} />
-                  <span>Horario:</span>
-                </div>
-                <span className="font-semibold">
-                  {booking.horaInicio} -{" "}
-                  {booking.duracion === "medio" ? "Medio Día (4h)" : "Día Completo (8h)"}
-                </span>
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-sm text-gray-500">
+                <FiCalendar size={15} /> Fecha
+              </span>
+              <span className="text-sm font-semibold text-gray-800">
+                {new Date(booking.fecha).toLocaleDateString("es-MX", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
 
-              <div className="flex items-center justify-between text-gray-700">
-                <div className="flex items-center gap-2">
-                  <FiUser size={18} />
-                  <span>Personas:</span>
-                </div>
-                <span className="font-semibold">{booking.numPersonas}</span>
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-sm text-gray-500">
+                <FiClock size={15} /> Horario
+              </span>
+              <span className="text-sm font-semibold text-gray-800">
+                {booking.horaInicio} ·{" "}
+                {booking.duracion === "medio"
+                  ? "Medio Día (4h)"
+                  : "Día Completo (8h)"}
+              </span>
+            </div>
 
-              <div className="pt-4 border-t-2 border-gray-300">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FiDollarSign size={24} className="text-[#1A4D2E]" />
-                    <span className="text-xl font-bold text-gray-800">Total:</span>
-                  </div>
-                  <span className="text-3xl font-bold text-[#1A4D2E]">
-                    ${booking.total.toLocaleString("es-MX")} MXN
-                  </span>
-                </div>
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-sm text-gray-500">
+                <FiUser size={15} /> Personas
+              </span>
+              <span className="text-sm font-semibold text-gray-800">
+                {booking.numPersonas}
+              </span>
+            </div>
+
+            <div className="pt-4 mt-4 border-t border-gray-100 flex items-center justify-between">
+              <span className="flex items-center gap-2 text-base font-bold text-gray-800">
+                <FiDollarSign size={18} className="text-[#1A4D2E]" /> Total
+              </span>
+              <span className="text-2xl font-bold text-[#1A4D2E]">
+                ${booking.total.toLocaleString("es-MX")} MXN
+              </span>
             </div>
           </div>
+        </div>
 
-          {/* Método de pago */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <FiCreditCard size={24} />
-              Método de Pago
+        {/* Payment Method */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+              <FiCreditCard size={16} /> Método de Pago
             </h2>
+            {savedCards.length > 0 && !showAddCard && (
+              <button
+                onClick={() => setShowAddCard(true)}
+                className="text-xs font-semibold text-[#1A4D2E] hover:text-[#0D601E] flex items-center gap-1 transition-colors"
+              >
+                <FiPlus size={14} /> Agregar tarjeta
+              </button>
+            )}
+          </div>
 
-            {savedCards.length > 0 ? (
-              <div className="space-y-3">
+          <AnimatePresence mode="wait">
+            {showAddCard ? (
+              <motion.div
+                key="add"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <Elements stripe={stripePromise}>
+                  <InlineAddCardForm
+                    onSuccess={() => {
+                      setShowAddCard(false);
+                      fetchCards();
+                    }}
+                    onCancel={() => setShowAddCard(false)}
+                  />
+                </Elements>
+              </motion.div>
+            ) : savedCards.length > 0 ? (
+              <motion.div
+                key="cards"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-2"
+              >
                 {savedCards.map((card) => (
                   <button
                     key={card.id}
-                    onClick={() => setSelectedCard(card.id)}
+                    onClick={() => setSelectedCard(card.stripePaymentMethodId)}
                     className={`w-full p-4 border-2 rounded-xl text-left transition-all ${
-                      selectedCard === card.id
-                        ? "border-[#1A4D2E] bg-[#F6F0E6]"
-                        : "border-gray-300 hover:border-gray-400"
+                      selectedCard === card.stripePaymentMethodId
+                        ? "border-[#1A4D2E] bg-green-50/50"
+                        : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <FiCreditCard size={24} className="text-gray-600" />
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            selectedCard === card.stripePaymentMethodId
+                              ? "bg-[#1A4D2E] text-white"
+                              : "bg-gray-100 text-gray-400"
+                          }`}
+                        >
+                          <FiCreditCard size={18} />
+                        </div>
                         <div>
-                          <p className="font-semibold text-gray-800 capitalize">
+                          <p className="font-semibold text-sm text-gray-800 capitalize">
                             {card.brand} •••• {card.last4}
                           </p>
-                          <p className="text-sm text-gray-600">
-                            Vence {card.exp_month}/{card.exp_year}
+                          <p className="text-xs text-gray-400">
+                            Vence {String(card.expMonth).padStart(2, "0")}/
+                            {card.expYear}
                           </p>
                         </div>
                       </div>
-                      {selectedCard === card.id && (
-                        <FiCheckCircle className="text-[#1A4D2E]" size={24} />
+                      {selectedCard === card.stripePaymentMethodId && (
+                        <FiCheckCircle className="text-[#1A4D2E]" size={20} />
                       )}
                     </div>
                   </button>
                 ))}
-              </div>
+              </motion.div>
             ) : (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start gap-3">
-                <FiAlertCircle className="text-yellow-600 mt-1 flex-shrink-0" size={20} />
-                <div>
-                  <p className="text-yellow-800 font-semibold mb-2">
-                    No tienes tarjetas guardadas
-                  </p>
-                  <p className="text-sm text-yellow-700 mb-3">
-                    Debes agregar una tarjeta en tu billetera antes de continuar.
-                  </p>
-                  <button
-                    onClick={() => router.push("/perfil")}
-                    className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors"
-                  >
-                    Ir a Mi Billetera
-                  </button>
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-4"
+              >
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start gap-3">
+                  <FiAlertCircle
+                    className="text-yellow-600 mt-0.5 shrink-0"
+                    size={18}
+                  />
+                  <div>
+                    <p className="text-yellow-800 font-semibold text-sm mb-1">
+                      No tienes tarjetas guardadas
+                    </p>
+                    <p className="text-xs text-yellow-700">
+                      Agrega una tarjeta para completar tu pago.
+                    </p>
+                  </div>
                 </div>
-              </div>
+
+                <Elements stripe={stripePromise}>
+                  <InlineAddCardForm
+                    onSuccess={() => {
+                      setShowAddCard(false);
+                      fetchCards();
+                    }}
+                    onCancel={() => router.push("/perfil")}
+                  />
+                </Elements>
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
+        </div>
 
-          {/* Error message */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-              <FiAlertCircle className="text-red-600 mt-1 flex-shrink-0" size={20} />
-              <p className="text-red-800">{error}</p>
-            </div>
-          )}
-
-          {/* Botones */}
-          <div className="flex gap-4">
-            <button
-              onClick={() => router.push(`/tours/reservar/${booking.guideId}`)}
-              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-4 px-6 rounded-xl font-bold transition-all duration-300"
-              disabled={processing}
-            >
-              Atrás
-            </button>
-            <button
-              onClick={handlePayment}
-              disabled={processing || !selectedCard || savedCards.length === 0}
-              className="flex-1 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] hover:from-[#1A4D2E] hover:to-[#0D601E] text-white py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {processing ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  <FiCheckCircle size={20} />
-                  Confirmar Pago
-                </>
-              )}
-            </button>
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+            <FiAlertCircle
+              className="text-red-600 mt-0.5 shrink-0"
+              size={18}
+            />
+            <p className="text-red-800 text-sm">{error}</p>
           </div>
-        </motion.div>
-      </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-3">
+          <button
+            onClick={() => router.push(`/tours/reservar/${booking.guideId}`)}
+            className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 py-4 px-6 rounded-xl font-semibold text-sm transition-all"
+            disabled={processing}
+          >
+            Atrás
+          </button>
+          <button
+            onClick={handlePayment}
+            disabled={processing || !selectedCard || savedCards.length === 0}
+            className="flex-1 bg-[#1A4D2E] hover:bg-[#0D601E] text-white py-4 px-6 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {processing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                Procesando...
+              </>
+            ) : (
+              <>
+                <FiCheckCircle size={18} />
+                Pagar ${booking.total.toLocaleString("es-MX")} MXN
+              </>
+            )}
+          </button>
+        </div>
+      </main>
     </div>
   );
 }
