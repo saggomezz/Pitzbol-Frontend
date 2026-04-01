@@ -224,25 +224,13 @@ function PlaceCard2({ place, photos, noImageText }: {
       aria-label={`Ver información de ${place.name}`}
     >
       <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
-        {displayImg
-          ? <div className="absolute inset-0">
-              <img src={displayImg} alt={place.name} className="w-full h-full object-cover transition-opacity duration-500" />
-            </div>
-<<<<<<< HEAD
-          )}
-          {/* Botón Ubicar */}
-          <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 z-10">
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = "/mapa"; }}
-              className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full text-sm flex items-center gap-1.5 shadow-lg hover:bg-[#0D601E] transition-colors"
-            >
-              <FiMapPin size={14} />
-              Ubicar
-            </button>
+        {displayImg ? (
+          <div className="absolute inset-0">
+            <img src={displayImg} alt={place.name} className="w-full h-full object-cover transition-opacity duration-500" />
           </div>
-=======
-          : <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
-        }
+        ) : (
+          <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
+        )}
         <div className="absolute top-3 right-3 z-20 bg-white/95 border border-[#E8E8E8] rounded-full px-2 py-1 shadow-md">
           <PlaceRating
             placeName={place.name}
@@ -250,7 +238,6 @@ function PlaceCard2({ place, photos, noImageText }: {
             size="small"
             readonly={true}
           />
->>>>>>> 327351d294ca4b6769872efffc0a2acf2736d529
         </div>
         {/* Dots indicador (solo con múltiples fotos y hover) */}
         {isHovered && photos.length > 1 && (
