@@ -62,10 +62,14 @@ export default function GastronomiaPage() {
     const loadPlaces = async () => {
       try {
         setLoading(true);
+        const GASTRO_SUBCATEGORIAS = new Set(["Tradicional", "Gourmet", "Callejero", "Mercados", "Cafeterías", "Vegana", "Vida Nocturna"]);
         const mergedPlaces = await getMergedPlaces();
         setPlaces(mergedPlaces.filter((place) => {
+          // Subcategoría explícita tiene prioridad
+          if (place.subcategoria && GASTRO_SUBCATEGORIAS.has(place.subcategoria)) return true;
+          // Lugares de gastronomía sin subcategoría asignada aún
           const raw = (place.rawCategoria || place.categoria).toLowerCase();
-          return raw.includes("gastronomía") || raw.includes("gastronomia") || raw.includes("vegana") || raw.includes("cafeter") || raw.includes("vida nocturna");
+          return raw.includes("gastronomía") || raw.includes("gastronomia") || raw === "vegana";
         }));
       } catch (error) {
         console.error("Error cargando lugares de gastronomía:", error);
