@@ -67,7 +67,21 @@ const PARTIDOS_GDL: Partido[] = [
   { fecha: "2026-07-02", fechaDisplay: "2 de Julio", hora: "20:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
 ];
 
-const PROXIMO_OTRO: Partido = { fecha: "2026-06-11", fechaDisplay: "11 de Junio", hora: "13:00", equipo1: "México", bandera1: "https://flagcdn.com/mx.svg", equipo2: "Sudáfrica", bandera2: "https://flagcdn.com/za.svg", sede: "CDMX" };
+const PARTIDOS_CDMX: Partido[] = [
+  { fecha: "2026-06-11", fechaDisplay: "11 de Junio", hora: "13:00", equipo1: "México", bandera1: "https://flagcdn.com/mx.svg", equipo2: "Sudáfrica", bandera2: "https://flagcdn.com/za.svg" },
+  { fecha: "2026-06-17", fechaDisplay: "17 de Junio", hora: "16:00", equipo1: "Colombia", bandera1: "https://flagcdn.com/co.svg", equipo2: "Bélgica", bandera2: "https://flagcdn.com/be.svg" },
+  { fecha: "2026-06-22", fechaDisplay: "22 de Junio", hora: "19:00", equipo1: "México", bandera1: "https://flagcdn.com/mx.svg", equipo2: "Ecuador", bandera2: "https://flagcdn.com/ec.svg" },
+  { fecha: "2026-06-26", fechaDisplay: "26 de Junio", hora: "13:00", equipo1: "México", bandera1: "https://flagcdn.com/mx.svg", equipo2: "Polonia", bandera2: "https://flagcdn.com/pl.svg" },
+  { fecha: "2026-07-02", fechaDisplay: "2 de Julio", hora: "20:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
+];
+
+const PARTIDOS_MTY: Partido[] = [
+  { fecha: "2026-06-12", fechaDisplay: "12 de Junio", hora: "13:00", equipo1: "Uruguay", bandera1: "https://flagcdn.com/uy.svg", equipo2: "Bolivia", bandera2: "https://flagcdn.com/bo.svg" },
+  { fecha: "2026-06-16", fechaDisplay: "16 de Junio", hora: "19:00", equipo1: "Holanda", bandera1: "https://flagcdn.com/nl.svg", equipo2: "Senegal", bandera2: "https://flagcdn.com/sn.svg" },
+  { fecha: "2026-06-20", fechaDisplay: "20 de Junio", hora: "16:00", equipo1: "Uruguay", bandera1: "https://flagcdn.com/uy.svg", equipo2: "Irak", bandera2: "https://flagcdn.com/iq.svg" },
+  { fecha: "2026-06-24", fechaDisplay: "24 de Junio", hora: "19:00", equipo1: "Holanda", bandera1: "https://flagcdn.com/nl.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
+  { fecha: "2026-07-01", fechaDisplay: "1 de Julio", hora: "20:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
+];
 
 const dates: DateInfo[] = [
   { day: "10", weekday: "MIE", fullDate: "2026-06-10", isGdlMatch: false, isActive: false },
@@ -160,7 +174,7 @@ return (
   );
 };
 
-const GdlMatchCarousel = ({ partidos, tHome }: { partidos: Partido[]; tHome: any }) => {
+const GdlMatchCarousel = ({ partidos, sede, tHome }: { partidos: Partido[]; sede: string; tHome: any }) => {
   const [idx, setIdx] = useState(0);
   const [dir, setDir] = useState(1);
   const current = partidos[idx];
@@ -170,7 +184,7 @@ const GdlMatchCarousel = ({ partidos, tHome }: { partidos: Partido[]; tHome: any
     <div className="w-full mb-2">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-center text-[#0D601E] text-xs md:text-sm font-medium flex-1" style={{ fontFamily: 'var(--font-roboto)' }}>
-          {tHome('nextMatchIn')} <span className="font-bold">GDL</span> - {current.fechaDisplay}
+          {tHome('nextMatchIn')} <span className="font-bold">{sede}</span> - {current.fechaDisplay}
         </h3>
         <div className="flex items-center gap-1 ml-2 flex-shrink-0">
           <button onClick={prev} disabled={idx === 0} className="p-0.5 rounded-full hover:bg-[#E0F2F1] disabled:opacity-30 transition-all text-[#0D601E]"><FiChevronLeft size={14} /></button>
@@ -834,17 +848,9 @@ function HomeContent() {
       <DateSlider />
       <main className="flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-10 px-3 md:px-8 lg:px-22 w-full max-w-[1600px] mx-auto">
         <div className="flex flex-col gap-3 md:gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
-          <MatchItem
-            location={PROXIMO_OTRO.sede!}
-            date={PROXIMO_OTRO.fechaDisplay}
-            team1={PROXIMO_OTRO.equipo1}
-            flag1={PROXIMO_OTRO.bandera1}
-            team2={PROXIMO_OTRO.equipo2}
-            flag2={PROXIMO_OTRO.bandera2}
-            time={PROXIMO_OTRO.hora}
-            tHome={tHome}
-          />
-          <GdlMatchCarousel partidos={PARTIDOS_GDL} tHome={tHome} />
+          <GdlMatchCarousel partidos={PARTIDOS_CDMX} sede="CDMX" tHome={tHome} />
+          <GdlMatchCarousel partidos={PARTIDOS_MTY} sede="MTY" tHome={tHome} />
+          <GdlMatchCarousel partidos={PARTIDOS_GDL} sede="GDL" tHome={tHome} />
           {/* PITZBOT — IA de Itinerarios */}
           {(() => {
             let pitzUrl = 'http://69.30.204.56:3003';
