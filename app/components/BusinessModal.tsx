@@ -107,14 +107,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [logoError, setLogoError] = useState("");
   const [buscandoCoordenadas, setBuscandoCoordenadas] = useState(false);
   const [geocodeError, setGeocodeError] = useState("");
-  const [imagePreview, setImagePreview] = useState<ImagePreviewState>(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem("pitzbol_business_images") : null;
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {}
-    }
-    return { logoUrl: null, galeriaUrls: [null, null, null] };
+  const [imagePreview, setImagePreview] = useState<ImagePreviewState>({
+    logoUrl: null,
+    galeriaUrls: [null, null, null],
   });
   
   // Estado separado para los archivos File (no se puede serializar en localStorage)
@@ -289,10 +284,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     localStorage.setItem("pitzbol_business_draft", JSON.stringify(formToSave));
   }, [form]);
 
-  // Guardar imágenes en localStorage
+  // Las previsualizaciones pueden exceder fácilmente la cuota de localStorage.
+  // No se persisten entre recargas para evitar QuotaExceededError.
   useEffect(() => {
-    localStorage.setItem("pitzbol_business_images", JSON.stringify(imagePreview));
-  }, [imagePreview]);
+    if (!isOpen || typeof window === "undefined") return;
+    localStorage.removeItem("pitzbol_business_images");
+  }, [isOpen]);
 
   // Función para obtener coordenadas usando el endpoint del backend
   const buscarCoordenadas = async (direccion: string) => {
@@ -916,6 +913,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       setFiles({ logo: null, galeria: [null, null, null] });
 
       setSuccess(true);
+
+      // Notify business-management pages to refresh request lists without full page reload.
+      window.dispatchEvent(new Event("businessRequestSubmitted"));
       
       // Disparar evento para recargar notificaciones desde el backend después de un delay
       setTimeout(() => {
