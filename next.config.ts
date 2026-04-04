@@ -2,7 +2,6 @@
 const nextConfig = {
   env: {
     NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001',
-<<<<<<< HEAD
   },
   async headers() {
     return [
@@ -19,15 +18,10 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    const backendUrl = process.env.BACKEND_INTERNAL_URL || 'http://localhost:3001';
-=======
-  },
-  async rewrites() {
     const backendUrl =
       process.env.BACKEND_INTERNAL_URL ||
       process.env.NEXT_PUBLIC_BACKEND_URL ||
       'http://localhost:3001';
->>>>>>> af76572720447f06e620879423b5891779d70929
     return [
       {
         source: '/api/:path*',
