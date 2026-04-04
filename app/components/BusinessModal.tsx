@@ -1480,7 +1480,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
               {!success ? (
                 <>
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="relative w-32 h-32 md:w-48 md:h-48 mb-8">
-                    <Image src={imglogo} alt="Cargando" fill className="object-contain" />
+                    <Image src={imglogo} alt="Cargando" fill sizes="(max-width: 768px) 128px, 192px" className="object-contain" />
                   </motion.div>
                   <h3 className="text-2xl md:text-3xl font-black text-[#1A4D2E] uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>{t('validatingCompany')}</h3>
                   <p className="text-[#769C7B] italic mt-2">{t('reviewingProfile')}</p>
