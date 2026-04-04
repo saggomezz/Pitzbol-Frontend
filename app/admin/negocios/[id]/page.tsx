@@ -709,6 +709,7 @@ export default function AdminViewBusinessPage() {
     approved: "APPROVED",
     aprobado: "APPROVED",
     rejected: "REJECTED",
+    rechazado: "REJECTED",
     archivado: "archivado",
     archived: "archivado",
   };
@@ -719,6 +720,8 @@ export default function AdminViewBusinessPage() {
   const isPending = mappedStatus === "PENDING";
   const isApproved = mappedStatus === "APPROVED";
   const isArchived = mappedStatus === "archivado";
+  const isRejected = mappedStatus === "REJECTED";
+  const showArchivedStyleActions = isArchived || isRejected;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FDFCF9] to-[#F6F0E6] px-4 py-8 md:py-12">
@@ -766,7 +769,7 @@ export default function AdminViewBusinessPage() {
               />
             )}
 
-            {isArchived && (
+            {showArchivedStyleActions && (
               <ArchivedBusinessPanel
                 procesando={procesandoAccion}
                 onDesarchivar={handleDesarchivarNegocio}
