@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -20,7 +20,7 @@ import {
 import { FiX } from "react-icons/fi";
 import { MdArchive, MdOutlineTrackChanges } from "react-icons/md";
 
-type SourceBucket = "pendientes" | "activos" | "archivados";
+type SourceBucket = "pendientes" | "activos" | "archivados" | "rechazados";
 
 interface BusinessRecord {
   id: string;
@@ -65,6 +65,8 @@ type MovementKind = "creado" | "aprobado" | "rechazado" | "archivado" | "elimina
 
 interface TimelineEvent {
   id: string;
+  movementLogId?: string;
+  canDelete?: boolean;
   businessId: string;
   businessName: string;
   businessDescription: string;
@@ -81,6 +83,55 @@ interface TimelineEvent {
   ownerName: string;
   ownerContact: string;
 }
+
+const buildEventFingerprint = (event: TimelineEvent): string => {
+  // Normalize to second precision to collapse equivalent events coming from different buckets.
+  const dateBucket = event.dateISO.slice(0, 19);
+  const reason = (event.reason || "").trim().toLowerCase();
+  const rawAction = (event.rawAction || "").trim().toLowerCase();
+  return [event.businessId, event.action, dateBucket, rawAction, reason].join("|");
+};
+
+const normalizeComparableText = (value?: string): string => (value || "").trim().toLowerCase();
+
+const getEventDisplayScore = (event: TimelineEvent): number => {
+  let score = 0;
+  if (normalizeComparableText(event.category) !== "sin categoria") score += 2;
+  if (normalizeComparableText(event.statusSnapshot) !== "sin_estado") score += 2;
+  if (normalizeComparableText(event.ownerContact) !== "sin correo") score += 1;
+  if (normalizeComparableText(event.ownerName) !== "sin propietario") score += 1;
+  if (!normalizeComparableText(event.businessDescription).includes("bitacora")) score += 1;
+  if (event.source !== "archivados") score += 1;
+  return score;
+};
+
+const shouldMergeNearDuplicate = (a: TimelineEvent, b: TimelineEvent): boolean => {
+  if (a.businessId !== b.businessId) return false;
+  if (a.action !== b.action) return false;
+
+  const timeDiffMs = Math.abs(new Date(a.dateISO).getTime() - new Date(b.dateISO).getTime());
+  if (Number.isNaN(timeDiffMs) || timeDiffMs > 5000) return false;
+
+  const aReason = normalizeComparableText(a.reason);
+  const bReason = normalizeComparableText(b.reason);
+  if (aReason && bReason && aReason !== bReason) return false;
+
+  const aRaw = normalizeComparableText(a.rawAction);
+  const bRaw = normalizeComparableText(b.rawAction);
+  if (aRaw && bRaw && aRaw !== bRaw) return false;
+
+  return true;
+};
+
+const mergeTimelineEventData = (primary: TimelineEvent, secondary: TimelineEvent): TimelineEvent => {
+  const mergedCanDelete = Boolean(primary.canDelete || secondary.canDelete);
+  const mergedMovementLogId = primary.movementLogId || secondary.movementLogId;
+  return {
+    ...primary,
+    canDelete: mergedCanDelete,
+    movementLogId: mergedMovementLogId,
+  };
+};
 
 const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001").replace(/\/+$/, "");
 
@@ -207,6 +258,7 @@ const mapSourceBucket = (rawSource: unknown): SourceBucket => {
   const value = typeof rawSource === "string" ? rawSource.toLowerCase() : "";
   if (value.includes("pendient")) return "pendientes";
   if (value.includes("activ")) return "activos";
+  if (value.includes("rechaz")) return "rechazados";
   return "archivados";
 };
 
@@ -219,6 +271,8 @@ const buildTimelineFromAdminLog = (log: AdminMovementLog): TimelineEvent | null 
 
   return {
     id: `movlog-${log.id || `${businessId}-${dateISO}`}`,
+    movementLogId: typeof log.id === "string" ? log.id : undefined,
+    canDelete: true,
     businessId,
     businessName: log.nombreNegocio || "Negocio eliminado",
     businessDescription: log.mensaje || "Movimiento administrativo persistido en bitacora.",
@@ -241,6 +295,7 @@ const buildTimelineFromRecord = (record: BusinessRecord, source: SourceBucket): 
   const base = getBusinessSummary(record);
   const events: TimelineEvent[] = [];
   const historyItems = Array.isArray(record.history) ? record.history : [];
+  const localHistorySeen = new Set<string>();
 
   historyItems.forEach((raw, index) => {
     const rawAction = raw.action;
@@ -260,8 +315,15 @@ const buildTimelineFromRecord = (record: BusinessRecord, source: SourceBucket): 
     const actionLabel = getActionLabel(rawAction, action);
     const actionDetail = getActionDetail(rawAction, action, reason);
 
+    const localFingerprint = [record.id, action, dateISO.slice(0, 19), actionLabel, (reason || "").trim().toLowerCase()].join("|");
+    if (localHistorySeen.has(localFingerprint)) {
+      return;
+    }
+    localHistorySeen.add(localFingerprint);
+
     events.push({
       id: `${record.id}-${action}-${dateISO}-${index}`,
+      canDelete: false,
       businessId: record.id,
       businessName: base.businessName,
       businessDescription: base.businessDescription,
@@ -280,88 +342,92 @@ const buildTimelineFromRecord = (record: BusinessRecord, source: SourceBucket): 
     });
   });
 
-  if (events.length === 0) {
-    const created = parseDate(record.createdAt) || parseDate(record.business?.createdAt);
-    if (created) {
-      events.push({
-        id: `${record.id}-creado-${created}`,
-        businessId: record.id,
-        businessName: base.businessName,
-        businessDescription: base.businessDescription,
-        category: base.category,
-        action: "creado",
-        actionLabel: actionLabelMap.creado,
-        actionDetail: getActionDetail("creado", "creado"),
-        dateISO: created,
-        actor: "Sistema",
-        source,
-        statusSnapshot: base.statusSnapshot,
-        ownerName: base.ownerName,
-        ownerContact: base.ownerContact,
-      });
-    }
+  const existingActions = new Set(events.map((event) => event.action));
 
-    const approved = parseDate(record.approvedAt);
-    if (approved) {
-      events.push({
-        id: `${record.id}-aprobado-${approved}`,
-        businessId: record.id,
-        businessName: base.businessName,
-        businessDescription: base.businessDescription,
-        category: base.category,
-        action: "aprobado",
-        actionLabel: actionLabelMap.aprobado,
-        actionDetail: getActionDetail("aprobado", "aprobado"),
-        dateISO: approved,
-        actor: "Sistema",
-        source,
-        statusSnapshot: base.statusSnapshot,
-        ownerName: base.ownerName,
-        ownerContact: base.ownerContact,
-      });
-    }
+  const created = parseDate(record.createdAt) || parseDate(record.business?.createdAt);
+  if (created && !existingActions.has("creado")) {
+    events.push({
+      id: `${record.id}-creado-${created}`,
+      canDelete: false,
+      businessId: record.id,
+      businessName: base.businessName,
+      businessDescription: base.businessDescription,
+      category: base.category,
+      action: "creado",
+      actionLabel: actionLabelMap.creado,
+      actionDetail: getActionDetail("creado", "creado"),
+      dateISO: created,
+      actor: "Sistema",
+      source,
+      statusSnapshot: base.statusSnapshot,
+      ownerName: base.ownerName,
+      ownerContact: base.ownerContact,
+    });
+  }
 
-    const rejected = parseDate(record.rejectedAt);
-    if (rejected) {
-      events.push({
-        id: `${record.id}-rechazado-${rejected}`,
-        businessId: record.id,
-        businessName: base.businessName,
-        businessDescription: base.businessDescription,
-        category: base.category,
-        action: "rechazado",
-        actionLabel: actionLabelMap.rechazado,
-        actionDetail: getActionDetail("rechazado", "rechazado", record.rejectionReason),
-        dateISO: rejected,
-        actor: "Sistema",
-        reason: record.rejectionReason,
-        source,
-        statusSnapshot: base.statusSnapshot,
-        ownerName: base.ownerName,
-        ownerContact: base.ownerContact,
-      });
-    }
+  const approved = parseDate(record.approvedAt);
+  if (approved && !existingActions.has("aprobado")) {
+    events.push({
+      id: `${record.id}-aprobado-${approved}`,
+      canDelete: false,
+      businessId: record.id,
+      businessName: base.businessName,
+      businessDescription: base.businessDescription,
+      category: base.category,
+      action: "aprobado",
+      actionLabel: actionLabelMap.aprobado,
+      actionDetail: getActionDetail("aprobado", "aprobado"),
+      dateISO: approved,
+      actor: "Sistema",
+      source,
+      statusSnapshot: base.statusSnapshot,
+      ownerName: base.ownerName,
+      ownerContact: base.ownerContact,
+    });
+  }
 
-    const archived = parseDate(record.archivedAt);
-    if (archived) {
-      events.push({
-        id: `${record.id}-archivado-${archived}`,
-        businessId: record.id,
-        businessName: base.businessName,
-        businessDescription: base.businessDescription,
-        category: base.category,
-        action: "archivado",
-        actionLabel: actionLabelMap.archivado,
-        actionDetail: getActionDetail("archivado", "archivado", record.archivedReason),
-        dateISO: archived,
-        actor: "Sistema",
-        reason: record.archivedReason,
-        source,
-        statusSnapshot: base.statusSnapshot,
-        ownerName: base.ownerName,
-        ownerContact: base.ownerContact,
-      });
-    }
+  const rejected = parseDate(record.rejectedAt);
+  if (rejected && !existingActions.has("rechazado")) {
+    events.push({
+      id: `${record.id}-rechazado-${rejected}`,
+      canDelete: false,
+      businessId: record.id,
+      businessName: base.businessName,
+      businessDescription: base.businessDescription,
+      category: base.category,
+      action: "rechazado",
+      actionLabel: actionLabelMap.rechazado,
+      actionDetail: getActionDetail("rechazado", "rechazado", record.rejectionReason),
+      dateISO: rejected,
+      actor: "Sistema",
+      reason: record.rejectionReason,
+      source,
+      statusSnapshot: base.statusSnapshot,
+      ownerName: base.ownerName,
+      ownerContact: base.ownerContact,
+    });
+  }
+
+  const archived = parseDate(record.archivedAt);
+  if (archived && !existingActions.has("archivado")) {
+    events.push({
+      id: `${record.id}-archivado-${archived}`,
+      canDelete: false,
+      businessId: record.id,
+      businessName: base.businessName,
+      businessDescription: base.businessDescription,
+      category: base.category,
+      action: "archivado",
+      actionLabel: actionLabelMap.archivado,
+      actionDetail: getActionDetail("archivado", "archivado", record.archivedReason),
+      dateISO: archived,
+      actor: "Sistema",
+      reason: record.archivedReason,
+      source,
+      statusSnapshot: base.statusSnapshot,
+      ownerName: base.ownerName,
+      ownerContact: base.ownerContact,
+    });
   }
 
   return events;
@@ -375,6 +441,7 @@ export default function AdminBusinessHistoryPage() {
   const [query, setQuery] = useState("");
   const [actionFilter, setActionFilter] = useState<"todos" | MovementKind>("todos");
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement | null>(null);
 
@@ -389,45 +456,99 @@ export default function AdminBusinessHistoryPage() {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       };
 
+      const requestJson = async (path: string): Promise<any | null> => {
+        const candidates = [`${API_BASE}${path}`, path].filter((value, index, arr) => arr.indexOf(value) === index);
+
+        for (const url of candidates) {
+          try {
+            const res = await fetch(url, {
+              credentials: "include",
+              headers,
+            });
+            if (!res.ok) continue;
+            return await res.json();
+          } catch {
+            // Try next candidate URL.
+          }
+        }
+
+        return null;
+      };
+
       const loadBucket = async (endpoint: string): Promise<BusinessRecord[]> => {
-        const res = await fetch(`${API_BASE}${endpoint}`, {
-          credentials: "include",
-          headers,
-        });
-        if (!res.ok) return [];
-        const data = await res.json();
+        const data = await requestJson(endpoint);
         return Array.isArray(data.negocios) ? data.negocios : [];
       };
 
       const loadMovementLogs = async (): Promise<AdminMovementLog[]> => {
-        const res = await fetch(`${API_BASE}/api/admin/negocios/movimientos`, {
-          credentials: "include",
-          headers,
-        });
-        if (!res.ok) return [];
-        const data = await res.json();
+        const data = await requestJson("/api/admin/negocios/movimientos");
         return Array.isArray(data.movimientos) ? data.movimientos : [];
       };
 
       try {
-        const [pendientes, activos, archivados, movementLogs] = await Promise.all([
+        const [pendientes, activos, archivados, rechazados, movementLogs] = await Promise.all([
           loadBucket("/api/admin/negocios/pendientes"),
           loadBucket("/api/admin/negocios"),
           loadBucket("/api/admin/negocios/archivados"),
+          loadBucket("/api/admin/negocios/rechazados"),
           loadMovementLogs(),
         ]);
 
-        const deletedFromLogs = movementLogs
-          .filter((log) => normalizeActionValue(log.accion).includes("elimin"))
+        const adminLogEvents = movementLogs
           .map((log) => buildTimelineFromAdminLog(log))
           .filter((event): event is TimelineEvent => Boolean(event));
 
-        const timeline = [
+        const timelineRaw = [
           ...pendientes.flatMap((record) => buildTimelineFromRecord(record, "pendientes")),
           ...activos.flatMap((record) => buildTimelineFromRecord(record, "activos")),
           ...archivados.flatMap((record) => buildTimelineFromRecord(record, "archivados")),
-          ...deletedFromLogs,
-        ].sort((a, b) => new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime());
+          ...rechazados.flatMap((record) => buildTimelineFromRecord(record, "rechazados")),
+          ...adminLogEvents,
+        ];
+
+        // 1) Merge near-duplicates (same business/action within a few seconds) and
+        // keep the richer card data while preserving the movementLogId for deletion.
+        const sortedRaw = [...timelineRaw].sort((a, b) => new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime());
+        const mergedEvents: TimelineEvent[] = [];
+
+        sortedRaw.forEach((event) => {
+          const existingIndex = mergedEvents.findIndex((existing) => shouldMergeNearDuplicate(existing, event));
+          if (existingIndex === -1) {
+            mergedEvents.push(event);
+            return;
+          }
+
+          const existing = mergedEvents[existingIndex];
+          const existingScore = getEventDisplayScore(existing);
+          const incomingScore = getEventDisplayScore(event);
+
+          if (incomingScore > existingScore) {
+            mergedEvents[existingIndex] = mergeTimelineEventData(event, existing);
+            return;
+          }
+
+          mergedEvents[existingIndex] = mergeTimelineEventData(existing, event);
+        });
+
+        // 2) Exact dedup pass for any remaining identical fingerprints.
+        const seen = new Set<string>();
+        const deduped = mergedEvents.filter((event) => {
+          const key = buildEventFingerprint(event);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        deduped.sort((a, b) => new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime());
+
+        // Final safety pass: guarantee unique IDs for React keys.
+        const idSeen = new Map<string, number>();
+        const timeline = deduped.map((event) => {
+          const count = idSeen.get(event.id) || 0;
+          idSeen.set(event.id, count + 1);
+          if (count === 0) return event;
+          return { ...event, id: `${event.id}__dup${count}` };
+        });
 
         setEvents(timeline);
       } catch {
@@ -510,6 +631,45 @@ export default function AdminBusinessHistoryPage() {
   ];
 
   const activeFilterLabel = filterOptions.find((option) => option.value === actionFilter)?.label || "Todos los movimientos";
+
+  const handleDeleteMovement = async (event: TimelineEvent, clickEvent: React.MouseEvent) => {
+    clickEvent.stopPropagation();
+    if (!event.canDelete) return;
+
+    const movementId = (event.movementLogId || event.id || "").trim();
+    if (!movementId) return;
+
+    const confirmed = typeof window !== "undefined" ? window.confirm("Eliminar este movimiento del historial permanentemente?") : false;
+    if (!confirmed) return;
+
+    try {
+      setDeletingEventId(event.id);
+      const token = typeof window !== "undefined" ? localStorage.getItem("pitzbol_token") || "" : "";
+      const response = await fetch(`${API_BASE}/api/admin/negocios/movimientos/${encodeURIComponent(movementId)}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`No se pudo eliminar el movimiento (${response.status})`);
+      }
+
+      setEvents((prev) => prev.filter((item) => item.id !== event.id));
+      if (selectedEvent?.id === event.id) {
+        setSelectedEvent(null);
+      }
+    } catch (error) {
+      console.error("Error eliminando movimiento:", error);
+      if (typeof window !== "undefined") {
+        window.alert("No se pudo eliminar el movimiento. Intenta de nuevo.");
+      }
+    } finally {
+      setDeletingEventId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F6F0E6] via-[#FEFAF5] to-[#E8F5E9] p-4 md:p-8">
@@ -597,12 +757,20 @@ export default function AdminBusinessHistoryPage() {
             {filteredEvents.map((event, index) => {
               const visual = getActionVisual(event.action);
               return (
-                <motion.button
+                <motion.div
                   key={event.id}
                   initial={{ opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(index * 0.03, 0.3) }}
                   onClick={() => setSelectedEvent(event)}
+                  onKeyDown={(keyboardEvent: ReactKeyboardEvent<HTMLDivElement>) => {
+                    if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
+                      keyboardEvent.preventDefault();
+                      setSelectedEvent(event);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                   className="group w-full rounded-2xl border border-[#0D601E]/15 bg-white p-5 text-left shadow transition hover:-translate-y-0.5 hover:shadow-lg"
                 >
                   <div className="mb-3 flex items-start justify-between gap-3">
@@ -616,6 +784,17 @@ export default function AdminBusinessHistoryPage() {
                       {visual.icon}
                       {event.actionLabel}
                       </span>
+                      {event.canDelete ? (
+                        <button
+                          onClick={(clickEvent) => handleDeleteMovement(event, clickEvent)}
+                          disabled={deletingEventId === event.id}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#FCA5A5] bg-white text-[#B91C1C] transition hover:bg-[#FEE2E2] disabled:cursor-not-allowed disabled:opacity-60"
+                          title="Eliminar movimiento"
+                          aria-label="Eliminar movimiento"
+                        >
+                          <FiX size={16} />
+                        </button>
+                      ) : null}
                     </div>
                   </div>
 
@@ -645,7 +824,7 @@ export default function AdminBusinessHistoryPage() {
                   </div>
 
                   {event.reason ? <p className="mt-3 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 text-sm font-medium" style={{ color: "#0F172A", opacity: 1 }}>Motivo: {event.reason}</p> : null}
-                </motion.button>
+                </motion.div>
               );
             })}
           </div>
