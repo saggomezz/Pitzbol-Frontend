@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import {
     FiBriefcase, FiCalendar, FiClock, FiCreditCard, FiHeart, FiHome, FiInfo,
     FiLogOut, FiMapPin, FiMenu, FiMessageSquare, FiPlusCircle, FiSearch, FiShield, FiUser,
-    FiX, FiAward, FiFileText, FiCompass, FiShoppingBag, FiChevronLeft, FiChevronDown, FiImage
+    FiX, FiAward, FiCompass, FiShoppingBag, FiChevronLeft, FiChevronDown, FiImage
 } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
@@ -17,6 +17,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import { useMessageNotifications } from "@/lib/useMessageNotifications";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const PHOTO_HYDRATE_COOLDOWN_KEY = "pitzbol_profile_photo_hydrate_cooldown_until";
 
 interface NavbarProps {
     onOpenAuth: () => void;
@@ -101,6 +102,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             if (!token) return;
             try {
                 const res = await fetch(`${BACKEND_URL}/api/business/my-requests`, {
+                    cache: "no-store",
                     credentials: "include",
                     headers: { Authorization: `Bearer ${token}` },
                 });
@@ -147,6 +149,13 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             const storedUser = localStorage.getItem("pitzbol_user");
             const token = localStorage.getItem("pitzbol_token");
             if (!storedUser || !token) return;
+
+            const cooldownUntilRaw = localStorage.getItem(PHOTO_HYDRATE_COOLDOWN_KEY);
+            const cooldownUntil = cooldownUntilRaw ? Number(cooldownUntilRaw) : 0;
+            if (Number.isFinite(cooldownUntil) && cooldownUntil > Date.now()) {
+                return;
+            }
+
             const parsedUser = JSON.parse(storedUser);
             if (parsedUser.fotoPerfil) return;
             try {
@@ -159,10 +168,12 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                 if (data.fotoPerfil) {
                     const updated = { ...parsedUser, fotoPerfil: data.fotoPerfil };
                     localStorage.setItem("pitzbol_user", JSON.stringify(updated));
+                    localStorage.removeItem(PHOTO_HYDRATE_COOLDOWN_KEY);
                     setUser(updated);
                 }
-            } catch (err) {
-                console.error("No se pudo hidratar foto de perfil", err);
+            } catch {
+                // If backend is temporarily unavailable, avoid noisy retries and keep UI working.
+                localStorage.setItem(PHOTO_HYDRATE_COOLDOWN_KEY, String(Date.now() + 5 * 60 * 1000));
             }
         };
         checkUser();
@@ -178,19 +189,24 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             console.log("🎯 Evento: guideSubmissionCompleted - Actualizando Navbar...");
             refreshFromStorage();
         };
+        const handleStorage = (e: StorageEvent) => {
+            // Ignorar cambios de notificaciones para evitar setState cruzado durante renders de otros componentes
+            if (e.key && e.key !== "pitzbol_user" && e.key !== "pitzbol_token") return;
+            refreshFromStorage();
+        };
         const closeMenu = (e: MouseEvent | globalThis.MouseEvent) => {
             if (menuRef.current && e.target instanceof Node && !menuRef.current.contains(e.target)) setIsMenuOpen(false);
         };
         window.addEventListener("fotoPerfilActualizada", handlePhotoUpdate);
         window.addEventListener("guideSubmissionCompleted", handleGuideSubmission);
         window.addEventListener("authStateChanged", refreshFromStorage);
-        window.addEventListener("storage", refreshFromStorage);
+        window.addEventListener("storage", handleStorage);
         document.addEventListener("mousedown", closeMenu);
         return () => {
             window.removeEventListener("fotoPerfilActualizada", handlePhotoUpdate);
             window.removeEventListener("guideSubmissionCompleted", handleGuideSubmission);
             window.removeEventListener("authStateChanged", refreshFromStorage);
-            window.removeEventListener("storage", refreshFromStorage);
+            window.removeEventListener("storage", handleStorage);
             document.removeEventListener("mousedown", closeMenu);
         };
     }, []);
@@ -222,11 +238,20 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             {/* LOGO Y NOMBRE */}
             <div className="flex items-center h-full gap-1">
                 <motion.div whileHover={{ rotate: 190 }} transition={{ duration: 2.0, ease: "easeInOut" }} className="relative h-14 w-14 md:h-20 md:w-20 lg:h-28 lg:w-28 flex-shrink-0 cursor-pointer">
-                    <Link href="/"><Image src={imglogo} alt="logo" fill className="object-contain" priority /></Link>
+                    <Link href="/" className="relative block h-full w-full">
+                        <Image
+                            src={imglogo}
+                            alt="logo"
+                            fill
+                            sizes="(max-width: 768px) 56px, (max-width: 1024px) 80px, 112px"
+                            className="object-contain"
+                            priority
+                        />
+                    </Link>
                 </motion.div>
                 <div className="relative flex items-center h-full pointer-events-none">
                     <div className="absolute inset-y-0 -left-3 md:-left-5 top-3 md:top-5 lg:top-7 z-0 flex items-center w-[95%] md:w-[105%] min-w-[105px] md:min-w-[125px] lg:min-w-[220px]">
-                        <Image src={imgPasto} alt="pasto" className="object-contain" />
+                        <Image src={imgPasto} alt="pasto" className="object-contain" loading="eager" priority />
                     </div>
                     <h1 className="relative z-10 ml-1 md:ml-2 text-[20px] md:text-[28px] lg:text-[42px] leading-none drop-shadow-[2px_4px_4px_rgba(0,0,0,0.5)] text-white" style={{ fontFamily: "'Jockey One', sans-serif" }}>
                         PITZ<span className="text-[#F00808]">BOL</span>
@@ -349,13 +374,13 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                 <>
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('administration')}</p>
                                     <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium">
-                                        <FiShield className="text-red-600" /> {t('guideRequests')}
+                                        <FiAward className="text-[#0D601E]" /> Gestionar Guias
                                     </Link>
                                     <Link href="/admin/lugares" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium">
                                         <FiPlusCircle className="text-blue-600" /> {t('managePlaces')}
                                     </Link>
                                     <Link href="/admin/negocios" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium">
-                                        <FiUser className="text-green-600" /> {t('manageBusinesses')}
+                                        <FiBriefcase className="text-green-600" /> Gestionar negocios
                                     </Link>
                                 </>
                             ) : role === "guia" ? (
@@ -531,10 +556,10 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     <div className="h-[1px] bg-gray-100 my-3 mx-2" />
                                     <button
                                         onClick={handleLogout}
-                                        className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group w-full text-left transition-colors"
+                                        className="flex items-center gap-3 p-3 rounded-2xl text-sm font-semibold group w-full text-left transition-all duration-300 hover:bg-gradient-to-r hover:from-[#F00808] hover:to-[#B00000] hover:shadow-[0_10px_24px_rgba(240,8,8,0.32)] hover:-translate-y-0.5"
                                     >
-                                        <FiLogOut className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
-                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('logout')}</span>
+                                        <FiLogOut className="text-[#0D601E] group-hover:text-white transition-colors duration-300" />
+                                        <span className="text-[#1A4D2E] group-hover:text-white transition-colors duration-300">{t('logout')}</span>
                                     </button>
                                 </>
                             )}

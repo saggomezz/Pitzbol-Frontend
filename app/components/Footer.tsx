@@ -19,7 +19,13 @@ export default function Footer() {
                         transition={{ duration: 2.0, ease: "easeInOut" }}
                         className="absolute inset-0 cursor-pointer"
                     >
-                        <Image src={imglogo} alt="Pitzbol Logo" fill className="object-contain" />
+                        <Image
+                            src={imglogo}
+                            alt="Pitzbol Logo"
+                            fill
+                            sizes="(max-width: 768px) 128px, 160px"
+                            className="object-contain"
+                        />
                     </motion.div>
                 </div>
                 <div className="flex flex-col gap-3 justify-center">

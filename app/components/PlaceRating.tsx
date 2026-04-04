@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiStar } from "react-icons/fi";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const API_BASE = "/api";
 
 interface PlaceRatingProps {
   placeName: string;
@@ -54,7 +54,7 @@ export default function PlaceRating({
 
       // Obtener estadísticas públicas del lugar
       const statsResponse = await fetch(
-        `${BACKEND_URL}/api/place-ratings/${encodeURIComponent(placeName)}/stats`
+        `${API_BASE}/place-ratings/${encodeURIComponent(placeName)}/stats`
       );
       
       if (statsResponse.ok) {
@@ -66,7 +66,7 @@ export default function PlaceRating({
       // Si está autenticado, obtener su calificación
       if (token) {
         const userRatingResponse = await fetch(
-          `${BACKEND_URL}/api/place-ratings/${encodeURIComponent(placeName)}`,
+          `${API_BASE}/place-ratings/${encodeURIComponent(placeName)}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -80,7 +80,8 @@ export default function PlaceRating({
         }
       }
     } catch (error) {
-      console.error("Error al cargar datos de rating:", error);
+      // Si el backend no responde, mantenemos la UI en estado neutro sin bloquear la página.
+      console.warn("No se pudieron cargar los datos de rating");
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +97,7 @@ export default function PlaceRating({
     }
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/place-ratings/rate`, {
+      const response = await fetch(`${API_BASE}/place-ratings/rate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -122,7 +123,7 @@ export default function PlaceRating({
         alert(error.message || "Error al guardar calificación");
       }
     } catch (error) {
-      console.error("Error al calificar lugar:", error);
+      console.warn("No se pudo guardar la calificación", error);
       alert("Error al guardar calificación");
     }
   };

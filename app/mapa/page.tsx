@@ -258,6 +258,7 @@ function PlaceImageCarousel({
                     favorites.includes(selectedPlace.nombre) ? styles.active : ""
                 }`}
                 onClick={(e) => toggleFavorite(e, selectedPlace.nombre)}
+                whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.85 }}
                 animate={{ 
                     scale: favorites.includes(selectedPlace.nombre) ? [1, 1.25, 1] : 1,
@@ -826,6 +827,7 @@ export default function MapaPage() {
                                                     favorites.includes(lugar.nombre) ? styles.active : ""
                                                 }`}
                                                 onClick={(e) => toggleFavorite(e, lugar.nombre)}
+                                                whileHover={{ scale: 1.1 }}
                                                 whileTap={{ scale: 0.85 }}
                                                 animate={{ 
                                                     scale: favorites.includes(lugar.nombre) ? [1, 1.2, 1] : 1 

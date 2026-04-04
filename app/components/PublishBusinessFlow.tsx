@@ -42,6 +42,7 @@ const PublishBusinessFlow: React.FC<{ isOpen: boolean; onClose: () => void; }> =
         setIsLoggedIn(!!token);
         if (!token) return;
         const res = await fetch(`${BACKEND_URL}/api/business/my-requests`, {
+          cache: "no-store",
           credentials: "include",
           headers: { Authorization: `Bearer ${token}` },
         });

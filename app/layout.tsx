@@ -17,6 +17,7 @@ declare global {
     onAuthSuccessShowGuide?: () => void;
     onAuthSuccessShowBusiness?: () => void;
     onAuthSuccessByRole?: (role: string) => void;
+    openBusinessFlowLikeNavbar?: () => void;
   }
 }
 
@@ -77,6 +78,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         setIsBusinessOpen(true);
       }, 500);
     };
+
+    // Reuse this from pages that need the exact same behavior as the navbar business action.
+    window.openBusinessFlowLikeNavbar = () => {
+      const hasUser = !!localStorage.getItem("pitzbol_user");
+      if (hasUser) {
+        setPendingRole("negocio");
+        setIsBusinessOpen(true);
+        return;
+      }
+      setPendingRole("negocio");
+      setIsAuthOpen(true);
+    };
     window.onAuthSuccessByRole = (role: string) => {
       setIsAuthOpen(false);
       
@@ -91,6 +104,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           window.location.href = "/perfil";
         }
       }, 500);
+    };
+
+    return () => {
+      delete window.openBusinessFlowLikeNavbar;
     };
   }, []);
 

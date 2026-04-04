@@ -8,9 +8,11 @@ import { loadStripe } from "@stripe/stripe-js";
 import { CardElement, Elements, useStripe, useElements } from "@stripe/react-stripe-js";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY!
-);
+const STRIPE_PUBLIC_KEY =
+  process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY ||
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+  "";
+const stripePromise = STRIPE_PUBLIC_KEY ? loadStripe(STRIPE_PUBLIC_KEY) : null;
 
 interface Card {
   id: string;
@@ -375,12 +377,19 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
 
             {/* Step 1: Agregar Tarjeta */}
             {step === 1 && (
-              <Elements stripe={stripePromise}>
-                <AddCardForm onSuccess={() => {
-                  showMessage("✅ Tarjeta agregada exitosamente", "success");
-                  setTimeout(() => handleBack(), 1500);
-                }} />
-              </Elements>
+              stripePromise ? (
+                <Elements stripe={stripePromise}>
+                  <AddCardForm onSuccess={() => {
+                    showMessage("✅ Tarjeta agregada exitosamente", "success");
+                    setTimeout(() => handleBack(), 1500);
+                  }} />
+                </Elements>
+              ) : (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  Falta configurar la clave pública de Stripe
+                  (NEXT_PUBLIC_STRIPE_PUBLIC_KEY o NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).
+                </div>
+              )
             )}
           </div>
         </motion.div>

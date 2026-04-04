@@ -3,13 +3,15 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { FiArrowRight, FiHeart, FiMapPin, FiUser, FiTrash2, FiExternalLink } from "react-icons/fi";
+import { useRouter } from "next/navigation";
+import { FiArrowRight, FiHeart, FiMapPin, FiUser, FiTrash2, FiClock } from "react-icons/fi";
 import { useTranslations } from "next-intl";
-import Papa from "papaparse";
 import AuthModal from "../components/AuthModal";
 import imglogo from "../components/logoPitzbol.png";
 import { getPlaceImageUrlSync } from "@/lib/placeImages";
 import { useFavoritesSync } from "@/lib/favoritesApi";
+import { getMergedPlaces } from "@/lib/placesApi";
+import PlaceRating from "@/app/components/PlaceRating";
 
 interface Lugar {
   nombre: string;
@@ -18,9 +20,20 @@ interface Lugar {
   ubicacion: string;
   latitud?: string;
   longitud?: string;
+  fotos?: string[];
+  views?: number;
 }
 
+const normalizePlaceName = (value: string): string =>
+  (value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
 export default function FavoritosPage() {
+  const router = useRouter();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -59,98 +72,41 @@ export default function FavoritosPage() {
           // Obtener favoritos (desde backend si está autenticado)
           const favoriteNames = await getFavorites();
           setFavorites(favoriteNames);
+          const mergedPlaces = await getMergedPlaces();
+          const mergedByNormalizedName = new Map(
+            mergedPlaces.map((place) => [normalizePlaceName(place.nombre), place])
+          );
 
-          // Array para almacenar lugares favoritos encontrados
-          const foundPlaces: Lugar[] = [];
+          const resolvedFavorites: Lugar[] = favoriteNames.map((nombreFav) => {
+            const place = mergedByNormalizedName.get(normalizePlaceName(nombreFav));
 
-          // 1. BUSCAR PRIMERO EN BACKEND (Firestore)
-          try {
-            const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-            const backendResponse = await fetch(`${BACKEND_URL}/api/lugares`);
-            
-            if (backendResponse.ok) {
-              const data = await backendResponse.json();
-              const lugaresBackend = data.lugares || [];
-              
-              // Filtrar lugares del backend que están en favoritos
-              for (const nombreFav of favoriteNames) {
-                const lugarBackend = lugaresBackend.find((l: any) => l.nombre === nombreFav);
-                if (lugarBackend) {
-                  foundPlaces.push({
-                    nombre: lugarBackend.nombre,
-                    categoria: lugarBackend.categoria || "Sin categoría",
-                    descripcion: lugarBackend.descripcion || "",
-                    ubicacion: lugarBackend.direccion || lugarBackend.ubicacion || "",
-                    latitud: lugarBackend.latitud?.toString() || "",
-                    longitud: lugarBackend.longitud?.toString() || "",
-                  });
-                }
-              }
-              
-              console.log("🔥 Lugares encontrados en Backend:", foundPlaces.length);
+            if (!place) {
+              return {
+                nombre: nombreFav,
+                categoria: "Sin categoría",
+                descripcion: "",
+                ubicacion: "",
+                latitud: "",
+                longitud: "",
+                fotos: [],
+                views: 0,
+              };
             }
-          } catch (error) {
-            console.error("⚠️ Error al buscar en backend:", error);
-          }
 
-          // 2. COMPLEMENTAR CON CSV (para lugares que no están en backend)
-          const nombresEncontrados = foundPlaces.map(p => p.nombre);
-          const faltantes = favoriteNames.filter(nombre => !nombresEncontrados.includes(nombre));
-          
-          if (faltantes.length > 0) {
-            console.log("📄 Buscando en CSV:", faltantes.length, "lugares faltantes");
-            
-            const response = await fetch('/datosLugares.csv');
-            const csvText = await response.text();
-            
-            Papa.parse(csvText, {
-              header: true,
-              skipEmptyLines: true,
-              complete: (results) => {
-                const data = results.data.filter((row: any) => {
-                  return row && row["Nombre del Lugar"] && String(row["Nombre del Lugar"]).trim() !== "";
-                });
+            return {
+              nombre: place.nombre || nombreFav,
+              categoria: place.categoria || "Sin categoría",
+              descripcion: place.descripcion || "",
+              ubicacion: place.ubicacion || "",
+              latitud: place.latitud || "",
+              longitud: place.longitud || "",
+              fotos: Array.isArray(place.fotos) ? place.fotos : [],
+              views: typeof place.views === "number" ? place.views : 0,
+            };
+          });
 
-                const csvPlaces: Lugar[] = data.map((row: any) => {
-                  const nombre = String(row["Nombre del Lugar"] || "").trim();
-                  const categoria = String(row["Categoría"] || "").trim();
-                  const categoriaPrimera = categoria.split(",")[0].trim();
-                  
-                  return {
-                    nombre,
-                    categoria: categoriaPrimera,
-                    descripcion: String(row["Nota para IA"] || "").trim(),
-                    ubicacion: String(row["Dirección"] || "").trim(),
-                    latitud: String(row["Latitud"] || "").replace(",", ".").trim(),
-                    longitud: String(row["Longitud"] || "").replace(",", ".").trim(),
-                  };
-                }).filter(lugar => lugar.nombre !== "");
-                
-                // Agregar solo los lugares del CSV que están en faltantes
-                const csvFavoritos = csvPlaces.filter(lugar => faltantes.includes(lugar.nombre));
-                const allFavPlaces = [...foundPlaces, ...csvFavoritos];
-                
-                console.log("📋 Total favoritos:", favoriteNames.length);
-                console.log("🔥 Desde Backend:", foundPlaces.length);
-                console.log("📄 Desde CSV:", csvFavoritos.length);
-                console.log("✅ Total encontrados:", allFavPlaces.length);
-                
-                setFavoritePlaces(allFavPlaces);
-                setLoading(false);
-              },
-              error: (error: any) => {
-                console.error("Error al cargar CSV:", error);
-                // Si hay error en CSV, usar solo los del backend
-                setFavoritePlaces(foundPlaces);
-                setLoading(false);
-              }
-            });
-          } else {
-            // Todos los favoritos se encontraron en el backend
-            console.log("✅ Todos los favoritos encontrados en Backend");
-            setFavoritePlaces(foundPlaces);
-            setLoading(false);
-          }
+          setFavoritePlaces(resolvedFavorites);
+          setLoading(false);
         } catch (error) {
           console.error("Error al cargar favoritos:", error);
           setLoading(false);
@@ -160,7 +116,13 @@ export default function FavoritosPage() {
       loadFavorites();
 
       // Escuchar cambios en favoritos
-      const handleStorageChange = () => {
+      const handleStorageChange = (event: Event) => {
+        if (event instanceof StorageEvent) {
+          const storageKey = event.key || "";
+          if (storageKey && !storageKey.startsWith("pitzbol_favorites")) {
+            return;
+          }
+        }
         loadFavorites();
       };
 
@@ -304,17 +266,26 @@ export default function FavoritosPage() {
           /* Grid de Favoritos */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {favoritePlaces.map((place, index) => (
-              <motion.div
+              <motion.article
                 key={place.nombre}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-3xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 group"
+                whileHover={{ y: -8 }}
+                onClick={() => router.push(`/informacion/${encodeURIComponent(place.nombre)}`)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    router.push(`/informacion/${encodeURIComponent(place.nombre)}`);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                className="bg-white rounded-[28px] md:rounded-[34px] overflow-hidden border border-[#F6F0E6] shadow-[0_10px_30px_rgba(26,77,46,0.05)] flex flex-col cursor-pointer"
               >
-                {/* Imagen */}
-                <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#1A4D2E] to-[#0D601E]">
+                <div className="relative h-52 w-full overflow-hidden">
                   <img
-                    src={getPlaceImageUrlSync({
+                    src={place.fotos?.[0] || getPlaceImageUrlSync({
                       nombre: place.nombre,
                       categoria: place.categoria,
                       ubicacion: place.ubicacion,
@@ -322,54 +293,68 @@ export default function FavoritosPage() {
                       longitud: place.longitud
                     })}
                     alt={place.nombre}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                   />
-                  
-                  {/* Botón eliminar */}
+
+                  <span className="absolute top-4 left-4 bg-white/90 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-[#0D601E]">
+                    {place.categoria || "Sin categoría"}
+                  </span>
+
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       removeFavorite(place.nombre);
                     }}
-                    className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-3 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-lg hover:scale-110 active:scale-95 group/btn"
+                    className="absolute top-14 right-4 p-3 bg-white/90 rounded-full shadow-lg transition-transform duration-200 ease-out hover:scale-110 active:scale-90"
                     title="Eliminar de favoritos"
                   >
-                    <FiTrash2 size={18} className="group-hover/btn:animate-pulse" />
+                    <FiHeart className={`${(favorites || []).some((fav) => normalizePlaceName(fav) === normalizePlaceName(place.nombre)) ? "text-[#F00808] fill-[#F00808]" : "text-[#769C7B]"} transition-transform duration-200 ease-out`} size={18} />
                   </button>
 
-                  {/* Categoría badge */}
-                  <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-[#1A4D2E]">
-                    {place.categoria}
+                  <div className="absolute top-4 right-4 z-10 bg-white/95 border border-[#E8E8E8] rounded-full px-2 py-1 shadow-md">
+                    <PlaceRating
+                      placeName={place.nombre}
+                      showLabel={true}
+                      size="small"
+                      readonly={true}
+                    />
                   </div>
                 </div>
 
-                {/* Contenido */}
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-[#1A4D2E] mb-2 line-clamp-1">
+                <div className="p-5 md:p-6 flex flex-col flex-1">
+                  <h3 className="text-2xl font-black text-[#1A4D2E] uppercase leading-tight mb-2" style={{ fontFamily: "var(--font-jockey)" }}>
                     {place.nombre}
                   </h3>
-                  
-                  <div className="flex items-center gap-2 text-[#769C7B] text-sm mb-3">
-                    <FiMapPin size={16} />
-                    <span className="line-clamp-1">{place.ubicacion}</span>
+
+                  <p className="text-xs uppercase tracking-widest text-[#0D601E] font-bold mb-2">{place.ubicacion || "Guadalajara"}</p>
+
+                  <div className="mb-3">
+                    <p className="text-[10px] text-[#769C7B] mt-1">
+                      {(place.views || 0).toLocaleString("es-MX")} vistas
+                    </p>
                   </div>
 
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {place.descripcion}
+                  <div className="inline-flex w-fit items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#769C7B] bg-[#F6F0E6] px-3 py-1 rounded-full mb-4">
+                    <FiClock size={11} /> Ruta disponible
+                  </div>
+
+                  <p className="text-[13px] text-[#769C7B] leading-snug mb-6 flex-1 italic">{place.descripcion || "Explora este punto recomendado en Guadalajara."}
                   </p>
 
-                  {/* Botones de acción */}
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     <Link
                       href={`/informacion/${encodeURIComponent(place.nombre)}`}
-                      className="flex-1 bg-[#1A4D2E] text-white py-2 px-4 rounded-xl font-bold text-sm hover:bg-[#0D601E] transition-all flex items-center justify-center gap-2"
+                      className="flex-1"
+                      onClick={(event) => event.stopPropagation()}
                     >
-                      Ver Detalles <FiExternalLink size={14} />
+                      <button className="w-full bg-[#1A4D2E] text-white py-3 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#F00808] transition-colors">
+                        <FiArrowRight /> Ver Detalles
+                      </button>
                     </Link>
                   </div>
                 </div>
-              </motion.div>
+              </motion.article>
             ))}
           </div>
         )}
