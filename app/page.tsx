@@ -159,7 +159,7 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time, tHome }: 
           {team1}
         </span>
         <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
-          <Image src={flag1} alt={team1} fill className="object-cover" />
+          <Image src={flag1} alt={team1} fill sizes="(max-width: 768px) 32px, 40px" className="object-cover" />
         </div>
       </div>
 
@@ -176,7 +176,7 @@ const MatchItem = ({ location, date, team1, flag1, team2, flag2, time, tHome }: 
       {/* Equipo 2 */}
       <div className="flex flex-1 items-center justify-start gap-2">
         <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
-          <Image src={flag2} alt={team2} fill className="object-cover" />
+          <Image src={flag2} alt={team2} fill sizes="(max-width: 768px) 32px, 40px" className="object-cover" />
         </div>
         <span className="text-xs md:text-base font-normal text-left leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>
           {team2}
