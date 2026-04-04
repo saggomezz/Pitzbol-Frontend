@@ -1,6 +1,6 @@
 
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { editarNegocio } from "@/lib/editarNegocioApi";
 import EliminarNegocioModal from "@/app/components/EliminarNegocioModal";
 import { archivarNegocio } from "@/lib/adminNegociosApi";
@@ -13,6 +13,7 @@ import { HiSparkles } from "react-icons/hi";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { io, Socket } from "socket.io-client";
 
 export interface Business {
   id: string;
@@ -31,6 +32,10 @@ export interface Business {
   updatedAt?: any;
   ownerName?: string;
   ownerPhoto?: string;
+  archivedAt?: string;
+  rejectedAt?: string;
+  archivedReason?: string;
+  rejectionReason?: string;
   business?: {
     name?: string;
     description?: string;
@@ -59,6 +64,7 @@ const AdminNegociosPage = () => {
   const [modalEditarOpen, setModalEditarOpen] = useState(false);
   const [negocioAEditar, setNegocioAEditar] = useState<Business | null>(null);
   const [editForm, setEditForm] = useState({ name: "", description: "" });
+  const socketRef = useRef<Socket | null>(null);
 
   const abrirModalEditar = (negocio: Business) => {
     setNegocioAEditar(negocio);
@@ -86,7 +92,7 @@ const AdminNegociosPage = () => {
       owner: negocio.owner || "",
       ownerName: negocio.ownerName || "Usuario",
       ownerPhoto: negocio.ownerPhoto || "",
-      status: negocio.status || "pendiente",
+      status: negocio.status || (negocio.rejectedAt ? "rechazado" : negocio.archivedAt ? "archivado" : "pendiente"),
       createdAt: negocio.createdAt || "",
     };
   };
@@ -136,6 +142,31 @@ const AdminNegociosPage = () => {
 
   useEffect(() => {
     cargarNegocios();
+  }, []);
+
+  useEffect(() => {
+    const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+    const token = localStorage.getItem("pitzbol_token");
+
+    socketRef.current = io(API_BASE, {
+      auth: {
+        token: token || "",
+      },
+    });
+
+    const refreshBusinesses = () => {
+      cargarNegocios();
+    };
+
+    socketRef.current.on("admin-businesses-updated", refreshBusinesses);
+    socketRef.current.on("new-pending-business", refreshBusinesses);
+    socketRef.current.on("business-status-changed", refreshBusinesses);
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -328,6 +359,8 @@ const AdminNegociosPage = () => {
                             src={businessData.logo}
                             alt={businessData.name}
                             fill
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                            loading={index === 0 ? "eager" : "lazy"}
                             className="object-cover group-hover:scale-110 transition-transform duration-300"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
@@ -454,6 +487,7 @@ const AdminNegociosPage = () => {
                                   src={img} 
                                   alt={`Imagen ${i + 1}`} 
                                   fill 
+                                  sizes="64px"
                                   className="object-cover hover:scale-110 transition-transform"
                                 />
                               </div>

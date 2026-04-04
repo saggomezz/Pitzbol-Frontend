@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { io, Socket } from "socket.io-client";
 import styles from "../styles/Negocios.module.css";
 import { fetchWithAuth } from "../../lib/fetchWithAuth";
 import { enviarNotificacion } from "../../lib/notificaciones";
@@ -11,9 +12,42 @@ export default function AdminNegociosPendientesPage() {
   const [selected, setSelected] = useState<any | null>(null);
   const [accion, setAccion] = useState<"" | "aprobado" | "rechazado">("");
   const [motivoRechazo, setMotivoRechazo] = useState("");
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     fetchNegocios();
+    
+    // Conectar a Socket.io para recibir actualizaciones en tiempo real
+    const token = localStorage.getItem("pitzbol_token");
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+    
+    socketRef.current = io(BACKEND_URL, {
+      auth: {
+        token: token || "",
+      },
+    });
+
+    socketRef.current.on("connect", () => {
+      console.log("Socket conectado para negocios pendientes");
+    });
+
+    // Escuchar nuevo negocio pendiente y refrescar lista
+    socketRef.current.on("new-pending-business", (data: any) => {
+      console.log("Nuevo negocio pendiente recibido:", data);
+      // Refrescar la lista automáticamente
+      fetchNegocios();
+    });
+
+    socketRef.current.on("disconnect", () => {
+      console.log("Socket desconectado");
+    });
+
+    // Limpiar la conexión al desmontar
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, []);
 
   const fetchNegocios = async () => {

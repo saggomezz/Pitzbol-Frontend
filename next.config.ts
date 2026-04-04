@@ -2,6 +2,7 @@
 const nextConfig = {
   env: {
     NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001',
+<<<<<<< HEAD
   },
   async headers() {
     return [
@@ -19,6 +20,14 @@ const nextConfig = {
   },
   async rewrites() {
     const backendUrl = process.env.BACKEND_INTERNAL_URL || 'http://localhost:3001';
+=======
+  },
+  async rewrites() {
+    const backendUrl =
+      process.env.BACKEND_INTERNAL_URL ||
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      'http://localhost:3001';
+>>>>>>> af76572720447f06e620879423b5891779d70929
     return [
       {
         source: '/api/:path*',
@@ -35,6 +44,13 @@ const nextConfig = {
       '@tensorflow/tfjs': false,
     };
     config.externals = [...(config.externals || []), { canvas: 'canvas' }];
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      {
+        module: /@vladmandic[\\/]face-api[\\/]dist[\\/]face-api\.esm\.js/,
+        message: /Critical dependency: require function is used in a way in which dependencies cannot be statically extracted/,
+      },
+    ];
     return config;
   },
   images: {

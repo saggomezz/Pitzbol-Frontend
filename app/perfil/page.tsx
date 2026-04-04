@@ -10,6 +10,7 @@ import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
   FiPlus, FiShield, FiUser, FiX, FiCreditCard
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
+import { useFavoritesSync } from "@/lib/favoritesApi";
 
 import WalletModal from "@/app/components/WalletModal";
 
@@ -76,12 +77,14 @@ const getInteresData = (nombre: string) => {
 export default function PerfilDetallado() {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
+  const { syncLocalFavorites } = useFavoritesSync();
   
   const [perfil, setPerfil] = useState<any>(null);
   const [tours, setTours] = useState<any[]>([]);
   const [showTourModal, setShowTourModal] = useState(false);
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [guardadosCount, setGuardadosCount] = useState(0);
   const [especialidades, setEspecialidades] = useState<string[]>([]);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -135,6 +138,18 @@ export default function PerfilDetallado() {
   const [error, setError] = useState("");
   const [mostrarNotificacionAprobado, setMostrarNotificacionAprobado] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+
+  const refrescarFavoritos = async () => {
+    try {
+      const favoritos = await syncLocalFavorites();
+      setGuardadosCount(Array.isArray(favoritos) ? favoritos.length : 0);
+    } catch (error) {
+      console.error("Error al cargar favoritos del perfil:", error);
+      const stored = localStorage.getItem("pitzbol_favorites");
+      const favoritosLocales = stored ? JSON.parse(stored) : [];
+      setGuardadosCount(Array.isArray(favoritosLocales) ? favoritosLocales.length : 0);
+    }
+  };
 
   useEffect(() => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
@@ -258,9 +273,37 @@ export default function PerfilDetallado() {
     cargarDatos();
   }, []);
 
+  useEffect(() => {
+    refrescarFavoritos();
+
+    const handleFavoritesChanged = (event?: Event) => {
+      if (event instanceof StorageEvent) {
+        const storageKey = event.key || "";
+        if (storageKey && !storageKey.startsWith("pitzbol_favorites")) {
+          return;
+        }
+      }
+      refrescarFavoritos();
+    };
+
+    window.addEventListener("favoritesChanged", handleFavoritesChanged);
+    window.addEventListener("storage", handleFavoritesChanged);
+
+    return () => {
+      window.removeEventListener("favoritesChanged", handleFavoritesChanged);
+      window.removeEventListener("storage", handleFavoritesChanged);
+    };
+  }, [syncLocalFavorites]);
+
   // Escuchar cambios en el localStorage (cuando se cierren modales)
   useEffect(() => {
-    const handleStorageChange = () => {
+    const handleStorageChange = (event?: Event) => {
+      if (event instanceof StorageEvent) {
+        const storageKey = event.key || "";
+        if (storageKey && storageKey !== "pitzbol_user") {
+          return;
+        }
+      }
       refrescarEspecialidades();
     };
 
@@ -1192,8 +1235,10 @@ export default function PerfilDetallado() {
                     </div>
                     <div className="w-px h-8 bg-[#E0F2F1]" />
                     <div className="text-center flex-1">
-                      <p className="text-xl font-semibold text-[#66BB6A]">0</p>
-                      <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wide">{t('saved')}</p>
+                      <p className="text-xl font-semibold text-[#66BB6A]">{guardadosCount}</p>
+                      <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wide">
+                        {guardadosCount === 1 ? "Guardado" : t('saved')}
+                      </p>
                     </div>
                   </div>
                 </div>
