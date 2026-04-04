@@ -83,9 +83,34 @@ export default function MisSolicitudesPage() {
       setTab("todas");
     };
 
+    const handleNotificationsUpdated = () => {
+      fetchSolicitudes();
+      window.setTimeout(() => {
+        fetchSolicitudes();
+      }, 700);
+    };
+
+    const handleBusinessStatusChanged = (event: any) => {
+      const { businessId, status } = event.detail || {};
+      console.log(`[mis-solicitudes] Business status changed: ${businessId} -> ${status}`);
+      // Re-fetch immediately when explicit status change event arrives
+      fetchSolicitudes();
+      // Secondary fetch after delay to ensure backend consistency
+      window.setTimeout(() => {
+        fetchSolicitudes();
+      }, 300);
+    };
+
     window.addEventListener("businessRequestSubmitted", handleBusinessSubmitted);
+    window.addEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
+    window.addEventListener("refreshNotificationsFromBackend", handleNotificationsUpdated);
+    window.addEventListener("businessStatusChanged", handleBusinessStatusChanged as EventListener);
+    
     return () => {
       window.removeEventListener("businessRequestSubmitted", handleBusinessSubmitted);
+      window.removeEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
+      window.removeEventListener("refreshNotificationsFromBackend", handleNotificationsUpdated);
+      window.removeEventListener("businessStatusChanged", handleBusinessStatusChanged as EventListener);
     };
     // eslint-disable-next-line
   }, [user]);
@@ -95,6 +120,7 @@ export default function MisSolicitudesPage() {
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("pitzbol_token") : null;
       const res = await fetch(`${BACKEND_URL}/api/business/my-requests`, {
+        cache: "no-store",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
@@ -231,6 +257,8 @@ export default function MisSolicitudesPage() {
                 src={logo}
                 alt={business.name || "Logo"}
                 fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                loading={index === 0 ? "eager" : "lazy"}
                 className="object-cover group-hover:scale-110 transition-transform duration-300"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
@@ -323,6 +351,7 @@ export default function MisSolicitudesPage() {
                       src={img}
                       alt={`Imagen ${i + 1}`}
                       fill
+                      sizes="64px"
                       className="object-cover hover:scale-110 transition-transform"
                     />
                   </div>
