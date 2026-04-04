@@ -10,10 +10,12 @@ import {
 import { useState } from "react";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
-// Carga Stripe con tu public key
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY!
-);
+// Carga Stripe con fallback de variables de entorno
+const STRIPE_PUBLIC_KEY =
+  process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY ||
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+  "";
+const stripePromise = STRIPE_PUBLIC_KEY ? loadStripe(STRIPE_PUBLIC_KEY) : null;
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
@@ -116,6 +118,15 @@ function CheckoutForm() {
 // Page Wrapper
 // ===============================
 export default function PagoPage() {
+  if (!stripePromise) {
+    return (
+      <div style={{ maxWidth: "560px", margin: "60px auto", padding: "20px", color: "#8B0000" }}>
+        No se pudo inicializar Stripe: falta la variable de entorno
+        NEXT_PUBLIC_STRIPE_PUBLIC_KEY o NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.
+      </div>
+    );
+  }
+
   return (
     <Elements stripe={stripePromise}>
       <CheckoutForm />
