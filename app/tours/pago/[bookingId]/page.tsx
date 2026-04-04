@@ -26,7 +26,11 @@ import {
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY!);
+const STRIPE_PUBLIC_KEY =
+  process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY ||
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+  "";
+const stripePromise = STRIPE_PUBLIC_KEY ? loadStripe(STRIPE_PUBLIC_KEY) : null;
 
 interface BookingData {
   id: string;
@@ -481,15 +485,22 @@ export default function TourPaymentPage() {
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
               >
-                <Elements stripe={stripePromise}>
-                  <InlineAddCardForm
-                    onSuccess={() => {
-                      setShowAddCard(false);
-                      fetchCards();
-                    }}
-                    onCancel={() => setShowAddCard(false)}
-                  />
-                </Elements>
+                {stripePromise ? (
+                  <Elements stripe={stripePromise}>
+                    <InlineAddCardForm
+                      onSuccess={() => {
+                        setShowAddCard(false);
+                        fetchCards();
+                      }}
+                      onCancel={() => setShowAddCard(false)}
+                    />
+                  </Elements>
+                ) : (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    Falta configurar la clave pública de Stripe
+                    (NEXT_PUBLIC_STRIPE_PUBLIC_KEY o NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).
+                  </div>
+                )}
               </motion.div>
             ) : savedCards.length > 0 ? (
               <motion.div
