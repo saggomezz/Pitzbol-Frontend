@@ -351,6 +351,7 @@ export default function InformacionLugar() {
               onClick={toggleFavorite} 
               className={`${styles.iconBtn} ${isFavorite ? styles.iconBtnActive : ''}`}
               title={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+              whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.85 }}
               animate={{ 
                 scale: isFavorite ? [1, 1.2, 1] : 1,
