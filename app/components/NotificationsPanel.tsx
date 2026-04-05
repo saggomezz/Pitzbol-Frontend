@@ -6,10 +6,11 @@ import { io, Socket } from "socket.io-client";
 
 import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
+import DeletedBusinessModal from "./DeletedBusinessModal";
 
 interface Notification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado' | 'negocio_eliminado';
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -27,9 +28,15 @@ interface NotificationsPanelProps {
 }
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
+
+type ApprovedToastPendingPayload = {
+  businessId?: string;
+  businessName?: string;
+};
 
 const BUSINESS_NOTIF_TYPES = new Set([
-  'solicitud_negocio_enviada', 'negocio_aprobado', 'negocio_rechazado', 'negocio_archivado', 'negocio_editado', 'nueva_solicitud_negocio',
+  'solicitud_negocio_enviada', 'negocio_aprobado', 'negocio_rechazado', 'negocio_archivado', 'negocio_editado', 'nueva_solicitud_negocio', 'negocio_eliminado',
 ]);
 
 function extractBusinessIdFromNotification(notif: Notification): string | undefined {
@@ -54,11 +61,73 @@ function extractBusinessIdFromNotification(notif: Notification): string | undefi
   return undefined;
 }
 
+const buildPublicBusinessDetailLink = (businessName: string): string => {
+  return `/informacion/${encodeURIComponent(businessName)}?origen=gestion-negocios-activo`;
+};
+
+const extractBusinessNameFromNotification = (notif: Notification): string | undefined => {
+  const candidates = [notif.mensaje, notif.titulo];
+
+  for (const text of candidates) {
+    if (!text) continue;
+
+    const quotedName = text.match(/"([^"]+)"/)?.[1]?.trim();
+    if (quotedName) return quotedName;
+
+    const singleQuotedName = text.match(/'([^']+)'/)?.[1]?.trim();
+    if (singleQuotedName) return singleQuotedName;
+  }
+
+  return undefined;
+};
+
+const normalizeBusinessName = (value?: string): string => {
+  if (!value) return "";
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+};
+
+const findRelatedDeletedBusinessNotification = (
+  notif: Notification,
+  allNotifications: Notification[]
+): Notification | null => {
+  if (notif.tipo === "negocio_eliminado") return notif;
+
+  const currentBusinessId = extractBusinessIdFromNotification(notif);
+  const currentBusinessName = normalizeBusinessName(extractBusinessNameFromNotification(notif));
+
+  for (const candidate of allNotifications) {
+    if (candidate.tipo !== "negocio_eliminado") continue;
+
+    const deletedBusinessId = extractBusinessIdFromNotification(candidate);
+    if (currentBusinessId && deletedBusinessId && currentBusinessId === deletedBusinessId) {
+      return candidate;
+    }
+
+    const deletedBusinessName = normalizeBusinessName(extractBusinessNameFromNotification(candidate));
+    if (currentBusinessName && deletedBusinessName && currentBusinessName === deletedBusinessName) {
+      return candidate;
+    }
+  }
+
+  return null;
+};
+
 /** Convierte enlaces viejos y normaliza navegación por ID de negocio según rol */
 function resolveNotifLink(notif: Notification, userRole?: string): string | undefined {
   const enlace = notif.enlace;
   const businessId = extractBusinessIdFromNotification(notif);
   const isAdmin = (userRole || "").toLowerCase() === "admin";
+
+  if (!isAdmin && notif.tipo === "negocio_aprobado") {
+    const businessName = extractBusinessNameFromNotification(notif);
+    if (businessName) {
+      return buildPublicBusinessDetailLink(businessName);
+    }
+  }
 
   if (!enlace) {
     if (!businessId) return undefined;
@@ -88,6 +157,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   const [notificaciones, setNotificaciones] = useState<Notification[]>([]);
   const [noLeidas, setNoLeidas] = useState(0);
   const [cargando, setCargando] = useState(false);
+  const [isDeletedBusinessModalOpen, setIsDeletedBusinessModalOpen] = useState(false);
+  const [selectedDeletedNotification, setSelectedDeletedNotification] = useState<Notification | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const notificationsRef = useRef<Notification[]>([]);
@@ -364,13 +435,21 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     }
   }, [isOpen]);
 
-  // Cerrar panel con Escape cuando está abierto
+  // Cerrar modal/panel con Escape
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen && !isDeletedBusinessModalOpen) return;
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
+
+      // Prioridad: si la modal de eliminado está abierta, cerrar esa primero
+      if (isDeletedBusinessModalOpen) {
+        setIsDeletedBusinessModalOpen(false);
+        setSelectedDeletedNotification(null);
+        return;
+      }
+
       setIsOpen(false);
     };
 
@@ -378,7 +457,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     return () => {
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [isOpen]);
+  }, [isOpen, isDeletedBusinessModalOpen]);
 
   // Escuchar cambios en storage
   useEffect(() => {
@@ -540,6 +619,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return <FiX className="text-red-600" size={20} />;
       case 'negocio_editado':
         return <FiBriefcase className="text-blue-600" size={20} />;
+      case 'negocio_eliminado':
+        return <FiAlertCircle className="text-red-600" size={20} />;
       default:
         return <FiBell className="text-blue-600" size={20} />;
     }
@@ -567,6 +648,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return 'bg-red-50 border-red-100';
       case 'negocio_editado':
         return 'bg-blue-50 border-blue-100';
+      case 'negocio_eliminado':
+        return 'bg-red-50 border-red-100';
       default:
         return 'bg-blue-50 border-blue-100';
     }
@@ -589,10 +672,82 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     return notifFecha.toLocaleDateString('es-MX', { month: 'short', day: 'numeric' });
   };
 
+  const resolvePublicBusinessLinkById = async (notif: Notification): Promise<string | undefined> => {
+    if (notif.tipo !== "negocio_aprobado") return undefined;
+
+    const businessId = extractBusinessIdFromNotification(notif);
+    if (!businessId) return undefined;
+
+    const token = localStorage.getItem("pitzbol_token");
+    if (!token) return undefined;
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/business/by-id/${businessId}`, {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) return undefined;
+      const data = await response.json();
+      const businessName = data?.business?.business?.name;
+      if (!businessName || typeof businessName !== "string") return undefined;
+
+      return buildPublicBusinessDetailLink(businessName);
+    } catch {
+      return undefined;
+    }
+  };
+
+  const handleNotificationClick = async (notif: Notification) => {
+    marcarComoLeida(notif.id);
+
+    // Si el negocio ya fue eliminado, abrir siempre el modal de detalle de eliminación
+    const deletedBusinessNotification = findRelatedDeletedBusinessNotification(notif, notificationsRef.current);
+    if (deletedBusinessNotification) {
+      setSelectedDeletedNotification(deletedBusinessNotification);
+      setIsDeletedBusinessModalOpen(true);
+      return;
+    }
+
+    // Cerrar panel para el resto de notificaciones (incluye negocio_archivado)
+    setIsOpen(false);
+
+    const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
+    let targetLink = resolveNotifLink(notif, user?.role);
+
+    if (notif.tipo === "negocio_aprobado") {
+      const shouldResolveById = !targetLink || targetLink.startsWith("/negocio/mis-solicitudes/");
+      if (shouldResolveById) {
+        const publicLink = await resolvePublicBusinessLinkById(notif);
+        if (publicLink) {
+          targetLink = publicLink;
+        }
+      }
+    }
+
+    if (targetLink) {
+      if (notif.tipo === "negocio_aprobado") {
+        const payload: ApprovedToastPendingPayload = {
+          businessId: extractBusinessIdFromNotification(notif),
+          businessName: extractBusinessNameFromNotification(notif),
+        };
+
+        const businessPathMatch = targetLink.match(/^\/informacion\/([^?/#]+)/);
+        if (!payload.businessName && businessPathMatch?.[1]) {
+          payload.businessName = decodeURIComponent(businessPathMatch[1]);
+        }
+
+        localStorage.setItem(APPROVED_TOAST_PENDING_KEY, JSON.stringify(payload));
+      }
+      router.push(targetLink);
+    }
+  };
+
   return (
     <div ref={panelRef} className="relative">
       {/* Botón de Notificaciones */}
       <motion.button
+        type="button"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(!isOpen)}
@@ -634,6 +789,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setIsOpen(false)}
                 className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
               >
@@ -667,22 +823,19 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                       key={`${notif.id || 'notif'}-${index}`}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
+                      whileHover={{ y: -2, scale: 1.01, boxShadow: "0 12px 28px rgba(13, 96, 30, 0.12)" }}
+                      whileTap={{ scale: 0.995 }}
                       transition={{ delay: index * 0.05 }}
-                      className={`p-4 border-l-4 ${getColorNotificacion(notif.tipo)} cursor-pointer hover:bg-opacity-75 transition-colors ${
+                      className={`group relative p-4 border-l-4 ${getColorNotificacion(notif.tipo)} cursor-pointer transition-all duration-300 ${
                         !notif.leido ? 'border-l-[#F00808] bg-opacity-60' : 'border-l-gray-200'
                       }`}
                       onClick={() => {
-                        marcarComoLeida(notif.id);
-                        setIsOpen(false);
-                        const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
-                        const targetLink = resolveNotifLink(notif, user?.role);
-                        if (targetLink) {
-                          router.push(targetLink);
-                        }
+                        void handleNotificationClick(notif);
                       }}
                     >
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0D601E]/0 via-[#0D601E]/[0.06] to-[#0D601E]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="flex gap-3">
-                        <div className="flex-shrink-0 mt-1">
+                        <div className="flex-shrink-0 mt-1 transition-transform duration-300 group-hover:-translate-y-0.5">
                           {getIconoNotificacion(notif.tipo)}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -701,11 +854,12 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                           {notif.tipo === 'solicitud_guia_pendiente' && notif.enlace && (
                             <div className="mt-2 flex gap-2">
                               <button
+                                type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   marcarComoLeida(notif.id);
                                   if (typeof notif.enlace === 'string') {
-                                    window.location.href = notif.enlace;
+                                    router.push(notif.enlace);
                                   }
                                 }}
                                 className="text-xs px-3 py-1 bg-[#0D601E] hover:bg-[#1A4D2E] rounded text-white font-bold transition-colors"
@@ -717,6 +871,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                           {!notif.leido && notif.tipo !== 'solicitud_guia_pendiente' && (
                             <div className="mt-2 flex gap-2">
                               <button
+                                type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   marcarComoLeida(notif.id);
@@ -729,6 +884,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                           )}
                         </div>
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             eliminarNotificacion(notif.id);
@@ -748,6 +904,16 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Modal de negocio eliminado */}
+      <DeletedBusinessModal
+        isOpen={isDeletedBusinessModalOpen}
+        onClose={() => {
+          setIsDeletedBusinessModalOpen(false);
+          setIsOpen(false);
+        }}
+        notification={selectedDeletedNotification}
+      />
     </div>
   );
 }
