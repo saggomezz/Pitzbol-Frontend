@@ -11,18 +11,21 @@ interface DeletedBusinessModalProps {
     mensaje: string;
     fecha: string;
   } | null;
+  businessName?: string;
 }
 
 export default function DeletedBusinessModal({
   isOpen,
   onClose,
   notification,
+  businessName,
 }: DeletedBusinessModalProps) {
   if (!notification) return null;
 
-  // Extraer el nombre del negocio del mensaje
+  // Extraer el nombre del negocio del mensaje como fallback
   const businessNameMatch = notification.mensaje.match(/"([^"]+)"/);
-  const businessName = businessNameMatch ? businessNameMatch[1] : "Sin nombre";
+  const fallbackBusinessName = businessNameMatch ? businessNameMatch[1] : "Sin nombre";
+  const resolvedBusinessName = (businessName || fallbackBusinessName).trim() || "Sin nombre";
 
   // Extraer el motivo (todo después de "por el administrador.")
   const reasonMatch = notification.mensaje.match(/por el administrador\.(.+)/);
@@ -83,7 +86,7 @@ export default function DeletedBusinessModal({
             {/* Nombre del negocio */}
             <div className="mb-6 rounded-lg bg-gray-50 p-4">
               <p className="text-sm font-medium text-gray-600">Negocio eliminado:</p>
-              <p className="mt-1 text-lg font-semibold text-gray-900">{businessName}</p>
+              <p className="mt-1 text-lg font-semibold text-gray-900">{resolvedBusinessName}</p>
             </div>
 
             {/* Motivo de eliminación */}
