@@ -2,7 +2,6 @@ Nombre del Lugar,Categoría,Dirección,Latitud,Longitud,Tiempo de Estancia,Costo
 "Estadio Akron, Guadalajara",Fútbol,Cto. J.V.C. 2800,"20,6817764","-103,4626455",180,"$400 - $2,500",,
 "Glorieta de la Minerva, Guadalajara",Fútbol,Av. Ignacio L Vallarta,"20,6743943","-103,3874128",45,Gratis,,
 "Museo Chivas, Guadalajara",Arquitectura,Cto. J.V.C. 2800,"20,6819467","-103,4626455",90,$150,,
-"El Gallo D' Oro, Guadalajara","Vida Nocturna, Música","C. Pedro Moreno 1324, Col Americana, 44160 Guadalajara","20,675874951149208","-103,36446094232883",90,$200-$300,,Vida Nocturna
 "La Gran Plaza Fashion Mall, Guadalajara","Eventos, Compras",La Gran Plaza Fashion Mall,"20,6737855","-103,4047841",90,$100,,
 "Tortas Ahogadas ""El Güerito"", Guadalajara",Gastronomía Mexicana,Calle Francisco I. Madero 13,"20,6730994","-103,3436262",60,$100 - $200,,Callejero
 "Centro Histórico de Tlaquepaque, Guadalajara","Cultura, Eventos, Postre, Mercados Locales, Museos, Aventura, Compras, Vida Nocturna, Fotografía, Música, Arquitectura, Arte e Historia",Calle Independencia,"20,6393535","-103,3149955",60,Gratis,,
@@ -78,10 +77,7 @@ Choclo y Maiz Cocina Vegana,Cafeterias Vegana,Calle Gabriel Ramos Millán #37,"2
 "Puerta de Hierro Medical Center, Guadalajara",Hospital,Av. Empresarios 150,"20,7086893","-103,4144338",,,,
 "Hospital Real San José Valle Real, Guadalajara",Hospital,Av. Central Guillermo González Camarena 911,"20,7218921","-103,4296447",,,,
 "Hospital Jardines, Guadalajara",Hospital,Calle Toltecas 3597,"20,6818811","-103,3996857",,,,
-"Santa María Chapalita Hospital, Guadalajara",Hospital,Guadalajara,"20,6751707","-103,3473385",,,,
-"Clínica San Pedro Apóstol, Guadalajara",Hospital,Calle Emilio Carranza 463,"20,6297482","-103,3093521",,,,
 "Hospital Civil Fray Antonio Alcalde, Guadalajara",Hospital,Coronel Calderón 777,"20,6880786","-103,3435825",,,,
-"Hospital Civil Urgencias Adultos, Guadalajara",Hospital,44280,"20,6886583","-103,3437419",,,,
 "We Cash Centro, Guadalajara",Casas de Cambio,C. Manuel López Cotilla 167,"20,674326","-103,3451183",,,,
 "Foreign Exchange Center West Pearl, Guadalajara",Casas de Cambio,C. Manuel López Cotilla 211-Loc. 2A,"20,6743352","-103,3460074",,,,
 "Centro Cambiario Torres Barón, Guadalajara",Casas de Cambio,C. Maestranza 150,"20,6744657","-103,3457252",,,,
@@ -120,6 +116,5 @@ Choclo y Maiz Cocina Vegana,Cafeterias Vegana,Calle Gabriel Ramos Millán #37,"2
 "Búnker Brew Club, Guadalajara",Vida Nocturna,San Jorge 225,"20,7165915","-103,3745531",120,$200-$400,,Vida Nocturna
 "Mika Bar, Guadalajara",Vida Nocturna,Av. Patria 188,"20,7074421","-103,4128721",120,$200-$400,,Vida Nocturna
 "Bar Barba Negra 1988, Guadalajara",Vida Nocturna,C. Justo Sierra 2194-A,"20,6778677","-103,3722255",120,$200-$400,,Vida Nocturna
-"Zapotlán Bar Las Limas, Guadalajara",Vida Nocturna,Av. Patria 3541,"20,7111257","-103,3929263",120,$200-$400,,Vida Nocturna
 "Maldito Consuelo, Guadalajara",Vida Nocturna,C. Leñadores 225,"20,6776731","-103,4026572",120,$200-$400,,Vida Nocturna
 El Vegano,Vegana,C. Simón Bolívar 504,"20,6673515","-103,3726504",60,$100-$200,,Vegana
