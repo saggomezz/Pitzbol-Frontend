@@ -12,7 +12,12 @@ import { MdBusiness, MdCategory, MdImage } from "react-icons/md";
 import { FiArrowLeft } from "react-icons/fi";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v1";
+const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
+
+type ApprovedToastPendingPayload = {
+  businessId?: string;
+  businessName?: string;
+};
 
 type TabKey = "todas" | "pendiente" | "aprobado" | "rechazado" | "archivado";
 
@@ -215,7 +220,11 @@ export default function MisSolicitudesPage() {
 
   const navigateFromCard = (sol: any, kind: "activo" | "solicitud", targetHref: string) => {
     if (typeof window !== "undefined" && shouldTriggerApprovedToast(sol, kind)) {
-      localStorage.setItem(APPROVED_TOAST_PENDING_KEY, "1");
+      const payload: ApprovedToastPendingPayload = {
+        businessId: String(sol?.id || ""),
+        businessName: String(sol?.business?.name || ""),
+      };
+      localStorage.setItem(APPROVED_TOAST_PENDING_KEY, JSON.stringify(payload));
     }
     router.push(targetHref);
   };
