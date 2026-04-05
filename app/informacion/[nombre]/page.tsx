@@ -10,8 +10,43 @@ import PlaceRating from "@/app/components/PlaceRating";
 import { usePlaceView } from "@/lib/usePlaceView";
 import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
 
-const APPROVED_TOAST_DISMISSED_KEY = "pitzbol_approved_business_toast_dismissed_public_v1";
-const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v1";
+const APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY = "pitzbol_approved_business_toast_dismissed_by_business_v2";
+const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
+
+type ApprovedToastPendingPayload = {
+  businessId?: string;
+  businessName?: string;
+};
+
+function getApprovedToastPendingPayload(): ApprovedToastPendingPayload | null {
+  if (typeof window === "undefined") return null;
+
+  const raw = localStorage.getItem(APPROVED_TOAST_PENDING_KEY);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as ApprovedToastPendingPayload;
+    if (!parsed || (typeof parsed !== "object")) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function getApprovedToastDismissedMap(): Record<string, true> {
+  if (typeof window === "undefined") return {};
+
+  const raw = localStorage.getItem(APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY);
+  if (!raw) return {};
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, true>;
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
 
 const CULTURA_DESCRIPTIONS: Record<string, string> = {
   "Instituto Cultural Cabañas, Guadalajara":
@@ -104,6 +139,7 @@ export default function InformacionLugar() {
   // Registrar vista del lugar
   const nombreRaw = params.nombre;
   const nombreLugar = typeof nombreRaw === "string" ? decodeURIComponent(nombreRaw) : null;
+  const normalizedBusinessName = nombreLugar ? normalizeName(nombreLugar) : "";
   usePlaceView(nombreLugar);
 
   const [showApprovedToast, setShowApprovedToast] = useState(false);
@@ -125,8 +161,11 @@ export default function InformacionLugar() {
 
     const urlParams = new URLSearchParams(window.location.search);
     const cameFromBusinessManagement = urlParams.get("origen") === "gestion-negocios-activo";
-    const hasPendingTrigger = localStorage.getItem(APPROVED_TOAST_PENDING_KEY) === "1";
-    const dismissed = localStorage.getItem(APPROVED_TOAST_DISMISSED_KEY) === "1";
+    const pendingPayload = getApprovedToastPendingPayload();
+    const pendingBusinessName = pendingPayload?.businessName ? normalizeName(pendingPayload.businessName) : "";
+    const hasPendingTrigger = !!pendingBusinessName && pendingBusinessName === normalizedBusinessName;
+    const dismissedMap = getApprovedToastDismissedMap();
+    const dismissed = !!dismissedMap[normalizedBusinessName];
 
     setDebugToast({
       cameFromBusinessManagement,
@@ -135,22 +174,24 @@ export default function InformacionLugar() {
       nombreLugar: nombreLugar || '',
       urlParams: window.location.search,
       localStoragePending: localStorage.getItem(APPROVED_TOAST_PENDING_KEY) || '',
-      localStorageDismissed: localStorage.getItem(APPROVED_TOAST_DISMISSED_KEY) || '',
+      localStorageDismissed: dismissed ? "1" : "",
     });
 
     if ((cameFromBusinessManagement || hasPendingTrigger) && !dismissed) {
       setShowApprovedToast(true);
     }
 
-    if (hasPendingTrigger) {
+    if (pendingPayload) {
       localStorage.removeItem(APPROVED_TOAST_PENDING_KEY);
     }
-  }, [nombreLugar]);
+  }, [nombreLugar, normalizedBusinessName]);
 
   const dismissApprovedToast = () => {
     setShowApprovedToast(false);
     if (typeof window !== "undefined") {
-      localStorage.setItem(APPROVED_TOAST_DISMISSED_KEY, "1");
+      const dismissedMap = getApprovedToastDismissedMap();
+      dismissedMap[normalizedBusinessName] = true;
+      localStorage.setItem(APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY, JSON.stringify(dismissedMap));
     }
   };
 
