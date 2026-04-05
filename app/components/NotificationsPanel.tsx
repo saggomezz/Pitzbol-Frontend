@@ -10,7 +10,7 @@ import DeletedBusinessModal from "./DeletedBusinessModal";
 
 interface Notification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado' | 'negocio_eliminado';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado' | 'negocio_eliminado' | 'negocio_desarchivado' | 'negocio_pendiente';
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -29,6 +29,7 @@ interface NotificationsPanelProps {
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
+const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
 
 type ApprovedToastPendingPayload = {
   businessId?: string;
@@ -36,8 +37,26 @@ type ApprovedToastPendingPayload = {
 };
 
 const BUSINESS_NOTIF_TYPES = new Set([
-  'solicitud_negocio_enviada', 'negocio_aprobado', 'negocio_rechazado', 'negocio_archivado', 'negocio_editado', 'nueva_solicitud_negocio', 'negocio_eliminado',
+  'solicitud_negocio_enviada', 'negocio_aprobado', 'negocio_rechazado', 'negocio_archivado', 'negocio_editado', 'nueva_solicitud_negocio', 'negocio_eliminado', 'negocio_desarchivado', 'negocio_pendiente',
 ]);
+
+type BusinessStatusApiResponse = {
+  success?: boolean;
+  exists?: boolean;
+  deleted?: boolean;
+  source?: "Pendientes" | "Activos" | "Archivados" | "Rechazados" | string;
+  business?: {
+    id?: string | null;
+    name?: string | null;
+  };
+  deletion?: {
+    businessId?: string | null;
+    businessName?: string | null;
+    reason?: string | null;
+    message?: string | null;
+    deletedAt?: string | null;
+  } | null;
+};
 
 function extractBusinessIdFromNotification(notif: Notification): string | undefined {
   const fromFields = notif.solicitudId || notif.negocioId || notif.uidSolicitante;
@@ -76,7 +95,29 @@ const extractBusinessNameFromNotification = (notif: Notification): string | unde
 
     const singleQuotedName = text.match(/'([^']+)'/)?.[1]?.trim();
     if (singleQuotedName) return singleQuotedName;
+
+    const directBusinessMatch = text.match(/(?:Tu negocio|Negocio|La solicitud de negocio|La notificación de negocio)\s+(.+?)\s+(?:ha sido|fue|se ha|está|esta|se encuentra|queda|queda\s+|ha quedado)/i)?.[1]?.trim();
+    if (directBusinessMatch) {
+      return directBusinessMatch.replace(/["'.,;:]+$/g, "").trim();
+    }
+
+    const trailingNameMatch = text.match(/:\s*(.+?)\s*(?:ha sido|fue|se ha|está|esta|se encuentra|queda|ha quedado)/i)?.[1]?.trim();
+    if (trailingNameMatch) {
+      return trailingNameMatch.replace(/["'.,;:]+$/g, "").trim();
+    }
   }
+
+  return undefined;
+};
+
+const getDeletedBusinessDisplayName = (notif: Notification | null): string | undefined => {
+  if (!notif) return undefined;
+
+  const fromMessage = extractBusinessNameFromNotification(notif);
+  if (fromMessage) return fromMessage;
+
+  const fromLink = extractBusinessIdFromNotification(notif);
+  if (fromLink) return undefined;
 
   return undefined;
 };
@@ -90,25 +131,184 @@ const normalizeBusinessName = (value?: string): string => {
     .trim();
 };
 
+const getNotificationBusinessKey = (notif: Notification): string => {
+  const businessId = extractBusinessIdFromNotification(notif);
+  if (businessId) return `id:${businessId}`;
+
+  const businessName = normalizeBusinessName(extractBusinessNameFromNotification(notif));
+  if (businessName) return `name:${businessName}`;
+
+  return "";
+};
+
+const getDeletedBusinessNotificationsStorageKey = (userId: string) => {
+  return `${DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX}${userId}`;
+};
+
+const persistDeletedBusinessNotifications = (userId: string, notifications: Notification[]) => {
+  if (typeof window === "undefined" || !userId) return;
+
+  const deletedMap: Record<string, Notification> = {};
+
+  for (const notif of notifications) {
+    if (notif.tipo !== "negocio_eliminado") continue;
+    const businessKey = getNotificationBusinessKey(notif);
+    if (!businessKey) continue;
+    deletedMap[businessKey] = notif;
+  }
+
+  localStorage.setItem(getDeletedBusinessNotificationsStorageKey(userId), JSON.stringify(deletedMap));
+};
+
+const getPersistedDeletedBusinessNotification = (notif: Notification, userId?: string): Notification | null => {
+  if (typeof window === "undefined" || !userId) return null;
+
+  const businessKey = getNotificationBusinessKey(notif);
+  if (!businessKey) return null;
+
+  const raw = localStorage.getItem(getDeletedBusinessNotificationsStorageKey(userId));
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, Notification>;
+    const deletedNotif = parsed[businessKey];
+    return deletedNotif || null;
+  } catch {
+    return null;
+  }
+};
+
+const resolveDeletedBusinessFromBackend = async (notif: Notification): Promise<Notification | null> => {
+  if (!BUSINESS_NOTIF_TYPES.has(notif.tipo)) return null;
+
+  const token = localStorage.getItem("pitzbol_token");
+  if (!token) return null;
+
+  const businessId = extractBusinessIdFromNotification(notif) || "";
+  const businessName = extractBusinessNameFromNotification(notif) || "";
+
+  if (!businessId && !businessName) return null;
+
+  const params = new URLSearchParams();
+  if (businessId) params.set("businessId", businessId);
+  if (businessName) params.set("businessName", businessName);
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/business/status?${params.toString()}`, {
+      credentials: "include",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    if (!data?.success || !data?.deleted || !data?.deletion) return null;
+
+    const deletion = data.deletion;
+    const resolvedName = deletion?.businessName || businessName || "Negocio";
+    const resolvedReason = deletion?.reason ? ` Motivo: ${deletion.reason}` : "";
+
+    return {
+      id: `deleted-backend-${deletion?.businessId || businessId || resolvedName}`,
+      tipo: "negocio_eliminado",
+      titulo: "Negocio Eliminado",
+      mensaje: deletion?.message || `Tu negocio "${resolvedName}" ha sido eliminado por el administrador.${resolvedReason}`,
+      fecha: deletion?.deletedAt || new Date().toISOString(),
+      leido: true,
+      negocioId: deletion?.businessId || businessId || undefined,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const resolveBusinessNavigationFromBackend = async (notif: Notification): Promise<{
+  deletedNotification?: Notification;
+  targetLink?: string;
+}> => {
+  if (!BUSINESS_NOTIF_TYPES.has(notif.tipo)) return {};
+
+  const token = localStorage.getItem("pitzbol_token");
+  if (!token) return {};
+
+  const businessId = extractBusinessIdFromNotification(notif) || "";
+  const businessName = extractBusinessNameFromNotification(notif) || "";
+  if (!businessId && !businessName) return {};
+
+  const params = new URLSearchParams();
+  if (businessId) params.set("businessId", businessId);
+  if (businessName) params.set("businessName", businessName);
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/business/status?${params.toString()}`, {
+      credentials: "include",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) return {};
+    const data = (await response.json()) as BusinessStatusApiResponse;
+    if (!data?.success) return {};
+
+    if (data.deleted && data.deletion) {
+      const deletion = data.deletion;
+      const resolvedName = deletion.businessName || businessName || "Negocio";
+      const resolvedReason = deletion.reason ? ` Motivo: ${deletion.reason}` : "";
+
+      return {
+        deletedNotification: {
+          id: `deleted-backend-${deletion.businessId || businessId || resolvedName}`,
+          tipo: "negocio_eliminado",
+          titulo: "Negocio Eliminado",
+          mensaje: deletion.message || `Tu negocio "${resolvedName}" ha sido eliminado por el administrador.${resolvedReason}`,
+          fecha: deletion.deletedAt || new Date().toISOString(),
+          leido: true,
+          negocioId: deletion.businessId || businessId || undefined,
+        },
+      };
+    }
+
+    if (data.exists) {
+      const realBusinessId = data.business?.id || businessId;
+      const realBusinessName = data.business?.name || businessName;
+      const source = (data.source || "").toLowerCase();
+
+      if (source === "activos" && realBusinessName) {
+        return {
+          targetLink: buildPublicBusinessDetailLink(realBusinessName),
+        };
+      }
+
+      if (realBusinessId) {
+        return {
+          targetLink: `/negocio/mis-solicitudes/${realBusinessId}`,
+        };
+      }
+
+      return {
+        targetLink: "/negocio/mis-solicitudes",
+      };
+    }
+
+    return {};
+  } catch {
+    return {};
+  }
+};
+
 const findRelatedDeletedBusinessNotification = (
   notif: Notification,
   allNotifications: Notification[]
 ): Notification | null => {
   if (notif.tipo === "negocio_eliminado") return notif;
 
-  const currentBusinessId = extractBusinessIdFromNotification(notif);
-  const currentBusinessName = normalizeBusinessName(extractBusinessNameFromNotification(notif));
+  const currentBusinessKey = getNotificationBusinessKey(notif);
+  if (!currentBusinessKey) return null;
 
   for (const candidate of allNotifications) {
     if (candidate.tipo !== "negocio_eliminado") continue;
 
-    const deletedBusinessId = extractBusinessIdFromNotification(candidate);
-    if (currentBusinessId && deletedBusinessId && currentBusinessId === deletedBusinessId) {
-      return candidate;
-    }
-
-    const deletedBusinessName = normalizeBusinessName(extractBusinessNameFromNotification(candidate));
-    if (currentBusinessName && deletedBusinessName && currentBusinessName === deletedBusinessName) {
+    const deletedBusinessKey = getNotificationBusinessKey(candidate);
+    if (deletedBusinessKey && deletedBusinessKey === currentBusinessKey) {
       return candidate;
     }
   }
@@ -220,6 +420,12 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   useEffect(() => {
     notificationsRef.current = notificaciones;
   }, [notificaciones]);
+
+  useEffect(() => {
+    if (userId) {
+      persistDeletedBusinessNotifications(userId, notificaciones);
+    }
+  }, [userId, notificaciones]);
 
   // Cargar notificaciones del backend (Firestore)
   const cargarNotificacionesDelBackend = async () => {
@@ -701,12 +907,71 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   const handleNotificationClick = async (notif: Notification) => {
     marcarComoLeida(notif.id);
 
+    const backendNavigation = await resolveBusinessNavigationFromBackend(notif);
+    if (backendNavigation.deletedNotification) {
+      const deletedNotif = backendNavigation.deletedNotification;
+      setSelectedDeletedNotification(deletedNotif);
+      setIsDeletedBusinessModalOpen(true);
+
+      if (userId) {
+        const existing = notificationsRef.current;
+        const merged = mergeIncomingNotification(existing, deletedNotif);
+        notificationsRef.current = merged;
+        setNotificaciones(merged);
+        persistDeletedBusinessNotifications(userId, merged);
+      }
+      return;
+    }
+
+    if (backendNavigation.targetLink) {
+      setIsOpen(false);
+
+      const targetLink = backendNavigation.targetLink;
+      if (targetLink.startsWith("/informacion/")) {
+        const payload: ApprovedToastPendingPayload = {
+          businessId: extractBusinessIdFromNotification(notif),
+          businessName: extractBusinessNameFromNotification(notif),
+        };
+
+        const businessPathMatch = targetLink.match(/^\/informacion\/([^?/#]+)/);
+        if (!payload.businessName && businessPathMatch?.[1]) {
+          payload.businessName = decodeURIComponent(businessPathMatch[1]);
+        }
+        localStorage.setItem(APPROVED_TOAST_PENDING_KEY, JSON.stringify(payload));
+      }
+
+      router.push(targetLink);
+      return;
+    }
+
     // Si el negocio ya fue eliminado, abrir siempre el modal de detalle de eliminación
     const deletedBusinessNotification = findRelatedDeletedBusinessNotification(notif, notificationsRef.current);
     if (deletedBusinessNotification) {
       setSelectedDeletedNotification(deletedBusinessNotification);
       setIsDeletedBusinessModalOpen(true);
       return;
+    }
+
+    const persistedDeletedNotification = getPersistedDeletedBusinessNotification(notif, userId);
+    if (persistedDeletedNotification) {
+      setSelectedDeletedNotification(persistedDeletedNotification);
+      setIsDeletedBusinessModalOpen(true);
+      return;
+    }
+
+    // Si es una notificación de negocio y viene como eliminado, cualquier notificación relacionada debe quedar capturada arriba.
+    const notificationBusinessKey = getNotificationBusinessKey(notif);
+    const hasDeletedSibling = notificationBusinessKey
+      ? notificationsRef.current.some((candidate) => candidate.tipo === "negocio_eliminado" && getNotificationBusinessKey(candidate) === notificationBusinessKey)
+      : false;
+
+    if (hasDeletedSibling) {
+      const sibling = notificationsRef.current.find((candidate) => candidate.tipo === "negocio_eliminado" && getNotificationBusinessKey(candidate) === notificationBusinessKey) || null;
+      if (sibling) {
+        setSelectedDeletedNotification(sibling);
+        setIsDeletedBusinessModalOpen(true);
+        return;
+      }
     }
 
     // Cerrar panel para el resto de notificaciones (incluye negocio_archivado)
@@ -913,6 +1178,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
           setIsOpen(false);
         }}
         notification={selectedDeletedNotification}
+        businessName={getDeletedBusinessDisplayName(selectedDeletedNotification)}
       />
     </div>
   );
