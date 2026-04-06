@@ -19,7 +19,10 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     const returnTo = params.get("returnTo");
     const pendingSave = params.get("pendingSave");
-    if (!returnTo) return;
+    
+    // Validate returnTo is a safe relative path (prevent open redirect)
+    const isSafeRedirect = returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//");
+    if (!isSafeRedirect) return;
 
     // AuthModal dispara window.dispatchEvent(new Event("storage")) tras login/registro exitoso
     const handleAuth = () => {

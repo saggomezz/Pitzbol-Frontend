@@ -31,7 +31,8 @@ export const enviarNotificacion = async (
     mensaje,
     fecha: new Date().toISOString(),
     leido: false,
-    enlace
+    // Only allow safe relative paths for notification links
+    enlace: enlace && enlace.startsWith('/') && !enlace.startsWith('//') ? enlace : undefined
   };
 
   // Guardar localmente SIEMPRE para mostrar al instante
