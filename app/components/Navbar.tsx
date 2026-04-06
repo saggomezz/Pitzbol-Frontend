@@ -18,6 +18,7 @@ import { useMessageNotifications } from "@/lib/useMessageNotifications";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 const PHOTO_HYDRATE_COOLDOWN_KEY = "pitzbol_profile_photo_hydrate_cooldown_until";
+const BUSINESS_REQUESTS_CACHE_KEY_PREFIX = "pitzbol_has_business_requests_";
 
 interface NavbarProps {
     onOpenAuth: () => void;
@@ -95,11 +96,33 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         if (!isMenuOpen) return;
         const storedUser = localStorage.getItem("pitzbol_user");
         setUser(storedUser ? JSON.parse(storedUser) : null);
+    }, [isMenuOpen]);
 
-        // Check if user has any business requests
+    useEffect(() => {
+        const userUid = user?.uid;
+        const userRole = (user?.role || "").toLowerCase();
+
+        if (!userUid) {
+            setHasBusinessRequests(false);
+            return;
+        }
+
+        const isBusinessRole = userRole === "business" || userRole === "negocio";
+        const cacheKey = `${BUSINESS_REQUESTS_CACHE_KEY_PREFIX}${userUid}`;
+        const cachedValue = localStorage.getItem(cacheKey);
+
+        // For business users, keep manager access enabled immediately.
+        if (isBusinessRole) {
+            setHasBusinessRequests(true);
+        } else if (cachedValue !== null) {
+            setHasBusinessRequests(cachedValue === "true");
+        }
+
+        const token = localStorage.getItem("pitzbol_token");
+        if (!token) return;
+
+        let isCancelled = false;
         const checkBusinessRequests = async () => {
-            const token = localStorage.getItem("pitzbol_token");
-            if (!token) return;
             try {
                 const res = await fetch(`${BACKEND_URL}/api/business/my-requests`, {
                     cache: "no-store",
@@ -107,15 +130,22 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 const data = await res.json();
-                if (data.success) {
-                    setHasBusinessRequests((data.solicitudes?.length || 0) > 0);
+                if (!isCancelled && data.success) {
+                    const hasRequests = (data.solicitudes?.length || 0) > 0;
+                    setHasBusinessRequests(isBusinessRole || hasRequests);
+                    localStorage.setItem(cacheKey, String(hasRequests));
                 }
             } catch {
-                // Silently fail
+                // Keep previous value if request fails.
             }
         };
+
         checkBusinessRequests();
-    }, [isMenuOpen]);
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [user?.uid, user?.role]);
 
     useEffect(() => {
         if (!isMenuOpen) {
@@ -189,6 +219,15 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             console.log("🎯 Evento: guideSubmissionCompleted - Actualizando Navbar...");
             refreshFromStorage();
         };
+        const handleBusinessRequestSubmitted = (_e: Event) => {
+            const storedUser = localStorage.getItem("pitzbol_user");
+            if (!storedUser) return;
+            const parsedUser = JSON.parse(storedUser) as User;
+            if (parsedUser?.uid) {
+                localStorage.setItem(`${BUSINESS_REQUESTS_CACHE_KEY_PREFIX}${parsedUser.uid}`, "true");
+            }
+            setHasBusinessRequests(true);
+        };
         const handleStorage = (e: StorageEvent) => {
             // Ignorar cambios de notificaciones para evitar setState cruzado durante renders de otros componentes
             if (e.key && e.key !== "pitzbol_user" && e.key !== "pitzbol_token") return;
@@ -197,16 +236,25 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         const closeMenu = (e: MouseEvent | globalThis.MouseEvent) => {
             if (menuRef.current && e.target instanceof Node && !menuRef.current.contains(e.target)) setIsMenuOpen(false);
         };
+        const closeMenuOnEscape = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                setIsMenuOpen(false);
+            }
+        };
         window.addEventListener("fotoPerfilActualizada", handlePhotoUpdate);
         window.addEventListener("guideSubmissionCompleted", handleGuideSubmission);
+        window.addEventListener("businessRequestSubmitted", handleBusinessRequestSubmitted);
         window.addEventListener("authStateChanged", refreshFromStorage);
         window.addEventListener("storage", handleStorage);
+        window.addEventListener("keydown", closeMenuOnEscape);
         document.addEventListener("mousedown", closeMenu);
         return () => {
             window.removeEventListener("fotoPerfilActualizada", handlePhotoUpdate);
             window.removeEventListener("guideSubmissionCompleted", handleGuideSubmission);
+            window.removeEventListener("businessRequestSubmitted", handleBusinessRequestSubmitted);
             window.removeEventListener("authStateChanged", refreshFromStorage);
             window.removeEventListener("storage", handleStorage);
+            window.removeEventListener("keydown", closeMenuOnEscape);
             document.removeEventListener("mousedown", closeMenu);
         };
     }, []);

@@ -159,8 +159,6 @@ const AdminNegociosPage = () => {
     };
 
     socketRef.current.on("admin-businesses-updated", refreshBusinesses);
-    socketRef.current.on("new-pending-business", refreshBusinesses);
-    socketRef.current.on("business-status-changed", refreshBusinesses);
 
     return () => {
       if (socketRef.current) {
