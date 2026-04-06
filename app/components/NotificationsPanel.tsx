@@ -605,28 +605,6 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     }
   }, [userId]);
 
-  // El efecto de Firestore se elimina. Solo se usa la API REST y localStorage.
-  // Recargar notificaciones cuando se abre el panel
-  useEffect(() => {
-    if (isOpen && userId) {
-      cargarNotificacionesDelBackend();
-    }
-  }, [isOpen, userId]);
-
-  // Polling ligero para admins: refresca cada 30s aunque el panel esté cerrado
-  useEffect(() => {
-    if (!userId) return;
-
-    const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
-    if (user?.role !== 'admin') return;
-
-    const interval = setInterval(() => {
-      cargarNotificacionesDelBackend();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [userId]);
-
   // Cerrar panel al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -673,19 +651,12 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     const handleNotificationsUpdated = (event: Event) => {
       cargarNotificacionesLocal();
     };
-    const handleRefreshFromBackend = () => {
-      if (userId) {
-        cargarNotificacionesDelBackend();
-      }
-    };
     
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
-    window.addEventListener("refreshNotificationsFromBackend", handleRefreshFromBackend);
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
-      window.removeEventListener("refreshNotificationsFromBackend", handleRefreshFromBackend);
     };
   }, [userId]);
 

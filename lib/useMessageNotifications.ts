@@ -2,6 +2,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const UNREAD_CACHE_TTL_MS = 60000;
+const UNREAD_CACHE_KEY_PREFIX = "pitzbol_unread_messages_";
 
 interface UnreadMessage {
   chatId: string;
@@ -28,9 +30,75 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     chatId: string;
   } | null>(null);
 
+  const getUnreadCacheKey = useCallback(() => {
+    return userId ? `${UNREAD_CACHE_KEY_PREFIX}${userId}` : "";
+  }, [userId]);
+
+  const readUnreadCache = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    const cacheKey = getUnreadCacheKey();
+    if (!cacheKey) return null;
+
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (!raw) return null;
+
+      const parsed = JSON.parse(raw) as { expiresAt?: number; unreadCount?: number; unreadChats?: UnreadMessage[] };
+      if (!parsed?.expiresAt || parsed.expiresAt <= Date.now()) return null;
+
+      return {
+        unreadCount: parsed.unreadCount || 0,
+        unreadChats: parsed.unreadChats || [],
+      };
+    } catch {
+      return null;
+    }
+  }, [getUnreadCacheKey]);
+
+  const writeUnreadCache = useCallback((count: number, chats: UnreadMessage[]) => {
+    if (typeof window === "undefined") return;
+    const cacheKey = getUnreadCacheKey();
+    if (!cacheKey) return;
+
+    localStorage.setItem(
+      cacheKey,
+      JSON.stringify({
+        unreadCount: count,
+        unreadChats: chats,
+        expiresAt: Date.now() + UNREAD_CACHE_TTL_MS,
+      })
+    );
+  }, [getUnreadCacheKey]);
+
+  const applyUnreadSnapshot = useCallback((count: number, chats: UnreadMessage[]) => {
+    setUnreadCount(count);
+    setUnreadChats(chats);
+    writeUnreadCache(count, chats);
+  }, [writeUnreadCache]);
+
+  const removeChatFromUnreadState = useCallback((chatId: string) => {
+    setUnreadChats((prev) => {
+      const target = prev.find((chat) => chat.chatId === chatId);
+      const next = prev.filter((chat) => chat.chatId !== chatId);
+      if (target) {
+        setUnreadCount((current) => Math.max(0, current - (target.count || 0)));
+        writeUnreadCache(Math.max(0, unreadCount - (target.count || 0)), next);
+      } else {
+        writeUnreadCache(unreadCount, next);
+      }
+      return next;
+    });
+  }, [unreadCount, writeUnreadCache]);
+
   // Función para obtener mensajes no leídos del servidor
   const fetchUnreadCount = useCallback(async () => {
     if (!userId || !enabled) return;
+
+    const cached = readUnreadCache();
+    if (cached) {
+      applyUnreadSnapshot(cached.unreadCount, cached.unreadChats);
+      return;
+    }
 
     try {
       const token = localStorage.getItem("pitzbol_token");
@@ -46,14 +114,13 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setUnreadCount(data.totalUnread || 0);
-          setUnreadChats(data.chats || []);
+          applyUnreadSnapshot(data.totalUnread || 0, data.chats || []);
         }
       }
     } catch (error) {
       console.error("Error al obtener mensajes no leídos:", error);
     }
-  }, [userId, userType, enabled]);
+  }, [userId, userType, enabled, readUnreadCache, applyUnreadSnapshot]);
 
   useEffect(() => {
     if (!enabled || !userId) return;
@@ -142,28 +209,17 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     // Escuchar evento de mensaje leído
     socketRef.current.on("messages-read", (data: { chatId: string; userId: string }) => {
       if (data.userId === userId) {
-        // Actualizar conteo de no leídos
-        setUnreadChats(prev => prev.filter(chat => chat.chatId !== data.chatId));
-        fetchUnreadCount();
+        removeChatFromUnreadState(data.chatId);
       }
     });
-
-    // Escuchar evento personalizado del ChatModal cuando se marcan mensajes como leídos
-    const handleMessagesMarkedAsRead = () => {
-      console.log("🔔 Evento messagesMarkedAsRead recibido, actualizando contador...");
-      fetchUnreadCount();
-    };
-
-    window.addEventListener('messagesMarkedAsRead', handleMessagesMarkedAsRead);
 
     // Limpiar al desmontar
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
-      window.removeEventListener('messagesMarkedAsRead', handleMessagesMarkedAsRead);
     };
-  }, [userId, userType, enabled, fetchUnreadCount]);
+  }, [userId, userType, enabled, fetchUnreadCount, removeChatFromUnreadState]);
 
   const markChatAsRead = useCallback(async (chatId: string) => {
     if (!socketRef.current?.connected) return;
@@ -187,13 +243,12 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
         socketRef.current.emit('mark-as-read', { chatId, userId });
         
         // Actualizar estado local
-        setUnreadChats(prev => prev.filter(chat => chat.chatId !== chatId));
-        fetchUnreadCount();
+        removeChatFromUnreadState(chatId);
       }
     } catch (error) {
       console.error("Error al marcar como leído:", error);
     }
-  }, [userId, fetchUnreadCount]);
+  }, [userId, removeChatFromUnreadState]);
 
   const requestNotificationPermission = async () => {
     if ('Notification' in window && Notification.permission === 'default') {

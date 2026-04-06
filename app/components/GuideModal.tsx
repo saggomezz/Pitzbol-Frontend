@@ -277,16 +277,9 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         console.log("📢 Disparando evento 'guideSubmissionCompleted'");
         
         // Disparar evento personalizado para que el Navbar se actualice
-        // Hacerlo múltiples veces para asegurar que se escuche
+        // Hacer dispatch del evento para notificar que el registro de guía fue completado
         window.dispatchEvent(new Event("guideSubmissionCompleted"));
         window.dispatchEvent(new Event("storage"));
-        
-        // Hacer otro dispatch después de un pequeño delay
-        setTimeout(() => {
-          window.dispatchEvent(new Event("guideSubmissionCompleted"));
-          // Recargar notificaciones desde el backend
-          window.dispatchEvent(new Event("refreshNotificationsFromBackend"));
-        }, 500);
         
         setShowConfirmation(true);
       } else {
