@@ -13,6 +13,7 @@ import WelcomeNotification from './components/WelcomeNotification';
 import { getPlaceImageByCategory } from '@/lib/placeImages';
 import PlaceRating from './components/PlaceRating';
 import { getMergedPlaces } from '@/lib/placesApi';
+import AuthModal from './components/AuthModal';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
@@ -356,6 +357,7 @@ function HomeContent() {
   const [isLogged, setIsLogged] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showAuthForIA, setShowAuthForIA] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const hasCheckedWelcome = useRef(false);
@@ -852,42 +854,65 @@ function HomeContent() {
           <GdlMatchCarousel partidos={PARTIDOS_CDMX} sede="CDMX" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_MTY} sede="MTY" tHome={tHome} />
           {/* PITZBOT — IA de Itinerarios */}
-          {(() => {
-            let pitzUrl = 'http://69.30.204.56:3003';
-            try {
-              const raw = localStorage.getItem('pitzbol_user');
-              if (raw) { const uid = JSON.parse(raw).uid; if (uid) pitzUrl = `http://69.30.204.56:3003?uid=${uid}`; }
-            } catch {}
-            return (
-              <div className="bg-white rounded-3xl p-4 shadow-lg border border-gray-100 relative overflow-hidden hover:shadow-xl transition-all duration-300">
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <h2 className="text-base font-bold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-                        PitzBot
-                      </h2>
-                      <p className="text-xs text-gray-600 font-medium">Crear itinerario con IA</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-[#769C7B]">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>IA disponible</span>
-                  </div>
-                  <a
-                    href={pitzUrl}
-                    className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-                  >
-                    <span>Crear Itinerario</span>
-                    <span>→</span>
-                  </a>
+          <div className="bg-white rounded-3xl p-4 shadow-lg border border-gray-100 relative overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div>
+                  <h2 className="text-base font-bold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    PitzBot
+                  </h2>
+                  <p className="text-xs text-gray-600 font-medium">Crear itinerario con IA</p>
                 </div>
               </div>
-            );
-          })()}
+              <div className="flex items-center gap-2 text-xs text-[#769C7B]">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>IA disponible</span>
+              </div>
+              <button
+                onClick={() => {
+                  try {
+                    const raw = localStorage.getItem('pitzbol_user');
+                    if (raw) {
+                      const uid = JSON.parse(raw).uid;
+                      const url = uid ? `http://69.30.204.56:3003?uid=${uid}` : 'http://69.30.204.56:3003';
+                      window.open(url, '_blank');
+                      return;
+                    }
+                  } catch {}
+                  setShowAuthForIA(true);
+                }}
+                className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <span>Crear Itinerario</span>
+                <span>→</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <RecommendationsComponent places={recommendedPlaces} onRefresh={cargarRecomendaciones} />
       </main>
+
+      <AnimatePresence>
+        {showAuthForIA && (
+          <AuthModal
+            isOpen={showAuthForIA}
+            onClose={() => {
+              setShowAuthForIA(false);
+              // Si tras cerrar ya está logeado, abrir la IA
+              try {
+                const raw = localStorage.getItem('pitzbol_user');
+                if (raw) {
+                  const uid = JSON.parse(raw).uid;
+                  const url = uid ? `http://69.30.204.56:3003?uid=${uid}` : 'http://69.30.204.56:3003';
+                  window.open(url, '_blank');
+                }
+              } catch {}
+            }}
+            intendedRole="turista"
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
