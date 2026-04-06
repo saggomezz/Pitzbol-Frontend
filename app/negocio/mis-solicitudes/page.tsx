@@ -88,33 +88,17 @@ export default function MisSolicitudesPage() {
       setTab("todas");
     };
 
-    const handleNotificationsUpdated = () => {
-      fetchSolicitudes();
-      window.setTimeout(() => {
-        fetchSolicitudes();
-      }, 700);
-    };
-
     const handleBusinessStatusChanged = (event: any) => {
       const { businessId, status } = event.detail || {};
       console.log(`[mis-solicitudes] Business status changed: ${businessId} -> ${status}`);
-      // Re-fetch immediately when explicit status change event arrives
       fetchSolicitudes();
-      // Secondary fetch after delay to ensure backend consistency
-      window.setTimeout(() => {
-        fetchSolicitudes();
-      }, 300);
     };
 
     window.addEventListener("businessRequestSubmitted", handleBusinessSubmitted);
-    window.addEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
-    window.addEventListener("refreshNotificationsFromBackend", handleNotificationsUpdated);
     window.addEventListener("businessStatusChanged", handleBusinessStatusChanged as EventListener);
     
     return () => {
       window.removeEventListener("businessRequestSubmitted", handleBusinessSubmitted);
-      window.removeEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
-      window.removeEventListener("refreshNotificationsFromBackend", handleNotificationsUpdated);
       window.removeEventListener("businessStatusChanged", handleBusinessStatusChanged as EventListener);
     };
     // eslint-disable-next-line

@@ -114,8 +114,12 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         // For business users, keep manager access enabled immediately.
         if (isBusinessRole) {
             setHasBusinessRequests(true);
-        } else if (cachedValue !== null) {
+            return;
+        }
+
+        if (cachedValue !== null) {
             setHasBusinessRequests(cachedValue === "true");
+            return;
         }
 
         const token = localStorage.getItem("pitzbol_token");

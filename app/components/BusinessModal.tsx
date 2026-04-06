@@ -916,11 +916,6 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
       // Notify business-management pages to refresh request lists without full page reload.
       window.dispatchEvent(new Event("businessRequestSubmitted"));
-      
-      // Disparar evento para recargar notificaciones desde el backend después de un delay
-      setTimeout(() => {
-        window.dispatchEvent(new Event("refreshNotificationsFromBackend"));
-      }, 500);
 
       setTimeout(() => {
         setIsFinishing(false);

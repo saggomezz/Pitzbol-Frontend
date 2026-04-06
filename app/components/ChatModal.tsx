@@ -132,11 +132,6 @@ export default function ChatModal({
             });
             
             console.log("✅ Mensajes marcados como leídos");
-            
-            // Emitir evento para actualizar el contador en el Navbar
-            window.dispatchEvent(new CustomEvent('messagesMarkedAsRead', { 
-              detail: { chatId: data.chat.id, userId: currentUserId }
-            }));
           } catch (err) {
             console.error("Error al marcar mensajes como leídos:", err);
           }
