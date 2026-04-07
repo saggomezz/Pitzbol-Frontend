@@ -4,6 +4,52 @@ import { motion } from "framer-motion";
 import { FiStar } from "react-icons/fi";
 
 const API_BASE = "/api";
+const STATS_CACHE_TTL_MS = 60000;
+const placeStatsCache = new Map<string, { averageRating: number; totalRatings: number; expiresAt: number }>();
+const inFlightStatsRequests = new Map<string, Promise<{ averageRating: number; totalRatings: number } | null>>();
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchPlaceStatsWithBackoff(placeName: string): Promise<{ averageRating: number; totalRatings: number } | null> {
+  const requestKey = placeName.trim().toLowerCase();
+  const existingRequest = inFlightStatsRequests.get(requestKey);
+  if (existingRequest) return existingRequest;
+
+  const requestPromise = (async () => {
+    const endpoint = `${API_BASE}/place-ratings/${encodeURIComponent(placeName)}/stats`;
+
+    // Primer intento
+    let response = await fetch(endpoint);
+
+    // Si hay rate-limit, respetar Retry-After cuando exista y reintentar una vez
+    if (response.status === 429) {
+      const retryAfterRaw = response.headers.get("retry-after");
+      const retryAfterSeconds = Number(retryAfterRaw);
+      const retryDelayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+        ? retryAfterSeconds * 1000
+        : 1500;
+
+      await wait(retryDelayMs);
+      response = await fetch(endpoint);
+    }
+
+    if (!response.ok) return null;
+
+    const payload = await response.json();
+    return {
+      averageRating: payload?.stats?.averageRating || 0,
+      totalRatings: payload?.stats?.totalRatings || 0,
+    };
+  })();
+
+  inFlightStatsRequests.set(requestKey, requestPromise);
+
+  try {
+    return await requestPromise;
+  } finally {
+    inFlightStatsRequests.delete(requestKey);
+  }
+}
 
 interface PlaceRatingProps {
   placeName: string;
@@ -52,32 +98,28 @@ export default function PlaceRating({
       const token = localStorage.getItem("pitzbol_token");
       setIsAuthenticated(!!token);
 
-      // Obtener estadísticas públicas del lugar
-      const statsResponse = await fetch(
-        `${API_BASE}/place-ratings/${encodeURIComponent(placeName)}/stats`
-      );
-      
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        setAverageRating(statsData.stats.averageRating || 0);
-        setTotalRatings(statsData.stats.totalRatings || 0);
+      const cacheKey = placeName.trim().toLowerCase();
+      const cachedStats = placeStatsCache.get(cacheKey);
+      if (cachedStats && cachedStats.expiresAt > Date.now()) {
+        setAverageRating(cachedStats.averageRating || 0);
+        setTotalRatings(cachedStats.totalRatings || 0);
+        setIsLoading(false);
+        return;
       }
 
-      // Si está autenticado, obtener su calificación
-      if (token) {
-        const userRatingResponse = await fetch(
-          `${API_BASE}/place-ratings/${encodeURIComponent(placeName)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+      // Obtener estadísticas públicas del lugar (con dedupe y backoff ante 429)
+      const statsData = await fetchPlaceStatsWithBackoff(placeName);
 
-        if (userRatingResponse.ok) {
-          const userData = await userRatingResponse.json();
-          setUserRating(userData.userRating || 0);
-        }
+      if (statsData) {
+        const nextAverage = statsData.averageRating || 0;
+        const nextTotal = statsData.totalRatings || 0;
+        setAverageRating(nextAverage);
+        setTotalRatings(nextTotal);
+        placeStatsCache.set(cacheKey, {
+          averageRating: nextAverage,
+          totalRatings: nextTotal,
+          expiresAt: Date.now() + STATS_CACHE_TTL_MS,
+        });
       }
     } catch (error) {
       // Si el backend no responde, mantenemos la UI en estado neutro sin bloquear la página.
@@ -114,6 +156,12 @@ export default function PlaceRating({
         setUserRating(rating);
         setAverageRating(data.stats.averageRating);
         setTotalRatings(data.stats.totalRatings);
+        const cacheKey = placeName.trim().toLowerCase();
+        placeStatsCache.set(cacheKey, {
+          averageRating: data.stats.averageRating || 0,
+          totalRatings: data.stats.totalRatings || 0,
+          expiresAt: Date.now() + STATS_CACHE_TTL_MS,
+        });
         
         if (onRatingChange) {
           onRatingChange(rating);

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const API_BASE = "/api";
 const UNREAD_CACHE_TTL_MS = 60000;
 const UNREAD_CACHE_KEY_PREFIX = "pitzbol_unread_messages_";
 
@@ -103,7 +104,7 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     try {
       const token = localStorage.getItem("pitzbol_token");
       const response = await fetch(
-        `${BACKEND_URL}/api/chat/unread/${userId}?userType=${userType}`,
+        `${API_BASE}/chat/unread/${userId}?userType=${userType}`,
         {
           headers: {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -227,7 +228,7 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     try {
       const token = localStorage.getItem("pitzbol_token");
       const response = await fetch(
-        `${BACKEND_URL}/api/chat/${chatId}/read`,
+        `${API_BASE}/chat/${chatId}/read`,
         {
           method: 'POST',
           headers: {
