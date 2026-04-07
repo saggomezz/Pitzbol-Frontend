@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const API_BASE = '/api';
 
 /**
  * Hook para incrementar las vistas de un lugar
@@ -15,7 +15,7 @@ export function usePlaceView(placeName: string | null) {
     const incrementView = async () => {
       try {
         await fetch(
-          `${BACKEND_URL}/api/place-ratings/${encodeURIComponent(placeName)}/view`,
+          `${API_BASE}/place-ratings/${encodeURIComponent(placeName)}/view`,
           {
             method: 'POST',
             headers: {
@@ -26,7 +26,8 @@ export function usePlaceView(placeName: string | null) {
         hasIncrementedRef.current = true;
         console.log(`✅ Vista registrada para: ${placeName}`);
       } catch (error) {
-        console.error('Error al incrementar vista:', error);
+        // La vista es un dato auxiliar; si falla la red no bloqueamos la página.
+        console.warn('No se pudo registrar la vista', error);
       }
     };
 

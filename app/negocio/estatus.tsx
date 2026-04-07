@@ -22,6 +22,7 @@ export default function EstatusNegocioPage() {
       try {
         const token = localStorage.getItem("pitzbol_token");
         const response = await fetch(`${BACKEND_URL}/api/business/my-business`, {
+          cache: "no-store",
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -55,6 +56,18 @@ export default function EstatusNegocioPage() {
     }
 
     fetchBusiness();
+
+    const handleBusinessStatusChanged = (event: any) => {
+      const { businessId, status } = event.detail || {};
+      console.log(`[estatus] Business status changed: ${businessId} -> ${status}`);
+      fetchBusiness();
+    };
+
+    window.addEventListener("businessStatusChanged", handleBusinessStatusChanged as EventListener);
+
+    return () => {
+      window.removeEventListener("businessStatusChanged", handleBusinessStatusChanged as EventListener);
+    };
   }, [user?.uid]);
 
   if (!user)

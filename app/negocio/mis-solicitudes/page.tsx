@@ -5,13 +5,19 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePitzbolUser } from "../../../lib/usePitzbolUser";
 import {
-  FaStore, FaSearch, FaCheckCircle, FaTimesCircle, FaHourglassHalf,
+  FaPlus, FaStore, FaSearch, FaCheckCircle, FaTimesCircle, FaHourglassHalf,
   FaArchive, FaEnvelope, FaPhone, FaMapMarkerAlt, FaList,
 } from "react-icons/fa";
 import { MdBusiness, MdCategory, MdImage } from "react-icons/md";
 import { FiArrowLeft } from "react-icons/fi";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
+
+type ApprovedToastPendingPayload = {
+  businessId?: string;
+  businessName?: string;
+};
 
 type TabKey = "todas" | "pendiente" | "aprobado" | "rechazado" | "archivado";
 
@@ -46,6 +52,7 @@ export default function MisSolicitudesPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("todas");
   const [businessView, setBusinessView] = useState<"activos" | "archivados">("activos");
+  const [selectedMetric, setSelectedMetric] = useState<"activos" | TabKey>("todas");
   const [searchQuery, setSearchQuery] = useState("");
 
   const scrollToSection = (id: "activos" | "solicitudes") => {
@@ -56,9 +63,44 @@ export default function MisSolicitudesPage() {
     }
   };
 
+  const openBusinessFlowLikeNavbar = () => {
+    if (typeof window === "undefined") return;
+    if (typeof window.openBusinessFlowLikeNavbar === "function") {
+      window.openBusinessFlowLikeNavbar();
+      return;
+    }
+    // Fallback only if global trigger is not available yet.
+    router.push("/negocio");
+  };
+
   useEffect(() => {
     if (!user) return;
     fetchSolicitudes();
+    // eslint-disable-next-line
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || typeof window === "undefined") return;
+
+    const handleBusinessSubmitted = () => {
+      fetchSolicitudes();
+      setSelectedMetric("todas");
+      setTab("todas");
+    };
+
+    const handleBusinessStatusChanged = (event: any) => {
+      const { businessId, status } = event.detail || {};
+      console.log(`[mis-solicitudes] Business status changed: ${businessId} -> ${status}`);
+      fetchSolicitudes();
+    };
+
+    window.addEventListener("businessRequestSubmitted", handleBusinessSubmitted);
+    window.addEventListener("businessStatusChanged", handleBusinessStatusChanged as EventListener);
+    
+    return () => {
+      window.removeEventListener("businessRequestSubmitted", handleBusinessSubmitted);
+      window.removeEventListener("businessStatusChanged", handleBusinessStatusChanged as EventListener);
+    };
     // eslint-disable-next-line
   }, [user]);
 
@@ -67,6 +109,7 @@ export default function MisSolicitudesPage() {
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("pitzbol_token") : null;
       const res = await fetch(`${BACKEND_URL}/api/business/my-requests`, {
+        cache: "no-store",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
@@ -116,6 +159,60 @@ export default function MisSolicitudesPage() {
       ? requestsPool.length
       : solicitudes.filter((s) => s.estado === key).length;
 
+  const metricCardClass = (active: boolean) =>
+    `group text-left rounded-2xl p-4 border transition-all ${
+      active
+        ? "bg-gradient-to-br from-[#0D601E] to-[#1A4D2E] text-white border-[#0D601E]/20 shadow-lg"
+        : "bg-white/85 backdrop-blur border-[#0D601E]/10 shadow-sm hover:bg-gradient-to-br hover:from-[#0D601E] hover:to-[#1A4D2E] hover:text-white hover:border-[#0D601E]/20 hover:shadow-lg hover:-translate-y-0.5"
+    }`;
+  
+  const filterTabClass = (active: boolean, color: "green" | "amber" | "red" | "gray") => {
+    const activeStyles: Record<typeof color, string> = {
+      green: "bg-[#1A4D2E] text-white shadow-lg",
+      amber: "bg-amber-500 text-white shadow-lg",
+      red: "bg-red-600 text-white shadow-lg",
+      gray: "bg-gray-600 text-white shadow-lg",
+    };
+
+    const hoverStyles: Record<typeof color, string> = {
+      green: "hover:bg-[#1A4D2E] hover:text-white hover:border-[#0D601E]/20",
+      amber: "hover:bg-amber-500 hover:text-white hover:border-amber-500",
+      red: "hover:bg-red-600 hover:text-white hover:border-red-600",
+      gray: "hover:bg-gray-600 hover:text-white hover:border-gray-600",
+    };
+
+    return `group px-5 py-3 rounded-xl font-bold border transition-all duration-300 flex items-center gap-2 text-sm ${
+      active ? activeStyles[color] : `bg-white text-gray-700 border-[#0D601E]/10 shadow-md hover:scale-[1.03] ${hoverStyles[color]}`
+    }`;
+  };
+
+  const getCardNavigationHref = (sol: any, kind: "activo" | "solicitud") => {
+    const estado = String(sol?.estado || "").toLowerCase();
+    const businessName = sol?.business?.name;
+
+    if (kind === "activo" && estado === "aprobado" && businessName) {
+      return `/informacion/${encodeURIComponent(String(businessName))}?origen=gestion-negocios-activo`;
+    }
+
+    return `/negocio/mis-solicitudes/${sol.id}`;
+  };
+
+  const shouldTriggerApprovedToast = (sol: any, kind: "activo" | "solicitud") => {
+    const estado = String(sol?.estado || "").toLowerCase();
+    return kind === "activo" && estado === "aprobado";
+  };
+
+  const navigateFromCard = (sol: any, kind: "activo" | "solicitud", targetHref: string) => {
+    if (typeof window !== "undefined" && shouldTriggerApprovedToast(sol, kind)) {
+      const payload: ApprovedToastPendingPayload = {
+        businessId: String(sol?.id || ""),
+        businessName: String(sol?.business?.name || ""),
+      };
+      localStorage.setItem(APPROVED_TOAST_PENDING_KEY, JSON.stringify(payload));
+    }
+    router.push(targetHref);
+  };
+
   const renderCard = (sol: any, index: number, kind: "activo" | "solicitud" = "solicitud") => {
     const business = sol.business || {};
     const logo: string = business.logo || "";
@@ -123,6 +220,7 @@ export default function MisSolicitudesPage() {
       ? business.images.filter((img: string) => !!img)
       : [];
     const estado: string = sol.estado || "pendiente";
+    const targetHref = getCardNavigationHref(sol, kind);
 
     return (
       <motion.div
@@ -132,11 +230,11 @@ export default function MisSolicitudesPage() {
         exit={{ opacity: 0, scale: 0.9 }}
         transition={{ delay: index * 0.04 }}
         layout
-        onClick={() => router.push(`/negocio/mis-solicitudes/${sol.id}`)}
+        onClick={() => navigateFromCard(sol, kind, targetHref)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            router.push(`/negocio/mis-solicitudes/${sol.id}`);
+            navigateFromCard(sol, kind, targetHref);
           }
         }}
         role="button"
@@ -152,6 +250,8 @@ export default function MisSolicitudesPage() {
                 src={logo}
                 alt={business.name || "Logo"}
                 fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                loading={index === 0 ? "eager" : "lazy"}
                 className="object-cover group-hover:scale-110 transition-transform duration-300"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
@@ -244,6 +344,7 @@ export default function MisSolicitudesPage() {
                       src={img}
                       alt={`Imagen ${i + 1}`}
                       fill
+                      sizes="64px"
                       className="object-cover hover:scale-110 transition-transform"
                     />
                   </div>
@@ -297,18 +398,31 @@ export default function MisSolicitudesPage() {
             <FiArrowLeft className="text-base" />
           </button>
 
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="bg-gradient-to-br from-[#0D601E] to-[#1A4D2E] p-3 md:p-4 rounded-2xl shadow-lg">
-              <FaStore className="text-white text-2xl md:text-3xl" />
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="bg-gradient-to-br from-[#0D601E] to-[#1A4D2E] p-3 md:p-4 rounded-2xl shadow-lg shrink-0">
+                <FaStore className="text-white text-2xl md:text-3xl" />
+              </div>
+              <div className="text-left">
+                <h1 className="text-2xl md:text-4xl font-extrabold text-[#1A4D2E]">
+                  Gestionar Negocios
+                </h1>
+                <p className="text-gray-600 text-sm mt-1">
+                  Administra tus negocios activos y da seguimiento al estatus de tus solicitudes
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl md:text-4xl font-extrabold text-[#1A4D2E]">
-                Gestionar Negocios
-              </h1>
-              <p className="text-gray-600 text-sm mt-1">
-                Administra tus negocios activos y da seguimiento al estatus de tus solicitudes
+            <button
+              onClick={openBusinessFlowLikeNavbar}
+              className="group w-full sm:w-auto lg:w-[calc((100%-3rem)/4)] lg:flex-none inline-flex items-center justify-start gap-3 self-center h-fit px-5 py-3 bg-white rounded-2xl text-[#0D601E] shadow-lg border-2 border-[#0D601E] hover:bg-[#1A4D2E] hover:text-white hover:shadow-xl hover:-translate-y-0.5 transition-all text-left"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#0D601E]/10 flex items-center justify-center shrink-0 transition-colors group-hover:bg-white/15">
+                <FaPlus className="text-sm" />
+              </div>
+              <p className="text-xs md:text-sm uppercase tracking-wide font-bold text-inherit text-center whitespace-nowrap transition-colors">
+                Nuevo negocio
               </p>
-            </div>
+            </button>
           </div>
         </motion.div>
 
@@ -319,41 +433,48 @@ export default function MisSolicitudesPage() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
         >
           <button
-            onClick={() => scrollToSection("activos")}
-            className="text-left bg-white/85 backdrop-blur rounded-2xl p-4 border border-[#0D601E]/10 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+            onClick={() => {
+              setSelectedMetric("activos");
+              setBusinessView("activos");
+              scrollToSection("activos");
+            }}
+            className={metricCardClass(selectedMetric === "activos")}
           >
-            <p className="text-xs uppercase tracking-wide text-[#1A4D2E]/70 font-bold">Negocios Activos</p>
-            <p className="text-3xl font-black text-emerald-700 mt-2">{countByTab("aprobado")}</p>
+            <p className={`text-xs uppercase tracking-wide font-bold transition-colors ${selectedMetric === "activos" ? "text-white/80" : "text-[#1A4D2E]/70 group-hover:text-white/80"}`}>Negocios Activos</p>
+            <p className={`text-3xl font-black mt-2 transition-colors ${selectedMetric === "activos" ? "text-white" : "text-emerald-700 group-hover:text-white"}`}>{countByTab("aprobado")}</p>
           </button>
           <button
             onClick={() => {
+              setSelectedMetric("pendiente");
               setTab("pendiente");
               scrollToSection("solicitudes");
             }}
-            className="text-left bg-white/85 backdrop-blur rounded-2xl p-4 border border-[#0D601E]/10 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+            className={metricCardClass(selectedMetric === "pendiente")}
           >
-            <p className="text-xs uppercase tracking-wide text-[#1A4D2E]/70 font-bold">Solicitudes en revisión</p>
-            <p className="text-3xl font-black text-amber-600 mt-2">{countByTab("pendiente")}</p>
+            <p className={`text-xs uppercase tracking-wide font-bold transition-colors ${selectedMetric === "pendiente" ? "text-white/80" : "text-[#1A4D2E]/70 group-hover:text-white/80"}`}>Solicitudes en revisión</p>
+            <p className={`text-3xl font-black mt-2 transition-colors ${selectedMetric === "pendiente" ? "text-white" : "text-amber-600 group-hover:text-white"}`}>{countByTab("pendiente")}</p>
           </button>
           <button
             onClick={() => {
+              setSelectedMetric("rechazado");
               setTab("rechazado");
               scrollToSection("solicitudes");
             }}
-            className="text-left bg-white/85 backdrop-blur rounded-2xl p-4 border border-[#0D601E]/10 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+            className={metricCardClass(selectedMetric === "rechazado")}
           >
-            <p className="text-xs uppercase tracking-wide text-[#1A4D2E]/70 font-bold">Solicitudes rechazadas</p>
-            <p className="text-3xl font-black text-red-600 mt-2">{countByTab("rechazado")}</p>
+            <p className={`text-xs uppercase tracking-wide font-bold transition-colors ${selectedMetric === "rechazado" ? "text-white/80" : "text-[#1A4D2E]/70 group-hover:text-white/80"}`}>Solicitudes rechazadas</p>
+            <p className={`text-3xl font-black mt-2 transition-colors ${selectedMetric === "rechazado" ? "text-white" : "text-red-600 group-hover:text-white"}`}>{countByTab("rechazado")}</p>
           </button>
           <button
             onClick={() => {
+              setSelectedMetric("todas");
               setTab("todas");
               scrollToSection("solicitudes");
             }}
-            className="text-left bg-gradient-to-br from-[#0D601E] to-[#1A4D2E] rounded-2xl p-4 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+            className={metricCardClass(selectedMetric === "todas")}
           >
-            <p className="text-xs uppercase tracking-wide font-bold text-white/80">Total de solicitudes</p>
-            <p className="text-3xl font-black mt-2">{requestsPool.length}</p>
+            <p className={`text-xs uppercase tracking-wide font-bold transition-colors ${selectedMetric === "todas" ? "text-white/80" : "text-[#1A4D2E]/70 group-hover:text-white/80"}`}>Total de solicitudes</p>
+            <p className={`text-3xl font-black mt-2 transition-colors ${selectedMetric === "todas" ? "text-white" : "text-[#0D601E] group-hover:text-white"}`}>{requestsPool.length}</p>
           </button>
         </motion.div>
 
@@ -403,13 +524,13 @@ export default function MisSolicitudesPage() {
             <p className="text-gray-600 font-medium">Cargando panel de negocios...</p>
           </motion.div>
         ) : (
-          <>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 items-start">
             <motion.section
               id="activos"
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
-              className="mb-10"
+              className="min-w-0"
             >
               <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
                 <h2 className="text-xl md:text-2xl font-extrabold text-[#1A4D2E]">
@@ -418,23 +539,23 @@ export default function MisSolicitudesPage() {
                 <div className="inline-flex items-center rounded-xl border border-[#0D601E]/20 bg-white p-1 shadow-sm">
                   <button
                     onClick={() => setBusinessView("activos")}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                    className={`group px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
                       businessView === "activos"
                         ? "bg-[#1A4D2E] text-white"
-                        : "text-[#1A4D2E] hover:bg-[#F6F0E6]"
+                        : "text-[#1A4D2E] hover:bg-[#0D601E] hover:text-white"
                     }`}
                   >
                     Activos
                   </button>
                   <button
                     onClick={() => setBusinessView("archivados")}
-                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                    className={`group inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
                       businessView === "archivados"
                         ? "bg-[#1A4D2E] text-white"
-                        : "text-[#1A4D2E] hover:bg-[#F6F0E6]"
+                        : "text-[#1A4D2E] hover:bg-[#0D601E] hover:text-white"
                     }`}
                   >
-                    <FaArchive className={businessView === "archivados" ? "text-white" : "text-[#0D601E]"} />
+                    <FaArchive className={businessView === "archivados" ? "text-white" : "text-[#0D601E] group-hover:text-white"} />
                     Archivados
                   </button>
                 </div>
@@ -457,7 +578,7 @@ export default function MisSolicitudesPage() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  className="grid grid-cols-1 md:grid-cols-2 gap-6 justify-items-stretch"
                 >
                   <AnimatePresence mode="popLayout">
                     {(businessView === "activos" ? activeBusinesses : archivedBusinesses).map((sol: any, index: number) => renderCard(sol, index, "activo"))}
@@ -471,31 +592,29 @@ export default function MisSolicitudesPage() {
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
+              className="min-w-0"
             >
               <div className="mb-4">
                 <h2 className="text-xl md:text-2xl font-extrabold text-[#1A4D2E]">Solicitudes de Negocio</h2>
                 <p className="text-sm text-gray-600 mt-1">Consulta el estatus de tus solicitudes enviadas.</p>
               </div>
 
-              <div className="flex flex-wrap gap-3 mb-6">
+              <div className="flex flex-wrap gap-3 mb-6 justify-start">
                 {TABS.filter(({ key }) => key !== "aprobado" && key !== "archivado").map(({ key, label }) => {
                   const isActive = tab === key;
                   const count = countByTab(key);
+                  const color = key === "pendiente" ? "amber" : key === "rechazado" ? "red" : "gray";
                   return (
                     <button
                       key={key}
                       onClick={() => setTab(key)}
-                      className={`px-5 py-3 rounded-xl font-bold shadow-md transition-all duration-300 flex items-center gap-2 text-sm ${
-                        isActive
-                          ? `${TAB_COLORS[key].active} scale-105 shadow-lg`
-                          : "bg-white text-gray-700 hover:bg-gray-50 hover:scale-105"
-                      }`}
+                      className={filterTabClass(isActive, color)}
                     >
                       {TAB_ICONS[key]}
                       {label}
                       <span
-                        className={`ml-1 px-2 py-0.5 rounded-full text-xs font-black ${
-                          isActive ? "bg-white/25" : "bg-gray-100 text-gray-600"
+                        className={`ml-1 px-2 py-0.5 rounded-full text-xs font-black transition-colors ${
+                          isActive ? "bg-white/25 text-white" : "bg-gray-100 text-gray-600 group-hover:bg-white/25 group-hover:text-white"
                         }`}
                       >
                         {count}
@@ -529,7 +648,7 @@ export default function MisSolicitudesPage() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  className="grid grid-cols-1 md:grid-cols-2 gap-6 justify-items-stretch"
                 >
                   <AnimatePresence mode="popLayout">
                     {filteredRequests.map((sol: any, index: number) => renderCard(sol, index, "solicitud"))}
@@ -537,7 +656,7 @@ export default function MisSolicitudesPage() {
                 </motion.div>
               )}
             </motion.section>
-          </>
+          </div>
         )}
       </div>
     </div>

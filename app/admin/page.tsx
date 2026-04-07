@@ -1,9 +1,10 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { enviarNotificacion } from "../../lib/notificaciones";
 import { fetchWithAuth } from "../../lib/fetchWithAuth";
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 import { FiChevronRight, FiFileText, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle, FiMail, FiTrash2 } from "react-icons/fi";
 import AdminHistorialSolicitudesModal from "@/app/components/AdminHistorialSolicitudesModal";
 
@@ -28,14 +29,15 @@ const getBackendBaseUrl = () => {
 };
 
 export default function AdminPerfil() {
+  const router = useRouter();
   const t = useTranslations('admin');
   const tCommon = useTranslations('common');
-  
+
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-    
     if (!user.uid || user.role !== "admin") {
-      window.location.href = "/"; 
+      router.replace("/");
+      return;
     }
   }, []);
 

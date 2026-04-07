@@ -6,9 +6,55 @@ import { motion } from "framer-motion";
 import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2, FiPhone, FiGlobe, FiMail } from "react-icons/fi";
 import styles from "../informacion.module.css";
 import { useFavoritesSync } from "@/lib/favoritesApi";
+import DeletedBusinessModal from "@/app/components/DeletedBusinessModal";
 import PlaceRating from "@/app/components/PlaceRating";
 import { usePlaceView } from "@/lib/usePlaceView";
 import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
+
+const APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY = "pitzbol_approved_business_toast_dismissed_by_business_v2";
+const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
+const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
+
+type ApprovedToastPendingPayload = {
+  businessId?: string;
+  businessName?: string;
+};
+
+type DeletedBusinessNotification = {
+  titulo: string;
+  mensaje: string;
+  fecha: string;
+};
+
+function getApprovedToastPendingPayload(): ApprovedToastPendingPayload | null {
+  if (typeof window === "undefined") return null;
+
+  const raw = localStorage.getItem(APPROVED_TOAST_PENDING_KEY);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as ApprovedToastPendingPayload;
+    if (!parsed || (typeof parsed !== "object")) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function getApprovedToastDismissedMap(): Record<string, true> {
+  if (typeof window === "undefined") return {};
+
+  const raw = localStorage.getItem(APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY);
+  if (!raw) return {};
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, true>;
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
 
 const CULTURA_DESCRIPTIONS: Record<string, string> = {
   "Instituto Cultural Cabañas, Guadalajara":
@@ -51,6 +97,32 @@ function normalizeName(value: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+function getDeletedBusinessNotificationsStorageKey(userId: string): string {
+  return `${DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX}${userId}`;
+}
+
+function getPersistedDeletedBusinessNotification(businessName: string): DeletedBusinessNotification | null {
+  if (typeof window === "undefined") return null;
+
+  const storedUser = localStorage.getItem("pitzbol_user");
+  if (!storedUser) return null;
+
+  try {
+    const parsedUser = JSON.parse(storedUser);
+    const userId = parsedUser?.uid;
+    if (!userId) return null;
+
+    const raw = localStorage.getItem(getDeletedBusinessNotificationsStorageKey(userId));
+    if (!raw) return null;
+
+    const map = JSON.parse(raw) as Record<string, DeletedBusinessNotification>;
+    const businessKey = `name:${normalizeName(businessName)}`;
+    return map[businessKey] || null;
+  } catch {
+    return null;
+  }
 }
 
 function mapPlaceToPublicDetail(place: PlaceRecord): Lugar {
@@ -98,13 +170,66 @@ export default function InformacionLugar() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [fotos, setFotos] = useState<string[]>([]);
   const [fotoIdx, setFotoIdx] = useState(0);
-
-  const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
-
+  const [deletedBusinessNotification, setDeletedBusinessNotification] = useState<DeletedBusinessNotification | null>(null);
+  const [showDeletedBusinessModal, setShowDeletedBusinessModal] = useState(false);
   // Registrar vista del lugar
   const nombreRaw = params.nombre;
   const nombreLugar = typeof nombreRaw === "string" ? decodeURIComponent(nombreRaw) : null;
+  const normalizedBusinessName = nombreLugar ? normalizeName(nombreLugar) : "";
   usePlaceView(nombreLugar);
+
+  const [showApprovedToast, setShowApprovedToast] = useState(false);
+  // Estado de depuración para mostrar condiciones del toast
+  const [debugToast, setDebugToast] = useState({
+    cameFromBusinessManagement: false,
+    hasPendingTrigger: false,
+    dismissed: false,
+    nombreLugar: nombreLugar || '',
+    urlParams: '',
+    localStoragePending: '',
+    localStorageDismissed: '',
+  });
+
+  const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
+
+  useEffect(() => {
+    if (!nombreLugar || typeof window === "undefined") return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const cameFromBusinessManagement = urlParams.get("origen") === "gestion-negocios-activo";
+    const pendingPayload = getApprovedToastPendingPayload();
+    const pendingBusinessName = pendingPayload?.businessName ? normalizeName(pendingPayload.businessName) : "";
+    const hasPendingTrigger = !!pendingBusinessName && pendingBusinessName === normalizedBusinessName;
+    const dismissedMap = getApprovedToastDismissedMap();
+    const dismissed = !!dismissedMap[normalizedBusinessName];
+
+    setDebugToast({
+      cameFromBusinessManagement,
+      hasPendingTrigger,
+      dismissed,
+      nombreLugar: nombreLugar || '',
+      urlParams: window.location.search,
+      localStoragePending: localStorage.getItem(APPROVED_TOAST_PENDING_KEY) || '',
+      localStorageDismissed: dismissed ? "1" : "",
+    });
+
+    if ((cameFromBusinessManagement || hasPendingTrigger) && !dismissed) {
+      setShowApprovedToast(true);
+    }
+
+    if (pendingPayload) {
+      localStorage.removeItem(APPROVED_TOAST_PENDING_KEY);
+    }
+  }, [nombreLugar, normalizedBusinessName]);
+
+  const dismissApprovedToast = () => {
+    setShowApprovedToast(false);
+    if (typeof window !== "undefined") {
+      const dismissedMap = getApprovedToastDismissedMap();
+      dismissedMap[normalizedBusinessName] = true;
+      localStorage.setItem(APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY, JSON.stringify(dismissedMap));
+    }
+  };
 
   useEffect(() => {
     const cargarLugar = async () => {
@@ -150,6 +275,20 @@ export default function InformacionLugar() {
 
     cargarLugar();
   }, [nombreLugar, getFavorites, isAuthenticated, syncLocalFavorites]);
+
+  useEffect(() => {
+    if (!nombreLugar || typeof window === "undefined") return;
+
+    const deletedNotification = getPersistedDeletedBusinessNotification(nombreLugar);
+    if (deletedNotification) {
+      setDeletedBusinessNotification(deletedNotification);
+      setShowDeletedBusinessModal(true);
+      return;
+    }
+
+    setDeletedBusinessNotification(null);
+    setShowDeletedBusinessModal(false);
+  }, [nombreLugar, lugar]);
 
   const abrirEnMaps = () => {
     if (lugar) {
@@ -224,7 +363,7 @@ export default function InformacionLugar() {
     );
   }
 
-  if (!lugar) {
+  if (!lugar && !showDeletedBusinessModal) {
     return (
       <div className={styles.container}>
         <div className={styles.notFound}>
@@ -238,14 +377,55 @@ export default function InformacionLugar() {
     );
   }
 
+  if (showDeletedBusinessModal && deletedBusinessNotification) {
+    return (
+      <DeletedBusinessModal
+        isOpen={showDeletedBusinessModal}
+        onClose={() => router.push("/negocio/mis-solicitudes")}
+        notification={deletedBusinessNotification}
+        businessName={nombreLugar || undefined}
+      />
+    );
+  }
+
+  const lugarSeguro = lugar as Lugar;
+
   return (
     <div className={styles.container}>
+      {showApprovedToast && (
+        <motion.div
+          initial={{ opacity: 0, y: -24, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 320, damping: 24 }}
+          className={styles.toastAprobado}
+          role="status"
+          aria-live="polite"
+        >
+          <div className={styles.toastAprobadoIcon}>✓</div>
+          <div className={styles.toastAprobadoContent}>
+            <p className={styles.toastAprobadoTitle}>Negocio aprobado y publicado</p>
+            <p className={styles.toastAprobadoMessage}>
+              Tu negocio fue aprobado por el admin y ahora se encuentra visible para todos los usuarios.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={dismissApprovedToast}
+            className={styles.toastAprobadoClose}
+            aria-label="Cerrar mensaje"
+          >
+            ×
+          </button>
+        </motion.div>
+      )}
+
+
       {/* Header con imagen de fondo */}
       <div className={styles.heroHeader}>
         {fotos.length > 0 && (
           <img
             src={fotos[0]}
-            alt={lugar.nombre}
+            alt={lugarSeguro.nombre}
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6, zIndex: 0 }}
           />
         )}
@@ -263,7 +443,7 @@ export default function InformacionLugar() {
           }}
         >
           <p style={{ color: 'white', fontSize: '1.25rem', fontWeight: 700, margin: 0, textShadow: '0 2px 8px rgba(0,0,0,0.5)', lineHeight: 1.3 }}>
-            {lugar.nombre}
+            {lugarSeguro.nombre}
           </p>
         </div>
         <div className={styles.heroContent}>
@@ -275,6 +455,7 @@ export default function InformacionLugar() {
               onClick={toggleFavorite} 
               className={`${styles.iconBtn} ${isFavorite ? styles.iconBtnActive : ''}`}
               title={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+              whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.85 }}
               animate={{ 
                 scale: isFavorite ? [1, 1.2, 1] : 1,
@@ -296,17 +477,17 @@ export default function InformacionLugar() {
         <div className={styles.mainContent}>
           <div className={styles.titleSection}>
             <div className={styles.titleTopRow}>
-              <span className={styles.categoryBadge}>{lugar.categoria}</span>
+              <span className={styles.categoryBadge}>{lugarSeguro.categoria}</span>
               <div className={styles.titleRatingCorner}>
                 <PlaceRating
-                  placeName={lugar.nombre}
+                  placeName={lugarSeguro.nombre}
                   showLabel={true}
                   size="large"
                   displayMode="split"
                 />
               </div>
             </div>
-            <h1 className={styles.title}>{lugar.nombre}</h1>
+            <h1 className={styles.title}>{lugarSeguro.nombre}</h1>
           </div>
 
           {/* Galería dividida: visor principal + miniaturas */}
@@ -315,7 +496,7 @@ export default function InformacionLugar() {
               <div className={styles.galleryViewer}>
                 <img
                   src={fotos[fotoIdx]}
-                  alt={`${lugar.nombre} imagen ${fotoIdx + 1}`}
+                  alt={`${lugarSeguro.nombre} imagen ${fotoIdx + 1}`}
                   className={styles.galleryMainImage}
                 />
               </div>
@@ -335,7 +516,7 @@ export default function InformacionLugar() {
                       >
                         <img
                           src={item.foto}
-                          alt={`${lugar.nombre} miniatura ${item.idx + 1}`}
+                          alt={`${lugarSeguro.nombre} miniatura ${item.idx + 1}`}
                           className={styles.galleryThumbImage}
                         />
                       </button>
@@ -354,7 +535,7 @@ export default function InformacionLugar() {
                   <h2>Descripción</h2>
                 </div>
                 <p className={styles.infoText}>
-                  {lugar.notaIA || "Este lugar o negocio no tiene descripción pública disponible por el momento."}
+                  {lugarSeguro.notaIA || "Este lugar o negocio no tiene descripción pública disponible por el momento."}
                 </p>
               </div>
             </section>
@@ -367,7 +548,7 @@ export default function InformacionLugar() {
                   </div>
                   <div className={styles.statInfo}>
                     <span className={styles.statLabel}>Tiempo sugerido</span>
-                    <span className={styles.statValue}>{lugar.tiempoEstancia} min</span>
+                    <span className={styles.statValue}>{lugarSeguro.tiempoEstancia} min</span>
                   </div>
                 </div>
 
@@ -377,24 +558,24 @@ export default function InformacionLugar() {
                   </div>
                   <div className={styles.statInfo}>
                     <span className={styles.statLabel}>Costo estimado</span>
-                    <span className={styles.statValue}>{lugar.costoEstimado}</span>
+                    <span className={styles.statValue}>{lugarSeguro.costoEstimado}</span>
                   </div>
                 </div>
               </div>
 
-              {(lugar.telefono || normalizedWebsite || lugar.email) && (
+              {(lugarSeguro.telefono || normalizedWebsite || lugarSeguro.email) && (
                 <div className={styles.quickContactCard}>
                   <div className={styles.infoHeader}>
                     <FiInfo />
                     <h2>Contacto</h2>
                   </div>
                   <div style={{ display: "grid", gap: "0.75rem" }}>
-                    {lugar.telefono && (
+                    {lugarSeguro.telefono && (
                       <a
-                        href={`tel:${lugar.telefono}`}
+                        href={`tel:${lugarSeguro.telefono}`}
                         style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1A4D2E", fontWeight: 600 }}
                       >
-                        <FiPhone /> {lugar.telefono}
+                        <FiPhone /> {lugarSeguro.telefono}
                       </a>
                     )}
 
@@ -405,16 +586,16 @@ export default function InformacionLugar() {
                         rel="noopener noreferrer"
                         style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1A4D2E", fontWeight: 600, wordBreak: "break-all" }}
                       >
-                        <FiGlobe /> {lugar.website}
+                        <FiGlobe /> {lugarSeguro.website}
                       </a>
                     )}
 
-                    {lugar.email && (
+                    {lugarSeguro.email && (
                       <a
-                        href={`mailto:${lugar.email}`}
+                        href={`mailto:${lugarSeguro.email}`}
                         style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1A4D2E", fontWeight: 600, wordBreak: "break-all" }}
                       >
-                        <FiMail /> {lugar.email}
+                        <FiMail /> {lugarSeguro.email}
                       </a>
                     )}
                   </div>
@@ -424,13 +605,13 @@ export default function InformacionLugar() {
           </div>
 
           {/* Descripción cultural */}
-          {CULTURA_DESCRIPTIONS[lugar.nombre] && (
+          {CULTURA_DESCRIPTIONS[lugarSeguro.nombre] && (
             <div className={styles.infoCard}>
               <div className={styles.infoHeader}>
                 <FiInfo />
                 <h2>Significado cultural</h2>
               </div>
-              <p className={styles.infoText}>{CULTURA_DESCRIPTIONS[lugar.nombre]}</p>
+              <p className={styles.infoText}>{CULTURA_DESCRIPTIONS[lugarSeguro.nombre]}</p>
             </div>
           )}
 
@@ -441,14 +622,14 @@ export default function InformacionLugar() {
               <div className={styles.mapColumn}>
                 <div className={styles.mapContainer}>
                   <iframe
-                    src={getMapEmbedSrc(lugar)}
+                    src={getMapEmbedSrc(lugarSeguro)}
                     width="100%"
                     height="100%"
                     style={{ border: 0 }}
                     allowFullScreen
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
-                    title={`Mapa de ${lugar.nombre}`}
+                    title={`Mapa de ${lugarSeguro.nombre}`}
                   />
                 </div>
               </div>
@@ -459,9 +640,9 @@ export default function InformacionLugar() {
                     <FiMapPin />
                     <h2>Ubicación</h2>
                   </div>
-                  <p className={styles.locationAddress}>{lugar.direccion}</p>
-                  {lugar.codigoPostal && (
-                    <p className={styles.locationMeta}>CP: {lugar.codigoPostal}</p>
+                  <p className={styles.locationAddress}>{lugarSeguro.direccion}</p>
+                  {lugarSeguro.codigoPostal && (
+                    <p className={styles.locationMeta}>CP: {lugarSeguro.codigoPostal}</p>
                   )}
                   <button onClick={abrirEnMaps} className={styles.directionsBtn}>
                     <FiNavigation /> Cómo llegar

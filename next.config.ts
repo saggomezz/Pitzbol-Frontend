@@ -4,8 +4,25 @@ const nextConfig = {
     NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443',
     NEXT_PUBLIC_IA_URL: process.env.NEXT_PUBLIC_IA_URL || 'https://ia.pitzbol.me:8443',
   },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+        ],
+      },
+    ];
+  },
   async rewrites() {
-    const backendUrl = process.env.BACKEND_INTERNAL_URL || 'https://api.pitzbol.me:8443';
+    const backendUrl =
+      process.env.BACKEND_INTERNAL_URL ||
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      'https://api.pitzbol.me:8443';
     return [
       {
         source: '/api/:path*',
@@ -22,6 +39,13 @@ const nextConfig = {
       '@tensorflow/tfjs': false,
     };
     config.externals = [...(config.externals || []), { canvas: 'canvas' }];
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      {
+        module: /@vladmandic[\\/]face-api[\\/]dist[\\/]face-api\.esm\.js/,
+        message: /Critical dependency: require function is used in a way in which dependencies cannot be statically extracted/,
+      },
+    ];
     return config;
   },
   images: {

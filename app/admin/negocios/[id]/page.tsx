@@ -709,6 +709,7 @@ export default function AdminViewBusinessPage() {
     approved: "APPROVED",
     aprobado: "APPROVED",
     rejected: "REJECTED",
+    rechazado: "REJECTED",
     archivado: "archivado",
     archived: "archivado",
   };
@@ -719,6 +720,9 @@ export default function AdminViewBusinessPage() {
   const isPending = mappedStatus === "PENDING";
   const isApproved = mappedStatus === "APPROVED";
   const isArchived = mappedStatus === "archivado";
+  const isRejected = mappedStatus === "REJECTED";
+  const showArchivedStyleActions = isArchived || isRejected;
+  const hasAdministrativeActions = isPending || isApproved || showArchivedStyleActions;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FDFCF9] to-[#F6F0E6] px-4 py-8 md:py-12">
@@ -749,88 +753,93 @@ export default function AdminViewBusinessPage() {
           </div>
 
           <div className="p-8 md:p-12">
-            {isPending && (
-              <PendingDecisionPanel
-                procesando={procesando}
-                modalAccion={modalAccion}
-                onAprobar={() => handleGestionarNegocio("aprobar")}
-                onRechazar={() => handleGestionarNegocio("rechazar")}
-              />
-            )}
-
-            {isApproved && (
-              <ApprovedBusinessPanel
-                procesando={procesandoAccion}
-                onRegresarPendientes={handleRegresarAPendientes}
-                onArchivar={() => setModalArchivar(true)}
-              />
-            )}
-
-            {isArchived && (
-              <ArchivedBusinessPanel
-                procesando={procesandoAccion}
-                onDesarchivar={handleDesarchivarNegocio}
-                onEliminar={() => setModalEliminar(true)}
-              />
-            )}
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="mb-8 bg-gradient-to-br from-[#F6F0E6]/50 to-[#E8F5E9]/50 rounded-3xl p-6 border border-[#1A4D2E]/10"
-            >
-              <button
-                type="button"
-                onClick={() => toggleSection("solicitante")}
-                className="w-full flex items-center justify-between text-left"
+            <div className={`mb-8 grid gap-6 ${hasAdministrativeActions ? "xl:grid-cols-2 xl:items-stretch" : ""}`}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="h-full bg-gradient-to-br from-[#F6F0E6]/50 to-[#E8F5E9]/50 rounded-3xl p-6 border border-[#1A4D2E]/10 flex flex-col"
               >
-                <h3 className="text-xl font-black text-[#1A4D2E]">Información del Solicitante</h3>
-                <FiChevronRight
-                  size={22}
-                  className={`text-[#1A4D2E] transition-transform duration-200 ${openSections.solicitante ? "rotate-90" : ""}`}
-                />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSection("solicitante")}
+                  className="w-full flex items-center justify-between text-left"
+                >
+                  <h3 className="text-xl font-black text-[#1A4D2E]">Información del Solicitante</h3>
+                  <FiChevronRight
+                    size={22}
+                    className={`text-[#1A4D2E] transition-transform duration-200 ${openSections.solicitante ? "rotate-90" : ""}`}
+                  />
+                </button>
 
-              <AnimatePresence initial={false}>
-                {openSections.solicitante && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: "easeInOut" }}
-                    className="overflow-hidden"
-                  >
-                    <div className="grid sm:grid-cols-2 gap-4 mt-5">
-                      {ownerProfileIdentifier && (
-                        <Link
-                          href={`/perfil/${encodeURIComponent(ownerProfileIdentifier)}`}
-                          className="bg-white border border-[#1A4D2E]/10 rounded-2xl p-4 hover:shadow-lg hover:border-[#0D601E]/30 transition-all group cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#1A4D2E]/20 bg-[#F6F0E6] flex-shrink-0">
-                              {owner?.fotoPerfil ? (
-                                <img src={owner.fotoPerfil} alt={ownerName} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-[#769C7B]">
-                                  <FiUser size={22} />
-                                </div>
-                              )}
+                <AnimatePresence initial={false}>
+                  {openSections.solicitante && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                      className="overflow-hidden flex-1"
+                    >
+                      <div className="mt-5 h-full">
+                        {ownerProfileIdentifier && (
+                          <Link
+                            href={`/perfil/${encodeURIComponent(ownerProfileIdentifier)}`}
+                            className="block w-full bg-white border border-[#1A4D2E]/10 rounded-2xl p-4 hover:shadow-lg hover:border-[#0D601E]/30 transition-all group cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#1A4D2E]/20 bg-[#F6F0E6] flex-shrink-0">
+                                {owner?.fotoPerfil ? (
+                                  <img src={owner.fotoPerfil} alt={ownerName} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-[#769C7B]">
+                                    <FiUser size={22} />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs text-[#769C7B] font-semibold uppercase mb-1">Propietario</p>
+                                <p className="text-sm font-bold text-[#1A4D2E] break-all mb-2">{ownerName || "No disponible"}</p>
+                                <p className="text-xs text-[#769C7B] break-all">{owner?.email || "No disponible"}</p>
+                              </div>
+                              <FiChevronRight size={20} className="text-[#0D601E] flex-shrink-0 group-hover:translate-x-1 transition-transform" />
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs text-[#769C7B] font-semibold uppercase mb-1">Propietario</p>
-                              <p className="text-sm font-bold text-[#1A4D2E] break-all mb-2">{ownerName || "No disponible"}</p>
-                              <p className="text-xs text-[#769C7B] break-all">{owner?.email || "No disponible"}</p>
-                            </div>
-                            <FiChevronRight size={20} className="text-[#0D601E] flex-shrink-0 group-hover:translate-x-1 transition-transform" />
-                          </div>
-                        </Link>
-                      )}
-                    </div>
-                  </motion.div>
+                          </Link>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+
+              <div className="h-full flex">
+                {isPending && (
+                  <PendingDecisionPanel
+                    procesando={procesando}
+                    modalAccion={modalAccion}
+                    onAprobar={() => handleGestionarNegocio("aprobar")}
+                    onRechazar={() => handleGestionarNegocio("rechazar")}
+                    compact
+                  />
                 )}
-              </AnimatePresence>
-            </motion.div>
+
+                {isApproved && (
+                  <ApprovedBusinessPanel
+                    procesando={procesandoAccion}
+                    onRegresarPendientes={handleRegresarAPendientes}
+                    onArchivar={() => setModalArchivar(true)}
+                  />
+                )}
+
+                {showArchivedStyleActions && (
+                  <ArchivedBusinessPanel
+                    procesando={procesandoAccion}
+                    onDesarchivar={handleDesarchivarNegocio}
+                    onEliminar={() => setModalEliminar(true)}
+                  />
+                )}
+              </div>
+            </div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1289,7 +1298,7 @@ function PendingDecisionPanel({
 }) {
   return (
     <div
-      className={`mb-8 rounded-3xl border border-[#1A4D2E]/15 bg-gradient-to-br from-[#F6F0E6] via-[#FCF8F1] to-[#E8F5E9] shadow-sm ${
+      className={`h-full mb-8 rounded-3xl border border-[#1A4D2E]/15 bg-gradient-to-br from-[#F6F0E6] via-[#FCF8F1] to-[#E8F5E9] shadow-sm flex flex-col ${
         compact ? "p-5" : "p-6"
       }`}
     >
@@ -1336,7 +1345,7 @@ function ApprovedBusinessPanel({
   onArchivar: () => void;
 }) {
   return (
-    <div className="mb-8 rounded-3xl border border-[#1A4D2E]/15 bg-gradient-to-br from-[#E9F7EE] via-[#F0FFF4] to-[#E8F5E9] shadow-sm p-6">
+    <div className="h-full mb-8 rounded-3xl border border-[#1A4D2E]/15 bg-gradient-to-br from-[#E9F7EE] via-[#F0FFF4] to-[#E8F5E9] shadow-sm p-6 flex flex-col">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Acción administrativa</p>
@@ -1378,7 +1387,7 @@ function ArchivedBusinessPanel({
   onEliminar: () => void;
 }) {
   return (
-    <div className="mb-8 rounded-3xl border border-gray-300 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 shadow-sm p-6">
+    <div className="h-full mb-8 rounded-3xl border border-gray-300 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 shadow-sm p-6 flex flex-col">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <p className="text-xs uppercase tracking-wide font-bold text-gray-500 mb-1">Acción administrativa</p>

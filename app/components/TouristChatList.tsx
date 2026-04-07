@@ -85,6 +85,11 @@ export default function TouristChatList({ touristId, onSelectChat }: TouristChat
 
         if (data.success) {
           setChats(data.chats);
+
+          if (socketRef.current) {
+            socketRef.current.disconnect();
+            socketRef.current = null;
+          }
           
           // Conectar socket para recibir actualizaciones en tiempo real
           const token = localStorage.getItem("pitzbol_token");
