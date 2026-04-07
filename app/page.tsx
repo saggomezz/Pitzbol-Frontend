@@ -870,11 +870,12 @@ function HomeContent() {
               </div>
               <button
                 onClick={() => {
+                  const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
                   try {
                     const raw = localStorage.getItem('pitzbol_user');
                     if (raw) {
                       const uid = JSON.parse(raw).uid;
-                      const url = uid ? `http://69.30.204.56:3003?uid=${uid}` : 'http://69.30.204.56:3003';
+                      const url = uid ? `${IA_URL}?uid=${uid}` : IA_URL;
                       window.open(url, '_blank');
                       return;
                     }
@@ -900,11 +901,12 @@ function HomeContent() {
             onClose={() => {
               setShowAuthForIA(false);
               // Si tras cerrar ya está logeado, abrir la IA
+              const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
               try {
                 const raw = localStorage.getItem('pitzbol_user');
                 if (raw) {
                   const uid = JSON.parse(raw).uid;
-                  const url = uid ? `http://69.30.204.56:3003?uid=${uid}` : 'http://69.30.204.56:3003';
+                  const url = uid ? `${IA_URL}?uid=${uid}` : IA_URL;
                   window.open(url, '_blank');
                 }
               } catch {}
