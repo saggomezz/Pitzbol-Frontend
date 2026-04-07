@@ -5,7 +5,7 @@ import BusinessInfo from "./BusinessInfo";
 import BusinessModal from "./BusinessModal";
 import { FiAlertTriangle } from "react-icons/fi";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const API_BASE = "/api";
 
 /**
  * Wrapper para mostrar primero la pantalla informativa,
@@ -41,7 +41,7 @@ const PublishBusinessFlow: React.FC<{ isOpen: boolean; onClose: () => void; }> =
         const token = localStorage.getItem("pitzbol_token");
         setIsLoggedIn(!!token);
         if (!token) return;
-        const res = await fetch(`${BACKEND_URL}/api/business/my-requests`, {
+        const res = await fetch(`${API_BASE}/business/my-requests`, {
           cache: "no-store",
           credentials: "include",
           headers: { Authorization: `Bearer ${token}` },

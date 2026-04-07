@@ -74,7 +74,7 @@ export default function AdminLugaresPage() {
     setBuscandoCoordenadas(true);
     try {
       // Usar el endpoint del backend que hace la geocodificación
-      const response = await fetch(`${BACKEND_URL}/api/lugares/geocode`, {
+      const response = await fetch(`/api/lugares/geocode`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -170,7 +170,7 @@ export default function AdminLugaresPage() {
           
           // 2. Obtener fotos guardadas de Firestore para cada lugar
           try {
-            const firestoreResponse = await fetch(`${BACKEND_URL}/api/lugares`);
+            const firestoreResponse = await fetch(`/api/lugares`);
             if (firestoreResponse.ok) {
               const firestoreData = await firestoreResponse.json();
               const lugaresConFotos = firestoreData.lugares || [];
@@ -266,7 +266,7 @@ export default function AdminLugaresPage() {
       });
 
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetchWithAuth(`${BACKEND_URL}/api/lugares/${encodeURIComponent(selectedPlace.nombre)}/fotos`, {
+      const response = await fetchWithAuth(`/api/lugares/${encodeURIComponent(selectedPlace.nombre)}/fotos`, {
         method: 'POST',
         body: formData
       });
@@ -296,7 +296,7 @@ export default function AdminLugaresPage() {
 
     try {
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetchWithAuth(`${BACKEND_URL}/api/lugares/${encodeURIComponent(selectedPlace.nombre)}/fotos`, {
+      const response = await fetchWithAuth(`/api/lugares/${encodeURIComponent(selectedPlace.nombre)}/fotos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fotosUrl })
@@ -324,7 +324,7 @@ export default function AdminLugaresPage() {
 
     try {
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetchWithAuth(`${BACKEND_URL}/api/lugares/${encodeURIComponent(selectedPlace.nombre)}/fotos/${index}`, {
+      const response = await fetchWithAuth(`/api/lugares/${encodeURIComponent(selectedPlace.nombre)}/fotos/${index}`, {
         method: 'DELETE',
       });
 
@@ -350,7 +350,7 @@ export default function AdminLugaresPage() {
 
     setBuscandoCoordenadasEdicion(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/lugares/geocode`, {
+      const response = await fetch(`/api/lugares/geocode`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -387,7 +387,7 @@ export default function AdminLugaresPage() {
     setUploading(true);
     try {
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetchWithAuth(`${BACKEND_URL}/api/lugares/${encodeURIComponent(selectedPlace.nombre)}`, {
+      const response = await fetchWithAuth(`/api/lugares/${encodeURIComponent(selectedPlace.nombre)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -431,7 +431,7 @@ export default function AdminLugaresPage() {
 
     try {
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetchWithAuth(`${BACKEND_URL}/api/lugares`, {
+      const response = await fetchWithAuth(`/api/lugares`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevoLugar)

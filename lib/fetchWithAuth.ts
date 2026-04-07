@@ -1,4 +1,4 @@
-const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001').replace(/\/+$/, '');
+const API_BASE = '/api';
 
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
@@ -19,7 +19,7 @@ function isTokenExpiringSoon(token: string): boolean {
 
 async function tryRefreshToken(currentToken: string): Promise<string | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/refresh-token`, {
+    const res = await fetch(`${API_BASE}/auth/refresh-token`, {
       method: 'POST',
       credentials: 'include',
       headers: {

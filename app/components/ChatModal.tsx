@@ -73,7 +73,7 @@ export default function ChatModal({
         const token = localStorage.getItem("pitzbol_token");
         
         // Obtener o crear chat
-        const response = await fetch(`${BACKEND_URL}/api/chat/create`, {
+        const response = await fetch(`/api/chat/create`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -108,7 +108,7 @@ export default function ChatModal({
 
           // Cargar mensajes existentes
           const messagesResponse = await fetch(
-            `${BACKEND_URL}/api/chat/${data.chat.id}/messages`,
+            `/api/chat/${data.chat.id}/messages`,
             {
               headers: {
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -122,7 +122,7 @@ export default function ChatModal({
 
           // Marcar mensajes como leídos cuando se abre el chat
           try {
-            await fetch(`${BACKEND_URL}/api/chat/${data.chat.id}/read`, {
+            await fetch(`/api/chat/${data.chat.id}/read`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -237,7 +237,7 @@ export default function ChatModal({
     try {
       const token = localStorage.getItem("pitzbol_token");
       
-      const response = await fetch(`${BACKEND_URL}/api/chat/${chatId}`, {
+      const response = await fetch(`/api/chat/${chatId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

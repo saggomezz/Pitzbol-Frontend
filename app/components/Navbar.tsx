@@ -16,7 +16,7 @@ import HistorialSolicitudesModal from "./HistorialSolicitudesModal";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useMessageNotifications } from "@/lib/useMessageNotifications";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const API_BASE = "/api";
 const PHOTO_HYDRATE_COOLDOWN_KEY = "pitzbol_profile_photo_hydrate_cooldown_until";
 const BUSINESS_REQUESTS_CACHE_KEY_PREFIX = "pitzbol_has_business_requests_";
 
@@ -128,7 +128,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         let isCancelled = false;
         const checkBusinessRequests = async () => {
             try {
-                const res = await fetch(`${BACKEND_URL}/api/business/my-requests`, {
+                const res = await fetch(`${API_BASE}/business/my-requests`, {
                     cache: "no-store",
                     credentials: "include",
                     headers: { Authorization: `Bearer ${token}` },
@@ -193,7 +193,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             const parsedUser = JSON.parse(storedUser);
             if (parsedUser.fotoPerfil) return;
             try {
-                const resp = await fetch(`${BACKEND_URL}/api/perfil/foto-perfil`, {
+                const resp = await fetch(`${API_BASE}/perfil/foto-perfil`, {
                     headers: { Authorization: `Bearer ${token}` },
                     credentials: "include",
                 });

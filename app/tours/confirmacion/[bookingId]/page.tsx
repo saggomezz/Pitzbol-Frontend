@@ -39,7 +39,7 @@ export default function BookingConfirmationPage() {
   useEffect(() => {
     const fetchBooking = async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/api/bookings/${bookingId}`);
+        const response = await fetch(`/api/bookings/${bookingId}`);
         const data = await response.json();
 
         if (data.success) {

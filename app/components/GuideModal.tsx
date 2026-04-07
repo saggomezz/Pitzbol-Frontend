@@ -48,7 +48,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"}/api/auth/update-profile`, {
+      const response = await fetch(`/api/auth/update-profile`, {
         method: "PATCH",
         credentials: "include",
         headers: {

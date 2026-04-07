@@ -28,6 +28,7 @@ interface NotificationsPanelProps {
 }
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const API_BASE = "/api";
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
 
@@ -194,7 +195,7 @@ const resolveDeletedBusinessFromBackend = async (notif: Notification): Promise<N
   if (businessName) params.set("businessName", businessName);
 
   try {
-    const response = await fetch(`${BACKEND_URL}/api/business/status?${params.toString()}`, {
+    const response = await fetch(`${API_BASE}/business/status?${params.toString()}`, {
       credentials: "include",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -240,7 +241,7 @@ const resolveBusinessNavigationFromBackend = async (notif: Notification): Promis
   if (businessName) params.set("businessName", businessName);
 
   try {
-    const response = await fetch(`${BACKEND_URL}/api/business/status?${params.toString()}`, {
+    const response = await fetch(`${API_BASE}/business/status?${params.toString()}`, {
       credentials: "include",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -436,12 +437,11 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
     try {
       setCargando(true);
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
       const token = localStorage.getItem('pitzbol_token');
       const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
       
       // Obtener notificaciones del usuario (siempre)
-      const response = await fetch(`${API_BASE}/api/admin/notificaciones/${userId}`, {
+      const response = await fetch(`${API_BASE}/admin/notificaciones/${userId}`, {
         credentials: 'include',
         headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
       });
@@ -474,7 +474,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       // Si es admin, también cargar notificaciones de soporte
       if (user?.role === 'admin') {
         try {
-          const supportResponse = await fetch(`${API_BASE}/api/support/notifications`, {
+          const supportResponse = await fetch(`${API_BASE}/support/notifications`, {
             credentials: 'include',
             headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
           });
@@ -727,7 +727,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     // Actualizar en el backend
     try {
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetch(`${BACKEND_URL}/api/admin/notifications/${id}/marcar-leida/${userId}`, {
+      const response = await fetch(`${API_BASE}/admin/notifications/${id}/marcar-leida/${userId}`, {
         method: 'PUT',
         credentials: 'include',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -745,7 +745,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     // Eliminar en el backend
     try {
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetch(`${BACKEND_URL}/api/admin/notifications/${id}/${userId}`, {
+      const response = await fetch(`${API_BASE}/admin/notifications/${id}/${userId}`, {
         method: 'DELETE',
         credentials: 'include',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -859,7 +859,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     if (!token) return undefined;
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/business/by-id/${businessId}`, {
+      const response = await fetch(`${API_BASE}/business/by-id/${businessId}`, {
         credentials: "include",
         headers: { Authorization: `Bearer ${token}` },
       });

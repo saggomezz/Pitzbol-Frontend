@@ -48,7 +48,7 @@ export default function DatosLugaresPage() {
         );
       });
 
-    fetch(`${BACKEND_URL}/api/lugares`)
+    fetch(`/api/lugares`)
       .then(r => r.json())
       .then(data => {
         const map: Record<string, string[]> = {};
@@ -105,7 +105,7 @@ export default function DatosLugaresPage() {
   const eliminarLugar = async (nombre: string) => {
     const token = localStorage.getItem("pitzbol_token");
     try {
-      const res = await fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(nombre)}`, {
+      const res = await fetch(`/api/lugares/${encodeURIComponent(nombre)}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         credentials: "include",
@@ -124,7 +124,7 @@ export default function DatosLugaresPage() {
     const fotosLimpias = inputFotos.filter(u => u.trim().startsWith("http"));
     const token = localStorage.getItem("pitzbol_token");
     try {
-      const res = await fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(nombre)}/fotos`, {
+      const res = await fetch(`/api/lugares/${encodeURIComponent(nombre)}/fotos`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

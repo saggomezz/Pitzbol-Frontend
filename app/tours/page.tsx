@@ -35,7 +35,7 @@ export default function ToursPage() {
         setLoading(true);
         // Añadir timestamp para evitar caché
         const timestamp = new Date().getTime();
-        const response = await fetch(`${BACKEND_URL}/api/guides/verified?t=${timestamp}`);
+        const response = await fetch(`/api/guides/verified?t=${timestamp}`);
         
         if (!response.ok) {
           console.warn(`Error al cargar guías: ${response.status} ${response.statusText}`);

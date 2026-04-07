@@ -1,4 +1,4 @@
-Ôªø"use client";
+"use client";
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -36,39 +36,39 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:300
 
 const businessCategoryOptions = [
   { value: "Restaurante / Bar", label: "Restaurante / Bar" },
-  { value: "Cafeter√≠a / Desayunos", label: "Cafeter√≠a / Desayunos" },
-  { value: "Hoteler√≠a / Hostal / Airbnb", label: "Hoteler√≠a / Hostal / Airbnb" },
+  { value: "CafeterÌa / Desayunos", label: "CafeterÌa / Desayunos" },
+  { value: "HotelerÌa / Hostal / Airbnb", label: "HotelerÌa / Hostal / Airbnb" },
   { value: "Transporte / Traslados", label: "Transporte / Traslados" },
   { value: "Renta de Equipo Deportivo", label: "Renta de Equipo Deportivo" },
-  { value: "Artesan√≠as / Souvenirs", label: "Artesan√≠as / Souvenirs" },
+  { value: "ArtesanÌas / Souvenirs", label: "ArtesanÌas / Souvenirs" },
   { value: "Vida Nocturna / Club", label: "Vida Nocturna / Club" },
 ];
 
 const validateEmail = (value: string) => {
-  if (!value.trim()) return "El correo electr√≥nico es obligatorio";
+  if (!value.trim()) return "El correo electrÛnico es obligatorio";
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-  return isValid ? null : "El formato del correo es inv√°lido";
+  return isValid ? null : "El formato del correo es inv·lido";
 };
 
 const validatePhone = (value: string) => {
-  if (!value.trim()) return "El tel√©fono es obligatorio";
-  return /^\d{10}$/.test(value) ? null : "El tel√©fono debe tener 10 d√≠gitos";
+  if (!value.trim()) return "El telÈfono es obligatorio";
+  return /^\d{10}$/.test(value) ? null : "El telÈfono debe tener 10 dÌgitos";
 };
 
 const validateURL = (value: string) => {
   if (!value.trim()) return "El sitio web o redes sociales son obligatorios";
   const pattern = /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
-  return pattern.test(value.trim()) ? null : "URL no v√°lida. Ejemplo: https://facebook.com/tunegocio";
+  return pattern.test(value.trim()) ? null : "URL no v·lida. Ejemplo: https://facebook.com/tunegocio";
 };
 
 const validateRFC = (value: string) => {
   if (!value.trim()) return "El RFC es obligatorio";
-  return /^[A-Z&√ë]{3,4}[0-9]{6}[A-Z0-9]{3}$/i.test(value) ? null : "RFC inv√°lido";
+  return /^[A-Z&—]{3,4}[0-9]{6}[A-Z0-9]{3}$/i.test(value) ? null : "RFC inv·lido";
 };
 
 const validateCP = (value: string) => {
-  if (!value.trim()) return "El c√≥digo postal es obligatorio";
-  return /^\d{5}$/.test(value) ? null : "El c√≥digo postal debe tener 5 d√≠gitos";
+  if (!value.trim()) return "El cÛdigo postal es obligatorio";
+  return /^\d{5}$/.test(value) ? null : "El cÛdigo postal debe tener 5 dÌgitos";
 };
 
 const validateBusinessName = (value: string) => {
@@ -175,7 +175,7 @@ export default function AdminViewBusinessPage() {
       setError(null);
       try {
         const token = localStorage.getItem("pitzbol_token");
-        const response = await fetch(`${BACKEND_URL}/api/business/by-id/${businessId}`, {
+        const response = await fetch(`/api/business/by-id/${businessId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -198,7 +198,7 @@ export default function AdminViewBusinessPage() {
         }
       } catch (err) {
         console.error("Error fetching business:", err);
-        setError("Error de conexi√≥n. Intenta m√°s tarde.");
+        setError("Error de conexiÛn. Intenta m·s tarde.");
         setBusiness(null);
       } finally {
         setLoading(false);
@@ -244,7 +244,7 @@ export default function AdminViewBusinessPage() {
       setModalOpen(false);
       setMotivoRechazo("");
       setTimeout(() => {
-        // Redirigir seg√∫n la acci√≥n: aprobados ‚Üí registrados, rechazados ‚Üí archivados
+        // Redirigir seg˙n la acciÛn: aprobados ? registrados, rechazados ? archivados
         const targetTab = modalAccion === "aprobar" ? "registrados" : "archivados";
         router.push(`/admin/negocios?tab=${targetTab}`);
       }, 1500);
@@ -266,7 +266,7 @@ export default function AdminViewBusinessPage() {
     setProcesandoAccion(true);
     try {
       const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
-      const response = await fetch(`${BACKEND_URL}/api/admin/negocios/${business.id}/regresar-pendientes`, {
+      const response = await fetch(`/api/admin/negocios/${business.id}/regresar-pendientes`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -280,7 +280,7 @@ export default function AdminViewBusinessPage() {
         setResultadoMensaje({ tipo: "error", mensaje: data.message || "Error al regresar a pendientes" });
       }
     } catch (error) {
-      setResultadoMensaje({ tipo: "error", mensaje: "Error de conexi√≥n" });
+      setResultadoMensaje({ tipo: "error", mensaje: "Error de conexiÛn" });
     } finally {
       setProcesandoAccion(false);
     }
@@ -293,7 +293,7 @@ export default function AdminViewBusinessPage() {
     try {
       const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
       const motivoFinal = motivoArchivo.trim() || "Archivado por administrador";
-      const response = await fetch(`${BACKEND_URL}/api/admin/negocios/${business.id}/archivar`, {
+      const response = await fetch(`/api/admin/negocios/${business.id}/archivar`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -309,7 +309,7 @@ export default function AdminViewBusinessPage() {
         setResultadoMensaje({ tipo: "error", mensaje: data.message || "Error al archivar" });
       }
     } catch (error) {
-      setResultadoMensaje({ tipo: "error", mensaje: "Error de conexi√≥n" });
+      setResultadoMensaje({ tipo: "error", mensaje: "Error de conexiÛn" });
     } finally {
       setProcesandoAccion(false);
     }
@@ -321,7 +321,7 @@ export default function AdminViewBusinessPage() {
     setProcesandoAccion(true);
     try {
       const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
-      const response = await fetch(`${BACKEND_URL}/api/admin/negocios/${business.id}/desarchivar`, {
+      const response = await fetch(`/api/admin/negocios/${business.id}/desarchivar`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -335,7 +335,7 @@ export default function AdminViewBusinessPage() {
         setResultadoMensaje({ tipo: "error", mensaje: data.message || "Error al desarchivar" });
       }
     } catch (error) {
-      setResultadoMensaje({ tipo: "error", mensaje: "Error de conexi√≥n" });
+      setResultadoMensaje({ tipo: "error", mensaje: "Error de conexiÛn" });
     } finally {
       setProcesandoAccion(false);
     }
@@ -347,7 +347,7 @@ export default function AdminViewBusinessPage() {
     setProcesandoAccion(true);
     try {
       const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
-      const response = await fetch(`${BACKEND_URL}/api/admin/negocios/${business.id}/eliminar-permanente`, {
+      const response = await fetch(`/api/admin/negocios/${business.id}/eliminar-permanente`, {
         method: "DELETE",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -362,7 +362,7 @@ export default function AdminViewBusinessPage() {
         setResultadoMensaje({ tipo: "error", mensaje: data.message || "Error al eliminar" });
       }
     } catch (error) {
-      setResultadoMensaje({ tipo: "error", mensaje: "Error de conexi√≥n" });
+      setResultadoMensaje({ tipo: "error", mensaje: "Error de conexiÛn" });
     } finally {
       setProcesandoAccion(false);
     }
@@ -374,7 +374,7 @@ export default function AdminViewBusinessPage() {
     const token = localStorage.getItem("pitzbol_token");
     const updateData: any = { [field]: value };
 
-    const response = await fetch(`${BACKEND_URL}/api/business/${business.id}`, {
+    const response = await fetch(`/api/business/${business.id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -392,7 +392,7 @@ export default function AdminViewBusinessPage() {
     setBusiness((prev) => {
       if (!prev) return prev;
       
-      // Si es email, se actualiza a nivel ra√≠z, si no, dentro de business
+      // Si es email, se actualiza a nivel raÌz, si no, dentro de business
       if (field === "email") {
         return {
           ...prev,
@@ -414,7 +414,7 @@ export default function AdminViewBusinessPage() {
   const validateUniquenessField = async (field: UniquenessField, value: string) => {
     if (!business || !value.trim()) return;
 
-    const response = await fetch(`${BACKEND_URL}/api/business/validate-uniqueness`, {
+    const response = await fetch(`/api/business/validate-uniqueness`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -429,7 +429,7 @@ export default function AdminViewBusinessPage() {
 
     const data = await response.json().catch(() => null);
     const backendError = data?.errors?.[field];
-    throw new Error(backendError || "Este valor ya est√° registrado");
+    throw new Error(backendError || "Este valor ya est· registrado");
   };
 
   const handleUpdateLocation = async (data: {
@@ -464,7 +464,7 @@ export default function AdminViewBusinessPage() {
       referencias: data.referencias,
     };
 
-    const response = await fetch(`${BACKEND_URL}/api/business/${business.id}`, {
+    const response = await fetch(`/api/business/${business.id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -475,7 +475,7 @@ export default function AdminViewBusinessPage() {
     });
 
     if (!response.ok) {
-      throw new Error("Error al actualizar la ubicaci√≥n");
+      throw new Error("Error al actualizar la ubicaciÛn");
     }
 
     // Actualizar el estado local
@@ -516,7 +516,7 @@ export default function AdminViewBusinessPage() {
       formData.append("deleteLogoUrl", business.business.logo);
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/business/${business.id}/images`, {
+    const response = await fetch(`/api/business/${business.id}/images`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -551,11 +551,11 @@ export default function AdminViewBusinessPage() {
     const formData = new FormData();
     formData.append("images", file);
     
-    // Mantener las otras im√°genes pero reemplazar la que se est√° editando
+    // Mantener las otras im·genes pero reemplazar la que se est· editando
     const deleteImageUrls = [business.business.images[index]];
     formData.append("deleteImageUrls", JSON.stringify(deleteImageUrls));
 
-    const response = await fetch(`${BACKEND_URL}/api/business/${business.id}/images`, {
+    const response = await fetch(`/api/business/${business.id}/images`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -588,16 +588,16 @@ export default function AdminViewBusinessPage() {
   const handleAddImage = async (file: File) => {
     if (!business) return;
 
-    // Verificar que no exceed el l√≠mite de 10 im√°genes
+    // Verificar que no exceed el lÌmite de 10 im·genes
     if (business.business.images.length >= 10) {
-      throw new Error("M√°ximo 10 im√°genes permitidas");
+      throw new Error("M·ximo 10 im·genes permitidas");
     }
 
     const token = localStorage.getItem("pitzbol_token");
     const formData = new FormData();
     formData.append("images", file);
 
-    const response = await fetch(`${BACKEND_URL}/api/business/${business.id}/images`, {
+    const response = await fetch(`/api/business/${business.id}/images`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -678,28 +678,28 @@ export default function AdminViewBusinessPage() {
       color: "text-[#B56A00]",
       bgColor: "bg-[#FFF7E8] border-[#F2C47C]",
       icon: <FiClock className="text-[#B56A00]" size={22} />,
-      description: "Esta solicitud est√° esperando revisi√≥n administrativa.",
+      description: "Esta solicitud est· esperando revisiÛn administrativa.",
     },
     APPROVED: {
       label: "Aprobado",
       color: "text-[#1F6B3A]",
       bgColor: "bg-[#E9F7EE] border-[#9ED9B2]",
       icon: <FiCheckCircle className="text-[#1F6B3A]" size={22} />,
-      description: "El negocio est√° aprobado y disponible para los usuarios.",
+      description: "El negocio est· aprobado y disponible para los usuarios.",
     },
     REJECTED: {
       label: "Rechazado",
       color: "text-[#8B0000]",
       bgColor: "bg-[#FDEAEA] border-[#F2A5A5]",
       icon: <FiAlertCircle className="text-[#8B0000]" size={22} />,
-      description: "La solicitud fue rechazada por revisi√≥n administrativa.",
+      description: "La solicitud fue rechazada por revisiÛn administrativa.",
     },
     archivado: {
       label: "Archivado",
       color: "text-gray-600",
       bgColor: "bg-gray-100 border-gray-300",
       icon: <FiAlertCircle className="text-gray-600" size={22} />,
-      description: "Este negocio est√° archivado.",
+      description: "Este negocio est· archivado.",
     },
   };
 
@@ -765,7 +765,7 @@ export default function AdminViewBusinessPage() {
                   onClick={() => toggleSection("solicitante")}
                   className="w-full flex items-center justify-between text-left"
                 >
-                  <h3 className="text-xl font-black text-[#1A4D2E]">Informaci√≥n del Solicitante</h3>
+                  <h3 className="text-xl font-black text-[#1A4D2E]">InformaciÛn del Solicitante</h3>
                   <FiChevronRight
                     size={22}
                     className={`text-[#1A4D2E] transition-transform duration-200 ${openSections.solicitante ? "rotate-90" : ""}`}
@@ -852,7 +852,7 @@ export default function AdminViewBusinessPage() {
                 onClick={() => toggleSection("negocio")}
                 className="w-full flex items-center justify-between text-left mb-4"
               >
-                <h3 className="text-2xl font-black text-[#1A4D2E]">Informaci√≥n del Negocio</h3>
+                <h3 className="text-2xl font-black text-[#1A4D2E]">InformaciÛn del Negocio</h3>
                 <FiChevronRight
                   size={24}
                   className={`text-[#1A4D2E] transition-transform duration-200 ${openSections.negocio ? "rotate-90" : ""}`}
@@ -901,7 +901,7 @@ export default function AdminViewBusinessPage() {
                         />
 
                         <AdminEditableField
-                          label="Categor√≠a"
+                          label="CategorÌa"
                           value={business.business.category}
                           icon={<FiBriefcase className="text-[#0D601E]" size={24} />}
                           options={
@@ -914,13 +914,13 @@ export default function AdminViewBusinessPage() {
                         />
 
                         <AdminEditableField
-                          label="Descripci√≥n"
+                          label="DescripciÛn"
                           value={business.business.description || ""}
                           multiline={true}
                           rows={4}
                           required
                           maxLength={500}
-                          validate={(value) => (value.trim() ? null : "La descripci√≥n es obligatoria")}
+                          validate={(value) => (value.trim() ? null : "La descripciÛn es obligatoria")}
                           icon={<FiFileText className="text-[#0D601E]" size={24} />}
                           onSave={(value) => handleUpdateBusinessField("description", value)}
                         />
@@ -945,7 +945,7 @@ export default function AdminViewBusinessPage() {
                       </div>
 
                       <AdminEditableField
-                        label="Tel√©fono"
+                        label="TelÈfono"
                         value={business.business.phone}
                         icon={<FiPhone className="text-[#0D601E]" size={24} />}
                         inputType="tel"
@@ -1005,7 +1005,7 @@ export default function AdminViewBusinessPage() {
                         }}
                       />
                       <AdminEditableField
-                        label="C√≥digo Postal"
+                        label="CÛdigo Postal"
                         value={business.business.cp || ""}
                         icon={<FiMapPin className="text-[#0D601E]" size={24} />}
                         required
@@ -1060,7 +1060,7 @@ export default function AdminViewBusinessPage() {
                   />
                 </motion.div>
 
-                {/* Galer√≠a - Debajo */}
+                {/* GalerÌa - Debajo */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1068,7 +1068,7 @@ export default function AdminViewBusinessPage() {
                 >
                   <div>
                     <p className="text-xs text-[#769C7B] font-semibold uppercase mb-3 block">
-                      Galer√≠a de im√°genes ({business.business.images?.length || 0}/10)
+                      GalerÌa de im·genes ({business.business.images?.length || 0}/10)
                     </p>
                     <div className="grid grid-cols-2 gap-4">
                       {business.business.images?.map((image, index) => (
@@ -1138,7 +1138,7 @@ export default function AdminViewBusinessPage() {
                 <h3 className="text-2xl font-black text-gray-800">Archivar negocio</h3>
               </div>
               <p className="text-gray-600 mb-4">
-                Puedes indicar el motivo por el cual deseas archivar este negocio (opcional). El negocio dejar√° de estar visible para los usuarios.
+                Puedes indicar el motivo por el cual deseas archivar este negocio (opcional). El negocio dejar· de estar visible para los usuarios.
               </p>
               <textarea
                 value={motivoArchivo}
@@ -1197,11 +1197,11 @@ export default function AdminViewBusinessPage() {
                 <h3 className="text-2xl font-black text-[#8B0000]">Eliminar permanentemente</h3>
               </div>
               <p className="text-gray-700 mb-4">
-                ¬øEst√°s seguro de que deseas eliminar permanentemente este negocio? 
+                øEst·s seguro de que deseas eliminar permanentemente este negocio? 
               </p>
               <div className="bg-red-50 border-l-4 border-[#8B0000] p-4 mb-6 rounded">
                 <p className="text-sm text-[#8B0000] font-semibold">
-                  ‚ö†Ô∏è Esta acci√≥n borrar√° todos los elementos de la base de datos y de Cloudinary. No se podr√° deshacer.
+                  ?? Esta acciÛn borrar· todos los elementos de la base de datos y de Cloudinary. No se podr· deshacer.
                 </p>
               </div>
               <div className="flex gap-3">
@@ -1210,7 +1210,7 @@ export default function AdminViewBusinessPage() {
                   disabled={procesandoAccion}
                   className="flex-1 bg-[#8B0000] hover:bg-[#6B0000] text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {procesandoAccion ? "Eliminando..." : "S√≠, eliminar"}
+                  {procesandoAccion ? "Eliminando..." : "SÌ, eliminar"}
                 </button>
                 <button
                   onClick={() => !procesandoAccion && setModalEliminar(false)}
@@ -1348,9 +1348,9 @@ function ApprovedBusinessPanel({
     <div className="h-full mb-8 rounded-3xl border border-[#1A4D2E]/15 bg-gradient-to-br from-[#E9F7EE] via-[#F0FFF4] to-[#E8F5E9] shadow-sm p-6 flex flex-col">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Acci√≥n administrativa</p>
+          <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">AcciÛn administrativa</p>
           <h3 className="text-xl font-black text-[#1A4D2E]">Gestionar negocio activo</h3>
-          <p className="text-sm text-[#1A4D2E]/70 mt-1">Este negocio est√° activo. Puedes regresarlo a pendientes o archivarlo.</p>
+          <p className="text-sm text-[#1A4D2E]/70 mt-1">Este negocio est· activo. Puedes regresarlo a pendientes o archivarlo.</p>
         </div>
       </div>
 
@@ -1390,9 +1390,9 @@ function ArchivedBusinessPanel({
     <div className="h-full mb-8 rounded-3xl border border-gray-300 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 shadow-sm p-6 flex flex-col">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <p className="text-xs uppercase tracking-wide font-bold text-gray-500 mb-1">Acci√≥n administrativa</p>
+          <p className="text-xs uppercase tracking-wide font-bold text-gray-500 mb-1">AcciÛn administrativa</p>
           <h3 className="text-xl font-black text-gray-700">Gestionar negocio archivado</h3>
-          <p className="text-sm text-gray-600 mt-1">Este negocio est√° archivado. Puedes desarchivarlo o eliminarlo permanentemente.</p>
+          <p className="text-sm text-gray-600 mt-1">Este negocio est· archivado. Puedes desarchivarlo o eliminarlo permanentemente.</p>
         </div>
       </div>
 
@@ -1527,7 +1527,7 @@ function LocationMapComponent({
   if (loading) {
     return (
       <div className="h-[400px] bg-[#F6F0E6] rounded-3xl flex items-center justify-center border border-[#1A4D2E]/10">
-        <p className="text-[#769C7B] font-semibold">Cargando ubicaci√≥n...</p>
+        <p className="text-[#769C7B] font-semibold">Cargando ubicaciÛn...</p>
       </div>
     );
   }
@@ -1537,12 +1537,12 @@ function LocationMapComponent({
       <div className="bg-[#F6F0E6] rounded-3xl p-6 border border-[#1A4D2E]/10">
         <div className="flex items-center gap-3 mb-3">
           <FiMapPin className="text-[#0D601E]" size={24} />
-          <h4 className="font-bold text-[#1A4D2E]">Ubicaci√≥n</h4>
+          <h4 className="font-bold text-[#1A4D2E]">UbicaciÛn</h4>
         </div>
         <p className="text-[#1A4D2E] mb-2">{location}</p>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm">
           <p className="text-yellow-800 font-semibold mb-1">Mapa no disponible</p>
-          <p className="text-yellow-700 text-xs">No se pudieron obtener coordenadas para mostrar esta ubicaci√≥n.</p>
+          <p className="text-yellow-700 text-xs">No se pudieron obtener coordenadas para mostrar esta ubicaciÛn.</p>
         </div>
       </div>
     );
@@ -1626,7 +1626,7 @@ function LocationMapComponent({
         </Marker>
       </MapContainer>
       <div className="bg-[#0D601E] text-white text-center py-2 text-sm font-semibold">
-        {editable ? "üìç Arrastra o da clic en el mapa para ajustar ubicaci√≥n" : `üìç ${location}`}
+        {editable ? "?? Arrastra o da clic en el mapa para ajustar ubicaciÛn" : `?? ${location}`}
       </div>
     </div>
   );
