@@ -183,7 +183,7 @@ const GdlMatchCarousel = ({ partidos, sede, tHome }: { partidos: Partido[]; sede
   const next = () => { setDir(1); setIdx(i => Math.min(partidos.length - 1, i + 1)); };
   return (
     <div className="w-full mb-2">
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-0.5">
         <h3 className="text-center text-[#0D601E] text-xs md:text-sm font-medium flex-1" style={{ fontFamily: 'var(--font-roboto)' }}>
           {tHome('nextMatchIn')} <span className="font-bold">{sede}</span> - {current.fechaDisplay}
         </h3>
@@ -228,7 +228,7 @@ const GdlMatchCarousel = ({ partidos, sede, tHome }: { partidos: Partido[]; sede
 
 const MatchItem = ({ location, date, team1, flag1, team2, flag2, time, tHome }: any) => (
   <div className="w-full mb-2"> {/* Reduje el margen inferior de mb-6 a mb-3 */}
-    <h3 className="text-center text-[#0D601E] text-xs md:text-sm mb-1 font-medium" style={{ fontFamily: 'var(--font-roboto)' }}>
+    <h3 className="text-center text-[#0D601E] text-xs md:text-sm mb-0.5 font-medium" style={{ fontFamily: 'var(--font-roboto)' }}>
       {tHome('nextMatchIn')} <span className="font-bold">{location}</span> - {date}:
     </h3>
     <div className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-2 shadow-md min-h-[60px] md:min-h-[50px]">
@@ -547,7 +547,7 @@ function HomeContent() {
           </div>
 
           {/* Indicadores */}
-          <div className="flex justify-center items-center gap-2 mt-3 md:mt-4">
+          <div className="flex justify-center items-center gap-1.5 md:gap-2 mt-2 md:mt-4">
             {allCategories.map((_, idx) => (
               <motion.button
                 key={idx}
@@ -557,8 +557,8 @@ function HomeContent() {
                 }}
                 className={`rounded-full transition-all ${
                   idx === currentIndex
-                    ? "bg-[#0D601E] w-6 md:w-8 h-2.5 md:h-3"
-                    : "bg-[#F6F0E6] w-2.5 md:w-3 h-2.5 md:h-3 hover:bg-[#1A4D2E]"
+                    ? "bg-[#0D601E] w-2 md:w-8 h-2 md:h-3"
+                    : "bg-[#F6F0E6] w-2 md:w-3 h-2 md:h-3 hover:bg-[#1A4D2E]"
                 }`}
                 whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
