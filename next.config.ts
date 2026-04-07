@@ -1,11 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   env: {
-    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me',
-    NEXT_PUBLIC_IA_URL: process.env.NEXT_PUBLIC_IA_URL || 'https://ia.pitzbol.me',
+    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443',
+    NEXT_PUBLIC_IA_URL: process.env.NEXT_PUBLIC_IA_URL || 'https://ia.pitzbol.me:8443',
   },
   async rewrites() {
-    const backendUrl = process.env.BACKEND_INTERNAL_URL || 'https://api.pitzbol.me';
+    const backendUrl = process.env.BACKEND_INTERNAL_URL || 'https://api.pitzbol.me:8443';
     return [
       {
         source: '/api/:path*',
