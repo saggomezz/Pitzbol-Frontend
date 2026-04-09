@@ -1388,26 +1388,28 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
                 {step === 1 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
-                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1.25fr] gap-2">
-                      <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[340px]">
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1.25fr] gap-2 md:items-stretch">
+                      <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[340px] md:h-full flex flex-col">
                           <span className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-2 mb-1">
                             Ubicación en el mapa
                           </span>
-                          <MinimapaLocationPicker
-                            latitud={form.latitud}
-                            longitud={form.longitud}
-                            onLocationChange={(lat, lng) => {
-                              console.log("📍 MinimapaLocationPicker - Coordenadas actualizadas:", { lat, lng });
-                              // Marcar que este cambio SÍ es manual (usuario movió el marcador)
-                              isManualMapChangeRef.current = true;
-                              setForm((f: FormState) => ({
-                                ...f,
-                                latitud: lat,
-                                longitud: lng
-                              }));
-                            }}
-                            height="180px"
-                          />
+                          <div className="h-[180px] md:flex-1 md:min-h-[280px]">
+                            <MinimapaLocationPicker
+                              latitud={form.latitud}
+                              longitud={form.longitud}
+                              onLocationChange={(lat, lng) => {
+                                console.log("📍 MinimapaLocationPicker - Coordenadas actualizadas:", { lat, lng });
+                                // Marcar que este cambio SÍ es manual (usuario movió el marcador)
+                                isManualMapChangeRef.current = true;
+                                setForm((f: FormState) => ({
+                                  ...f,
+                                  latitud: lat,
+                                  longitud: lng
+                                }));
+                              }}
+                              height="100%"
+                            />
+                          </div>
                           <p className="mt-2 text-[10px] text-[#1A4D2E] px-2">
                             Mueve el pin para ajustar el punto exacto del negocio. Esto mejora la precisión en resultados de mapa y rutas.
                           </p>
