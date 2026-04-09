@@ -6,6 +6,7 @@ import { io, Socket } from "socket.io-client";
 
 import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import DeletedBusinessModal from "./DeletedBusinessModal";
 
 interface Notification {
@@ -454,13 +455,14 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     try {
       setCargando(true);
       const token = localStorage.getItem('pitzbol_token');
+      if (!token) {
+        cargarNotificacionesLocal();
+        return;
+      }
       const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
       
       // Obtener notificaciones del usuario (siempre)
-      const response = await fetch(`${API_BASE}/admin/notificaciones/${bucketId}`, {
-        credentials: 'include',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
-      });
+      const response = await fetchWithAuth(`${API_BASE}/admin/notificaciones/${bucketId}`);
       
       let notificacionesDelBackend: Notification[] = [];
       
@@ -490,10 +492,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       // Si es admin, también cargar notificaciones de soporte
       if (user?.role === 'admin') {
         try {
-          const supportResponse = await fetch(`${API_BASE}/support/notifications`, {
-            credentials: 'include',
-            headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
-          });
+          const supportResponse = await fetchWithAuth(`${API_BASE}/support/notifications`);
 
           if (supportResponse.ok) {
             const supportData = await supportResponse.json();
@@ -682,12 +681,20 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     if (!userId) return;
 
     const token = localStorage.getItem("pitzbol_token") || "";
+    if (!token) return;
+
     socketRef.current = io(BACKEND_URL, {
       auth: {
         token,
         userId,
         userType: "tourist",
       },
+    });
+
+    socketRef.current.on("connect_error", (error) => {
+      if (error?.message === "Invalid token" || error?.message === "Authentication required") {
+        socketRef.current?.disconnect();
+      }
     });
 
     socketRef.current.on("new-notification", (notif: Notification) => {
@@ -751,11 +758,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
     // Actualizar en el backend
     try {
-      const token = localStorage.getItem('pitzbol_token');
-      const response = await fetch(`${API_BASE}/admin/notifications/${id}/marcar-leida/${bucketId}`, {
+      const response = await fetchWithAuth(`${API_BASE}/admin/notifications/${id}/marcar-leida/${bucketId}`, {
         method: 'PUT',
-        credentials: 'include',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       
       // response handled silently; UI already updated locally
@@ -786,11 +790,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
     // Eliminar en el backend
     try {
-      const token = localStorage.getItem('pitzbol_token');
-      const response = await fetch(`${API_BASE}/admin/notifications/${id}/${bucketId}`, {
+      const response = await fetchWithAuth(`${API_BASE}/admin/notifications/${id}/${bucketId}`, {
         method: 'DELETE',
-        credentials: 'include',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       if (!response.ok && response.status !== 404) {

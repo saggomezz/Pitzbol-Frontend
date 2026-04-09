@@ -93,10 +93,20 @@ export default function TouristChatList({ touristId, onSelectChat }: TouristChat
           
           // Conectar socket para recibir actualizaciones en tiempo real
           const token = localStorage.getItem("pitzbol_token");
+          if (!token) {
+            return;
+          }
+
           socketRef.current = io(BACKEND_URL, {
             auth: {
-              token: token || "",
+              token,
             },
+          });
+
+          socketRef.current.on("connect_error", (error) => {
+            if (error?.message === "Invalid token" || error?.message === "Authentication required") {
+              socketRef.current?.disconnect();
+            }
           });
 
           socketRef.current.on("connect", () => {

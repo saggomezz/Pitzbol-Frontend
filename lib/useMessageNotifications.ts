@@ -143,14 +143,21 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     if (!enabled || !userId) return;
 
     const token = localStorage.getItem("pitzbol_token");
+    if (!token) return;
     
     // Conectar al servidor de Socket.IO
     socketRef.current = io(BACKEND_URL, {
       auth: {
-        token: token || "",
+        token,
         userId: userId,
         userType: userType,
       },
+    });
+
+    socketRef.current.on("connect_error", (error) => {
+      if (error?.message === "Invalid token" || error?.message === "Authentication required") {
+        socketRef.current?.disconnect();
+      }
     });
 
     socketRef.current.on("connect", () => {

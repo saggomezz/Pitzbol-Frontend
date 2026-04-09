@@ -15,6 +15,7 @@ import NotificationsPanel from "./NotificationsPanel";
 import HistorialSolicitudesModal from "./HistorialSolicitudesModal";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useMessageNotifications } from "@/lib/useMessageNotifications";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 const API_BASE = "/api";
 const PHOTO_HYDRATE_COOLDOWN_KEY = "pitzbol_profile_photo_hydrate_cooldown_until";
@@ -122,16 +123,11 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             return;
         }
 
-        const token = localStorage.getItem("pitzbol_token");
-        if (!token) return;
-
         let isCancelled = false;
         const checkBusinessRequests = async () => {
             try {
-                const res = await fetch(`${API_BASE}/business/my-requests`, {
+                const res = await fetchWithAuth(`${API_BASE}/business/my-requests`, {
                     cache: "no-store",
-                    credentials: "include",
-                    headers: { Authorization: `Bearer ${token}` },
                 });
                 const data = await res.json();
                 if (!isCancelled && data.success) {

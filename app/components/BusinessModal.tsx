@@ -82,6 +82,8 @@ const DAY_LABELS: { key: WeekDayKey; label: string }[] = [
 const IMAGE_PREVIEW_DB = "pitzbolBusinessDraftDb";
 const IMAGE_PREVIEW_STORE = "draftCache";
 const IMAGE_PREVIEW_IDB_KEY = "businessImages";
+const GALLERY_SLOT_COUNT = 4;
+const createEmptyGallery = <T,>(value: T): T[] => Array.from({ length: GALLERY_SLOT_COUNT }, () => value);
 
 const openPreviewDb = (): Promise<IDBDatabase> =>
   new Promise((resolve, reject) => {
@@ -183,7 +185,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       costoEstimado: "",
       tiempoSugerido: "",
       subcategorias: [],
-      galeria: [null, null, null],
+      galeria: createEmptyGallery<File | null>(null),
       logo: null
     } as FormState;
     if (saved) {
@@ -193,7 +195,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         return {
           ...defaults,
           ...parsed,
-          galeria: [null, null, null],
+          galeria: createEmptyGallery<File | null>(null),
           logo: null
         };
       } catch {}
@@ -225,19 +227,21 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [previewCacheReady, setPreviewCacheReady] = useState(false);
   const [imagePreview, setImagePreview] = useState<ImagePreviewState>({
     logoUrl: null,
-    galeriaUrls: [null, null, null],
+    galeriaUrls: createEmptyGallery<string | null>(null),
   });
+  const [logoSquareSize, setLogoSquareSize] = useState<number | null>(null);
   
   // Estado separado para los archivos File (no se puede serializar en localStorage)
   const [files, setFiles] = useState<{ logo: File | null; galeria: (File | null)[] }>({
     logo: null,
-    galeria: [null, null, null]
+    galeria: createEmptyGallery<File | null>(null)
   });
   
-  const [galeriaErrors, setGaleriaErrors] = useState<string[]>(["", "", ""]);
+  const [galeriaErrors, setGaleriaErrors] = useState<string[]>(createEmptyGallery<string>(""));
   const [isValidating, setIsValidating] = useState(false);
   const fileInputs = useRef<(HTMLInputElement | null)[]>([]);
   const logoInput = useRef<HTMLInputElement | null>(null);
+  const galleryContentRef = useRef<HTMLDivElement | null>(null);
   const lastGeocodeRef = useRef<string>("");
   const reverseGeocodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isManualMapChangeRef = useRef<boolean>(false);
@@ -377,6 +381,22 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     }
   }, [isOpen]);
 
+  // Permite cerrar el modal con Escape mientras esté abierto.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   // Guardar automáticamente en localStorage cada vez que cambia form
   useEffect(() => {
     // No guardar Files en localStorage, solo los otros campos
@@ -423,8 +443,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     const normalizePreviewState = (parsed: ImagePreviewState) => ({
       logoUrl: typeof parsed.logoUrl === "string" ? parsed.logoUrl : null,
       galeriaUrls: Array.isArray(parsed.galeriaUrls)
-        ? [parsed.galeriaUrls[0] || null, parsed.galeriaUrls[1] || null, parsed.galeriaUrls[2] || null]
-        : [null, null, null],
+        ? createEmptyGallery<string | null>(null).map((_, i) => parsed.galeriaUrls[i] || null)
+        : createEmptyGallery<string | null>(null),
     });
 
     (async () => {
@@ -436,12 +456,21 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       }
 
       try {
+        // Solo para migrar cache legado desde Storage a IndexedDB.
         const cached = localStorage.getItem(IMAGES_CACHE_KEY) || sessionStorage.getItem(IMAGES_CACHE_KEY);
         if (!cached || cancelled) return;
 
         const parsed = JSON.parse(cached) as ImagePreviewState;
         if (!parsed || typeof parsed !== "object") return;
-        setImagePreview(normalizePreviewState(parsed));
+        const normalized = normalizePreviewState(parsed);
+        setImagePreview(normalized);
+        setPreviewCacheInIdb(normalized).catch(() => {
+          // noop
+        });
+
+        // Limpiar el respaldo legado para evitar quota errors recurrentes.
+        localStorage.removeItem(IMAGES_CACHE_KEY);
+        sessionStorage.removeItem(IMAGES_CACHE_KEY);
       } catch (error) {
         console.warn("No se pudieron restaurar previsualizaciones de imágenes:", error);
       } finally {
@@ -474,19 +503,39 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       console.warn("No se pudo persistir cache de imágenes en IndexedDB:", error);
     });
 
-    const serialized = JSON.stringify(imagePreview);
-    try {
-      localStorage.setItem(IMAGES_CACHE_KEY, serialized);
-      sessionStorage.removeItem(IMAGES_CACHE_KEY);
-    } catch {
-      // Fallback cuando localStorage excede cuota.
-      try {
-        sessionStorage.setItem(IMAGES_CACHE_KEY, serialized);
-      } catch (error) {
-        console.warn("No se pudieron persistir previsualizaciones:", error);
-      }
-    }
+    // Mantener limpio cualquier cache legado en Storage.
+    localStorage.removeItem(IMAGES_CACHE_KEY);
+    sessionStorage.removeItem(IMAGES_CACHE_KEY);
   }, [imagePreview, isOpen, previewCacheReady]);
+
+  // En paso 3, igualar el alto total de galería+nota con el cuadro cuadrado del logo.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isOpen || step !== 2) return;
+
+    const target = galleryContentRef.current;
+    if (!target) return;
+
+    const updateSize = () => {
+      const measured = Math.round(target.getBoundingClientRect().height);
+      if (!measured) return;
+      const clamped = Math.max(240, Math.min(measured, 460));
+      setLogoSquareSize(clamped);
+    };
+
+    updateSize();
+
+    if (typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(() => {
+      updateSize();
+    });
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isOpen, step, imagePreview.galeriaUrls]);
 
   // Función para obtener coordenadas usando el endpoint del backend
   const buscarCoordenadas = async (direccion: string) => {
@@ -1190,7 +1239,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       localStorage.removeItem(IMAGES_CACHE_KEY);
       sessionStorage.removeItem(IMAGES_CACHE_KEY);
       clearPreviewCacheInIdb();
-      setFiles({ logo: null, galeria: [null, null, null] });
+      setFiles({ logo: null, galeria: createEmptyGallery<File | null>(null) });
 
       setSuccess(true);
 
@@ -1217,13 +1266,17 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   
   const btnPrimary = "w-full bg-[#0D601E] text-white py-3 rounded-full font-bold uppercase tracking-widest text-xs shadow-lg hover:bg-[#094d18] transition-all active:scale-95";
   const btnFinish = "w-full bg-[#8B0000] text-white py-4 rounded-full font-black uppercase tracking-[0.2em] text-sm shadow-xl hover:scale-[1.02] transition-transform active:scale-95";
+  const formContainerClass = step === 1 ? "max-w-5xl mx-auto space-y-2" : step === 2 ? "w-fit max-w-full mx-auto space-y-2" : "max-w-2xl mx-auto space-y-2";
+  const modalWidthClass = step === 2 ? "w-fit" : "w-full";
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-2 md:p-4 bg-black/40">
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-        className={`relative bg-white w-full rounded-[50px] shadow-2xl border border-white/20 ${
+        className={`relative bg-white ${modalWidthClass} rounded-[50px] shadow-2xl border border-white/20 ${
           step === 1
             ? "max-w-[900px] max-h-[92vh] overflow-hidden p-4 md:p-6"
+            : step === 2
+            ? "max-w-[840px] max-h-[96vh] overflow-hidden p-3 md:p-5"
             : "max-w-[850px] min-h-[500px] max-h-[90vh] overflow-hidden p-6 md:p-8"
         }`}
       >
@@ -1245,7 +1298,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   {saveError}
                 </div>
               )}
-              <div className={`text-center ${step === 1 ? "mb-5" : "mb-6"}`}>
+              <div className={`text-center ${step === 1 ? "mb-5" : step === 2 ? "mb-4" : "mb-6"}`}>
                 <h2 className={`${step === 1 ? "text-[22px] md:text-[28px]" : "text-[28px] md:text-[36px]"} text-[#8B0000] font-black uppercase leading-none`} style={{ fontFamily: 'var(--font-jockey)' }}>
                   {step === 0
                     ? t('step1Title')
@@ -1260,7 +1313,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 <p className={`${step === 1 ? "text-xs" : "text-sm"} text-[#1A4D2E] italic mt-1`}>{t('stepProgress', { current: step + 1, total: 5 })}</p>
               </div>
 
-              <div className="max-w-2xl mx-auto space-y-2">
+              <div className={formContainerClass}>
                 {step === 0 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
                     <div className={cardClass}>
@@ -1611,47 +1664,58 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 )}
 
                 {step === 2 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
-                    <div className={cardClass.replace("p-6", "p-4")}>
-                      <span className={labelClass}>Logo del Negocio</span>
-                      <label className="w-full flex flex-col items-center justify-center border-2 border-dashed border-[#769C7B]/40 rounded-3xl cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all relative min-h-[170px]">
-                        {imagePreview.logoUrl ? (
-                          <img src={imagePreview.logoUrl} alt="Logo preview" className="absolute inset-0 w-full h-full object-cover rounded-3xl z-10" style={{ background: '#fff', width: '100%', height: '100%' }} />
-                        ) : (
-                          <>
-                            <FiImage size={34} className="text-[#769C7B] mb-2" />
-                            <p className="text-sm font-black text-[#1A4D2E] uppercase">{t('businessLogo')}</p>
-                            <p className="text-[9px] text-red-500 mt-1 font-bold">* Obligatorio</p>
-                          </>
-                        )}
-                        <input type="file" className="hidden" accept="image/*" ref={el => { logoInput.current = el; }} onChange={handleLogoChange} />
-                        {logoError && <span className="text-[10px] text-red-500 mt-2 font-bold absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-white/80 px-2 rounded">{logoError}</span>}
-                      </label>
-                    </div>
-
-                    <div className={cardClass.replace("p-6", "p-4")}>
-                      <span className={labelClass}>Galería del Establecimiento</span>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {[0, 1, 2].map((i) => (
-                          <label key={i} className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-[#769C7B]/40 rounded-3xl cursor-pointer hover:bg-[#F6F0E6]/50 transition-all relative">
-                            {imagePreview.galeriaUrls[i] ? (
-                              <img src={imagePreview.galeriaUrls[i] as string} alt={`Galería preview ${i+1}`} className="absolute inset-0 w-full h-full object-cover rounded-3xl z-10" style={{background: '#fff', width: '100%', height: '100%'}} />
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2.5 pb-1">
+                    <div className={cardClass.replace("p-6", "p-3.5 md:p-4.5") + " !rounded-[28px] w-fit mx-auto"}>
+                      <div className="space-y-1">
+                        <div className="grid grid-cols-2 gap-2 md:gap-2.5 items-stretch w-fit mx-auto">
+                        <div className="w-full max-w-[260px] sm:max-w-[300px] md:max-w-[330px] flex flex-col">
+                          <span className={labelClass + " ml-1"}>Logo del Negocio</span>
+                          <label
+                            className="block w-full aspect-square min-h-[240px] border-2 border-dashed border-[#769C7B]/40 rounded-2xl cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all relative overflow-hidden"
+                            style={logoSquareSize ? { width: `${logoSquareSize}px`, height: `${logoSquareSize}px`, maxWidth: "100%" } : undefined}
+                          >
+                            {imagePreview.logoUrl ? (
+                              <img src={imagePreview.logoUrl} alt="Logo preview" className="absolute inset-0 w-full h-full object-cover z-10" style={{ background: '#fff', width: '100%', height: '100%' }} />
                             ) : (
-                              <>
-                                <FiImage className="text-[#769C7B] mb-1" size={20} />
-                                <span className="text-[9px] font-bold text-gray-400 uppercase">Foto {i + 1}</span>
-                              </>
+                              <div className="h-full flex flex-col items-center justify-center px-2 text-center">
+                                <FiImage size={30} className="text-[#769C7B] mb-2" />
+                                <p className="text-[10px] md:text-xs font-black text-[#1A4D2E] uppercase leading-tight">{t('businessLogo')}</p>
+                                <p className="text-[9px] text-red-500 mt-1 font-bold">* Obligatorio</p>
+                              </div>
                             )}
-                            <input type="file" className="hidden" accept="image/*" ref={el => { fileInputs.current[i] = el; }} onChange={e => handleGaleriaChange(i, e)} />
-                            {galeriaErrors[i] && <span className="text-[9px] text-red-500 mt-1 font-bold absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-white/80 px-2 rounded">{galeriaErrors[i]}</span>}
+                            <input type="file" className="hidden" accept="image/*" ref={el => { logoInput.current = el; }} onChange={handleLogoChange} />
+                            {logoError && <span className="text-[9px] text-red-500 mt-2 font-bold absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-white/80 px-2 rounded">{logoError}</span>}
                           </label>
-                        ))}
+                        </div>
+
+                        <div className="w-full max-w-[260px] sm:max-w-[300px] md:max-w-[330px] flex flex-col">
+                          <span className={labelClass + " ml-1"}>Galería del Establecimiento</span>
+                          <div ref={galleryContentRef} className="space-y-0.5">
+                            <div className="grid grid-cols-2 gap-2 md:gap-2.5">
+                              {Array.from({ length: GALLERY_SLOT_COUNT }, (_, i) => i).map((i) => (
+                                <label key={i} className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-[#769C7B]/40 rounded-2xl cursor-pointer hover:bg-[#F6F0E6]/50 transition-all relative overflow-hidden">
+                                  {imagePreview.galeriaUrls[i] ? (
+                                    <img src={imagePreview.galeriaUrls[i] as string} alt={`Galería preview ${i + 1}`} className="absolute inset-0 w-full h-full object-cover z-10" style={{ background: '#fff', width: '100%', height: '100%' }} />
+                                  ) : (
+                                    <>
+                                      <FiImage className="text-[#769C7B] mb-1" size={18} />
+                                      <span className="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase">Foto {i + 1}</span>
+                                    </>
+                                  )}
+                                  <input type="file" className="hidden" accept="image/*" ref={el => { fileInputs.current[i] = el; }} onChange={e => handleGaleriaChange(i, e)} />
+                                  {galeriaErrors[i] && <span className="text-[8px] md:text-[9px] text-red-500 mt-1 font-bold absolute bottom-1 left-1/2 -translate-x-1/2 z-20 bg-white/85 px-1.5 rounded">{galeriaErrors[i]}</span>}
+                                </label>
+                              ))}
+                            </div>
+                            <div className="bg-[#F6F0E6] rounded-2xl border border-[#1A4D2E]/10 p-1.5 md:p-2">
+                              <p className="text-[8px] md:text-[9px] text-[#1A4D2E] leading-relaxed italic">
+                                <FiInfo className="inline mb-0.5 mr-1 text-[#0D601E]" />
+                                <strong>Nota:</strong> Estas imágenes son clave para validar tu perfil. Podrás subir más fotos detalladas cuando sea aprobado.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="mt-2 bg-[#F6F0E6] rounded-2xl border border-[#1A4D2E]/10 p-2.5">
-                        <p className="text-[9px] text-[#1A4D2E] leading-relaxed italic">
-                          <FiInfo className="inline mb-0.5 mr-1 text-[#0D601E]"/>
-                          <strong>Nota:</strong> Estas imágenes son clave para validar tu perfil. Podrás subir más fotos detalladas cuando sea aprobado.
-                        </p>
                       </div>
                     </div>
                     <button 
@@ -1659,7 +1723,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         const isValid = validateStep3();
                         if (isValid) setStep(3);
                       }} 
-                      className={btnPrimary}
+                      className={btnPrimary + " py-3 text-xs"}
                     >
                       Siguiente: Información adicional
                     </button>
