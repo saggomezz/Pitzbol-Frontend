@@ -1,6 +1,6 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { enviarNotificacion } from "../../lib/notificaciones";
 import { fetchWithAuth } from "../../lib/fetchWithAuth";
@@ -50,8 +50,6 @@ export default function AdminPerfil() {
   const [guias, setGuias] = useState<ManagedUser[]>([]);
   const [loadingUsuarios, setLoadingUsuarios] = useState(true);
   const [eliminandoUid, setEliminandoUid] = useState<string | null>(null);
-  const hasLoadedSolicitudesRef = useRef(false);
-  const solicitudIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     fetchSolicitudes();
@@ -69,28 +67,7 @@ export default function AdminPerfil() {
       }
 
       const data = await response.json();
-      const nuevasSolicitudes = data.solicitudes || [];
-      const nuevosIds: Set<string> = new Set(
-        nuevasSolicitudes
-          .map((sol: any): string | null => (typeof sol?.uid === 'string' && sol.uid.length > 0 ? sol.uid : null))
-          .filter((uid: string | null): uid is string => uid !== null)
-      );
-
-      // Evita notificaciones al cargar por primera vez y solo avisa cuando aparece un uid nuevo.
-      const haySolicitudNueva = [...nuevosIds].some(uid => !solicitudIdsRef.current.has(uid));
-      if (hasLoadedSolicitudesRef.current && haySolicitudNueva) {
-        enviarNotificacion(
-          'admin',
-          'info',
-          'Nueva solicitud de guia',
-          'Ha llegado una nueva solicitud de guia pendiente.',
-          '/admin/guias?tab=pendientes'
-        );
-      }
-
-      solicitudIdsRef.current = nuevosIds;
-      hasLoadedSolicitudesRef.current = true;
-      setSolicitudes(nuevasSolicitudes);
+      setSolicitudes(data.solicitudes || []);
     } catch (error) {
       console.error("Error de conexión:", error);
     } finally {
