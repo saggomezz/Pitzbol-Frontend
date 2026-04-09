@@ -1,6 +1,6 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { enviarNotificacion } from "../../lib/notificaciones";
 import { fetchWithAuth } from "../../lib/fetchWithAuth";
@@ -50,6 +50,8 @@ export default function AdminPerfil() {
   const [guias, setGuias] = useState<ManagedUser[]>([]);
   const [loadingUsuarios, setLoadingUsuarios] = useState(true);
   const [eliminandoUid, setEliminandoUid] = useState<string | null>(null);
+  const hasLoadedSolicitudesRef = useRef(false);
+  const solicitudIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     fetchSolicitudes();
@@ -67,8 +69,16 @@ export default function AdminPerfil() {
       }
 
       const data = await response.json();
-      // Notificar al admin si hay nuevas solicitudes
-      if ((data.solicitudes || []).length > solicitudes.length) {
+      const nuevasSolicitudes = data.solicitudes || [];
+      const nuevosIds: Set<string> = new Set(
+        nuevasSolicitudes
+          .map((sol: any): string | null => (typeof sol?.uid === 'string' && sol.uid.length > 0 ? sol.uid : null))
+          .filter((uid: string | null): uid is string => uid !== null)
+      );
+
+      // Evita notificaciones al cargar por primera vez y solo avisa cuando aparece un uid nuevo.
+      const haySolicitudNueva = [...nuevosIds].some(uid => !solicitudIdsRef.current.has(uid));
+      if (hasLoadedSolicitudesRef.current && haySolicitudNueva) {
         enviarNotificacion(
           'admin',
           'info',
@@ -77,7 +87,10 @@ export default function AdminPerfil() {
           '/admin/guias?tab=pendientes'
         );
       }
-      setSolicitudes(data.solicitudes || []);
+
+      solicitudIdsRef.current = nuevosIds;
+      hasLoadedSolicitudesRef.current = true;
+      setSolicitudes(nuevasSolicitudes);
     } catch (error) {
       console.error("Error de conexión:", error);
     } finally {
