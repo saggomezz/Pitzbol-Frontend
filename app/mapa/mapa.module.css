@@ -526,14 +526,14 @@
 
 .placeCardMap .favoriteButtonFloating {
     position: absolute;
-    top: 50%;
-    right: 3rem;
-    transform: translateY(-50%);
+    bottom: 1rem;
+    right: 1rem;
+    transform: none;
     z-index: 2;
 }
 
 .placeCardMap .favoriteButtonFloating:hover {
-    transform: translateY(-50%) scale(1.1);
+    transform: scale(1.1);
 }
 
 @keyframes heartBeat {

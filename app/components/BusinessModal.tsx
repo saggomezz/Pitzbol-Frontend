@@ -1,6 +1,16 @@
 "use client";
 import { useTranslations } from 'next-intl';
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
+type WeekDayKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+
+type DaySchedule = {
+  enabled: boolean;
+  open: string;
+  close: string;
+};
+
+type WeeklySchedule = Record<WeekDayKey, DaySchedule>;
+
 interface FormState {
   nombre: string;
   categoria: string;
@@ -21,6 +31,10 @@ interface FormState {
   rfc: string;
   cp: string;
   descripcion: string;
+  horario: WeeklySchedule;
+  costoEstimado: string;
+  tiempoSugerido: string;
+  subcategorias: string[];
   galeria: (File | null)[];
   logo: File | null;
 }
@@ -38,6 +52,102 @@ import MinimapaLocationPicker from "./MinimapaLocationPicker";
     logoUrl: string | null;
     galeriaUrls: (string | null)[];
   };
+
+const DEFAULT_DAY_SCHEDULE: DaySchedule = {
+  enabled: false,
+  open: "09:00",
+  close: "18:00",
+};
+
+const createDefaultSchedule = (): WeeklySchedule => ({
+  monday: { ...DEFAULT_DAY_SCHEDULE },
+  tuesday: { ...DEFAULT_DAY_SCHEDULE },
+  wednesday: { ...DEFAULT_DAY_SCHEDULE },
+  thursday: { ...DEFAULT_DAY_SCHEDULE },
+  friday: { ...DEFAULT_DAY_SCHEDULE },
+  saturday: { ...DEFAULT_DAY_SCHEDULE },
+  sunday: { ...DEFAULT_DAY_SCHEDULE },
+});
+
+const DAY_LABELS: { key: WeekDayKey; label: string }[] = [
+  { key: "monday", label: "Lunes" },
+  { key: "tuesday", label: "Martes" },
+  { key: "wednesday", label: "Miércoles" },
+  { key: "thursday", label: "Jueves" },
+  { key: "friday", label: "Viernes" },
+  { key: "saturday", label: "Sábado" },
+  { key: "sunday", label: "Domingo" },
+];
+
+const IMAGE_PREVIEW_DB = "pitzbolBusinessDraftDb";
+const IMAGE_PREVIEW_STORE = "draftCache";
+const IMAGE_PREVIEW_IDB_KEY = "businessImages";
+const GALLERY_SLOT_COUNT = 4;
+const createEmptyGallery = <T,>(value: T): T[] => Array.from({ length: GALLERY_SLOT_COUNT }, () => value);
+
+const openPreviewDb = (): Promise<IDBDatabase> =>
+  new Promise((resolve, reject) => {
+    if (typeof window === "undefined" || !window.indexedDB) {
+      reject(new Error("IndexedDB no disponible"));
+      return;
+    }
+
+    const request = window.indexedDB.open(IMAGE_PREVIEW_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(IMAGE_PREVIEW_STORE)) {
+        db.createObjectStore(IMAGE_PREVIEW_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("No se pudo abrir IndexedDB"));
+  });
+
+const getPreviewCacheFromIdb = async (): Promise<ImagePreviewState | null> => {
+  try {
+    const db = await openPreviewDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(IMAGE_PREVIEW_STORE, "readonly");
+      const store = tx.objectStore(IMAGE_PREVIEW_STORE);
+      const req = store.get(IMAGE_PREVIEW_IDB_KEY);
+      req.onsuccess = () => {
+        const value = req.result;
+        if (!value || typeof value !== "object") {
+          resolve(null);
+          return;
+        }
+        resolve(value as ImagePreviewState);
+      };
+      req.onerror = () => reject(req.error || new Error("No se pudo leer cache de imágenes"));
+    });
+  } catch {
+    return null;
+  }
+};
+
+const setPreviewCacheInIdb = async (value: ImagePreviewState): Promise<void> => {
+  const db = await openPreviewDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(IMAGE_PREVIEW_STORE, "readwrite");
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error("No se pudo guardar cache en IndexedDB"));
+    tx.objectStore(IMAGE_PREVIEW_STORE).put(value, IMAGE_PREVIEW_IDB_KEY);
+  });
+};
+
+const clearPreviewCacheInIdb = async (): Promise<void> => {
+  try {
+    const db = await openPreviewDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(IMAGE_PREVIEW_STORE, "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error("No se pudo limpiar cache en IndexedDB"));
+      tx.objectStore(IMAGE_PREVIEW_STORE).delete(IMAGE_PREVIEW_IDB_KEY);
+    });
+  } catch {
+    // noop
+  }
+};
 
 const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const t = useTranslations('businessModal');
@@ -71,7 +181,11 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       rfc: "",
       cp: "",
       descripcion: "",
-      galeria: [null, null, null],
+      horario: createDefaultSchedule(),
+      costoEstimado: "",
+      tiempoSugerido: "",
+      subcategorias: [],
+      galeria: createEmptyGallery<File | null>(null),
       logo: null
     } as FormState;
     if (saved) {
@@ -81,7 +195,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         return {
           ...defaults,
           ...parsed,
-          galeria: [null, null, null],
+          galeria: createEmptyGallery<File | null>(null),
           logo: null
         };
       } catch {}
@@ -103,30 +217,37 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [estadoError, setEstadoError] = useState("");
   const [sitioWebError, setSitioWebError] = useState("");
   const [descripcionError, setDescripcionError] = useState("");
+  const [horarioError, setHorarioError] = useState("");
+  const [subcategoriasError, setSubcategoriasError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [logoError, setLogoError] = useState("");
+  const [subcategoriaInput, setSubcategoriaInput] = useState("");
   const [buscandoCoordenadas, setBuscandoCoordenadas] = useState(false);
   const [geocodeError, setGeocodeError] = useState("");
+  const [previewCacheReady, setPreviewCacheReady] = useState(false);
   const [imagePreview, setImagePreview] = useState<ImagePreviewState>({
     logoUrl: null,
-    galeriaUrls: [null, null, null],
+    galeriaUrls: createEmptyGallery<string | null>(null),
   });
+  const [logoSquareSize, setLogoSquareSize] = useState<number | null>(null);
   
   // Estado separado para los archivos File (no se puede serializar en localStorage)
   const [files, setFiles] = useState<{ logo: File | null; galeria: (File | null)[] }>({
     logo: null,
-    galeria: [null, null, null]
+    galeria: createEmptyGallery<File | null>(null)
   });
   
-  const [galeriaErrors, setGaleriaErrors] = useState<string[]>(["", "", ""]);
+  const [galeriaErrors, setGaleriaErrors] = useState<string[]>(createEmptyGallery<string>(""));
   const [isValidating, setIsValidating] = useState(false);
   const fileInputs = useRef<(HTMLInputElement | null)[]>([]);
   const logoInput = useRef<HTMLInputElement | null>(null);
+  const galleryContentRef = useRef<HTMLDivElement | null>(null);
   const lastGeocodeRef = useRef<string>("");
   const reverseGeocodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isManualMapChangeRef = useRef<boolean>(false);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  const IMAGES_CACHE_KEY = "pitzbol_business_images";
 
   // Validaciones de imagen
   const allowedExts = [".jpg", ".jpeg", ".png", ".webp"];
@@ -253,9 +374,28 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       setCiudadError("");
       setEstadoError("");
       setDescripcionError("");
+      setHorarioError("");
+      setSubcategoriasError("");
       setGeocodeError("");
+      setSubcategoriaInput("");
     }
   }, [isOpen]);
+
+  // Permite cerrar el modal con Escape mientras esté abierto.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   // Guardar automáticamente en localStorage cada vez que cambia form
   useEffect(() => {
@@ -279,17 +419,123 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       sitioWeb: form.sitioWeb,
       rfc: form.rfc,
       cp: form.cp,
-      descripcion: form.descripcion
+      descripcion: form.descripcion,
+      horario: form.horario,
+      costoEstimado: form.costoEstimado,
+      tiempoSugerido: form.tiempoSugerido,
+      subcategorias: form.subcategorias
     };
     localStorage.setItem("pitzbol_business_draft", JSON.stringify(formToSave));
   }, [form]);
 
-  // Las previsualizaciones pueden exceder fácilmente la cuota de localStorage.
-  // No se persisten entre recargas para evitar QuotaExceededError.
+  // Rehidratar previsualizaciones al abrir para mantener las imágenes al cerrar/abrir el modal.
   useEffect(() => {
-    if (!isOpen || typeof window === "undefined") return;
-    localStorage.removeItem("pitzbol_business_images");
+    if (typeof window === "undefined") return;
+
+    if (!isOpen) {
+      setPreviewCacheReady(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPreviewCacheReady(false);
+
+    const normalizePreviewState = (parsed: ImagePreviewState) => ({
+      logoUrl: typeof parsed.logoUrl === "string" ? parsed.logoUrl : null,
+      galeriaUrls: Array.isArray(parsed.galeriaUrls)
+        ? createEmptyGallery<string | null>(null).map((_, i) => parsed.galeriaUrls[i] || null)
+        : createEmptyGallery<string | null>(null),
+    });
+
+    (async () => {
+      const fromIdb = await getPreviewCacheFromIdb();
+      if (fromIdb && !cancelled) {
+        setImagePreview(normalizePreviewState(fromIdb));
+        setPreviewCacheReady(true);
+        return;
+      }
+
+      try {
+        // Solo para migrar cache legado desde Storage a IndexedDB.
+        const cached = localStorage.getItem(IMAGES_CACHE_KEY) || sessionStorage.getItem(IMAGES_CACHE_KEY);
+        if (!cached || cancelled) return;
+
+        const parsed = JSON.parse(cached) as ImagePreviewState;
+        if (!parsed || typeof parsed !== "object") return;
+        const normalized = normalizePreviewState(parsed);
+        setImagePreview(normalized);
+        setPreviewCacheInIdb(normalized).catch(() => {
+          // noop
+        });
+
+        // Limpiar el respaldo legado para evitar quota errors recurrentes.
+        localStorage.removeItem(IMAGES_CACHE_KEY);
+        sessionStorage.removeItem(IMAGES_CACHE_KEY);
+      } catch (error) {
+        console.warn("No se pudieron restaurar previsualizaciones de imágenes:", error);
+      } finally {
+        if (!cancelled) {
+          setPreviewCacheReady(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
+
+  // Persistir previsualizaciones para conservar el estado visual aunque se cierre el modal.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isOpen || !previewCacheReady) return;
+
+    const hasAnyPreview = Boolean(imagePreview.logoUrl) || imagePreview.galeriaUrls.some((url) => Boolean(url));
+
+    if (!hasAnyPreview) {
+      localStorage.removeItem(IMAGES_CACHE_KEY);
+      sessionStorage.removeItem(IMAGES_CACHE_KEY);
+      clearPreviewCacheInIdb();
+      return;
+    }
+
+    setPreviewCacheInIdb(imagePreview).catch((error) => {
+      console.warn("No se pudo persistir cache de imágenes en IndexedDB:", error);
+    });
+
+    // Mantener limpio cualquier cache legado en Storage.
+    localStorage.removeItem(IMAGES_CACHE_KEY);
+    sessionStorage.removeItem(IMAGES_CACHE_KEY);
+  }, [imagePreview, isOpen, previewCacheReady]);
+
+  // En paso 3, igualar el alto total de galería+nota con el cuadro cuadrado del logo.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isOpen || step !== 2) return;
+
+    const target = galleryContentRef.current;
+    if (!target) return;
+
+    const updateSize = () => {
+      const measured = Math.round(target.getBoundingClientRect().height);
+      if (!measured) return;
+      const clamped = Math.max(240, Math.min(measured, 460));
+      setLogoSquareSize(clamped);
+    };
+
+    updateSize();
+
+    if (typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(() => {
+      updateSize();
+    });
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isOpen, step, imagePreview.galeriaUrls]);
 
   // Función para obtener coordenadas usando el endpoint del backend
   const buscarCoordenadas = async (direccion: string) => {
@@ -478,6 +724,51 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     return partes.join(", ");
   };
 
+  const updateScheduleDay = (day: WeekDayKey, patch: Partial<DaySchedule>) => {
+    setForm((prev: FormState) => ({
+      ...prev,
+      horario: {
+        ...prev.horario,
+        [day]: {
+          ...prev.horario[day],
+          ...patch,
+        },
+      },
+    }));
+  };
+
+  const addSubcategory = (rawValue: string) => {
+    const sanitized = rawValue.trim().replace(/\s+/g, " ");
+    if (!sanitized) return;
+    if (sanitized.length > 40) {
+      setSubcategoriasError("Cada subcategoría debe tener máximo 40 caracteres");
+      return;
+    }
+
+    setForm((prev: FormState) => {
+      const exists = prev.subcategorias.some((item) => item.toLowerCase() === sanitized.toLowerCase());
+      if (exists) return prev;
+      if (prev.subcategorias.length >= 10) {
+        setSubcategoriasError("Máximo 10 subcategorías");
+        return prev;
+      }
+      return {
+        ...prev,
+        subcategorias: [...prev.subcategorias, sanitized],
+      };
+    });
+
+    setSubcategoriasError("");
+    setSubcategoriaInput("");
+  };
+
+  const removeSubcategory = (value: string) => {
+    setForm((prev: FormState) => ({
+      ...prev,
+      subcategorias: prev.subcategorias.filter((item) => item !== value),
+    }));
+  };
+
   // Mantener la ubicación compuesta a partir de los campos
   useEffect(() => {
     const compuesta = composeDireccion(form);
@@ -608,9 +899,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     return !hasErrors;
   };
 
-  // Función para validar el paso 2 antes de avanzar
+  // Función para validar el paso 2 (Dirección del negocio) antes de avanzar
   const validateStep2 = async () => {
-    setLogoError("");
     setUbicacionError("");
     setCalleError("");
     setNumeroError("");
@@ -621,12 +911,6 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     setSitioWebError("");
 
     let hasErrors = false;
-
-    // Validar logo (usar files.logo en lugar de form.logo)
-    if (!files.logo && !imagePreview.logoUrl) {
-      setLogoError("El logo del negocio es obligatorio");
-      hasErrors = true;
-    }
 
     // Validar dirección
     if (!form.calle.trim()) {
@@ -680,42 +964,65 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       }
     }
 
-    // Validar sitio web
+    return !hasErrors;
+  };
+
+  // Función para validar el paso 3 (Imagen del negocio) antes de avanzar
+  const validateStep3 = () => {
+    setLogoError("");
+
+    if (!files.logo && !imagePreview.logoUrl) {
+      setLogoError("El logo del negocio es obligatorio");
+      return false;
+    }
+
+    return true;
+  };
+
+  // Función para validar el paso 4 (Información adicional) antes de avanzar
+  const validateStep4 = async () => {
+    setDescripcionError("");
+    setSitioWebError("");
+    setHorarioError("");
+
+    let hasErrors = false;
+
+    if (!form.descripcion.trim()) {
+      setDescripcionError("La descripción del negocio es obligatoria");
+      hasErrors = true;
+    }
+
     if (!form.sitioWeb.trim()) {
       setSitioWebError("El sitio web o redes sociales son obligatorios");
       hasErrors = true;
     } else if (!validateURL(form.sitioWeb)) {
       setSitioWebError("URL no válida. Ejemplo: https://facebook.com/tunegocio");
       hasErrors = true;
-    } else {
-      // Validar unicidad de sitio web
-      try {
-        const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ website: form.sitioWeb })
-        });
-
-        const data = await res.json();
-        if (!data.valid && data.errors?.website) {
-          setSitioWebError(data.errors.website);
-          hasErrors = true;
-        }
-      } catch (error) {
-        console.error("Error validando sitio web:", error);
-      }
     }
 
-    return !hasErrors;
-  };
+    const enabledDays = Object.values(form.horario).filter((day) => day.enabled);
+    const hasInvalidSchedule = enabledDays.some((day) => !day.open || !day.close || day.open >= day.close);
+    if (hasInvalidSchedule) {
+      setHorarioError("Revisa el horario: la hora de apertura debe ser menor a la de cierre");
+      hasErrors = true;
+    }
 
-  // Función para validar el paso 3 antes de avanzar
-  const validateStep3 = () => {
-    setDescripcionError("");
+    if (hasErrors) return false;
 
-    if (!form.descripcion.trim()) {
-      setDescripcionError("La descripción del negocio es obligatoria");
-      return false;
+    try {
+      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ website: form.sitioWeb })
+      });
+
+      const data = await res.json();
+      if (!data.valid && data.errors?.website) {
+        setSitioWebError(data.errors.website);
+        return false;
+      }
+    } catch (error) {
+      console.error("Error validando sitio web:", error);
     }
 
     return true;
@@ -754,17 +1061,25 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       setEmailError("Correo inválido");
       if (firstErrorStep === null) firstErrorStep = 0;
     }
+    if (!files.logo && !imagePreview.logoUrl) {
+      setLogoError("El logo del negocio es obligatorio");
+      if (firstErrorStep === null) firstErrorStep = 2;
+    }
     if (!form.descripcion.trim()) {
       setDescripcionError("La descripción del negocio es obligatoria");
-      if (firstErrorStep === null) firstErrorStep = 2;
+      if (firstErrorStep === null) firstErrorStep = 3;
+    }
+    if (!form.sitioWeb.trim() || !validateURL(form.sitioWeb)) {
+      setSitioWebError("URL no válida. Ejemplo: https://facebook.com/tunegocio");
+      if (firstErrorStep === null) firstErrorStep = 3;
     }
     if (!validateRFC(form.rfc)) {
       setRfcError("RFC inválido");
-      if (firstErrorStep === null) firstErrorStep = 3;
+      if (firstErrorStep === null) firstErrorStep = 4;
     }
     if (!validateCP(form.cp)) {
       setCpError("CP inválido");
-      if (firstErrorStep === null) firstErrorStep = 3;
+      if (firstErrorStep === null) firstErrorStep = 4;
     }
     if (firstErrorStep !== null) {
       setStep(firstErrorStep);
@@ -786,12 +1101,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       if (!data.valid && data.errors) {
         if (data.errors.rfc) {
           setRfcError(data.errors.rfc);
-          setStep(3);
+          setStep(4);
           return;
         }
         if (data.errors.cp) {
           setCpError(data.errors.cp);
-          setStep(3);
+          setStep(4);
           return;
         }
       }
@@ -847,6 +1162,14 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       if (form.descripcion) {
         formData.append("description", form.descripcion);
       }
+      formData.append("schedule", JSON.stringify(form.horario));
+      if (form.costoEstimado.trim()) {
+        formData.append("estimatedCost", form.costoEstimado.trim());
+      }
+      if (form.tiempoSugerido.trim()) {
+        formData.append("suggestedStayTime", form.tiempoSugerido.trim());
+      }
+      formData.append("subcategories", JSON.stringify(form.subcategorias));
       if (ownerUid) {
         formData.append("ownerUid", ownerUid);
         console.log("[BusinessModal] ✅ ownerUid agregado al FormData:", ownerUid);
@@ -883,6 +1206,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         latitud: form.latitud,
         longitud: form.longitud,
         website: form.sitioWeb,
+        schedule: form.horario,
+        estimatedCost: form.costoEstimado,
+        suggestedStayTime: form.tiempoSugerido,
+        subcategories: form.subcategorias,
         rfc: form.rfc,
         cp: form.cp,
         description: form.descripcion || "NO PRESENTE",
@@ -909,8 +1236,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       }
       
       localStorage.removeItem("pitzbol_business_draft");
-      localStorage.removeItem("pitzbol_business_images");
-      setFiles({ logo: null, galeria: [null, null, null] });
+      localStorage.removeItem(IMAGES_CACHE_KEY);
+      sessionStorage.removeItem(IMAGES_CACHE_KEY);
+      clearPreviewCacheInIdb();
+      setFiles({ logo: null, galeria: createEmptyGallery<File | null>(null) });
 
       setSuccess(true);
 
@@ -937,13 +1266,17 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   
   const btnPrimary = "w-full bg-[#0D601E] text-white py-3 rounded-full font-bold uppercase tracking-widest text-xs shadow-lg hover:bg-[#094d18] transition-all active:scale-95";
   const btnFinish = "w-full bg-[#8B0000] text-white py-4 rounded-full font-black uppercase tracking-[0.2em] text-sm shadow-xl hover:scale-[1.02] transition-transform active:scale-95";
+  const formContainerClass = step === 1 ? "max-w-5xl mx-auto space-y-2" : step === 2 ? "w-fit max-w-full mx-auto space-y-2" : "max-w-2xl mx-auto space-y-2";
+  const modalWidthClass = step === 2 ? "w-fit" : "w-full";
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-2 md:p-4 bg-black/40">
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-        className={`relative bg-white w-full rounded-[50px] shadow-2xl border border-white/20 ${
+        className={`relative bg-white ${modalWidthClass} rounded-[50px] shadow-2xl border border-white/20 ${
           step === 1
             ? "max-w-[900px] max-h-[92vh] overflow-hidden p-4 md:p-6"
+            : step === 2
+            ? "max-w-[840px] max-h-[96vh] overflow-hidden p-3 md:p-5"
             : "max-w-[850px] min-h-[500px] max-h-[90vh] overflow-hidden p-6 md:p-8"
         }`}
       >
@@ -965,14 +1298,22 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   {saveError}
                 </div>
               )}
-              <div className={`text-center ${step === 1 ? "mb-5" : "mb-6"}`}>
+              <div className={`text-center ${step === 1 ? "mb-5" : step === 2 ? "mb-4" : "mb-6"}`}>
                 <h2 className={`${step === 1 ? "text-[22px] md:text-[28px]" : "text-[28px] md:text-[36px]"} text-[#8B0000] font-black uppercase leading-none`} style={{ fontFamily: 'var(--font-jockey)' }}>
-                  {step === 0 ? t('step1Title') : step === 1 ? t('step2Title') : step === 2 ? t('step3Title') : t('step4Title')}
+                  {step === 0
+                    ? t('step1Title')
+                    : step === 1
+                    ? t('step2Title')
+                    : step === 2
+                    ? t('step3Title')
+                    : step === 3
+                    ? t('step4Title')
+                    : t('step5Title')}
                 </h2>
-                <p className={`${step === 1 ? "text-xs" : "text-sm"} text-[#1A4D2E] italic mt-1`}>{t('stepProgress', { current: step + 1, total: 4 })}</p>
+                <p className={`${step === 1 ? "text-xs" : "text-sm"} text-[#1A4D2E] italic mt-1`}>{t('stepProgress', { current: step + 1, total: 5 })}</p>
               </div>
 
-              <div className="max-w-2xl mx-auto space-y-2">
+              <div className={formContainerClass}>
                 {step === 0 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
                     <div className={cardClass}>
@@ -1100,42 +1441,32 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
                 {step === 1 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
-                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1.25fr] gap-2">
-                      <div className="flex flex-col gap-2 h-full">
-                        <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[140px]">
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1.25fr] gap-2 md:items-stretch">
+                      <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[340px] md:h-full flex flex-col">
                           <span className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-2 mb-1">
                             Ubicación en el mapa
                           </span>
-                          <MinimapaLocationPicker
-                            latitud={form.latitud}
-                            longitud={form.longitud}
-                            onLocationChange={(lat, lng) => {
-                              console.log("📍 MinimapaLocationPicker - Coordenadas actualizadas:", { lat, lng });
-                              // Marcar que este cambio SÍ es manual (usuario movió el marcador)
-                              isManualMapChangeRef.current = true;
-                              setForm((f: FormState) => ({
-                                ...f,
-                                latitud: lat,
-                                longitud: lng
-                              }));
-                            }}
-                            height="180px"
-                          />
+                          <div className="h-[180px] md:flex-1 md:min-h-[280px]">
+                            <MinimapaLocationPicker
+                              latitud={form.latitud}
+                              longitud={form.longitud}
+                              onLocationChange={(lat, lng) => {
+                                console.log("📍 MinimapaLocationPicker - Coordenadas actualizadas:", { lat, lng });
+                                // Marcar que este cambio SÍ es manual (usuario movió el marcador)
+                                isManualMapChangeRef.current = true;
+                                setForm((f: FormState) => ({
+                                  ...f,
+                                  latitud: lat,
+                                  longitud: lng
+                                }));
+                              }}
+                              height="100%"
+                            />
+                          </div>
+                          <p className="mt-2 text-[10px] text-[#1A4D2E] px-2">
+                            Mueve el pin para ajustar el punto exacto del negocio. Esto mejora la precisión en resultados de mapa y rutas.
+                          </p>
                         </div>
-                        <label className="flex-1 flex flex-col items-center justify-center w-full border-2 border-dashed border-[#769C7B]/40 rounded-[24px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all relative min-h-[100px]">
-                          {imagePreview.logoUrl ? (
-                            <img src={imagePreview.logoUrl} alt="Logo preview" className="absolute inset-0 w-full h-full object-cover rounded-[24px] z-10" style={{background: '#fff', width: '100%', height: '100%'}} />
-                          ) : (
-                            <>
-                              <FiImage size={32} className="text-[#769C7B] mb-2"/>
-                              <p className="text-sm font-black text-[#1A4D2E] uppercase">{t('businessLogo')}</p>
-                              <p className="text-[9px] text-red-500 mt-1 font-bold">* Obligatorio</p>
-                            </>
-                          )}
-                          <input type="file" className="hidden" accept="image/*" ref={el => { logoInput.current = el; }} onChange={handleLogoChange} />
-                          {logoError && <span className="text-[10px] text-red-500 mt-2 font-bold absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-white/80 px-2 rounded">{logoError}</span>}
-                        </label>
-                      </div>
                       <div className="space-y-2">
                         <div className="space-y-2">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1315,30 +1646,6 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             />
                           </div>
                         </div>
-                        <div className="relative pb-2">
-                          <input 
-                            placeholder={t('websiteSocial')} 
-                            className={inputClass + " pl-11 text-[12px] py-2.5" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")} 
-                            value={form.sitioWeb} 
-                            onChange={e => {
-                              setForm((f: FormState) => ({ ...f, sitioWeb: e.target.value }));
-                              if (!e.target.value.trim()) setSitioWebError("El sitio web es obligatorio");
-                              else if (!validateURL(e.target.value)) setSitioWebError("URL no válida");
-                              else setSitioWebError("");
-                            }}
-                            onBlur={e => {
-                              if (!e.target.value.trim()) {
-                                setSitioWebError("El sitio web o redes sociales son obligatorios");
-                              } else if (!validateURL(e.target.value)) {
-                                setSitioWebError("URL no válida. Ej: https://facebook.com/tunegocio");
-                              } else {
-                                setSitioWebError("");
-                              }
-                            }}
-                          />
-                          <FiGlobe className="absolute left-[22px] top-[10px] text-[#769C7B] pointer-events-none" size={16} />
-                          {sitioWebError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{sitioWebError}</p>}
-                        </div>
                         <div className="p-2 bg-[#ECF4EE] rounded-2xl border border-[#0D601E]/20 text-[10px] text-[#1A4D2E] font-medium">
                            <FiInfo className="inline mr-1"/> {t('locationHelp')}
                         </div>
@@ -1357,53 +1664,58 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 )}
 
                 {step === 2 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
-                    <div className="bg-[#F6F0E6]/20 p-4 rounded-[35px] border border-[#1A4D2E]/10">
-                      <span className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold mb-2 block">Descripción del Negocio</span>
-                      <textarea
-                        placeholder="Describe tu negocio, servicios y especialidades"
-                        className={`w-full px-4 py-2 bg-white/70 border rounded-2xl outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-xs resize-none h-[60px] ${
-                          descripcionError ? "border-red-500 bg-red-50/50" : "border-[#1A4D2E]/20"
-                        }`}
-                        value={form.descripcion}
-                        onChange={e => {
-                          const nextValue = e.target.value;
-                          setForm((f: FormState) => ({ ...f, descripcion: nextValue }));
-                          if (nextValue.trim()) {
-                            setDescripcionError("");
-                          }
-                        }}
-                        maxLength={500}
-                      />
-                      <div className="flex items-center justify-between mt-1.5">
-                        <p className="text-[9px] text-red-500 italic min-h-[12px]">{descripcionError}</p>
-                        <p className="text-[9px] text-[#769C7B]">{form.descripcion.length}/500</p>
-                      </div>
-                    </div>
-
-                    <div className={cardClass.replace("p-6", "p-4")}>
-                      <span className={labelClass}>Galería del Establecimiento</span>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {[0, 1, 2].map((i) => (
-                          <label key={i} className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-[#769C7B]/40 rounded-3xl cursor-pointer hover:bg-[#F6F0E6]/50 transition-all relative">
-                            {imagePreview.galeriaUrls[i] ? (
-                              <img src={imagePreview.galeriaUrls[i] as string} alt={`Galería preview ${i+1}`} className="absolute inset-0 w-full h-full object-cover rounded-3xl z-10" style={{background: '#fff', width: '100%', height: '100%'}} />
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2.5 pb-1">
+                    <div className={cardClass.replace("p-6", "p-3.5 md:p-4.5") + " !rounded-[28px] w-fit mx-auto"}>
+                      <div className="space-y-1">
+                        <div className="grid grid-cols-2 gap-2 md:gap-2.5 items-stretch w-fit mx-auto">
+                        <div className="w-full max-w-[260px] sm:max-w-[300px] md:max-w-[330px] flex flex-col">
+                          <span className={labelClass + " ml-1"}>Logo del Negocio</span>
+                          <label
+                            className="block w-full aspect-square min-h-[240px] border-2 border-dashed border-[#769C7B]/40 rounded-2xl cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all relative overflow-hidden"
+                            style={logoSquareSize ? { width: `${logoSquareSize}px`, height: `${logoSquareSize}px`, maxWidth: "100%" } : undefined}
+                          >
+                            {imagePreview.logoUrl ? (
+                              <img src={imagePreview.logoUrl} alt="Logo preview" className="absolute inset-0 w-full h-full object-cover z-10" style={{ background: '#fff', width: '100%', height: '100%' }} />
                             ) : (
-                              <>
-                                <FiImage className="text-[#769C7B] mb-1" size={20} />
-                                <span className="text-[9px] font-bold text-gray-400 uppercase">Foto {i + 1}</span>
-                              </>
+                              <div className="h-full flex flex-col items-center justify-center px-2 text-center">
+                                <FiImage size={30} className="text-[#769C7B] mb-2" />
+                                <p className="text-[10px] md:text-xs font-black text-[#1A4D2E] uppercase leading-tight">{t('businessLogo')}</p>
+                                <p className="text-[9px] text-red-500 mt-1 font-bold">* Obligatorio</p>
+                              </div>
                             )}
-                            <input type="file" className="hidden" accept="image/*" ref={el => { fileInputs.current[i] = el; }} onChange={e => handleGaleriaChange(i, e)} />
-                            {galeriaErrors[i] && <span className="text-[9px] text-red-500 mt-1 font-bold absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-white/80 px-2 rounded">{galeriaErrors[i]}</span>}
+                            <input type="file" className="hidden" accept="image/*" ref={el => { logoInput.current = el; }} onChange={handleLogoChange} />
+                            {logoError && <span className="text-[9px] text-red-500 mt-2 font-bold absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-white/80 px-2 rounded">{logoError}</span>}
                           </label>
-                        ))}
+                        </div>
+
+                        <div className="w-full max-w-[260px] sm:max-w-[300px] md:max-w-[330px] flex flex-col">
+                          <span className={labelClass + " ml-1"}>Galería del Establecimiento</span>
+                          <div ref={galleryContentRef} className="space-y-0.5">
+                            <div className="grid grid-cols-2 gap-2 md:gap-2.5">
+                              {Array.from({ length: GALLERY_SLOT_COUNT }, (_, i) => i).map((i) => (
+                                <label key={i} className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-[#769C7B]/40 rounded-2xl cursor-pointer hover:bg-[#F6F0E6]/50 transition-all relative overflow-hidden">
+                                  {imagePreview.galeriaUrls[i] ? (
+                                    <img src={imagePreview.galeriaUrls[i] as string} alt={`Galería preview ${i + 1}`} className="absolute inset-0 w-full h-full object-cover z-10" style={{ background: '#fff', width: '100%', height: '100%' }} />
+                                  ) : (
+                                    <>
+                                      <FiImage className="text-[#769C7B] mb-1" size={18} />
+                                      <span className="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase">Foto {i + 1}</span>
+                                    </>
+                                  )}
+                                  <input type="file" className="hidden" accept="image/*" ref={el => { fileInputs.current[i] = el; }} onChange={e => handleGaleriaChange(i, e)} />
+                                  {galeriaErrors[i] && <span className="text-[8px] md:text-[9px] text-red-500 mt-1 font-bold absolute bottom-1 left-1/2 -translate-x-1/2 z-20 bg-white/85 px-1.5 rounded">{galeriaErrors[i]}</span>}
+                                </label>
+                              ))}
+                            </div>
+                            <div className="bg-[#F6F0E6] rounded-2xl border border-[#1A4D2E]/10 p-1.5 md:p-2">
+                              <p className="text-[8px] md:text-[9px] text-[#1A4D2E] leading-relaxed italic">
+                                <FiInfo className="inline mb-0.5 mr-1 text-[#0D601E]" />
+                                <strong>Nota:</strong> Estas imágenes son clave para validar tu perfil. Podrás subir más fotos detalladas cuando sea aprobado.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="mt-2 bg-[#F6F0E6] rounded-2xl border border-[#1A4D2E]/10 p-2.5">
-                        <p className="text-[9px] text-[#1A4D2E] leading-relaxed italic">
-                          <FiInfo className="inline mb-0.5 mr-1 text-[#0D601E]"/>
-                          <strong>Nota:</strong> Estas imágenes son clave para validar tu perfil. Podrás subir más fotos detalladas cuando sea aprobado.
-                        </p>
                       </div>
                     </div>
                     <button 
@@ -1411,14 +1723,168 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         const isValid = validateStep3();
                         if (isValid) setStep(3);
                       }} 
-                      className={btnPrimary}
+                      className={btnPrimary + " py-3 text-xs"}
                     >
-                      Siguiente: Datos Fiscales
+                      Siguiente: Información adicional
                     </button>
                   </motion.div>
                 )}
 
                 {step === 3 && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <div className={cardClass}>
+                      <div className="flex items-center gap-2 mb-4 text-[#0D601E]">
+                        <FiInfo size={20} />
+                        <h4 className="font-bold uppercase text-xs tracking-tighter">Información complementaria</h4>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className={labelClass}>Descripción del Negocio</label>
+                          <textarea
+                            placeholder="Describe tu negocio, servicios y especialidades"
+                            className={`w-full px-4 py-3 bg-white/70 border rounded-2xl outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm resize-none h-[120px] ${
+                              descripcionError ? "border-red-500 bg-red-50/50" : "border-[#1A4D2E]/20"
+                            }`}
+                            value={form.descripcion}
+                            onChange={e => {
+                              const nextValue = e.target.value;
+                              setForm((f: FormState) => ({ ...f, descripcion: nextValue }));
+                              if (nextValue.trim()) setDescripcionError("");
+                            }}
+                            maxLength={500}
+                          />
+                          <div className="flex items-center justify-between mt-1.5">
+                            <p className="text-[10px] text-red-500 italic min-h-[12px]">{descripcionError}</p>
+                            <p className="text-[10px] text-[#769C7B]">{form.descripcion.length}/500</p>
+                          </div>
+                        </div>
+
+                        <div className="relative pb-2">
+                          <label className={labelClass}>{t('websiteSocial')}</label>
+                          <input
+                            placeholder="https://tunegocio.com"
+                            className={inputClass + " pl-11" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")}
+                            value={form.sitioWeb}
+                            onChange={e => {
+                              setForm((f: FormState) => ({ ...f, sitioWeb: e.target.value }));
+                              if (!e.target.value.trim()) setSitioWebError("El sitio web es obligatorio");
+                              else if (!validateURL(e.target.value)) setSitioWebError("URL no válida");
+                              else setSitioWebError("");
+                            }}
+                            onBlur={e => {
+                              if (!e.target.value.trim()) setSitioWebError("El sitio web o redes sociales son obligatorios");
+                              else if (!validateURL(e.target.value)) setSitioWebError("URL no válida. Ej: https://facebook.com/tunegocio");
+                              else setSitioWebError("");
+                            }}
+                          />
+                          <FiGlobe className="absolute left-[22px] top-[39px] text-[#769C7B] pointer-events-none" size={16} />
+                          {sitioWebError && <p className="text-[10px] text-red-500 mt-1 ml-1 italic">{sitioWebError}</p>}
+                        </div>
+
+                        <div>
+                          <label className={labelClass}>Horario (opcional)</label>
+                          <div className="border border-[#1A4D2E]/15 rounded-2xl p-3 space-y-2 bg-white/60">
+                            {DAY_LABELS.map((day) => (
+                              <div key={day.key} className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+                                <label className="flex items-center gap-2 text-sm text-[#1A4D2E] font-semibold">
+                                  <input
+                                    type="checkbox"
+                                    checked={form.horario[day.key].enabled}
+                                    onChange={(e) => updateScheduleDay(day.key, { enabled: e.target.checked })}
+                                    className="accent-[#0D601E]"
+                                  />
+                                  {day.label}
+                                </label>
+                                <input
+                                  type="time"
+                                  value={form.horario[day.key].open}
+                                  disabled={!form.horario[day.key].enabled}
+                                  onChange={(e) => updateScheduleDay(day.key, { open: e.target.value })}
+                                  className="px-3 py-1.5 rounded-xl border border-[#1A4D2E]/20 text-sm disabled:bg-gray-100"
+                                />
+                                <input
+                                  type="time"
+                                  value={form.horario[day.key].close}
+                                  disabled={!form.horario[day.key].enabled}
+                                  onChange={(e) => updateScheduleDay(day.key, { close: e.target.value })}
+                                  className="px-3 py-1.5 rounded-xl border border-[#1A4D2E]/20 text-sm disabled:bg-gray-100"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          {horarioError && <p className="text-[10px] text-red-500 mt-1 italic">{horarioError}</p>}
+                        </div>
+
+                        <div>
+                          <label className={labelClass}>Costo Estimado (opcional)</label>
+                          <input
+                            placeholder="Ej. $200 - $500 MXN"
+                            className={inputClass}
+                            value={form.costoEstimado}
+                            onChange={(e) => setForm((f: FormState) => ({ ...f, costoEstimado: e.target.value }))}
+                          />
+                        </div>
+
+                        <div>
+                          <label className={labelClass}>Tiempo sugerido (opcional)</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              placeholder="Ej. 1.5"
+                              className={inputClass + " pr-20"}
+                              value={form.tiempoSugerido}
+                              onChange={(e) => setForm((f: FormState) => ({ ...f, tiempoSugerido: e.target.value }))}
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#769C7B] font-bold">horas</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className={labelClass}>Subcategorías (palabras clave)</label>
+                          <div className="border border-[#1A4D2E]/15 rounded-2xl p-3 bg-white/60">
+                            <input
+                              placeholder="Escribe una subcategoría y presiona Enter"
+                              className={inputClass}
+                              value={subcategoriaInput}
+                              onChange={(e) => setSubcategoriaInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === ",") {
+                                  e.preventDefault();
+                                  addSubcategory(subcategoriaInput);
+                                }
+                              }}
+                              onBlur={() => {
+                                if (subcategoriaInput.trim()) addSubcategory(subcategoriaInput);
+                              }}
+                            />
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {form.subcategorias.map((sub) => (
+                                <span key={sub} className="inline-flex items-center gap-1 bg-[#0D601E]/10 text-[#0D601E] px-3 py-1 rounded-full text-xs font-bold">
+                                  {sub}
+                                  <button type="button" onClick={() => removeSubcategory(sub)} className="text-[#8B0000] font-black">x</button>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          {subcategoriasError && <p className="text-[10px] text-red-500 mt-1 italic">{subcategoriasError}</p>}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const isValid = await validateStep4();
+                        if (isValid) setStep(4);
+                      }}
+                      className={btnPrimary}
+                    >
+                      Siguiente: Información Fiscal
+                    </button>
+                  </motion.div>
+                )}
+
+                {step === 4 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                     <div className={cardClass}>
                       <div className="flex items-center gap-2 mb-4 text-[#0D601E]">

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import BusinessInfo from "./BusinessInfo";
 import BusinessModal from "./BusinessModal";
 import { FiAlertTriangle } from "react-icons/fi";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 const API_BASE = "/api";
 
@@ -41,12 +42,19 @@ const PublishBusinessFlow: React.FC<{ isOpen: boolean; onClose: () => void; }> =
         const token = localStorage.getItem("pitzbol_token");
         setIsLoggedIn(!!token);
         if (!token) return;
-        const res = await fetch(`${API_BASE}/business/my-requests`, {
+        const res = await fetchWithAuth(`${API_BASE}/business/my-requests`, {
           cache: "no-store",
-          credentials: "include",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { "Content-Type": "application/json" },
         });
         if (!res.ok) {
+          if (res.status === 401) {
+            // Si la sesión expira durante el chequeo, no mostrar ruido en consola ni bloqueo.
+            setIsLoggedIn(false);
+            setExistingCount(0);
+            setExistingIds([]);
+            setFetchFailed(false);
+            return;
+          }
           console.warn("[PublishBusinessFlow] Error al verificar solicitudes:", res.status, res.statusText);
           setFetchFailed(true);
           return;

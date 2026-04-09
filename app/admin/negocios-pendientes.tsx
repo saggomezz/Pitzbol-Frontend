@@ -19,12 +19,21 @@ export default function AdminNegociosPendientesPage() {
     
     // Conectar a Socket.io para recibir actualizaciones en tiempo real
     const token = localStorage.getItem("pitzbol_token");
+    if (!token) {
+      return;
+    }
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
     
     socketRef.current = io(BACKEND_URL, {
       auth: {
-        token: token || "",
+        token,
       },
+    });
+
+    socketRef.current.on("connect_error", (error) => {
+      if (error?.message === "Invalid token" || error?.message === "Authentication required") {
+        socketRef.current?.disconnect();
+      }
     });
 
     socketRef.current.on("connect", () => {

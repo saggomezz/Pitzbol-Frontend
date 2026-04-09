@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePitzbolUser } from "../../../lib/usePitzbolUser";
+import { fetchWithAuth } from "../../../lib/fetchWithAuth";
 import {
   FaPlus, FaStore, FaSearch, FaCheckCircle, FaTimesCircle, FaHourglassHalf,
   FaArchive, FaEnvelope, FaPhone, FaMapMarkerAlt, FaList,
@@ -107,13 +108,10 @@ export default function MisSolicitudesPage() {
   const fetchSolicitudes = async () => {
     setLoading(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("pitzbol_token") : null;
-      const res = await fetch(`${API_BASE}/business/my-requests`, {
+      const res = await fetchWithAuth(`${API_BASE}/business/my-requests`, {
         cache: "no-store",
-        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
       const data = await res.json();

@@ -325,7 +325,7 @@ export default function ArtePage() {
                         event.stopPropagation();
                         handleFavoriteClick(place.nombre);
                       }}
-                      className="absolute top-14 right-4 p-3 bg-white/90 rounded-full shadow-lg transition-transform duration-200 ease-out hover:scale-110 active:scale-90"
+                      className="absolute bottom-4 right-4 z-10 p-3 bg-white/90 rounded-full shadow-lg transition-transform duration-200 ease-out hover:scale-110 active:scale-90"
                     >
                       <FiHeart className={`${favorites.includes(place.nombre) ? "text-[#F00808] fill-[#F00808]" : "text-[#769C7B]"} transition-transform duration-200 ease-out`} size={18} />
                     </button>

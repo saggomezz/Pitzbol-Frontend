@@ -32,6 +32,9 @@ interface BusinessData {
     rfc: string;
     cp: string;
     description: string;
+    schedule?: Record<string, { enabled?: boolean; open?: string; close?: string }> | null;
+    estimatedCost?: string;
+    subcategories?: string[];
     logo: string;
     images: string[];
     owner: string;
@@ -209,6 +212,10 @@ export default function BusinessPreviewPage() {
   const rejectionReason = business.rejectionReason || business.archivedReason;
   const rejectionDate = business.rejectedAt || business.archivedAt;
 
+  const scheduleLines = Object.entries(business.business.schedule || {})
+    .filter(([, day]) => day?.enabled)
+    .map(([day, hours]) => `${day}: ${hours?.open || "--:--"} - ${hours?.close || "--:--"}`);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FDFCF9] to-[#F6F0E6] px-4 py-8 md:py-12">
       <div className="max-w-6xl mx-auto">
@@ -348,6 +355,37 @@ export default function BusinessPreviewPage() {
                   <p className="text-xs text-[#769C7B] font-semibold uppercase mb-1">RFC</p>
                   <p className="text-lg font-bold text-[#1A4D2E] font-mono">{business.business.rfc}</p>
                 </div>
+
+                {business.business.estimatedCost && (
+                  <div className="bg-[#F6F0E6] p-4 rounded-2xl">
+                    <p className="text-xs text-[#769C7B] font-semibold uppercase mb-1">Costo estimado</p>
+                    <p className="text-lg font-bold text-[#1A4D2E]">{business.business.estimatedCost}</p>
+                  </div>
+                )}
+
+                {Array.isArray(business.business.subcategories) && business.business.subcategories.length > 0 && (
+                  <div className="bg-white border-2 border-[#1A4D2E]/10 rounded-2xl p-5 hover:shadow-lg transition-shadow">
+                    <p className="text-xs text-[#769C7B] font-semibold uppercase mb-2">Subcategorías</p>
+                    <div className="flex flex-wrap gap-2">
+                      {business.business.subcategories.map((sub) => (
+                        <span key={sub} className="px-3 py-1 rounded-full bg-[#0D601E]/10 text-[#0D601E] text-xs font-bold">
+                          {sub}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {scheduleLines.length > 0 && (
+                  <div className="bg-white border-2 border-[#1A4D2E]/10 rounded-2xl p-5 hover:shadow-lg transition-shadow">
+                    <p className="text-xs text-[#769C7B] font-semibold uppercase mb-2">Horario</p>
+                    <ul className="space-y-1 text-sm text-[#1A4D2E]">
+                      {scheduleLines.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* Email del negocio */}
                 {business.email && (

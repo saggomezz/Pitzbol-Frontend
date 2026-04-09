@@ -137,12 +137,22 @@ export default function ChatModal({
           }
 
           // Conectar socket
+          if (!token) {
+            return;
+          }
+
           socketRef.current = io(BACKEND_URL, {
             auth: {
-              token: token || "",
+              token,
               userId: currentUserId,
               userType: currentUserType,
             },
+          });
+
+          socketRef.current.on("connect_error", (error) => {
+            if (error?.message === "Invalid token" || error?.message === "Authentication required") {
+              socketRef.current?.disconnect();
+            }
           });
           
           socketRef.current.on("connect", () => {

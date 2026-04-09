@@ -17,14 +17,14 @@ function isTokenExpiringSoon(token: string): boolean {
   }
 }
 
-async function tryRefreshToken(currentToken: string): Promise<string | null> {
+async function tryRefreshToken(currentToken?: string): Promise<string | null> {
   try {
     const res = await fetch(`${API_BASE}/auth/refresh-token`, {
       method: 'POST',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${currentToken}`,
+        ...(currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {}),
       },
     });
 
@@ -53,6 +53,12 @@ export async function fetchWithAuth(
 ): Promise<Response> {
   let token = localStorage.getItem('pitzbol_token') || '';
 
+  // Si solo existe sesión por cookie (sin token local), intenta rehidratar JWT.
+  if (!token) {
+    const recovered = await tryRefreshToken();
+    if (recovered) token = recovered;
+  }
+
   // Proactive refresh: renew token before it expires
   if (token && isTokenExpiringSoon(token)) {
     if (!isRefreshing) {
@@ -79,11 +85,11 @@ export async function fetchWithAuth(
     headers,
   });
 
-  if (response.status !== 401 || !token) {
+  if (response.status !== 401) {
     return response;
   }
 
-  // Token expired — try refresh (deduplicate concurrent refreshes)
+  // Token ausente/expirado — intentar refresh (deduplicado entre requests concurrentes)
   if (!isRefreshing) {
     isRefreshing = true;
     refreshPromise = tryRefreshToken(token).finally(() => {
@@ -95,10 +101,9 @@ export async function fetchWithAuth(
   const newToken = await refreshPromise;
 
   if (!newToken) {
-    // Refresh failed — clear auth and redirect
+    // Refresh failed — limpiar estado local y dejar que el flujo llamador maneje el 401.
     localStorage.removeItem('pitzbol_token');
     localStorage.removeItem('pitzbol_user');
-    window.location.href = '/';
     return response;
   }
 
