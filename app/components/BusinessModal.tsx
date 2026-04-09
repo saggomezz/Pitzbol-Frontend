@@ -79,6 +79,74 @@ const DAY_LABELS: { key: WeekDayKey; label: string }[] = [
   { key: "sunday", label: "Domingo" },
 ];
 
+const IMAGE_PREVIEW_DB = "pitzbolBusinessDraftDb";
+const IMAGE_PREVIEW_STORE = "draftCache";
+const IMAGE_PREVIEW_IDB_KEY = "businessImages";
+
+const openPreviewDb = (): Promise<IDBDatabase> =>
+  new Promise((resolve, reject) => {
+    if (typeof window === "undefined" || !window.indexedDB) {
+      reject(new Error("IndexedDB no disponible"));
+      return;
+    }
+
+    const request = window.indexedDB.open(IMAGE_PREVIEW_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(IMAGE_PREVIEW_STORE)) {
+        db.createObjectStore(IMAGE_PREVIEW_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("No se pudo abrir IndexedDB"));
+  });
+
+const getPreviewCacheFromIdb = async (): Promise<ImagePreviewState | null> => {
+  try {
+    const db = await openPreviewDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(IMAGE_PREVIEW_STORE, "readonly");
+      const store = tx.objectStore(IMAGE_PREVIEW_STORE);
+      const req = store.get(IMAGE_PREVIEW_IDB_KEY);
+      req.onsuccess = () => {
+        const value = req.result;
+        if (!value || typeof value !== "object") {
+          resolve(null);
+          return;
+        }
+        resolve(value as ImagePreviewState);
+      };
+      req.onerror = () => reject(req.error || new Error("No se pudo leer cache de imágenes"));
+    });
+  } catch {
+    return null;
+  }
+};
+
+const setPreviewCacheInIdb = async (value: ImagePreviewState): Promise<void> => {
+  const db = await openPreviewDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(IMAGE_PREVIEW_STORE, "readwrite");
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error("No se pudo guardar cache en IndexedDB"));
+    tx.objectStore(IMAGE_PREVIEW_STORE).put(value, IMAGE_PREVIEW_IDB_KEY);
+  });
+};
+
+const clearPreviewCacheInIdb = async (): Promise<void> => {
+  try {
+    const db = await openPreviewDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(IMAGE_PREVIEW_STORE, "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error("No se pudo limpiar cache en IndexedDB"));
+      tx.objectStore(IMAGE_PREVIEW_STORE).delete(IMAGE_PREVIEW_IDB_KEY);
+    });
+  } catch {
+    // noop
+  }
+};
+
 const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const t = useTranslations('businessModal');
   const tCommon = useTranslations('common');
@@ -154,6 +222,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [subcategoriaInput, setSubcategoriaInput] = useState("");
   const [buscandoCoordenadas, setBuscandoCoordenadas] = useState(false);
   const [geocodeError, setGeocodeError] = useState("");
+  const [previewCacheReady, setPreviewCacheReady] = useState(false);
   const [imagePreview, setImagePreview] = useState<ImagePreviewState>({
     logoUrl: null,
     galeriaUrls: [null, null, null],
@@ -174,6 +243,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const isManualMapChangeRef = useRef<boolean>(false);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  const IMAGES_CACHE_KEY = "pitzbol_business_images";
 
   // Validaciones de imagen
   const allowedExts = [".jpg", ".jpeg", ".png", ".webp"];
@@ -338,12 +408,85 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     localStorage.setItem("pitzbol_business_draft", JSON.stringify(formToSave));
   }, [form]);
 
-  // Las previsualizaciones pueden exceder fácilmente la cuota de localStorage.
-  // No se persisten entre recargas para evitar QuotaExceededError.
+  // Rehidratar previsualizaciones al abrir para mantener las imágenes al cerrar/abrir el modal.
   useEffect(() => {
-    if (!isOpen || typeof window === "undefined") return;
-    localStorage.removeItem("pitzbol_business_images");
+    if (typeof window === "undefined") return;
+
+    if (!isOpen) {
+      setPreviewCacheReady(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPreviewCacheReady(false);
+
+    const normalizePreviewState = (parsed: ImagePreviewState) => ({
+      logoUrl: typeof parsed.logoUrl === "string" ? parsed.logoUrl : null,
+      galeriaUrls: Array.isArray(parsed.galeriaUrls)
+        ? [parsed.galeriaUrls[0] || null, parsed.galeriaUrls[1] || null, parsed.galeriaUrls[2] || null]
+        : [null, null, null],
+    });
+
+    (async () => {
+      const fromIdb = await getPreviewCacheFromIdb();
+      if (fromIdb && !cancelled) {
+        setImagePreview(normalizePreviewState(fromIdb));
+        setPreviewCacheReady(true);
+        return;
+      }
+
+      try {
+        const cached = localStorage.getItem(IMAGES_CACHE_KEY) || sessionStorage.getItem(IMAGES_CACHE_KEY);
+        if (!cached || cancelled) return;
+
+        const parsed = JSON.parse(cached) as ImagePreviewState;
+        if (!parsed || typeof parsed !== "object") return;
+        setImagePreview(normalizePreviewState(parsed));
+      } catch (error) {
+        console.warn("No se pudieron restaurar previsualizaciones de imágenes:", error);
+      } finally {
+        if (!cancelled) {
+          setPreviewCacheReady(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
+
+  // Persistir previsualizaciones para conservar el estado visual aunque se cierre el modal.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isOpen || !previewCacheReady) return;
+
+    const hasAnyPreview = Boolean(imagePreview.logoUrl) || imagePreview.galeriaUrls.some((url) => Boolean(url));
+
+    if (!hasAnyPreview) {
+      localStorage.removeItem(IMAGES_CACHE_KEY);
+      sessionStorage.removeItem(IMAGES_CACHE_KEY);
+      clearPreviewCacheInIdb();
+      return;
+    }
+
+    setPreviewCacheInIdb(imagePreview).catch((error) => {
+      console.warn("No se pudo persistir cache de imágenes en IndexedDB:", error);
+    });
+
+    const serialized = JSON.stringify(imagePreview);
+    try {
+      localStorage.setItem(IMAGES_CACHE_KEY, serialized);
+      sessionStorage.removeItem(IMAGES_CACHE_KEY);
+    } catch {
+      // Fallback cuando localStorage excede cuota.
+      try {
+        sessionStorage.setItem(IMAGES_CACHE_KEY, serialized);
+      } catch (error) {
+        console.warn("No se pudieron persistir previsualizaciones:", error);
+      }
+    }
+  }, [imagePreview, isOpen, previewCacheReady]);
 
   // Función para obtener coordenadas usando el endpoint del backend
   const buscarCoordenadas = async (direccion: string) => {
@@ -1044,7 +1187,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       }
       
       localStorage.removeItem("pitzbol_business_draft");
-      localStorage.removeItem("pitzbol_business_images");
+      localStorage.removeItem(IMAGES_CACHE_KEY);
+      sessionStorage.removeItem(IMAGES_CACHE_KEY);
+      clearPreviewCacheInIdb();
       setFiles({ logo: null, galeria: [null, null, null] });
 
       setSuccess(true);
