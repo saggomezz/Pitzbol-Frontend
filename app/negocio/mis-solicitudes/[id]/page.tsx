@@ -296,6 +296,9 @@ export default function MiSolicitudDetallePage() {
   const rejectionReason = data.rejectionReason || data.archivedReason || null;
   const rejectionDate = data.rejectedAt || data.archivedAt || null;
   const email = data.email || business.email || "";
+  const scheduleLines = Object.entries(business.schedule || {})
+    .filter(([, day]: any) => day?.enabled)
+    .map(([day, hours]: any) => `${day}: ${hours?.open || "--:--"} - ${hours?.close || "--:--"}`);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FDFCF9] to-[#F6F0E6] px-4 py-8 md:py-12">
@@ -430,6 +433,37 @@ export default function MiSolicitudDetallePage() {
                   <div className="bg-[#F6F0E6] p-4 rounded-2xl">
                     <p className="text-xs text-[#769C7B] font-semibold uppercase mb-1">RFC</p>
                     <p className="text-lg font-bold text-[#1A4D2E] font-mono">{business.rfc}</p>
+                  </div>
+                )}
+
+                {business.estimatedCost && (
+                  <div className="bg-[#F6F0E6] p-4 rounded-2xl">
+                    <p className="text-xs text-[#769C7B] font-semibold uppercase mb-1">Costo estimado</p>
+                    <p className="text-lg font-bold text-[#1A4D2E]">{business.estimatedCost}</p>
+                  </div>
+                )}
+
+                {Array.isArray(business.subcategories) && business.subcategories.length > 0 && (
+                  <div className="bg-white border-2 border-[#1A4D2E]/10 rounded-2xl p-5 hover:shadow-lg transition-shadow">
+                    <p className="text-xs text-[#769C7B] font-semibold uppercase mb-2">Subcategorías</p>
+                    <div className="flex flex-wrap gap-2">
+                      {business.subcategories.map((sub: string) => (
+                        <span key={sub} className="px-3 py-1 rounded-full bg-[#0D601E]/10 text-[#0D601E] text-xs font-bold">
+                          {sub}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {scheduleLines.length > 0 && (
+                  <div className="bg-white border-2 border-[#1A4D2E]/10 rounded-2xl p-5 hover:shadow-lg transition-shadow">
+                    <p className="text-xs text-[#769C7B] font-semibold uppercase mb-2">Horario</p>
+                    <ul className="space-y-1 text-sm text-[#1A4D2E]">
+                      {scheduleLines.map((line: string) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
                   </div>
                 )}
 

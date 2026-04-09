@@ -1,6 +1,16 @@
 "use client";
 import { useTranslations } from 'next-intl';
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
+type WeekDayKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+
+type DaySchedule = {
+  enabled: boolean;
+  open: string;
+  close: string;
+};
+
+type WeeklySchedule = Record<WeekDayKey, DaySchedule>;
+
 interface FormState {
   nombre: string;
   categoria: string;
@@ -21,6 +31,10 @@ interface FormState {
   rfc: string;
   cp: string;
   descripcion: string;
+  horario: WeeklySchedule;
+  costoEstimado: string;
+  tiempoSugerido: string;
+  subcategorias: string[];
   galeria: (File | null)[];
   logo: File | null;
 }
@@ -38,6 +52,32 @@ import MinimapaLocationPicker from "./MinimapaLocationPicker";
     logoUrl: string | null;
     galeriaUrls: (string | null)[];
   };
+
+const DEFAULT_DAY_SCHEDULE: DaySchedule = {
+  enabled: false,
+  open: "09:00",
+  close: "18:00",
+};
+
+const createDefaultSchedule = (): WeeklySchedule => ({
+  monday: { ...DEFAULT_DAY_SCHEDULE },
+  tuesday: { ...DEFAULT_DAY_SCHEDULE },
+  wednesday: { ...DEFAULT_DAY_SCHEDULE },
+  thursday: { ...DEFAULT_DAY_SCHEDULE },
+  friday: { ...DEFAULT_DAY_SCHEDULE },
+  saturday: { ...DEFAULT_DAY_SCHEDULE },
+  sunday: { ...DEFAULT_DAY_SCHEDULE },
+});
+
+const DAY_LABELS: { key: WeekDayKey; label: string }[] = [
+  { key: "monday", label: "Lunes" },
+  { key: "tuesday", label: "Martes" },
+  { key: "wednesday", label: "Miércoles" },
+  { key: "thursday", label: "Jueves" },
+  { key: "friday", label: "Viernes" },
+  { key: "saturday", label: "Sábado" },
+  { key: "sunday", label: "Domingo" },
+];
 
 const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const t = useTranslations('businessModal');
@@ -71,6 +111,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       rfc: "",
       cp: "",
       descripcion: "",
+      horario: createDefaultSchedule(),
+      costoEstimado: "",
+      tiempoSugerido: "",
+      subcategorias: [],
       galeria: [null, null, null],
       logo: null
     } as FormState;
@@ -103,8 +147,11 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [estadoError, setEstadoError] = useState("");
   const [sitioWebError, setSitioWebError] = useState("");
   const [descripcionError, setDescripcionError] = useState("");
+  const [horarioError, setHorarioError] = useState("");
+  const [subcategoriasError, setSubcategoriasError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [logoError, setLogoError] = useState("");
+  const [subcategoriaInput, setSubcategoriaInput] = useState("");
   const [buscandoCoordenadas, setBuscandoCoordenadas] = useState(false);
   const [geocodeError, setGeocodeError] = useState("");
   const [imagePreview, setImagePreview] = useState<ImagePreviewState>({
@@ -253,7 +300,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       setCiudadError("");
       setEstadoError("");
       setDescripcionError("");
+      setHorarioError("");
+      setSubcategoriasError("");
       setGeocodeError("");
+      setSubcategoriaInput("");
     }
   }, [isOpen]);
 
@@ -279,7 +329,11 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       sitioWeb: form.sitioWeb,
       rfc: form.rfc,
       cp: form.cp,
-      descripcion: form.descripcion
+      descripcion: form.descripcion,
+      horario: form.horario,
+      costoEstimado: form.costoEstimado,
+      tiempoSugerido: form.tiempoSugerido,
+      subcategorias: form.subcategorias
     };
     localStorage.setItem("pitzbol_business_draft", JSON.stringify(formToSave));
   }, [form]);
@@ -478,6 +532,51 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     return partes.join(", ");
   };
 
+  const updateScheduleDay = (day: WeekDayKey, patch: Partial<DaySchedule>) => {
+    setForm((prev: FormState) => ({
+      ...prev,
+      horario: {
+        ...prev.horario,
+        [day]: {
+          ...prev.horario[day],
+          ...patch,
+        },
+      },
+    }));
+  };
+
+  const addSubcategory = (rawValue: string) => {
+    const sanitized = rawValue.trim().replace(/\s+/g, " ");
+    if (!sanitized) return;
+    if (sanitized.length > 40) {
+      setSubcategoriasError("Cada subcategoría debe tener máximo 40 caracteres");
+      return;
+    }
+
+    setForm((prev: FormState) => {
+      const exists = prev.subcategorias.some((item) => item.toLowerCase() === sanitized.toLowerCase());
+      if (exists) return prev;
+      if (prev.subcategorias.length >= 10) {
+        setSubcategoriasError("Máximo 10 subcategorías");
+        return prev;
+      }
+      return {
+        ...prev,
+        subcategorias: [...prev.subcategorias, sanitized],
+      };
+    });
+
+    setSubcategoriasError("");
+    setSubcategoriaInput("");
+  };
+
+  const removeSubcategory = (value: string) => {
+    setForm((prev: FormState) => ({
+      ...prev,
+      subcategorias: prev.subcategorias.filter((item) => item !== value),
+    }));
+  };
+
   // Mantener la ubicación compuesta a partir de los campos
   useEffect(() => {
     const compuesta = composeDireccion(form);
@@ -608,9 +707,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     return !hasErrors;
   };
 
-  // Función para validar el paso 2 antes de avanzar
+  // Función para validar el paso 2 (Dirección del negocio) antes de avanzar
   const validateStep2 = async () => {
-    setLogoError("");
     setUbicacionError("");
     setCalleError("");
     setNumeroError("");
@@ -621,12 +719,6 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     setSitioWebError("");
 
     let hasErrors = false;
-
-    // Validar logo (usar files.logo en lugar de form.logo)
-    if (!files.logo && !imagePreview.logoUrl) {
-      setLogoError("El logo del negocio es obligatorio");
-      hasErrors = true;
-    }
 
     // Validar dirección
     if (!form.calle.trim()) {
@@ -680,42 +772,65 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       }
     }
 
-    // Validar sitio web
+    return !hasErrors;
+  };
+
+  // Función para validar el paso 3 (Imagen del negocio) antes de avanzar
+  const validateStep3 = () => {
+    setLogoError("");
+
+    if (!files.logo && !imagePreview.logoUrl) {
+      setLogoError("El logo del negocio es obligatorio");
+      return false;
+    }
+
+    return true;
+  };
+
+  // Función para validar el paso 4 (Información adicional) antes de avanzar
+  const validateStep4 = async () => {
+    setDescripcionError("");
+    setSitioWebError("");
+    setHorarioError("");
+
+    let hasErrors = false;
+
+    if (!form.descripcion.trim()) {
+      setDescripcionError("La descripción del negocio es obligatoria");
+      hasErrors = true;
+    }
+
     if (!form.sitioWeb.trim()) {
       setSitioWebError("El sitio web o redes sociales son obligatorios");
       hasErrors = true;
     } else if (!validateURL(form.sitioWeb)) {
       setSitioWebError("URL no válida. Ejemplo: https://facebook.com/tunegocio");
       hasErrors = true;
-    } else {
-      // Validar unicidad de sitio web
-      try {
-        const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ website: form.sitioWeb })
-        });
-
-        const data = await res.json();
-        if (!data.valid && data.errors?.website) {
-          setSitioWebError(data.errors.website);
-          hasErrors = true;
-        }
-      } catch (error) {
-        console.error("Error validando sitio web:", error);
-      }
     }
 
-    return !hasErrors;
-  };
+    const enabledDays = Object.values(form.horario).filter((day) => day.enabled);
+    const hasInvalidSchedule = enabledDays.some((day) => !day.open || !day.close || day.open >= day.close);
+    if (hasInvalidSchedule) {
+      setHorarioError("Revisa el horario: la hora de apertura debe ser menor a la de cierre");
+      hasErrors = true;
+    }
 
-  // Función para validar el paso 3 antes de avanzar
-  const validateStep3 = () => {
-    setDescripcionError("");
+    if (hasErrors) return false;
 
-    if (!form.descripcion.trim()) {
-      setDescripcionError("La descripción del negocio es obligatoria");
-      return false;
+    try {
+      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ website: form.sitioWeb })
+      });
+
+      const data = await res.json();
+      if (!data.valid && data.errors?.website) {
+        setSitioWebError(data.errors.website);
+        return false;
+      }
+    } catch (error) {
+      console.error("Error validando sitio web:", error);
     }
 
     return true;
@@ -754,17 +869,25 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       setEmailError("Correo inválido");
       if (firstErrorStep === null) firstErrorStep = 0;
     }
+    if (!files.logo && !imagePreview.logoUrl) {
+      setLogoError("El logo del negocio es obligatorio");
+      if (firstErrorStep === null) firstErrorStep = 2;
+    }
     if (!form.descripcion.trim()) {
       setDescripcionError("La descripción del negocio es obligatoria");
-      if (firstErrorStep === null) firstErrorStep = 2;
+      if (firstErrorStep === null) firstErrorStep = 3;
+    }
+    if (!form.sitioWeb.trim() || !validateURL(form.sitioWeb)) {
+      setSitioWebError("URL no válida. Ejemplo: https://facebook.com/tunegocio");
+      if (firstErrorStep === null) firstErrorStep = 3;
     }
     if (!validateRFC(form.rfc)) {
       setRfcError("RFC inválido");
-      if (firstErrorStep === null) firstErrorStep = 3;
+      if (firstErrorStep === null) firstErrorStep = 4;
     }
     if (!validateCP(form.cp)) {
       setCpError("CP inválido");
-      if (firstErrorStep === null) firstErrorStep = 3;
+      if (firstErrorStep === null) firstErrorStep = 4;
     }
     if (firstErrorStep !== null) {
       setStep(firstErrorStep);
@@ -786,12 +909,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       if (!data.valid && data.errors) {
         if (data.errors.rfc) {
           setRfcError(data.errors.rfc);
-          setStep(3);
+          setStep(4);
           return;
         }
         if (data.errors.cp) {
           setCpError(data.errors.cp);
-          setStep(3);
+          setStep(4);
           return;
         }
       }
@@ -847,6 +970,14 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       if (form.descripcion) {
         formData.append("description", form.descripcion);
       }
+      formData.append("schedule", JSON.stringify(form.horario));
+      if (form.costoEstimado.trim()) {
+        formData.append("estimatedCost", form.costoEstimado.trim());
+      }
+      if (form.tiempoSugerido.trim()) {
+        formData.append("suggestedStayTime", form.tiempoSugerido.trim());
+      }
+      formData.append("subcategories", JSON.stringify(form.subcategorias));
       if (ownerUid) {
         formData.append("ownerUid", ownerUid);
         console.log("[BusinessModal] ✅ ownerUid agregado al FormData:", ownerUid);
@@ -883,6 +1014,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         latitud: form.latitud,
         longitud: form.longitud,
         website: form.sitioWeb,
+        schedule: form.horario,
+        estimatedCost: form.costoEstimado,
+        suggestedStayTime: form.tiempoSugerido,
+        subcategories: form.subcategorias,
         rfc: form.rfc,
         cp: form.cp,
         description: form.descripcion || "NO PRESENTE",
@@ -967,9 +1102,17 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
               )}
               <div className={`text-center ${step === 1 ? "mb-5" : "mb-6"}`}>
                 <h2 className={`${step === 1 ? "text-[22px] md:text-[28px]" : "text-[28px] md:text-[36px]"} text-[#8B0000] font-black uppercase leading-none`} style={{ fontFamily: 'var(--font-jockey)' }}>
-                  {step === 0 ? t('step1Title') : step === 1 ? t('step2Title') : step === 2 ? t('step3Title') : t('step4Title')}
+                  {step === 0
+                    ? t('step1Title')
+                    : step === 1
+                    ? t('step2Title')
+                    : step === 2
+                    ? t('step3Title')
+                    : step === 3
+                    ? t('step4Title')
+                    : t('step5Title')}
                 </h2>
-                <p className={`${step === 1 ? "text-xs" : "text-sm"} text-[#1A4D2E] italic mt-1`}>{t('stepProgress', { current: step + 1, total: 4 })}</p>
+                <p className={`${step === 1 ? "text-xs" : "text-sm"} text-[#1A4D2E] italic mt-1`}>{t('stepProgress', { current: step + 1, total: 5 })}</p>
               </div>
 
               <div className="max-w-2xl mx-auto space-y-2">
@@ -1101,8 +1244,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 {step === 1 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_1.25fr] gap-2">
-                      <div className="flex flex-col gap-2 h-full">
-                        <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[140px]">
+                      <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[340px]">
                           <span className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-2 mb-1">
                             Ubicación en el mapa
                           </span>
@@ -1121,21 +1263,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             }}
                             height="180px"
                           />
+                          <p className="mt-2 text-[10px] text-[#1A4D2E] px-2">
+                            Mueve el pin para ajustar el punto exacto del negocio. Esto mejora la precisión en resultados de mapa y rutas.
+                          </p>
                         </div>
-                        <label className="flex-1 flex flex-col items-center justify-center w-full border-2 border-dashed border-[#769C7B]/40 rounded-[24px] cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all relative min-h-[100px]">
-                          {imagePreview.logoUrl ? (
-                            <img src={imagePreview.logoUrl} alt="Logo preview" className="absolute inset-0 w-full h-full object-cover rounded-[24px] z-10" style={{background: '#fff', width: '100%', height: '100%'}} />
-                          ) : (
-                            <>
-                              <FiImage size={32} className="text-[#769C7B] mb-2"/>
-                              <p className="text-sm font-black text-[#1A4D2E] uppercase">{t('businessLogo')}</p>
-                              <p className="text-[9px] text-red-500 mt-1 font-bold">* Obligatorio</p>
-                            </>
-                          )}
-                          <input type="file" className="hidden" accept="image/*" ref={el => { logoInput.current = el; }} onChange={handleLogoChange} />
-                          {logoError && <span className="text-[10px] text-red-500 mt-2 font-bold absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-white/80 px-2 rounded">{logoError}</span>}
-                        </label>
-                      </div>
                       <div className="space-y-2">
                         <div className="space-y-2">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1315,30 +1446,6 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             />
                           </div>
                         </div>
-                        <div className="relative pb-2">
-                          <input 
-                            placeholder={t('websiteSocial')} 
-                            className={inputClass + " pl-11 text-[12px] py-2.5" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")} 
-                            value={form.sitioWeb} 
-                            onChange={e => {
-                              setForm((f: FormState) => ({ ...f, sitioWeb: e.target.value }));
-                              if (!e.target.value.trim()) setSitioWebError("El sitio web es obligatorio");
-                              else if (!validateURL(e.target.value)) setSitioWebError("URL no válida");
-                              else setSitioWebError("");
-                            }}
-                            onBlur={e => {
-                              if (!e.target.value.trim()) {
-                                setSitioWebError("El sitio web o redes sociales son obligatorios");
-                              } else if (!validateURL(e.target.value)) {
-                                setSitioWebError("URL no válida. Ej: https://facebook.com/tunegocio");
-                              } else {
-                                setSitioWebError("");
-                              }
-                            }}
-                          />
-                          <FiGlobe className="absolute left-[22px] top-[10px] text-[#769C7B] pointer-events-none" size={16} />
-                          {sitioWebError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{sitioWebError}</p>}
-                        </div>
                         <div className="p-2 bg-[#ECF4EE] rounded-2xl border border-[#0D601E]/20 text-[10px] text-[#1A4D2E] font-medium">
                            <FiInfo className="inline mr-1"/> {t('locationHelp')}
                         </div>
@@ -1358,27 +1465,21 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
                 {step === 2 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
-                    <div className="bg-[#F6F0E6]/20 p-4 rounded-[35px] border border-[#1A4D2E]/10">
-                      <span className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold mb-2 block">Descripción del Negocio</span>
-                      <textarea
-                        placeholder="Describe tu negocio, servicios y especialidades"
-                        className={`w-full px-4 py-2 bg-white/70 border rounded-2xl outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-xs resize-none h-[60px] ${
-                          descripcionError ? "border-red-500 bg-red-50/50" : "border-[#1A4D2E]/20"
-                        }`}
-                        value={form.descripcion}
-                        onChange={e => {
-                          const nextValue = e.target.value;
-                          setForm((f: FormState) => ({ ...f, descripcion: nextValue }));
-                          if (nextValue.trim()) {
-                            setDescripcionError("");
-                          }
-                        }}
-                        maxLength={500}
-                      />
-                      <div className="flex items-center justify-between mt-1.5">
-                        <p className="text-[9px] text-red-500 italic min-h-[12px]">{descripcionError}</p>
-                        <p className="text-[9px] text-[#769C7B]">{form.descripcion.length}/500</p>
-                      </div>
+                    <div className={cardClass.replace("p-6", "p-4")}>
+                      <span className={labelClass}>Logo del Negocio</span>
+                      <label className="w-full flex flex-col items-center justify-center border-2 border-dashed border-[#769C7B]/40 rounded-3xl cursor-pointer bg-[#F6F0E6]/30 hover:bg-[#F6F0E6]/50 transition-all relative min-h-[170px]">
+                        {imagePreview.logoUrl ? (
+                          <img src={imagePreview.logoUrl} alt="Logo preview" className="absolute inset-0 w-full h-full object-cover rounded-3xl z-10" style={{ background: '#fff', width: '100%', height: '100%' }} />
+                        ) : (
+                          <>
+                            <FiImage size={34} className="text-[#769C7B] mb-2" />
+                            <p className="text-sm font-black text-[#1A4D2E] uppercase">{t('businessLogo')}</p>
+                            <p className="text-[9px] text-red-500 mt-1 font-bold">* Obligatorio</p>
+                          </>
+                        )}
+                        <input type="file" className="hidden" accept="image/*" ref={el => { logoInput.current = el; }} onChange={handleLogoChange} />
+                        {logoError && <span className="text-[10px] text-red-500 mt-2 font-bold absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-white/80 px-2 rounded">{logoError}</span>}
+                      </label>
                     </div>
 
                     <div className={cardClass.replace("p-6", "p-4")}>
@@ -1413,12 +1514,166 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                       }} 
                       className={btnPrimary}
                     >
-                      Siguiente: Datos Fiscales
+                      Siguiente: Información adicional
                     </button>
                   </motion.div>
                 )}
 
                 {step === 3 && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <div className={cardClass}>
+                      <div className="flex items-center gap-2 mb-4 text-[#0D601E]">
+                        <FiInfo size={20} />
+                        <h4 className="font-bold uppercase text-xs tracking-tighter">Información complementaria</h4>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className={labelClass}>Descripción del Negocio</label>
+                          <textarea
+                            placeholder="Describe tu negocio, servicios y especialidades"
+                            className={`w-full px-4 py-3 bg-white/70 border rounded-2xl outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm resize-none h-[120px] ${
+                              descripcionError ? "border-red-500 bg-red-50/50" : "border-[#1A4D2E]/20"
+                            }`}
+                            value={form.descripcion}
+                            onChange={e => {
+                              const nextValue = e.target.value;
+                              setForm((f: FormState) => ({ ...f, descripcion: nextValue }));
+                              if (nextValue.trim()) setDescripcionError("");
+                            }}
+                            maxLength={500}
+                          />
+                          <div className="flex items-center justify-between mt-1.5">
+                            <p className="text-[10px] text-red-500 italic min-h-[12px]">{descripcionError}</p>
+                            <p className="text-[10px] text-[#769C7B]">{form.descripcion.length}/500</p>
+                          </div>
+                        </div>
+
+                        <div className="relative pb-2">
+                          <label className={labelClass}>{t('websiteSocial')}</label>
+                          <input
+                            placeholder="https://tunegocio.com"
+                            className={inputClass + " pl-11" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")}
+                            value={form.sitioWeb}
+                            onChange={e => {
+                              setForm((f: FormState) => ({ ...f, sitioWeb: e.target.value }));
+                              if (!e.target.value.trim()) setSitioWebError("El sitio web es obligatorio");
+                              else if (!validateURL(e.target.value)) setSitioWebError("URL no válida");
+                              else setSitioWebError("");
+                            }}
+                            onBlur={e => {
+                              if (!e.target.value.trim()) setSitioWebError("El sitio web o redes sociales son obligatorios");
+                              else if (!validateURL(e.target.value)) setSitioWebError("URL no válida. Ej: https://facebook.com/tunegocio");
+                              else setSitioWebError("");
+                            }}
+                          />
+                          <FiGlobe className="absolute left-[22px] top-[39px] text-[#769C7B] pointer-events-none" size={16} />
+                          {sitioWebError && <p className="text-[10px] text-red-500 mt-1 ml-1 italic">{sitioWebError}</p>}
+                        </div>
+
+                        <div>
+                          <label className={labelClass}>Horario (opcional)</label>
+                          <div className="border border-[#1A4D2E]/15 rounded-2xl p-3 space-y-2 bg-white/60">
+                            {DAY_LABELS.map((day) => (
+                              <div key={day.key} className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+                                <label className="flex items-center gap-2 text-sm text-[#1A4D2E] font-semibold">
+                                  <input
+                                    type="checkbox"
+                                    checked={form.horario[day.key].enabled}
+                                    onChange={(e) => updateScheduleDay(day.key, { enabled: e.target.checked })}
+                                    className="accent-[#0D601E]"
+                                  />
+                                  {day.label}
+                                </label>
+                                <input
+                                  type="time"
+                                  value={form.horario[day.key].open}
+                                  disabled={!form.horario[day.key].enabled}
+                                  onChange={(e) => updateScheduleDay(day.key, { open: e.target.value })}
+                                  className="px-3 py-1.5 rounded-xl border border-[#1A4D2E]/20 text-sm disabled:bg-gray-100"
+                                />
+                                <input
+                                  type="time"
+                                  value={form.horario[day.key].close}
+                                  disabled={!form.horario[day.key].enabled}
+                                  onChange={(e) => updateScheduleDay(day.key, { close: e.target.value })}
+                                  className="px-3 py-1.5 rounded-xl border border-[#1A4D2E]/20 text-sm disabled:bg-gray-100"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          {horarioError && <p className="text-[10px] text-red-500 mt-1 italic">{horarioError}</p>}
+                        </div>
+
+                        <div>
+                          <label className={labelClass}>Costo Estimado (opcional)</label>
+                          <input
+                            placeholder="Ej. $200 - $500 MXN"
+                            className={inputClass}
+                            value={form.costoEstimado}
+                            onChange={(e) => setForm((f: FormState) => ({ ...f, costoEstimado: e.target.value }))}
+                          />
+                        </div>
+
+                        <div>
+                          <label className={labelClass}>Tiempo sugerido (opcional)</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              placeholder="Ej. 1.5"
+                              className={inputClass + " pr-20"}
+                              value={form.tiempoSugerido}
+                              onChange={(e) => setForm((f: FormState) => ({ ...f, tiempoSugerido: e.target.value }))}
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#769C7B] font-bold">horas</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className={labelClass}>Subcategorías (palabras clave)</label>
+                          <div className="border border-[#1A4D2E]/15 rounded-2xl p-3 bg-white/60">
+                            <input
+                              placeholder="Escribe una subcategoría y presiona Enter"
+                              className={inputClass}
+                              value={subcategoriaInput}
+                              onChange={(e) => setSubcategoriaInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === ",") {
+                                  e.preventDefault();
+                                  addSubcategory(subcategoriaInput);
+                                }
+                              }}
+                              onBlur={() => {
+                                if (subcategoriaInput.trim()) addSubcategory(subcategoriaInput);
+                              }}
+                            />
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {form.subcategorias.map((sub) => (
+                                <span key={sub} className="inline-flex items-center gap-1 bg-[#0D601E]/10 text-[#0D601E] px-3 py-1 rounded-full text-xs font-bold">
+                                  {sub}
+                                  <button type="button" onClick={() => removeSubcategory(sub)} className="text-[#8B0000] font-black">x</button>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          {subcategoriasError && <p className="text-[10px] text-red-500 mt-1 italic">{subcategoriasError}</p>}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const isValid = await validateStep4();
+                        if (isValid) setStep(4);
+                      }}
+                      className={btnPrimary}
+                    >
+                      Siguiente: Información Fiscal
+                    </button>
+                  </motion.div>
+                )}
+
+                {step === 4 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                     <div className={cardClass}>
                       <div className="flex items-center gap-2 mb-4 text-[#0D601E]">

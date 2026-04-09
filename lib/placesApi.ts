@@ -20,6 +20,8 @@ export interface PlaceRecord {
   codigoPostal?: string;
   tiempoEstancia?: number;
   costoEstimado?: string;
+  horario?: Record<string, { enabled?: boolean; open?: string; close?: string }> | null;
+  subcategorias?: string[];
   fotos: string[];
   rating: number;
   views: number;
@@ -45,6 +47,11 @@ interface FirestorePlace {
   cp?: string;
   tiempoEstancia?: number | string;
   costoEstimado?: string;
+  estimatedCost?: string;
+  suggestedStayTime?: number | string;
+  schedule?: Record<string, { enabled?: boolean; open?: string; close?: string }> | null;
+  subcategoria?: string;
+  subcategorias?: string[];
   fotos?: string[];
   rating?: number | string;
   views?: number | string;
@@ -108,6 +115,8 @@ function parseCsvPlaces(csvText: string): PlaceRecord[] {
         parseNumber(row["Tiempo estimado de visita"]) ??
         undefined,
       costoEstimado: String(row["Costo Estimado"] || "").trim() || undefined,
+      horario: null,
+      subcategorias: row["Subcategoría"] ? [String(row["Subcategoría"]).trim()].filter(Boolean) : undefined,
       fotos: [],
       rating:
         parseNumber(row["Rating"]) ??
@@ -156,7 +165,17 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
         nombre,
         rawCategoria: existing?.rawCategoria || normalizeCategory(String(firestorePlace.categoria || "")),
         categoria: normalizeCategory(String(firestorePlace.categoria || existing?.categoria || "")),
-        subcategoria: existing?.subcategoria,
+        subcategoria:
+          String(
+            firestorePlace.subcategoria ||
+            (Array.isArray(firestorePlace.subcategorias) ? firestorePlace.subcategorias[0] : "") ||
+            existing?.subcategoria ||
+            ""
+          ).trim() || undefined,
+        subcategorias:
+          Array.isArray(firestorePlace.subcategorias) && firestorePlace.subcategorias.length
+            ? firestorePlace.subcategorias.map((item) => String(item).trim()).filter(Boolean)
+            : existing?.subcategorias,
         descripcion: String(firestorePlace.descripcion || existing?.descripcion || "").trim(),
         ubicacion: String(firestorePlace.ubicacion || existing?.ubicacion || "").trim(),
         latitud: String(firestorePlace.latitud || existing?.latitud || "").trim(),
@@ -192,10 +211,12 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
           ).trim() || undefined,
         tiempoEstancia:
           parseNumber(firestorePlace.tiempoEstancia) ??
+          parseNumber(firestorePlace.suggestedStayTime) ??
           existing?.tiempoEstancia,
         costoEstimado:
-          String(firestorePlace.costoEstimado || existing?.costoEstimado || "").trim() ||
+          String(firestorePlace.costoEstimado || firestorePlace.estimatedCost || existing?.costoEstimado || "").trim() ||
           undefined,
+        horario: firestorePlace.schedule ?? existing?.horario ?? null,
         fotos: Array.isArray(firestorePlace.fotos) ? firestorePlace.fotos : existing?.fotos || [],
         // Prioridad: datos reales > CSV > fallback
         rating: realRating ?? existing?.rating ?? fallbackRating(nombre),

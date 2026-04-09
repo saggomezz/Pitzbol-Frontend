@@ -176,7 +176,7 @@ export default function CategoryPlacesPage({
       if (!activeFilterTerms.length) return true;
 
       const haystack = normalize(
-        `${place.nombre} ${place.categoria} ${place.ubicacion} ${place.descripcion}`
+        `${place.nombre} ${place.categoria} ${place.ubicacion} ${place.descripcion} ${place.subcategoria || ""} ${(place.subcategorias || []).join(" ")}`
       );
 
       return activeFilterTerms.some((filterTerm) => haystack.includes(normalize(filterTerm)));
@@ -209,7 +209,9 @@ export default function CategoryPlacesPage({
           normalize(place.nombre).includes(term) ||
           normalize(place.categoria).includes(term) ||
           normalize(place.ubicacion).includes(term) ||
-          normalize(place.descripcion).includes(term);
+          normalize(place.descripcion).includes(term) ||
+          normalize(place.subcategoria || "").includes(term) ||
+          normalize((place.subcategorias || []).join(" ")).includes(term);
 
         return matchesSearch;
       });
