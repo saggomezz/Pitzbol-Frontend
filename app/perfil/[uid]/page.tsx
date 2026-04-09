@@ -122,7 +122,7 @@ export default function GuidePublicProfilePage() {
         setLoading(true);
         let fetchedProfile: PublicProfile | null = null;
 
-        const response = await fetch(`${BACKEND_URL}/api/perfil/public/${profileUid}`);
+        const response = await fetch(`/api/perfil/public/${profileUid}`);
         if (response.ok) {
           const data = await response.json();
           fetchedProfile = data.profile || null;
@@ -134,7 +134,7 @@ export default function GuidePublicProfilePage() {
           if (token) {
             setLoadingAdminDetail(true);
             const identifier = fetchedProfile?.uid || profileUid;
-            const adminResponse = await fetch(`${BACKEND_URL}/api/admin/usuarios/${encodeURIComponent(identifier)}/detalle`, {
+            const adminResponse = await fetch(`/api/admin/usuarios/${encodeURIComponent(identifier)}/detalle`, {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
@@ -159,8 +159,8 @@ export default function GuidePublicProfilePage() {
           setLoadingRelated(true);
           try {
             const [toursRes, negociosRes] = await Promise.all([
-              fetch(`${BACKEND_URL}/api/perfil/tours/${encodeURIComponent(uid)}`),
-              fetch(`${BACKEND_URL}/api/perfil/negocios/${encodeURIComponent(uid)}`),
+              fetch(`/api/perfil/tours/${encodeURIComponent(uid)}`),
+              fetch(`/api/perfil/negocios/${encodeURIComponent(uid)}`),
             ]);
 
             if (toursRes.ok) {

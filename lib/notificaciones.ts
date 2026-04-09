@@ -40,10 +40,10 @@ export const enviarNotificacion = async (
 
   // Lógica para enviar al backend si existe sesión
   const token = localStorage.getItem('pitzbol_token');
-  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  const API_BASE = '/api';
   if (token) {
     try {
-      const response = await fetch(`${API_BASE}/api/admin/notificaciones/${userId}`, {
+      const response = await fetch(`${API_BASE}/admin/notificaciones/${userId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

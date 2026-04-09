@@ -1,6 +1,6 @@
 import Papa from "papaparse";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const API_BASE = "/api";
 
 export interface PlaceRecord {
   nombre: string;
@@ -133,7 +133,7 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
   });
 
   try {
-    const firestoreResponse = await fetch(`${BACKEND_URL}/api/lugares?includeApprovedBusinesses=true`);
+    const firestoreResponse = await fetch(`${API_BASE}/lugares?includeApprovedBusinesses=true`);
     if (!firestoreResponse.ok) {
       return Array.from(mergedByName.values());
     }

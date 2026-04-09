@@ -67,16 +67,6 @@ export default function AdminPerfil() {
       }
 
       const data = await response.json();
-      // Notificar al admin si hay nuevas solicitudes
-      if ((data.solicitudes || []).length > solicitudes.length) {
-        enviarNotificacion(
-          'admin',
-          'info',
-          'Nueva solicitud de guia',
-          'Ha llegado una nueva solicitud de guia pendiente.',
-          '/admin/guias?tab=pendientes'
-        );
-      }
       setSolicitudes(data.solicitudes || []);
     } catch (error) {
       console.error("Error de conexión:", error);

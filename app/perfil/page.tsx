@@ -14,7 +14,7 @@ import { useFavoritesSync } from "@/lib/favoritesApi";
 
 import WalletModal from "@/app/components/WalletModal";
 
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const API_BASE = "/api";
 
 // Función auxiliar para capitalizar texto
 const capitalizarPrimera = (texto: string): string => {
@@ -204,7 +204,7 @@ export default function PerfilDetallado() {
 
       try {
         const tokenHeader = localStorage.getItem("pitzbol_token");
-        const estadoResponse = await fetch(`${API_BASE}/api/admin/verificar-estado/${userLocal.uid}`, {
+        const estadoResponse = await fetch(`${API_BASE}/admin/verificar-estado/${userLocal.uid}`, {
           credentials: 'include',
           headers: tokenHeader ? { 'Authorization': `Bearer ${tokenHeader}` } : undefined,
         });
@@ -251,7 +251,7 @@ export default function PerfilDetallado() {
         // Cargar foto de perfil desde el endpoint correcto (JWT del backend)
         try {
           const tokenHeader2 = localStorage.getItem("pitzbol_token");
-          const fotoResponse = await fetch(`${API_BASE}/api/perfil/foto-perfil`, {
+          const fotoResponse = await fetch(`${API_BASE}/perfil/foto-perfil`, {
             method: 'GET',
             credentials: 'include',
             headers: tokenHeader2 ? { 'Authorization': `Bearer ${tokenHeader2}` } : undefined,

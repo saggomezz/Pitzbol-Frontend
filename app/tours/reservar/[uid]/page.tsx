@@ -57,7 +57,7 @@ export default function BookTourPage() {
     const fetchGuideInfo = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${BACKEND_URL}/api/guides/profile/${guideId}`);
+        const response = await fetch(`/api/guides/profile/${guideId}`);
         const data = await response.json();
 
         if (data.success) {
@@ -129,7 +129,7 @@ export default function BookTourPage() {
         createdAt: new Date().toISOString(),
       };
 
-      const response = await fetch(`${BACKEND_URL}/api/bookings/create`, {
+      const response = await fetch(`/api/bookings/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

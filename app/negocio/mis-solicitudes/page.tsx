@@ -11,7 +11,7 @@ import {
 import { MdBusiness, MdCategory, MdImage } from "react-icons/md";
 import { FiArrowLeft } from "react-icons/fi";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const API_BASE = "/api";
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 
 type ApprovedToastPendingPayload = {
@@ -108,7 +108,7 @@ export default function MisSolicitudesPage() {
     setLoading(true);
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("pitzbol_token") : null;
-      const res = await fetch(`${BACKEND_URL}/api/business/my-requests`, {
+      const res = await fetch(`${API_BASE}/business/my-requests`, {
         cache: "no-store",
         credentials: "include",
         headers: {

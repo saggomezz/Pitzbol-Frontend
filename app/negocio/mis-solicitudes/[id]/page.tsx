@@ -19,7 +19,7 @@ import {
   FiShare2,
 } from "react-icons/fi";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const API_BASE = "/api";
 
 // ─── Status config (matches preview page) ────────────────────────────────────
 
@@ -223,7 +223,7 @@ export default function MiSolicitudDetallePage() {
       setLoading(true);
       try {
         const token = localStorage.getItem("pitzbol_token");
-        const res = await fetch(`${BACKEND_URL}/api/business/by-id/${id}`, {
+        const res = await fetch(`${API_BASE}/business/by-id/${id}`, {
           credentials: "include",
           headers: { Authorization: `Bearer ${token}` },
         });

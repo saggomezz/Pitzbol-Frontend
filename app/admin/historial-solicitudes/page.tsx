@@ -133,7 +133,7 @@ const mergeTimelineEventData = (primary: TimelineEvent, secondary: TimelineEvent
   };
 };
 
-const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001").replace(/\/+$/, "");
+const API_BASE = "/api";
 
 const actionLabelMap: Record<MovementKind, string> = {
   creado: "Solicitud creada",
@@ -645,7 +645,7 @@ export default function AdminBusinessHistoryPage() {
     try {
       setDeletingEventId(event.id);
       const token = typeof window !== "undefined" ? localStorage.getItem("pitzbol_token") || "" : "";
-      const response = await fetch(`${API_BASE}/api/admin/negocios/movimientos/${encodeURIComponent(movementId)}`, {
+      const response = await fetch(`${API_BASE}/admin/negocios/movimientos/${encodeURIComponent(movementId)}`, {
         method: "DELETE",
         credentials: "include",
         headers: {

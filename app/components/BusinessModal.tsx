@@ -298,7 +298,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     setBuscandoCoordenadas(true);
     setGeocodeError("");
     try {
-      const response = await fetch(`${BACKEND_URL}/api/lugares/geocode`, {
+      const response = await fetch(`/api/lugares/geocode`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

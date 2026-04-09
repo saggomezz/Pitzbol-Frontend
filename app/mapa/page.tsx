@@ -430,7 +430,7 @@ export default function MapaPage() {
                         
                         // Buscar lugares y fotos guardadas en Firestore (lugares creados manualmente + fotos)
                         const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-                        fetch(`${BACKEND_URL}/api/lugares?includeApprovedBusinesses=true`)
+                        fetch(`/api/lugares?includeApprovedBusinesses=true`)
                             .then(response => {
                                 if (response.ok) {
                                     return response.json();

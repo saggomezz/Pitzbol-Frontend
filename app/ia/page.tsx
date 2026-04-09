@@ -30,7 +30,7 @@ export default function IAPitzbolPage() {
     try {
       const prompt = `Dame un itinerario de 1 día en Guadalajara con presupuesto de $${budget} MXN. Intereses: ${selectedInterests.join(", ")}. Ubicación de partida: La Minerva. Genera 2 opciones de itinerarios en JSON con estructura: titulo, presupuesto_total, plan_detallado (array de hora, actividad, tiempo_estancia, traslado_proximo), descripcion, tips.`;
 
-      const response = await fetch(`${BACKEND_URL}/api/ai`, {
+      const response = await fetch(`/api/ai`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),

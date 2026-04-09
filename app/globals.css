@@ -33,6 +33,19 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Ocultar scrollbar global de la pagina sin bloquear el scroll */
+html,
+body {
+  -ms-overflow-style: none; /* IE y Edge legado */
+  scrollbar-width: none; /* Firefox */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 /* Estilos para responsividad móvil */
 @media (max-width: 768px) {
   /* Prevenir zoom en inputs en iOS */

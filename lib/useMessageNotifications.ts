@@ -1,9 +1,18 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { fetchWithAuth } from './fetchWithAuth';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const API_BASE = "/api";
 const UNREAD_CACHE_TTL_MS = 60000;
 const UNREAD_CACHE_KEY_PREFIX = "pitzbol_unread_messages_";
+
+const normalizeBackendBase = (url: string) => url.replace(/\/+$/, '');
+
+const buildBackendApiUrl = (path: string) => {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${normalizeBackendBase(BACKEND_URL)}/api${normalizedPath}`;
+};
 
 interface UnreadMessage {
   chatId: string;
@@ -90,6 +99,20 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     });
   }, [unreadCount, writeUnreadCache]);
 
+  const fetchChatApi = useCallback(async (path: string, options: RequestInit = {}) => {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+    try {
+      return await fetchWithAuth(`${API_BASE}${normalizedPath}`, options);
+    } catch (error) {
+      // If local proxy/rewrite fails, retry directly against backend host.
+      if (error instanceof TypeError) {
+        return fetchWithAuth(buildBackendApiUrl(normalizedPath), options);
+      }
+      throw error;
+    }
+  }, []);
+
   // Función para obtener mensajes no leídos del servidor
   const fetchUnreadCount = useCallback(async () => {
     if (!userId || !enabled) return;
@@ -101,14 +124,8 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     }
 
     try {
-      const token = localStorage.getItem("pitzbol_token");
-      const response = await fetch(
-        `${BACKEND_URL}/api/chat/unread/${userId}?userType=${userType}`,
-        {
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        }
+      const response = await fetchChatApi(
+        `/chat/unread/${encodeURIComponent(userId)}?userType=${encodeURIComponent(userType)}`
       );
 
       if (response.ok) {
@@ -120,7 +137,7 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     } catch (error) {
       console.error("Error al obtener mensajes no leídos:", error);
     }
-  }, [userId, userType, enabled, readUnreadCache, applyUnreadSnapshot]);
+  }, [userId, userType, enabled, readUnreadCache, applyUnreadSnapshot, fetchChatApi]);
 
   useEffect(() => {
     if (!enabled || !userId) return;
@@ -225,14 +242,12 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     if (!socketRef.current?.connected) return;
 
     try {
-      const token = localStorage.getItem("pitzbol_token");
-      const response = await fetch(
-        `${BACKEND_URL}/api/chat/${chatId}/read`,
+      const response = await fetchChatApi(
+        `/chat/${encodeURIComponent(chatId)}/read`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({ userId }),
         }
@@ -248,7 +263,7 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     } catch (error) {
       console.error("Error al marcar como leído:", error);
     }
-  }, [userId, removeChatFromUnreadState]);
+  }, [userId, removeChatFromUnreadState, fetchChatApi]);
 
   const requestNotificationPermission = async () => {
     if ('Notification' in window && Notification.permission === 'default') {

@@ -1,6 +1,6 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 
@@ -28,6 +28,7 @@ interface NotificationsPanelProps {
 }
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const API_BASE = "/api";
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
 
@@ -194,7 +195,7 @@ const resolveDeletedBusinessFromBackend = async (notif: Notification): Promise<N
   if (businessName) params.set("businessName", businessName);
 
   try {
-    const response = await fetch(`${BACKEND_URL}/api/business/status?${params.toString()}`, {
+    const response = await fetch(`${API_BASE}/business/status?${params.toString()}`, {
       credentials: "include",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -240,7 +241,7 @@ const resolveBusinessNavigationFromBackend = async (notif: Notification): Promis
   if (businessName) params.set("businessName", businessName);
 
   try {
-    const response = await fetch(`${BACKEND_URL}/api/business/status?${params.toString()}`, {
+    const response = await fetch(`${API_BASE}/business/status?${params.toString()}`, {
       credentials: "include",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -363,6 +364,21 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   const socketRef = useRef<Socket | null>(null);
   const notificationsRef = useRef<Notification[]>([]);
 
+  const getNotificationBucketId = useCallback(() => {
+    if (!userId) return "";
+
+    try {
+      const userRaw = localStorage.getItem('pitzbol_user');
+      const user = userRaw ? JSON.parse(userRaw) : null;
+      const role = (user?.role || '').toString().toLowerCase();
+      if (role === 'admin') return 'admin';
+    } catch {
+      // Ignore parse errors and fallback to provided userId
+    }
+
+    return userId;
+  }, [userId]);
+
   // Heurística para detectar notificaciones de negocio equivalentes aunque falte `negocioId`
   const areBusinessMessagesSimilar = (localNotif: Notification, backendNotif: Notification) => {
     if (!localNotif?.mensaje || !backendNotif?.mensaje) return false;
@@ -429,19 +445,19 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
   // Cargar notificaciones del backend (Firestore)
   const cargarNotificacionesDelBackend = async () => {
-    if (!userId) return;
+    const bucketId = getNotificationBucketId();
+    if (!bucketId) return;
     setCargando(true);
-    const key = `pitzbol_notifications_${userId}`;
+    const key = `pitzbol_notifications_${bucketId}`;
     const notificacionesLocal: Notification[] = JSON.parse(localStorage.getItem(key) || '[]');
 
     try {
       setCargando(true);
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
       const token = localStorage.getItem('pitzbol_token');
       const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
       
       // Obtener notificaciones del usuario (siempre)
-      const response = await fetch(`${API_BASE}/api/admin/notificaciones/${userId}`, {
+      const response = await fetch(`${API_BASE}/admin/notificaciones/${bucketId}`, {
         credentials: 'include',
         headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
       });
@@ -474,7 +490,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       // Si es admin, también cargar notificaciones de soporte
       if (user?.role === 'admin') {
         try {
-          const supportResponse = await fetch(`${API_BASE}/api/support/notifications`, {
+          const supportResponse = await fetch(`${API_BASE}/support/notifications`, {
             credentials: 'include',
             headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
           });
@@ -500,7 +516,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       }
 
       // Combinar con localStorage y eliminar duplicados
-      const key = `pitzbol_notifications_${userId}`;
+      const key = `pitzbol_notifications_${bucketId}`;
       const notificacionesLocal = JSON.parse(localStorage.getItem(key) || '[]');
 
       // Mapas auxiliares
@@ -587,9 +603,10 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
   // Cargar notificaciones del localStorage
   const cargarNotificacionesLocal = () => {
-    if (!userId) return;
+    const bucketId = getNotificationBucketId();
+    if (!bucketId) return;
 
-    const key = `pitzbol_notifications_${userId}`;
+    const key = `pitzbol_notifications_${bucketId}`;
     const stored = localStorage.getItem(key);
     const notifs: Notification[] = stored ? JSON.parse(stored) : [];
     setNotificaciones(notifs);
@@ -603,7 +620,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       // Cargar del backend inmediatamente al montar (para admins y badge)
       cargarNotificacionesDelBackend();
     }
-  }, [userId]);
+  }, [userId, getNotificationBucketId]);
 
   // Cerrar panel al hacer clic fuera
   useEffect(() => {
@@ -658,7 +675,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("pitzbolNotificationsUpdated", handleNotificationsUpdated);
     };
-  }, [userId]);
+  }, [userId, getNotificationBucketId]);
 
   // Notificaciones en tiempo real por Socket.IO
   useEffect(() => {
@@ -679,8 +696,9 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       setNotificaciones(updated);
       setNoLeidas(updated.filter((n) => !n.leido).length);
 
-      if (userId) {
-        const key = `pitzbol_notifications_${userId}`;
+      const bucketId = getNotificationBucketId();
+      if (bucketId) {
+        const key = `pitzbol_notifications_${bucketId}`;
         localStorage.setItem(key, JSON.stringify(updated));
         window.dispatchEvent(new CustomEvent('pitzbolNotificationsUpdated', {
           detail: { key, source: 'socket' },
@@ -708,12 +726,13 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         socketRef.current.disconnect();
       }
     };
-  }, [userId]);
+  }, [userId, getNotificationBucketId]);
 
   const marcarComoLeida = async (id: string) => {
-    if (!userId) return;
+    const bucketId = getNotificationBucketId();
+    if (!bucketId) return;
     // Usar la función centralizada de notificaciones
-    marcarNotificacionComoLeida(userId, id);
+    marcarNotificacionComoLeida(bucketId, id);
 
     // Actualizar estado local
     const actualizadas = notificaciones.map(n => 
@@ -722,12 +741,18 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     
     setNotificaciones(actualizadas);
     setNoLeidas(actualizadas.filter(n => !n.leido).length);
+
+    // Algunas notificaciones antiguas solo existen en localStorage.
+    // Evita llamadas al backend para ids locales y previene 404 innecesarios.
+    if (id.startsWith('notif_')) {
+      return;
+    }
     
 
     // Actualizar en el backend
     try {
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetch(`${BACKEND_URL}/api/admin/notifications/${id}/marcar-leida/${userId}`, {
+      const response = await fetch(`${API_BASE}/admin/notifications/${id}/marcar-leida/${bucketId}`, {
         method: 'PUT',
         credentials: 'include',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -740,12 +765,29 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   };
 
   const eliminarNotificacion = async (id: string) => {
-    if (!userId) return;
+    const bucketId = getNotificationBucketId();
+    if (!bucketId) return;
+
+    const key = `pitzbol_notifications_${bucketId}`;
+    const filtradas = notificaciones.filter(n => n.id !== id);
+    localStorage.setItem(key, JSON.stringify(filtradas));
+    setNotificaciones(filtradas);
+    setNoLeidas(filtradas.filter(n => !n.leido).length);
+
+    window.dispatchEvent(new CustomEvent('pitzbolNotificationsUpdated', {
+      detail: { key, source: 'delete-notification' },
+    }));
+
+    // Algunas notificaciones antiguas solo existen en localStorage.
+    // Evita llamadas al backend para ids locales y previene 404 innecesarios.
+    if (id.startsWith('notif_')) {
+      return;
+    }
 
     // Eliminar en el backend
     try {
       const token = localStorage.getItem('pitzbol_token');
-      const response = await fetch(`${BACKEND_URL}/api/admin/notifications/${id}/${userId}`, {
+      const response = await fetch(`${API_BASE}/admin/notifications/${id}/${bucketId}`, {
         method: 'DELETE',
         credentials: 'include',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -754,16 +796,6 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       if (!response.ok && response.status !== 404) {
         throw new Error(`Error al eliminar notificación: ${response.status}`);
       }
-
-      const key = `pitzbol_notifications_${userId}`;
-      const filtradas = notificaciones.filter(n => n.id !== id);
-      localStorage.setItem(key, JSON.stringify(filtradas));
-      setNotificaciones(filtradas);
-      setNoLeidas(filtradas.filter(n => !n.leido).length);
-
-      window.dispatchEvent(new CustomEvent('pitzbolNotificationsUpdated', {
-        detail: { key, source: 'delete-notification' },
-      }));
 
       // Sincronizar con backend para evitar estados locales obsoletos
       await cargarNotificacionesDelBackend();
@@ -859,7 +891,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     if (!token) return undefined;
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/business/by-id/${businessId}`, {
+      const response = await fetch(`${API_BASE}/business/by-id/${businessId}`, {
         credentials: "include",
         headers: { Authorization: `Bearer ${token}` },
       });

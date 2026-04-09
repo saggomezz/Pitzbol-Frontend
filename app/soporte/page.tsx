@@ -121,8 +121,8 @@ export default function SoportePage() {
         }
 
         try {
-            const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-            const response = await fetch(`${API_BASE}/api/support/contact-form`, {
+            const API_BASE = "/api";
+            const response = await fetch(`${API_BASE}/support/contact-form`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -159,8 +159,8 @@ export default function SoportePage() {
         }
 
         try {
-            const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-            const response = await fetch(`${API_BASE}/api/support/call-request`, {
+            const API_BASE = "/api";
+            const response = await fetch(`${API_BASE}/support/call-request`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

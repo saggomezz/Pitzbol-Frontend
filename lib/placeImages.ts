@@ -40,8 +40,7 @@ export function getPlaceImageUrlSync(options: PlaceImageOptions): string {
  */
 async function getStoredPhotos(nombre: string): Promise<string[] | null> {
   try {
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-    const response = await fetch(`${BACKEND_URL}/api/lugares/${encodeURIComponent(nombre)}`);
+    const response = await fetch(`/api/lugares/${encodeURIComponent(nombre)}`);
     
     if (response.ok) {
       const data = await response.json();

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface PitzbolUser {
   email: string;
@@ -15,21 +15,41 @@ export interface PitzbolUser {
 
 export function usePitzbolUser(): PitzbolUser | null {
   const [user, setUser] = useState<PitzbolUser | null>(null);
+  const lastStoredUserRef = useRef<string | null>(null);
 
   useEffect(() => {
     function syncUser() {
       const stored = localStorage.getItem("pitzbol_user");
-      if (stored) {
+      if (stored === lastStoredUserRef.current) {
+        return;
+      }
+
+      lastStoredUserRef.current = stored;
+
+      if (!stored) {
+        setUser(null);
+        return;
+      }
+
+      try {
         setUser(JSON.parse(stored));
-      } else {
+      } catch {
         setUser(null);
       }
     }
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key && event.key !== "pitzbol_user") {
+        return;
+      }
+      syncUser();
+    }
+
     syncUser();
-    window.addEventListener("storage", syncUser);
+    window.addEventListener("storage", handleStorage);
     window.addEventListener("authStateChanged", syncUser);
     return () => {
-      window.removeEventListener("storage", syncUser);
+      window.removeEventListener("storage", handleStorage);
       window.removeEventListener("authStateChanged", syncUser);
     };
   }, []);

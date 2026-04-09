@@ -21,7 +21,7 @@ export default function EstatusNegocioPage() {
       setError(null);
       try {
         const token = localStorage.getItem("pitzbol_token");
-        const response = await fetch(`${BACKEND_URL}/api/business/my-business`, {
+        const response = await fetch(`/api/business/my-business`, {
           cache: "no-store",
           headers: {
             Authorization: `Bearer ${token}`,
