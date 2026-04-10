@@ -7,6 +7,7 @@ import { fetchWithAuth } from "../../lib/fetchWithAuth";
 import { useTranslations } from "next-intl";
 import { FiChevronRight, FiFileText, FiShield, FiUser, FiX, FiPhone, FiCheck, FiAlertCircle, FiMail, FiTrash2 } from "react-icons/fi";
 import AdminHistorialSolicitudesModal from "@/app/components/AdminHistorialSolicitudesModal";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
 type NotificationType = {
   tipo: 'exito' | 'error' | 'info';
@@ -20,12 +21,6 @@ type ManagedUser = {
   correo?: string;
   telefono?: string;
   role: 'guia';
-};
-
-const getBackendBaseUrl = () => {
-  const rawBase = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001').trim();
-  const normalized = rawBase.replace(/\/+$/, '');
-  return normalized.endsWith('/api') ? normalized.slice(0, -4) : normalized;
 };
 
 export default function AdminPerfil() {
@@ -58,7 +53,7 @@ export default function AdminPerfil() {
 
   const fetchSolicitudes = async () => {
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const API_BASE = getBackendOrigin();
       const response = await fetchWithAuth(`${API_BASE}/api/admin/solicitudes-pendientes`);
       
       if (!response.ok) {
@@ -83,7 +78,7 @@ export default function AdminPerfil() {
   const fetchUsuariosGestionables = async () => {
     setLoadingUsuarios(true);
     try {
-      const API_BASE = getBackendBaseUrl();
+      const API_BASE = getBackendOrigin();
 
       const response = await fetchWithAuth(`${API_BASE}/api/admin/usuarios-gestionables`);
 
@@ -127,7 +122,7 @@ export default function AdminPerfil() {
     setEliminandoUid(usuario.uid);
 
     try {
-      const API_BASE = getBackendBaseUrl();
+      const API_BASE = getBackendOrigin();
 
       const response = await fetchWithAuth(`${API_BASE}/api/admin/usuarios/${usuario.uid}`, {
         method: 'DELETE',
@@ -161,7 +156,7 @@ export default function AdminPerfil() {
     console.log('🔍 Procesando solicitud:', { uid, accion });
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const API_BASE = getBackendOrigin();
       const response = await fetchWithAuth(`${API_BASE}/api/admin/gestionar-guia`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

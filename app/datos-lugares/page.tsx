@@ -5,8 +5,9 @@ import { FiCheck, FiChevronDown, FiChevronUp, FiImage, FiSave, FiTrash2, FiUploa
 import { useRouter } from "next/navigation";
 import { storage } from "@/lib/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getBackendOrigin();
 const EMAIL_AUTORIZADO = "cua@hotmail.com";
 
 interface Lugar {

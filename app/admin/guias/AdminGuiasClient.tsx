@@ -7,6 +7,7 @@ import { HiSparkles } from "react-icons/hi";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
 export interface Guide {
   id: string;
@@ -62,7 +63,7 @@ const AdminGuiasClient = () => {
   const cargarGuias = async () => {
     setLoading(true);
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const API_BASE = getBackendOrigin();
 
       const [resAprobados, resPendientes] = await Promise.all([
         fetchWithAuth(`${API_BASE}/api/admin/guias/aprobados`, { headers: { "Content-Type": "application/json" } }),

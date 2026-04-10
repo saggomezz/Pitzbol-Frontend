@@ -23,9 +23,9 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getBackendOrigin();
 const STRIPE_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY ||
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||

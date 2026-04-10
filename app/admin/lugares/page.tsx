@@ -6,6 +6,7 @@ import { FiPlus, FiX, FiImage, FiTrash2, FiMapPin, FiSearch, FiUpload, FiLink } 
 import Papa from "papaparse";
 import dynamic from "next/dynamic";
 import { fetchWithAuth } from "../../../lib/fetchWithAuth";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
 // Importar minimapa dinámicamente para evitar problemas con SSR
 const MinimapaLocationPicker = dynamic(
@@ -108,7 +109,7 @@ export default function AdminLugaresPage() {
     }
   };
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  const BACKEND_URL = getBackendOrigin();
 
   useEffect(() => {
     fetchLugares();

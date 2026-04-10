@@ -1,7 +1,4 @@
-const getBackendUrl = () => {
-  const raw = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001").trim();
-  return raw.replace(/\/+$/, "");
-};
+import { getBackendOrigin } from "./backendUrl";
 
 export interface AdminBookingPayload {
   guideId: string;
@@ -17,7 +14,7 @@ export interface AdminBookingPayload {
 }
 
 export async function adminCreateBooking(payload: AdminBookingPayload, token: string) {
-  const backendUrl = getBackendUrl();
+  const backendUrl = getBackendOrigin();
   const res = await fetch(`${backendUrl}/api/admin/bookings/create`, {
     method: "POST",
     credentials: "include",

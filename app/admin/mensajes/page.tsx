@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { fetchWithAuth } from "../../../lib/fetchWithAuth";
 import { FiMail, FiArrowLeft, FiPhone, FiUser, FiMessageSquare, FiCalendar, FiSend, FiCheckCircle, FiClock, FiTrash2, FiX, FiFilter } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
 type Reply = {
   message: string;
@@ -49,7 +50,7 @@ export default function AdminMensajes() {
 
   const fetchMensajes = async () => {
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const API_BASE = getBackendOrigin();
       const response = await fetchWithAuth(`${API_BASE}/api/support/contact-forms`);
       if (response.ok) {
         const data = await response.json();
@@ -68,7 +69,7 @@ export default function AdminMensajes() {
     setSending(true);
     setSendSuccess(false);
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const API_BASE = getBackendOrigin();
       const response = await fetchWithAuth(
         `${API_BASE}/api/support/contact-forms/${selectedMensaje.id}/reply`,
         {
@@ -116,7 +117,7 @@ export default function AdminMensajes() {
 
     setDeleting(true);
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const API_BASE = getBackendOrigin();
       const response = await fetchWithAuth(
         `${API_BASE}/api/support/contact-forms/${selectedMensaje.id}`,
         { method: "DELETE" }

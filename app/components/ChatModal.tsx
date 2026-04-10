@@ -3,8 +3,9 @@ import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiSend, FiX, FiMessageCircle, FiTrash2 } from "react-icons/fi";
 import { io, Socket } from "socket.io-client";
+import { getSocketBackendOrigin } from "@/lib/backendUrl";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getSocketBackendOrigin();
 
 interface Message {
   id: string;

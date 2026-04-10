@@ -12,8 +12,9 @@ import {
   FiAlertCircle,
 } from "react-icons/fi";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getBackendOrigin();
 
 interface GuideInfo {
   uid: string;

@@ -7,6 +7,7 @@ import { io, Socket } from "socket.io-client";
 import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import { getSocketBackendOrigin } from "@/lib/backendUrl";
 import DeletedBusinessModal from "./DeletedBusinessModal";
 
 interface Notification {
@@ -28,7 +29,7 @@ interface NotificationsPanelProps {
   userId?: string;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getSocketBackendOrigin();
 const API_BASE = "/api";
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";

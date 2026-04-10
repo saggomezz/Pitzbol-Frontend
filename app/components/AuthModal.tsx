@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { FiEye, FiEyeOff, FiLock, FiMail, FiX } from "react-icons/fi";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const API_BASE = getBackendOrigin();
 const BACKEND_URL = `${API_BASE}/api/auth`;
 
 const ALL_COUNTRIES = [

@@ -17,9 +17,10 @@ import {
   FiFilter,
   FiCreditCard,
 } from "react-icons/fi";
+import { getBackendOrigin } from "@/lib/backendUrl";
 import WalletModal from "@/app/components/WalletModal";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getBackendOrigin();
 
 interface BookingRequest {
   id: string;
@@ -41,9 +42,10 @@ type FilterStatus = "all" | "pendiente" | "confirmado" | "pagado" | "completado"
 
 const FILTER_CONFIG: Record<FilterStatus, { label: string; color: string; activeColor: string; icon?: React.ReactNode }> = {
   all: { label: "Todas", color: "bg-white text-gray-700 border-gray-300", activeColor: "bg-[#1A4D2E] text-white border-[#1A4D2E]" },
+  import { getBackendOrigin } from "@/lib/backendUrl";
   pendiente: { label: "Pendientes", color: "bg-white text-yellow-700 border-yellow-200", activeColor: "bg-yellow-500 text-white border-yellow-500" },
   confirmado: { label: "Confirmados", color: "bg-white text-blue-700 border-blue-200", activeColor: "bg-blue-500 text-white border-blue-500" },
-  pagado: { label: "Pagados", color: "bg-white text-green-700 border-green-200", activeColor: "bg-green-500 text-white border-green-500" },
+  const BACKEND_URL = getBackendOrigin();
   completado: { label: "Completados", color: "bg-white text-emerald-700 border-emerald-200", activeColor: "bg-emerald-600 text-white border-emerald-600" },
   cancelado: { label: "Cancelados", color: "bg-white text-red-700 border-red-200", activeColor: "bg-red-500 text-white border-red-500" },
 };

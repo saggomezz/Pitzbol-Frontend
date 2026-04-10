@@ -33,8 +33,9 @@ import AdminEditableImage from "@/app/components/AdminEditableImage";
 import AdminEditableLocation from "@/app/components/AdminEditableLocation";
 import AdminImageUploader from "@/app/components/AdminImageUploader";
 import "leaflet/dist/leaflet.css";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getBackendOrigin();
 
 const businessCategoryOptions = [
   { value: "Restaurante / Bar", label: "Restaurante / Bar" },
@@ -239,7 +240,7 @@ export default function AdminViewBusinessPage() {
     horario: false,
   });
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+  const BACKEND_URL = getBackendOrigin();
 
   const toggleSection = (section: SectionKey) => {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -265,6 +266,7 @@ export default function AdminViewBusinessPage() {
             Authorization: `Bearer ${token}`,
           },
           credentials: "include",
+        const BACKEND_URL = getBackendOrigin();
         });
 
         if (!response.ok) {

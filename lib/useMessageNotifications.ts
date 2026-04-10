@@ -1,17 +1,16 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { fetchWithAuth } from './fetchWithAuth';
+import { getBackendOrigin, getSocketBackendOrigin } from './backendUrl';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getSocketBackendOrigin();
 const API_BASE = "/api";
 const UNREAD_CACHE_TTL_MS = 60000;
 const UNREAD_CACHE_KEY_PREFIX = "pitzbol_unread_messages_";
 
-const normalizeBackendBase = (url: string) => url.replace(/\/+$/, '');
-
 const buildBackendApiUrl = (path: string) => {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${normalizeBackendBase(BACKEND_URL)}/api${normalizedPath}`;
+  return `${BACKEND_URL}/api${normalizedPath}`;
 };
 
 interface UnreadMessage {

@@ -11,8 +11,9 @@ import {
 import WalletModal from "@/app/components/WalletModal";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getBackendOrigin();
 
 interface BusinessData {
   id: string;

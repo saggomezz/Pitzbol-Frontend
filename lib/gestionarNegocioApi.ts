@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getBackendOrigin } from "./backendUrl";
 
 export async function gestionarNegocioPendiente({
   negocioId,
@@ -11,7 +12,7 @@ export async function gestionarNegocioPendiente({
   adminUid: string;
   motivoRechazo?: string;
 }) {
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+  const backendUrl = getBackendOrigin();
   const res = await axios.post(
     `${backendUrl}/api/admin/negocios/gestionar`,
     { negocioId, accion, adminUid, motivoRechazo },

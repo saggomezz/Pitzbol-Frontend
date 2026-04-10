@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { FiEdit2, FiX, FiCheck, FiLoader, FiMapPin } from "react-icons/fi";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
 interface EditableLocationProps {
   location: string;
@@ -75,7 +76,7 @@ export default function AdminEditableLocation({
   const lastGeocodeRef = useRef<string>("");
   const reverseGeocodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isManualMapChangeRef = useRef<boolean>(false);
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+  const BACKEND_URL = getBackendOrigin();
 
   const parseLocation = (rawLocation: string) => {
     const parts = (rawLocation || "")

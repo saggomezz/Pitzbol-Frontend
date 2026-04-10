@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import styles from "../styles/Negocios.module.css";
 import { fetchWithAuth } from "../../lib/fetchWithAuth";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
 
 export default function AdminHistorialSolicitudesPage() {
@@ -16,7 +17,7 @@ export default function AdminHistorialSolicitudesPage() {
   const fetchNegocios = async () => {
     setLoading(true);
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const API_BASE = getBackendOrigin();
       const res = await fetchWithAuth(`${API_BASE}/api/admin/negocios`);
       if (res.ok) {
         const data = await res.json();

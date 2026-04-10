@@ -8,8 +8,9 @@ import {
 } from "react-icons/fi";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
 import ChatModal from "@/app/components/ChatModal";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getBackendOrigin();
 
 interface PublicProfile {
   uid: string;

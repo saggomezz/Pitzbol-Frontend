@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { FaArrowLeft, FaCheckCircle, FaClock, FaHourglassHalf } from "react-icons/fa";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
 type GuideHistoryRecord = {
   uid: string;
@@ -65,7 +66,7 @@ export default function AdminHistorialGuiasPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+        const API_BASE = getBackendOrigin();
         const headers = { "Content-Type": "application/json" };
 
         const [resPendientes, resAprobados] = await Promise.all([
