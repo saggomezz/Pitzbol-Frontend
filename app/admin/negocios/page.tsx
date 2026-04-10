@@ -14,6 +14,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { io, Socket } from "socket.io-client";
+import { getBackendOrigin, getSocketBackendOrigin } from "@/lib/backendUrl";
 
 export interface Business {
   id: string;
@@ -118,7 +119,7 @@ const AdminNegociosPage = () => {
   const cargarNegocios = async () => {
     setLoading(true);
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const API_BASE = getBackendOrigin();
       const headers = { "Content-Type": "application/json" };
       // Registrados
       const resReg = await fetchWithAuth(`${API_BASE}/api/admin/negocios`, { headers });
@@ -145,7 +146,7 @@ const AdminNegociosPage = () => {
   }, []);
 
   useEffect(() => {
-    const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+    const API_BASE = getSocketBackendOrigin();
     const token = localStorage.getItem("pitzbol_token");
     if (!token) {
       return;

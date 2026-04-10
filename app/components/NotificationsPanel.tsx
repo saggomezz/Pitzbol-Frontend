@@ -7,6 +7,7 @@ import { io, Socket } from "socket.io-client";
 import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import { getSocketBackendOrigin } from "@/lib/backendUrl";
 import DeletedBusinessModal from "./DeletedBusinessModal";
 
 interface Notification {
@@ -28,7 +29,7 @@ interface NotificationsPanelProps {
   userId?: string;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getSocketBackendOrigin();
 const API_BASE = "/api";
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
@@ -224,7 +225,7 @@ const resolveDeletedBusinessFromBackend = async (notif: Notification): Promise<N
   }
 };
 
-const resolveBusinessNavigationFromBackend = async (notif: Notification): Promise<{
+const resolveBusinessNavigationFromBackend = async (notif: Notification, isAdmin: boolean): Promise<{
   deletedNotification?: Notification;
   targetLink?: string;
 }> => {
@@ -273,6 +274,18 @@ const resolveBusinessNavigationFromBackend = async (notif: Notification): Promis
       const realBusinessId = data.business?.id || businessId;
       const realBusinessName = data.business?.name || businessName;
       const source = (data.source || "").toLowerCase();
+
+      if (isAdmin) {
+        if (realBusinessId) {
+          return {
+            targetLink: `/admin/negocios/${realBusinessId}`,
+          };
+        }
+
+        return {
+          targetLink: "/admin/negocios",
+        };
+      }
 
       if (source === "activos" && realBusinessName) {
         return {
@@ -337,8 +350,11 @@ function resolveNotifLink(notif: Notification, userRole?: string): string | unde
   }
 
   // Para admins: siempre abrir detalle admin de solicitud por ID, independientemente del estatus
-  if (isAdmin && BUSINESS_NOTIF_TYPES.has(notif.tipo) && businessId) {
-    return `/admin/negocios/${businessId}`;
+  if (isAdmin && BUSINESS_NOTIF_TYPES.has(notif.tipo)) {
+    if (businessId) {
+      return `/admin/negocios/${businessId}`;
+    }
+    return "/admin/negocios";
   }
 
   // Reescribir URLs antiguas de preview para notificaciones de negocio
@@ -735,7 +751,9 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     };
   }, [userId, getNotificationBucketId]);
 
-  const marcarComoLeida = async (id: string) => {
+  const marcarComoLeida = async (id?: string) => {
+    if (!id || typeof id !== "string") return;
+
     const bucketId = getNotificationBucketId();
     if (!bucketId) return;
     // Usar la función centralizada de notificaciones
@@ -768,7 +786,9 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     }
   };
 
-  const eliminarNotificacion = async (id: string) => {
+  const eliminarNotificacion = async (id?: string) => {
+    if (!id || typeof id !== "string") return;
+
     const bucketId = getNotificationBucketId();
     if (!bucketId) return;
 
@@ -909,9 +929,12 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   };
 
   const handleNotificationClick = async (notif: Notification) => {
+    const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
+    const isAdmin = (user?.role || '').toString().toLowerCase() === 'admin';
+
     marcarComoLeida(notif.id);
 
-    const backendNavigation = await resolveBusinessNavigationFromBackend(notif);
+    const backendNavigation = await resolveBusinessNavigationFromBackend(notif, isAdmin);
     if (backendNavigation.deletedNotification) {
       const deletedNotif = backendNavigation.deletedNotification;
       setSelectedDeletedNotification(deletedNotif);
@@ -981,7 +1004,6 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     // Cerrar panel para el resto de notificaciones (incluye negocio_archivado)
     setIsOpen(false);
 
-    const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
     let targetLink = resolveNotifLink(notif, user?.role);
 
     if (notif.tipo === "negocio_aprobado") {

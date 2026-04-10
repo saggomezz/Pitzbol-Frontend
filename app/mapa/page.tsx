@@ -429,7 +429,6 @@ export default function MapaPage() {
                         const lugaresCSV = parsed;
                         
                         // Buscar lugares y fotos guardadas en Firestore (lugares creados manualmente + fotos)
-                        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
                         fetch(`/api/lugares?includeApprovedBusinesses=true`)
                             .then(response => {
                                 if (response.ok) {
@@ -461,6 +460,7 @@ export default function MapaPage() {
                                             ubicacion: lugarFirestore.ubicacion || '',
                                             latitud: lugarFirestore.latitud || '',
                                             longitud: lugarFirestore.longitud || ''
+                                        const BACKEND_URL = getBackendOrigin();
                                         });
                                         console.log(`✅ Lugar creado manualmente agregado: ${lugarFirestore.nombre}`);
                                     }

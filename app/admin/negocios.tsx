@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import styles from "../styles/Negocios.module.css";
 import { fetchWithAuth } from "../../lib/fetchWithAuth";
 import { enviarNotificacion } from "../../lib/notificaciones";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
 export default function AdminNegociosPage() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function AdminNegociosPage() {
 
   const fetchNegocios = async () => {
     setLoading(true);
-    const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+    const API_BASE = getBackendOrigin();
     let endpoint = `${API_BASE}/api/admin/negocios`;
     if (tab === 'pendientes') endpoint = `${API_BASE}/api/admin/negocios/pendientes`;
     if (tab === 'archivados') endpoint = `${API_BASE}/api/admin/negocios/archivados`;

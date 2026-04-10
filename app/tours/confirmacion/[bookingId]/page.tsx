@@ -10,8 +10,9 @@ import {
   FiMapPin,
   FiMessageSquare,
 } from "react-icons/fi";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getBackendOrigin();
 
 interface BookingData {
   id: string;

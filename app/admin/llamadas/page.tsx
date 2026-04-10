@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { fetchWithAuth } from "../../../lib/fetchWithAuth";
 import { FiPhone, FiArrowLeft, FiUser, FiCalendar, FiMessageSquare, FiAlertCircle } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
 type CallRequest = {
   id: string;
@@ -33,7 +34,7 @@ export default function AdminLlamadas() {
 
   const fetchLlamadas = async () => {
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const API_BASE = getBackendOrigin();
       
       const response = await fetchWithAuth(`${API_BASE}/api/support/call-requests`);
 
@@ -53,7 +54,7 @@ export default function AdminLlamadas() {
 
     setDeleting(true);
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const API_BASE = getBackendOrigin();
 
       console.log("\uD83D\uDDD1\uFE0F Eliminando solicitud:", selectedLlamada.id);
 

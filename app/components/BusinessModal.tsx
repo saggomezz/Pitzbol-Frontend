@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useTranslations } from 'next-intl';
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
 type WeekDayKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
@@ -43,7 +43,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { Timestamp } from "firebase/firestore";
 import { 
   FiX, FiBriefcase, FiMapPin, FiGlobe, FiImage, 
-  FiChevronLeft, FiCheckCircle, FiInfo, FiTag, FiUser, FiChevronDown
+  FiChevronLeft, FiCheckCircle, FiInfo, FiTag, FiUser, FiChevronDown, FiClock, FiPlus
 } from "react-icons/fi";
 import Image from "next/image";
 import imglogo from "./logoPitzbol.png";
@@ -77,6 +77,15 @@ const DAY_LABELS: { key: WeekDayKey; label: string }[] = [
   { key: "friday", label: "Viernes" },
   { key: "saturday", label: "Sábado" },
   { key: "sunday", label: "Domingo" },
+];
+
+const WEEKDAY_KEYS: WeekDayKey[] = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+
+const COST_OPTIONS: { label: string; value: string; accent: string }[] = [
+  { label: "Bajo", value: "$100 - $250 MXN", accent: "$" },
+  { label: "Medio", value: "$250 - $500 MXN", accent: "$$" },
+  { label: "Alto", value: "$500 - $900 MXN", accent: "$$$" },
+  { label: "Premium", value: "$900+ MXN", accent: "$$$$" },
 ];
 
 const IMAGE_PREVIEW_DB = "pitzbolBusinessDraftDb";
@@ -159,7 +168,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
 
   // Estado persistente para los datos del negocio, inicializando desde localStorage si existe
-  const [form, setForm] = useState(() => {
+  const [form, setForm] = useState<FormState>(() => {
     const saved = typeof window !== "undefined" ? localStorage.getItem("pitzbol_business_draft") : null;
     const defaults: FormState = {
       nombre: "",
@@ -222,6 +231,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [saveError, setSaveError] = useState("");
   const [logoError, setLogoError] = useState("");
   const [subcategoriaInput, setSubcategoriaInput] = useState("");
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduleSelection, setScheduleSelection] = useState<WeekDayKey[]>(WEEKDAY_KEYS);
+  const [bulkOpenTime, setBulkOpenTime] = useState("09:00");
+  const [bulkCloseTime, setBulkCloseTime] = useState("18:00");
   const [buscandoCoordenadas, setBuscandoCoordenadas] = useState(false);
   const [geocodeError, setGeocodeError] = useState("");
   const [previewCacheReady, setPreviewCacheReady] = useState(false);
@@ -246,8 +259,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const reverseGeocodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isManualMapChangeRef = useRef<boolean>(false);
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
   const IMAGES_CACHE_KEY = "pitzbol_business_images";
+
+  const getBusinessApiUrl = (path: string) => path;
 
   // Validaciones de imagen
   const allowedExts = [".jpg", ".jpeg", ".png", ".webp"];
@@ -381,13 +395,17 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     }
   }, [isOpen]);
 
-  // Permite cerrar el modal con Escape mientras esté abierto.
+  // Permite cerrar con Escape: primero el submodal de horario y luego el modal principal.
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
+      if (isScheduleModalOpen) {
+        setIsScheduleModalOpen(false);
+        return;
+      }
       onClose();
     };
 
@@ -395,7 +413,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, isScheduleModalOpen, onClose]);
 
   // Guardar automáticamente en localStorage cada vez que cambia form
   useEffect(() => {
@@ -597,7 +615,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       if (!response.ok) throw new Error('Error en reverse geocoding');
       
       const address = await response.json();
-      console.log('📍 Reverse Geocoding Response:', address);
+      console.log('Reverse Geocoding Response:', address);
       
       // Extraer información
       const calle = address.address?.road || '';
@@ -609,7 +627,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       
       // Solo actualizar calle si fue un cambio manual del marcador
       const isManualChange = isManualMapChangeRef.current;
-      console.log('🔄 Cambio manual del mapa:', isManualChange);
+      console.log('Cambio manual del mapa:', isManualChange);
       
       // Actualizar form con los datos extraídos
       setForm((f: FormState) => ({
@@ -629,7 +647,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
   // Calcular si debemos hacer geocoding automático
   const shouldAutoGeocode = useMemo(() => {
-    // Solo si tiene CALLE + (COLONIA O CÓDIGO POSTAL) y no tiene coordenadas
+    // Solo si tiene CALLE + (COLONIA O CODIGO POSTAL) y no tiene coordenadas
     return (
       form.calle.trim() !== "" &&
       (form.colonia.trim() !== "" || form.codigoPostal.trim() !== "") &&
@@ -704,7 +722,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   };
   
   const validateRFC = (valor: string) => {
-    const rfcRegex = /^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}$/i;
+    const rfcRegex = /^[A-Z&\u00D1]{3,4}[0-9]{6}[A-Z0-9]{3}$/i;
     return valor !== "" && rfcRegex.test(valor);
   };
   const validateCP = (valor: string) => {
@@ -735,6 +753,122 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         },
       },
     }));
+
+    if (horarioError) {
+      setHorarioError("");
+    }
+  };
+
+  const enabledScheduleCount = useMemo(
+    () => DAY_LABELS.filter((day) => form.horario[day.key].enabled).length,
+    [form.horario]
+  );
+
+  const activeSchedulePreview = useMemo(
+    () =>
+      DAY_LABELS
+        .filter((day) => form.horario[day.key].enabled)
+        .map((day) => ({
+          label: day.label,
+          open: form.horario[day.key].open,
+          close: form.horario[day.key].close,
+        })),
+    [form.horario]
+  );
+
+  const schedulePreviewCards = useMemo(
+    () => (activeSchedulePreview.length > 4 ? activeSchedulePreview.slice(0, 4) : activeSchedulePreview),
+    [activeSchedulePreview]
+  );
+
+  const scheduleOverflowText = useMemo(() => {
+    if (activeSchedulePreview.length <= 4) return "";
+    return activeSchedulePreview
+      .slice(4)
+      .map((item) => item.label)
+      .join(" • ");
+  }, [activeSchedulePreview]);
+
+  useEffect(() => {
+    if (!isScheduleModalOpen) return;
+
+    const enabledDays = DAY_LABELS.filter((day) => form.horario[day.key].enabled).map((day) => day.key);
+    const firstEnabled = enabledDays[0];
+
+    setScheduleSelection(enabledDays.length > 0 ? enabledDays : WEEKDAY_KEYS);
+    setBulkOpenTime(firstEnabled ? form.horario[firstEnabled].open : "09:00");
+    setBulkCloseTime(firstEnabled ? form.horario[firstEnabled].close : "18:00");
+  }, [isScheduleModalOpen, form.horario]);
+
+  const toggleScheduleSelection = (day: WeekDayKey) => {
+    setScheduleSelection((prev) =>
+      prev.includes(day) ? prev.filter((key) => key !== day) : [...prev, day]
+    );
+  };
+
+  const applyScheduleToSelection = () => {
+    if (!bulkOpenTime || !bulkCloseTime || bulkOpenTime >= bulkCloseTime || scheduleSelection.length === 0) {
+      setHorarioError("Selecciona al menos un día y un rango válido (apertura menor a cierre)");
+      return;
+    }
+
+    setForm((prev: FormState) => {
+      const nextSchedule: WeeklySchedule = { ...prev.horario };
+      scheduleSelection.forEach((day) => {
+        nextSchedule[day] = {
+          ...nextSchedule[day],
+          enabled: true,
+          open: bulkOpenTime,
+          close: bulkCloseTime,
+        };
+      });
+      return {
+        ...prev,
+        horario: nextSchedule,
+      };
+    });
+
+    setHorarioError("");
+  };
+
+  const applyPresetSchedule = (days: WeekDayKey[], open: string, close: string) => {
+    setScheduleSelection(days);
+    setBulkOpenTime(open);
+    setBulkCloseTime(close);
+
+    setForm((prev: FormState) => {
+      const nextSchedule: WeeklySchedule = { ...prev.horario };
+      days.forEach((day) => {
+        nextSchedule[day] = {
+          ...nextSchedule[day],
+          enabled: true,
+          open,
+          close,
+        };
+      });
+
+      return {
+        ...prev,
+        horario: nextSchedule,
+      };
+    });
+
+    setHorarioError("");
+  };
+
+  const disableScheduleDay = (day: WeekDayKey) => {
+    updateScheduleDay(day, { enabled: false });
+  };
+
+  const clearAllSchedules = () => {
+    setForm((prev: FormState) => ({
+      ...prev,
+      horario: createDefaultSchedule(),
+    }));
+    setScheduleSelection(WEEKDAY_KEYS);
+    setBulkOpenTime("09:00");
+    setBulkCloseTime("18:00");
+    setHorarioError("");
   };
 
   const addSubcategory = (rawValue: string) => {
@@ -788,7 +922,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       if (field === 'correo') body.email = value;
       if (field === 'telefono') body.phone = value;
 
-      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+      const res = await fetch(getBusinessApiUrl("/api/business/validate-uniqueness"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
@@ -862,7 +996,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     // Validar unicidad en el servidor
     setIsValidating(true);
     try {
-      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+      const res = await fetch(getBusinessApiUrl("/api/business/validate-uniqueness"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -948,7 +1082,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     } else {
       // Validar unicidad de ubicación
       try {
-        const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+        const res = await fetch(getBusinessApiUrl("/api/business/validate-uniqueness"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ location: ubicacionCompuesta })
@@ -1000,8 +1134,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       hasErrors = true;
     }
 
-    const enabledDays = Object.values(form.horario).filter((day) => day.enabled);
-    const hasInvalidSchedule = enabledDays.some((day) => !day.open || !day.close || day.open >= day.close);
+    const enabledDays = (Object.values(form.horario) as DaySchedule[]).filter((day: DaySchedule) => day.enabled);
+    const hasInvalidSchedule = enabledDays.some((day: DaySchedule) => !day.open || !day.close || day.open >= day.close);
     if (hasInvalidSchedule) {
       setHorarioError("Revisa el horario: la hora de apertura debe ser menor a la de cierre");
       hasErrors = true;
@@ -1010,7 +1144,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     if (hasErrors) return false;
 
     try {
-      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+      const res = await fetch(getBusinessApiUrl("/api/business/validate-uniqueness"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ website: form.sitioWeb })
@@ -1088,7 +1222,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
     // Validar unicidad de RFC y CP
     try {
-      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+      const res = await fetch(getBusinessApiUrl("/api/business/validate-uniqueness"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1124,7 +1258,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       // PRIORIDAD 1: Usar el usuario del hook (más confiable)
       if (pitzbolUser?.uid) {
         ownerUid = pitzbolUser.uid;
-        console.log("[BusinessModal] ✅ ownerUid obtenido del hook usePitzbolUser:", ownerUid);
+        console.log("[BusinessModal] [OK] ownerUid obtenido del hook usePitzbolUser:", ownerUid);
       } else {
         // PRIORIDAD 2: Si no está en el hook, intentar localStorage
         try {
@@ -1143,7 +1277,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       }
       
       if (!ownerUid) {
-        console.warn("[BusinessModal] ⚠️ No se pudo obtener ownerUid, la notificación no llegará al usuario");
+        console.warn("[BusinessModal] [WARN] No se pudo obtener ownerUid, la notificacion no llegara al usuario");
       }
 
       // Crear FormData para enviar archivos
@@ -1172,9 +1306,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       formData.append("subcategories", JSON.stringify(form.subcategorias));
       if (ownerUid) {
         formData.append("ownerUid", ownerUid);
-        console.log("[BusinessModal] ✅ ownerUid agregado al FormData:", ownerUid);
+        console.log("[BusinessModal] [OK] ownerUid agregado al FormData:", ownerUid);
       } else {
-        console.log("[BusinessModal] ⚠️ No se agregó ownerUid porque es undefined");
+        console.log("[BusinessModal] [WARN] No se agrego ownerUid porque es undefined");
       }
       
       // Agregar logo - convertir Data URL a File si es necesario
@@ -1218,7 +1352,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         galeria: (files.galeria.filter(f => f).length + imagePreview.galeriaUrls.filter(u => u).length) + " archivos"
       });
       
-      const res = await fetch("http://localhost:3001/api/business/register-with-images", {
+      const res = await fetch(getBusinessApiUrl("/api/business/register-with-images"), {
         method: "POST",
         body: formData
       });
@@ -1261,7 +1395,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   if (!isOpen) return null;
 
   const inputClass = "w-full px-6 py-2.5 bg-transparent border border-[#1A4D2E]/20 rounded-full outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm";
-  const labelClass = "text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-2 block";
+  const labelClass = "text-[10px] uppercase tracking-widest text-[#4F6757] font-black ml-4 mb-2 block";
   const cardClass = "bg-[#F6F0E6]/20 p-6 rounded-[35px] border border-[#1A4D2E]/10 transition-all duration-300 hover:shadow-[0_0_20px_rgba(13,96,30,0.1)] hover:border-[#0D601E]/80";
   
   const btnPrimary = "w-full bg-[#0D601E] text-white py-3 rounded-full font-bold uppercase tracking-widest text-xs shadow-lg hover:bg-[#094d18] transition-all active:scale-95";
@@ -1277,6 +1411,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
             ? "max-w-[900px] max-h-[92vh] overflow-hidden p-4 md:p-6"
             : step === 2
             ? "max-w-[840px] max-h-[96vh] overflow-hidden p-3 md:p-5"
+            : step === 3
+            ? "max-w-[850px] h-[calc(100vh-1.25rem)] md:h-[calc(100vh-2rem)] max-h-[calc(100vh-1.25rem)] overflow-hidden p-4 md:p-6"
             : "max-w-[850px] min-h-[500px] max-h-[90vh] overflow-hidden p-6 md:p-8"
         }`}
       >
@@ -1298,7 +1434,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   {saveError}
                 </div>
               )}
-              <div className={`text-center ${step === 1 ? "mb-5" : step === 2 ? "mb-4" : "mb-6"}`}>
+              <div className={`text-center ${step === 1 ? "mb-5" : step === 2 ? "mb-4" : step === 3 ? "mb-2.5" : "mb-6"}`}>
                 <h2 className={`${step === 1 ? "text-[22px] md:text-[28px]" : "text-[28px] md:text-[36px]"} text-[#8B0000] font-black uppercase leading-none`} style={{ fontFamily: 'var(--font-jockey)' }}>
                   {step === 0
                     ? t('step1Title')
@@ -1451,7 +1587,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               latitud={form.latitud}
                               longitud={form.longitud}
                               onLocationChange={(lat, lng) => {
-                                console.log("📍 MinimapaLocationPicker - Coordenadas actualizadas:", { lat, lng });
+                                console.log("MinimapaLocationPicker - Coordenadas actualizadas:", { lat, lng });
                                 // Marcar que este cambio SÍ es manual (usuario movió el marcador)
                                 isManualMapChangeRef.current = true;
                                 setForm((f: FormState) => ({
@@ -1515,7 +1651,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               Calcular coordenadas en el mapa
                             </button>
                             {buscandoCoordenadas && (
-                              <span className="text-[11px] text-[#769C7B] italic">Buscando coordenadas…</span>
+                              <span className="text-[11px] text-[#769C7B] italic">Buscando coordenadas...</span>
                             )}
                           </div>
                           {geocodeError && (
@@ -1625,7 +1761,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="relative pb-2">
                             <label className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-1">
-                              Latitud {form.latitud && <span className="text-green-600 text-[9px]">✓</span>}
+                              Latitud {form.latitud && <span className="text-green-600 text-[9px]">OK</span>}
                             </label>
                             <input
                               placeholder="Ej: 20.6597"
@@ -1636,7 +1772,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           </div>
                           <div className="relative pb-2">
                             <label className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-1">
-                              Longitud {form.longitud && <span className="text-green-600 text-[9px]">✓</span>}
+                              Longitud {form.longitud && <span className="text-green-600 text-[9px]">OK</span>}
                             </label>
                             <input
                               placeholder="Ej: -103.3496"
@@ -1731,121 +1867,125 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 )}
 
                 {step === 3 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                    <div className={cardClass}>
-                      <div className="flex items-center gap-2 mb-4 text-[#0D601E]">
-                        <FiInfo size={20} />
-                        <h4 className="font-bold uppercase text-xs tracking-tighter">Información complementaria</h4>
-                      </div>
-                      <div className="space-y-4">
-                        <div>
-                          <label className={labelClass}>Descripción del Negocio</label>
-                          <textarea
-                            placeholder="Describe tu negocio, servicios y especialidades"
-                            className={`w-full px-4 py-3 bg-white/70 border rounded-2xl outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm resize-none h-[120px] ${
-                              descripcionError ? "border-red-500 bg-red-50/50" : "border-[#1A4D2E]/20"
-                            }`}
-                            value={form.descripcion}
-                            onChange={e => {
-                              const nextValue = e.target.value;
-                              setForm((f: FormState) => ({ ...f, descripcion: nextValue }));
-                              if (nextValue.trim()) setDescripcionError("");
-                            }}
-                            maxLength={500}
-                          />
-                          <div className="flex items-center justify-between mt-1.5">
-                            <p className="text-[10px] text-red-500 italic min-h-[12px]">{descripcionError}</p>
-                            <p className="text-[10px] text-[#769C7B]">{form.descripcion.length}/500</p>
-                          </div>
-                        </div>
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="h-full min-h-0 grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0.25 md:gap-0.5"
+                    style={{ height: "100%" }}
+                  >
+                    <div className="flex items-center gap-2 px-1 text-[#1E3A29] shrink-0">
+                      <FiInfo size={18} className="shrink-0 text-[#2E5A3D]" />
+                      <h4 className="font-black uppercase text-[11px] md:text-xs tracking-tighter">Información complementaria</h4>
+                    </div>
 
-                        <div className="relative pb-2">
-                          <label className={labelClass}>{t('websiteSocial')}</label>
-                          <input
-                            placeholder="https://tunegocio.com"
-                            className={inputClass + " pl-11" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")}
-                            value={form.sitioWeb}
-                            onChange={e => {
-                              setForm((f: FormState) => ({ ...f, sitioWeb: e.target.value }));
-                              if (!e.target.value.trim()) setSitioWebError("El sitio web es obligatorio");
-                              else if (!validateURL(e.target.value)) setSitioWebError("URL no válida");
-                              else setSitioWebError("");
-                            }}
-                            onBlur={e => {
-                              if (!e.target.value.trim()) setSitioWebError("El sitio web o redes sociales son obligatorios");
-                              else if (!validateURL(e.target.value)) setSitioWebError("URL no válida. Ej: https://facebook.com/tunegocio");
-                              else setSitioWebError("");
-                            }}
-                          />
-                          <FiGlobe className="absolute left-[22px] top-[39px] text-[#769C7B] pointer-events-none" size={16} />
-                          {sitioWebError && <p className="text-[10px] text-red-500 mt-1 ml-1 italic">{sitioWebError}</p>}
-                        </div>
-
-                        <div>
-                          <label className={labelClass}>Horario (opcional)</label>
-                          <div className="border border-[#1A4D2E]/15 rounded-2xl p-3 space-y-2 bg-white/60">
-                            {DAY_LABELS.map((day) => (
-                              <div key={day.key} className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
-                                <label className="flex items-center gap-2 text-sm text-[#1A4D2E] font-semibold">
-                                  <input
-                                    type="checkbox"
-                                    checked={form.horario[day.key].enabled}
-                                    onChange={(e) => updateScheduleDay(day.key, { enabled: e.target.checked })}
-                                    className="accent-[#0D601E]"
-                                  />
-                                  {day.label}
-                                </label>
-                                <input
-                                  type="time"
-                                  value={form.horario[day.key].open}
-                                  disabled={!form.horario[day.key].enabled}
-                                  onChange={(e) => updateScheduleDay(day.key, { open: e.target.value })}
-                                  className="px-3 py-1.5 rounded-xl border border-[#1A4D2E]/20 text-sm disabled:bg-gray-100"
-                                />
-                                <input
-                                  type="time"
-                                  value={form.horario[day.key].close}
-                                  disabled={!form.horario[day.key].enabled}
-                                  onChange={(e) => updateScheduleDay(day.key, { close: e.target.value })}
-                                  className="px-3 py-1.5 rounded-xl border border-[#1A4D2E]/20 text-sm disabled:bg-gray-100"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                          {horarioError && <p className="text-[10px] text-red-500 mt-1 italic">{horarioError}</p>}
-                        </div>
-
-                        <div>
-                          <label className={labelClass}>Costo Estimado (opcional)</label>
-                          <input
-                            placeholder="Ej. $200 - $500 MXN"
-                            className={inputClass}
-                            value={form.costoEstimado}
-                            onChange={(e) => setForm((f: FormState) => ({ ...f, costoEstimado: e.target.value }))}
-                          />
-                        </div>
-
-                        <div>
-                          <label className={labelClass}>Tiempo sugerido (opcional)</label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              placeholder="Ej. 1.5"
-                              className={inputClass + " pr-20"}
-                              value={form.tiempoSugerido}
-                              onChange={(e) => setForm((f: FormState) => ({ ...f, tiempoSugerido: e.target.value }))}
+                    <div className={cardClass + " !bg-[#FBFAF7] !border-[#D6E0D7] hover:!border-[#D6E0D7] hover:!shadow-none !p-2.5 md:!p-3 min-h-0 overflow-hidden flex flex-col"}>
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-0.75 lg:gap-2 items-stretch flex-1 min-h-0">
+                        <div className="lg:col-span-6 space-y-0.75 md:space-y-1">
+                          <div>
+                            <label className={labelClass + " mb-1"}>Descripción del Negocio</label>
+                            <textarea
+                              placeholder="Describe tu negocio, servicios y especialidades"
+                              className={`w-full px-4 py-2 bg-white/70 border rounded-2xl outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-[12px] md:text-sm resize-none h-[92px] md:h-[18vh] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
+                                descripcionError ? "border-red-500 bg-red-50/50" : "border-[#1A4D2E]/20"
+                              }`}
+                              value={form.descripcion}
+                              onChange={e => {
+                                const nextValue = e.target.value;
+                                setForm((f: FormState) => ({ ...f, descripcion: nextValue }));
+                                if (nextValue.trim()) setDescripcionError("");
+                              }}
+                              maxLength={500}
                             />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#769C7B] font-bold">horas</span>
+                            <div className="flex items-center justify-between mt-1">
+                              <p className="text-[10px] text-red-500 italic min-h-[12px]">{descripcionError}</p>
+                              <p className="text-[10px] text-[#769C7B]">{form.descripcion.length}/500</p>
+                            </div>
+                          </div>
+
+                          <div className="relative pb-0">
+                            <label className={labelClass + " mb-1"}>{t('websiteSocial')}</label>
+                            <input
+                              placeholder="https://tunegocio.com"
+                              className={inputClass + " pl-11" + (sitioWebError ? " border-red-500 bg-red-50/50" : "")}
+                              value={form.sitioWeb}
+                              onChange={e => {
+                                setForm((f: FormState) => ({ ...f, sitioWeb: e.target.value }));
+                                if (!e.target.value.trim()) setSitioWebError("El sitio web es obligatorio");
+                                else if (!validateURL(e.target.value)) setSitioWebError("URL no válida");
+                                else setSitioWebError("");
+                              }}
+                              onBlur={e => {
+                                if (!e.target.value.trim()) setSitioWebError("El sitio web o redes sociales son obligatorios");
+                                else if (!validateURL(e.target.value)) setSitioWebError("URL no válida. Ej: https://facebook.com/tunegocio");
+                                else setSitioWebError("");
+                              }}
+                            />
+                            <FiGlobe className="absolute left-[22px] top-[39px] text-[#769C7B] pointer-events-none" size={16} />
+                            {sitioWebError && <p className="text-[10px] text-red-500 mt-1 ml-1 italic">{sitioWebError}</p>}
                           </div>
                         </div>
 
-                        <div>
-                          <label className={labelClass}>Subcategorías (palabras clave)</label>
-                          <div className="border border-[#1A4D2E]/15 rounded-2xl p-3 bg-white/60">
+                        <div className="lg:col-span-6 space-y-0.75 md:space-y-1 flex flex-col">
+                          <div>
+                            <label className={labelClass + " mb-1"}>Rango estimado (opcional)</label>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {COST_OPTIONS.map((option) => {
+                                const isSelected = form.costoEstimado === option.value;
+                                return (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() =>
+                                      setForm((f: FormState) => ({
+                                        ...f,
+                                        costoEstimado: isSelected ? "" : option.value,
+                                      }))
+                                    }
+                                    className={`flex min-h-[48px] flex-col items-center justify-center rounded-2xl border px-3 py-1.5 text-center transition-all active:scale-[0.98] ${
+                                      isSelected
+                                        ? "border-[#0D601E] bg-[#0D601E] text-white shadow-[0_8px_18px_rgba(13,96,30,0.18)]"
+                                        : "border-[#C9D4CB] bg-white text-[#1F3528] hover:border-[#8BA592] hover:bg-[#FAFCFA]"
+                                    }`}
+                                  >
+                                    <span className={`w-full text-center text-[10px] font-black uppercase tracking-widest ${isSelected ? "text-white/85" : "text-[#5C7564]"}`}>
+                                      {option.label}
+                                    </span>
+                                    <span className="mt-0.5 w-full text-center text-[13px] font-black leading-none">{option.accent}</span>
+                                    <span className={`mt-0.5 w-full text-center text-[10px] font-semibold ${isSelected ? "text-white/85" : "text-[#5C7564]"}`}>
+                                      {option.value}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <p className="mt-1 text-[10px] text-[#5C7564] italic text-center">
+                              {form.costoEstimado ? `Seleccionado: ${form.costoEstimado}` : "Toca un rango para definir el costo estimado"}
+                            </p>
+                          </div>
+
+                          <div className="mt-0.5">
+                            <label className={labelClass + " mb-1"}>Tiempo sugerido (opcional)</label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                placeholder="Ej. 1.5"
+                                className={inputClass + " pr-20"}
+                                value={form.tiempoSugerido}
+                                onChange={(e) => setForm((f: FormState) => ({ ...f, tiempoSugerido: e.target.value }))}
+                              />
+                              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#5C7564] font-bold">horas</span>
+                            </div>
+                          </div>
+
+                        </div>
+
+                        <div className="lg:col-span-6 mt-0.25 md:mt-0.5 h-full flex flex-col">
+                          <label className={labelClass + " mb-1"}>Subcategorías (palabras clave)</label>
+                          <div className="border border-[#C9D4CB] rounded-2xl p-1.5 bg-white min-h-[96px] md:min-h-[22vh] flex flex-col">
                             <input
-                              placeholder="Escribe una subcategoría y presiona Enter"
+                              placeholder="Escribe subcategoría y presiona Enter"
                               className={inputClass}
                               value={subcategoriaInput}
                               onChange={(e) => setSubcategoriaInput(e.target.value)}
@@ -1859,28 +1999,91 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                 if (subcategoriaInput.trim()) addSubcategory(subcategoriaInput);
                               }}
                             />
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {form.subcategorias.map((sub) => (
-                                <span key={sub} className="inline-flex items-center gap-1 bg-[#0D601E]/10 text-[#0D601E] px-3 py-1 rounded-full text-xs font-bold">
+                            <div className="mt-1.5 flex flex-wrap gap-1.5 min-h-[36px] md:min-h-[15vh]">
+                              {form.subcategorias.slice(0, 6).map((sub) => (
+                                <span key={sub} className="inline-flex items-center gap-1 bg-[#EEF4EF] text-[#245038] border border-[#C9D4CB] px-2.5 py-1 rounded-full text-[11px] font-bold">
                                   {sub}
                                   <button type="button" onClick={() => removeSubcategory(sub)} className="text-[#8B0000] font-black">x</button>
                                 </span>
                               ))}
+                              {form.subcategorias.length > 6 && (
+                                <span className="inline-flex items-center bg-[#EEF4EF] text-[#245038] border border-[#C9D4CB] px-2.5 py-1 rounded-full text-[11px] font-bold">
+                                  +{form.subcategorias.length - 6}
+                                </span>
+                              )}
                             </div>
                           </div>
                           {subcategoriasError && <p className="text-[10px] text-red-500 mt-1 italic">{subcategoriasError}</p>}
                         </div>
+
+                        <div className="lg:col-span-6 mt-0.25 md:mt-0.5 shrink-0 h-full flex flex-col">
+                          <label className={labelClass + " mb-1"}>Horario (opcional)</label>
+                          <div className="border border-[#C9D4CB] rounded-2xl p-1 bg-white min-h-[96px] md:min-h-[24vh] flex flex-col">
+                            <div className="flex h-full flex-col gap-2">
+                              <div className="min-w-0 flex-1 flex flex-col">
+                                <div className="flex items-center gap-2 text-[#1F3528]">
+                                  <FiClock size={13} className="text-[#2E5A3D]" />
+                                  <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-wide">
+                                    {enabledScheduleCount > 0 ? `${enabledScheduleCount} día(s) configurado(s)` : "Sin horario configurado"}
+                                  </p>
+                                </div>
+
+                                {activeSchedulePreview.length > 0 && (
+                                  <div
+                                    className={`grid gap-1 mt-1 flex-1 min-h-0 ${
+                                      schedulePreviewCards.length === 4
+                                        ? "grid-cols-2 grid-rows-2 auto-rows-fr content-center"
+                                        : "grid-cols-1 sm:grid-cols-2 place-content-center"
+                                    }`}
+                                  >
+                                    {schedulePreviewCards.map((item) => {
+                                      const compactLabel = item.label.slice(0, 3);
+                                      const compactOpen = item.open.replace(":00", "");
+                                      const compactClose = item.close.replace(":00", "");
+                                      return (
+                                        <div key={item.label} className="rounded-lg border border-[#BFD0C2] bg-[#F8FBF8] px-2 py-1 min-w-0 h-full flex items-center justify-center">
+                                          <p className="text-[10px] md:text-[11px] font-black text-[#245038] leading-tight truncate uppercase text-center">
+                                            {compactLabel} {compactOpen}-{compactClose}
+                                          </p>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                {scheduleOverflowText && (
+                                  <p className="mt-1 text-[10px] font-semibold text-[#5C7564] italic leading-tight truncate text-center">
+                                    Más días: {scheduleOverflowText}
+                                  </p>
+                                )}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setIsScheduleModalOpen(true)}
+                                className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 rounded-xl border border-[#0A4D19] bg-[#0D601E] text-white text-[11px] md:text-[12px] font-black uppercase tracking-wide hover:bg-[#094d18] transition-all active:scale-95 shadow-[0_6px_16px_rgba(13,96,30,0.22)] mt-1"
+                              >
+                                <FiPlus size={13} />
+                                Agregar Horario
+                              </button>
+                            </div>
+                          </div>
+                          {horarioError && <p className="text-[10px] text-red-500 mt-1 italic">{horarioError}</p>}
+                        </div>
                       </div>
                     </div>
-                    <button
-                      onClick={async () => {
-                        const isValid = await validateStep4();
-                        if (isValid) setStep(4);
-                      }}
-                      className={btnPrimary}
-                    >
-                      Siguiente: Información Fiscal
-                    </button>
+
+                    <div className="shrink-0 pt-0 pb-0">
+                      <button
+                        onClick={async () => {
+                          const isValid = await validateStep4();
+                          if (isValid) setStep(4);
+                        }}
+                        className={btnPrimary + " shadow-[0_10px_24px_rgba(13,96,30,0.16)] text-[11px] md:text-xs py-2"}
+                      >
+                        Siguiente: Información Fiscal
+                      </button>
+                    </div>
                   </motion.div>
                 )}
 
@@ -1963,8 +2166,150 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
           )}
         </AnimatePresence>
       </motion.div>
+
+      <AnimatePresence>
+        {isScheduleModalOpen && (
+          <motion.div
+            className="absolute inset-0 z-[330] flex items-center justify-center p-3 sm:p-5 bg-black/45 backdrop-blur-[1px]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              className="w-full max-w-[700px] rounded-[28px] bg-[#F8F4EC] border border-[#1A4D2E]/20 shadow-2xl p-4 sm:p-6"
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-[#8B0000] text-xl sm:text-2xl font-black uppercase leading-none" style={{ fontFamily: 'var(--font-jockey)' }}>
+                    Horario del negocio
+                  </h3>
+                  <p className="text-[#1A4D2E] italic text-xs sm:text-sm mt-1">Configuralo rapido por bloques y ajusta solo lo necesario.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsScheduleModalOpen(false)}
+                  className="text-gray-400 hover:text-red-500 transition-all"
+                  aria-label="Cerrar modal de horario"
+                >
+                  <FiX size={24} />
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-[#1A4D2E]/15 bg-white/90 p-3 sm:p-4 space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyPresetSchedule(WEEKDAY_KEYS, "09:00", "18:00")}
+                    className="px-3 py-1.5 rounded-full border border-[#0D601E]/20 bg-[#0D601E]/10 text-[#0D601E] text-[11px] font-bold uppercase tracking-wide hover:bg-[#0D601E]/20 transition-all"
+                  >
+                    Lunes a Viernes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPresetSchedule(DAY_LABELS.map((day) => day.key), "10:00", "22:00")}
+                    className="px-3 py-1.5 rounded-full border border-[#0D601E]/20 bg-[#0D601E]/10 text-[#0D601E] text-[11px] font-bold uppercase tracking-wide hover:bg-[#0D601E]/20 transition-all"
+                  >
+                    Todos los dias
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearAllSchedules}
+                    className="px-3 py-1.5 rounded-full border border-[#8B0000]/20 bg-[#8B0000]/10 text-[#8B0000] text-[11px] font-bold uppercase tracking-wide hover:bg-[#8B0000]/20 transition-all"
+                  >
+                    Limpiar
+                  </button>
+                </div>
+
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide font-bold text-[#769C7B] mb-2">Selecciona dias</p>
+                  <div className="flex flex-wrap gap-2">
+                    {DAY_LABELS.map((day) => {
+                      const isSelected = scheduleSelection.includes(day.key);
+                      return (
+                        <button
+                          key={day.key}
+                          type="button"
+                          onClick={() => toggleScheduleSelection(day.key)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wide border transition-all ${
+                            isSelected
+                              ? "bg-[#0D601E] text-white border-[#0D601E]"
+                              : "bg-white text-[#1A4D2E] border-[#1A4D2E]/20 hover:bg-[#F3EEE4]"
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                  <input
+                    type="time"
+                    value={bulkOpenTime}
+                    onChange={(e) => setBulkOpenTime(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#1A4D2E]/20 text-sm font-semibold text-[#1A4D2E] bg-white"
+                  />
+                  <input
+                    type="time"
+                    value={bulkCloseTime}
+                    onChange={(e) => setBulkCloseTime(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#1A4D2E]/20 text-sm font-semibold text-[#1A4D2E] bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyScheduleToSelection}
+                    className="px-4 py-2.5 rounded-full bg-[#0D601E] text-white text-xs font-black uppercase tracking-wide hover:bg-[#094d18] transition-all active:scale-95"
+                  >
+                    Aplicar
+                  </button>
+                </div>
+                {enabledScheduleCount > 0 && (
+                  <div className="rounded-2xl border border-[#1A4D2E]/15 bg-[#FDFBF7] p-3 sm:p-4">
+                    <p className="text-[11px] uppercase tracking-wide font-bold text-[#769C7B] mb-2">Dias activos</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {DAY_LABELS.filter((day) => form.horario[day.key].enabled).map((day) => (
+                        <div
+                          key={day.key}
+                          className="flex items-center justify-between gap-2 rounded-xl border border-[#1A4D2E]/15 bg-white px-3 py-2"
+                        >
+                          <div>
+                            <p className="text-[11px] uppercase tracking-wide font-bold text-[#769C7B]">{day.label}</p>
+                            <p className="text-sm font-bold text-[#1A4D2E]">{form.horario[day.key].open} - {form.horario[day.key].close}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => disableScheduleDay(day.key)}
+                            className="text-[11px] px-2.5 py-1 rounded-full border border-[#8B0000]/25 text-[#8B0000] font-bold hover:bg-[#8B0000]/10 transition-all"
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-1 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsScheduleModalOpen(false)}
+                    className="px-5 py-2.5 rounded-full bg-[#0D601E] text-white text-xs font-black uppercase tracking-wide hover:bg-[#094d18] transition-all active:scale-95"
+                  >
+                    Listo
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 export default BusinessModal;
+

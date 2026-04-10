@@ -5,6 +5,7 @@ import styles from "../styles/Negocios.module.css";
 import { fetchWithAuth } from "../../lib/fetchWithAuth";
 import { enviarNotificacion } from "../../lib/notificaciones";
 import { gestionarNegocioPendiente } from "../../lib/gestionarNegocioApi";
+import { getBackendOrigin, getSocketBackendOrigin } from "@/lib/backendUrl";
 
 export default function AdminNegociosPendientesPage() {
   const [negocios, setNegocios] = useState<any[]>([]);
@@ -22,7 +23,7 @@ export default function AdminNegociosPendientesPage() {
     if (!token) {
       return;
     }
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+    const BACKEND_URL = getSocketBackendOrigin();
     
     socketRef.current = io(BACKEND_URL, {
       auth: {
@@ -61,7 +62,7 @@ export default function AdminNegociosPendientesPage() {
 
   const fetchNegocios = async () => {
     setLoading(true);
-    const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+    const API_BASE = getBackendOrigin();
     try {
       const res = await fetchWithAuth(`${API_BASE}/api/admin/negocios/pendientes`, {
         headers: { "Content-Type": "application/json" },

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FiArrowRight, FiMail, FiRefreshCw, FiUnlock } from "react-icons/fi";
 import axios from "axios";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -47,7 +48,7 @@ export default function ForgotPasswordPage() {
     try {
       // 3. LLAMADA AL BACKEND
       // Nota: Asegúrate de que el puerto 3001 sea el de tu servidor Express
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const API_BASE = getBackendOrigin();
       const response = await axios.post(
         `${API_BASE}/api/auth/recover-password`,
         { email },

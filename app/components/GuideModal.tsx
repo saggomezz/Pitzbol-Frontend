@@ -146,7 +146,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
       setVerifyingOCR(true);
 
       try {
-        const response = await fetch('http://localhost:3001/api/ocr/verify-ine', {
+        const response = await fetch('/api/ocr/verify-ine', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           // Enviamos el tipo al backend para que sepa qué validar
@@ -208,7 +208,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
 
       try {
         setVerifyingFace(true);
-        const bioRes = await fetch('http://localhost:3001/api/ocr/compare-biometry', {
+        const bioRes = await fetch('/api/ocr/compare-biometry', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ faceBase64: imgRostro, ineBase64: imgFrenteBase64 })
@@ -228,7 +228,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
 
       console.log("📤 Enviando datos de registro de guía...");
       
-      const response = await fetch('http://localhost:3001/api/guides/register', {
+      const response = await fetch('/api/guides/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

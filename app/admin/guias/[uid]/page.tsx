@@ -24,9 +24,9 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import Image from "next/image";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getBackendOrigin();
 
 interface GuideData {
   id: string;

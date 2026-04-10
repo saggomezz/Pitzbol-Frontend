@@ -2,6 +2,7 @@
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { FiUpload, FiX, FiAlertCircle, FiCheck } from "react-icons/fi";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/webp'];
@@ -139,7 +140,7 @@ export default function ProfilePhotoUpload({ userId, onUploadSuccess, currentPho
         setLoading(false);
       });
 
-      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const API_BASE = getBackendOrigin();
       xhr.open('POST', `${API_BASE}/api/perfil/foto-perfil`);
       xhr.withCredentials = true;
       const bearer = localStorage.getItem('pitzbol_token');

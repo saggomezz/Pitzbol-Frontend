@@ -11,6 +11,7 @@ import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
 import { useFavoritesSync } from "@/lib/favoritesApi";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
 import WalletModal from "@/app/components/WalletModal";
 
@@ -349,7 +350,7 @@ export default function PerfilDetallado() {
 
     try {
       const token = localStorage.getItem("pitzbol_token");
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const backendUrl = getBackendOrigin();
       const telefonoCompleto = `${ladaTemp} ${numeroTemp}`;
 
       if (!token) {
@@ -427,7 +428,7 @@ export default function PerfilDetallado() {
 
     try {
       const token = localStorage.getItem("pitzbol_token");
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const backendUrl = getBackendOrigin();
 
       if (!token) {
         throw new Error(t('noSession'));
@@ -510,7 +511,7 @@ export default function PerfilDetallado() {
 
     try {
       const token = localStorage.getItem("pitzbol_token");
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const backendUrl = getBackendOrigin();
 
       if (!token) {
         throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
@@ -591,7 +592,7 @@ export default function PerfilDetallado() {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
 
     try {
-      const response = await fetch('http://localhost:3001/api/guides/update', {
+      const response = await fetch('/api/guides/update', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -671,7 +672,7 @@ export default function PerfilDetallado() {
 
     try {
       const token = localStorage.getItem("pitzbol_token");
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const backendUrl = getBackendOrigin();
       
       if (!token) {
         throw new Error(t('noSession'));

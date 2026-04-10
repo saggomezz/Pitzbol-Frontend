@@ -5,8 +5,9 @@ import { useTranslations } from 'next-intl';
 import { FiSearch, FiFilter } from "react-icons/fi";
 import GuideCard from "../components/GuideCard";
 import styles from "./tours.module.css";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = getBackendOrigin();
 
 interface Guide {
   uid: string;
