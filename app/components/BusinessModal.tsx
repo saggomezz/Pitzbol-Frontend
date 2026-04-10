@@ -259,8 +259,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const reverseGeocodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isManualMapChangeRef = useRef<boolean>(false);
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
   const IMAGES_CACHE_KEY = "pitzbol_business_images";
+
+  const getBusinessApiUrl = (path: string) => path;
 
   // Validaciones de imagen
   const allowedExts = [".jpg", ".jpeg", ".png", ".webp"];
@@ -921,7 +922,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       if (field === 'correo') body.email = value;
       if (field === 'telefono') body.phone = value;
 
-      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+      const res = await fetch(getBusinessApiUrl("/api/business/validate-uniqueness"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
@@ -995,7 +996,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     // Validar unicidad en el servidor
     setIsValidating(true);
     try {
-      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+      const res = await fetch(getBusinessApiUrl("/api/business/validate-uniqueness"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1081,7 +1082,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     } else {
       // Validar unicidad de ubicación
       try {
-        const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+        const res = await fetch(getBusinessApiUrl("/api/business/validate-uniqueness"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ location: ubicacionCompuesta })
@@ -1143,7 +1144,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     if (hasErrors) return false;
 
     try {
-      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+      const res = await fetch(getBusinessApiUrl("/api/business/validate-uniqueness"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ website: form.sitioWeb })
@@ -1221,7 +1222,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
     // Validar unicidad de RFC y CP
     try {
-      const res = await fetch("http://localhost:3001/api/business/validate-uniqueness", {
+      const res = await fetch(getBusinessApiUrl("/api/business/validate-uniqueness"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1351,7 +1352,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         galeria: (files.galeria.filter(f => f).length + imagePreview.galeriaUrls.filter(u => u).length) + " archivos"
       });
       
-      const res = await fetch("http://localhost:3001/api/business/register-with-images", {
+      const res = await fetch(getBusinessApiUrl("/api/business/register-with-images"), {
         method: "POST",
         body: formData
       });
