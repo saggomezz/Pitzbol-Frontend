@@ -266,7 +266,6 @@ export default function AdminViewBusinessPage() {
             Authorization: `Bearer ${token}`,
           },
           credentials: "include",
-        const BACKEND_URL = getBackendOrigin();
         });
 
         if (!response.ok) {
