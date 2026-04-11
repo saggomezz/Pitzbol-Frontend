@@ -10,6 +10,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthModal from "./components/AuthModal";
 import BecomeGuideFlow from "./components/BecomeGuideFlow";
+import InstallPWAPrompt from "./components/InstallPWAPrompt";
 const PublishBusinessFlow = dynamic(() => import("./components/PublishBusinessFlow"), { ssr: false });
 
 declare global {
@@ -139,6 +140,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
 
             <Footer />
+
+            <InstallPWAPrompt />
 
             <AnimatePresence>
               {isAuthOpen && (
