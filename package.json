@@ -10,6 +10,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@stripe/react-stripe-js": "^6.1.0",
     "@stripe/stripe-js": "^9.1.0",
     "@tensorflow/tfjs": "^4.22.0",
@@ -45,10 +46,13 @@
     "@types/react-dom": "^19.2.3",
     "baseline-browser-mapping": "^2.10.16",
     "cross-env": "^10.1.0",
-    "eslint": "^10.2.0",
+    "eslint": "^9.0.0",
     "eslint-config-next": "^16.2.3",
     "i18next-parser": "^9.4.0",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2"
+  },
+  "overrides": {
+    "serialize-javascript": ">=7.0.5"
   }
 }
