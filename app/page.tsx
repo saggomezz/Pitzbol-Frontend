@@ -549,19 +549,21 @@ function HomeContent() {
           {/* Indicadores */}
           <div className="flex justify-center items-center gap-1.5 md:gap-2 mt-2 md:mt-4">
             {allCategories.map((_, idx) => (
-              <motion.button
+              <div
                 key={idx}
                 onClick={() => {
                   setCurrentIndex(idx);
                   setIsAutoPlay(false);
                 }}
-                className={`rounded-full transition-all ${
-                  idx === currentIndex
-                    ? "bg-[#0D601E] w-2 md:w-8 h-2 md:h-3"
-                    : "bg-[#F6F0E6] w-2 md:w-3 h-2 md:h-3 hover:bg-[#1A4D2E]"
-                }`}
-                whileHover={{ scale: 1.2 }}
-                whileTap={{ scale: 0.9 }}
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  cursor: 'pointer',
+                  backgroundColor: idx === currentIndex ? '#0D601E' : '#F6F0E6',
+                  transition: 'background-color 0.2s',
+                }}
               />
             ))}
           </div>
