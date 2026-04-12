@@ -182,8 +182,8 @@ const GdlMatchCarousel = ({ partidos, sede, tHome }: { partidos: Partido[]; sede
   const prev = () => { setDir(-1); setIdx(i => Math.max(0, i - 1)); };
   const next = () => { setDir(1); setIdx(i => Math.min(partidos.length - 1, i + 1)); };
   return (
-    <div className="w-full mb-2">
-      <div className="flex items-center justify-between mb-0.5">
+    <div className="w-full mb-0">
+      <div className="flex items-center justify-between mb-0">
         <h3 className="text-center text-[#0D601E] text-xs md:text-sm font-medium flex-1" style={{ fontFamily: 'var(--font-roboto)' }}>
           {tHome('nextMatchIn')} <span className="font-bold">{sede}</span> - {current.fechaDisplay}
         </h3>
@@ -851,8 +851,8 @@ function HomeContent() {
       
       <CategoryCarousel categories={ALL_CATEGORIES} />
       <DateSlider />
-      <main className="flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-10 px-3 md:px-8 lg:px-22 w-full max-w-[1600px] mx-auto">
-        <div className="flex flex-col gap-3 md:gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
+      <main className="flex flex-col md:flex-row gap-4 md:gap-8 py-1 md:py-10 px-3 md:px-8 lg:px-22 w-full max-w-[1600px] mx-auto">
+        <div className="flex flex-col gap-1 md:gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
           <GdlMatchCarousel partidos={PARTIDOS_GDL} sede="GDL" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_CDMX} sede="CDMX" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_MTY} sede="MTY" tHome={tHome} />
