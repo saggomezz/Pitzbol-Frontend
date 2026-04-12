@@ -73,6 +73,8 @@ const CULTURA_DESCRIPTIONS: Record<string, string> = {
     "Considerada la iglesia más bella de Guadalajara, el Expiatorio es un templo neogótico cuya construcción comenzó en 1897 y no concluyó sino hasta 1972, con más de 70 años de trabajo artesanal. Sus vitrales de origen alemán, sus arbotantes y su cripta la convierten en un referente arquitectónico único en México. Cada viernes se realiza el tradicional mercado de artesanías en su atrio, uno de los más populares de la ciudad.",
   "Centro Histórico de Tlaquepaque, Guadalajara":
     "San Pedro Tlaquepaque es reconocido mundialmente como uno de los centros artesanales más importantes de México. Desde el siglo XIX ha sido cuna de maestros vidrieros, alfareros y artesanos textiles cuyas obras llegan a colecciones de todo el mundo. Su centro histórico, con calles empedradas y casonas coloniales, fue declarado Zona de Monumentos Históricos y alberga galerías, talleres y el emblemático El Parián, mercado de artesanías y mariachi.",
+  "El Parián de Tlaquepaque, Guadalajara":
+    "El Parián en Tlaquepaque es principalmente un lugar emblemático y un complejo turístico, conocido como la cantina más grande del mundo. Se trata de un edificio histórico rodeado de arcadas que alberga en su interior 18 o 19 restaurantes y bares distintos alrededor de un quiosco central. Es un punto de encuentro clásico para escuchar mariachi, comer platillos típicos y beber cazuelas de tequila.",
 };
 
 interface Lugar {
