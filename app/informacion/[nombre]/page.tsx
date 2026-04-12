@@ -78,6 +78,7 @@ const CULTURA_DESCRIPTIONS: Record<string, string> = {
 interface Lugar {
   nombre: string;
   categoria: string;
+  etiquetas: string[];
   direccion: string;
   latitud: number;
   longitud: number;
@@ -133,9 +134,19 @@ function mapPlaceToPublicDetail(place: PlaceRecord): Lugar {
     costoEstimado?: string;
   };
 
+  const etiquetas = (place as PlaceRecord & { rawCategoria?: string }).rawCategoria
+    ? (place as PlaceRecord & { rawCategoria?: string }).rawCategoria!
+        .split(",")
+        .map((e) => e.trim())
+        .filter(Boolean)
+    : place.categoria
+    ? [place.categoria]
+    : [];
+
   return {
     nombre: place.nombre,
     categoria: place.categoria || "Negocio",
+    etiquetas,
     direccion: place.ubicacion || "Ubicacion no disponible",
     latitud: Number.isFinite(lat) ? lat : 0,
     longitud: Number.isFinite(lng) ? lng : 0,
@@ -526,18 +537,32 @@ export default function InformacionLugar() {
             </section>
           )}
 
-          {/* Descripcion + panel derecho (tiempo/costo/contacto) */}
+          {/* Etiquetas + panel derecho (tiempo/costo/contacto) */}
           <div className={styles.overviewLayout}>
             <section className={styles.descriptionColumn}>
-              <div className={styles.descriptionCard}>
-                <div className={styles.infoHeader}>
-                  <FiInfo />
-                  <h2>Descripción</h2>
+              {lugarSeguro.etiquetas.length > 0 && (
+                <div className={styles.descriptionCard}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    {lugarSeguro.etiquetas.map((etiqueta) => (
+                      <span
+                        key={etiqueta}
+                        style={{
+                          display: "inline-block",
+                          background: "#E0F2F1",
+                          color: "#1A4D2E",
+                          fontWeight: 600,
+                          fontSize: "0.75rem",
+                          padding: "0.3rem 0.85rem",
+                          borderRadius: "999px",
+                          letterSpacing: "0.01em",
+                        }}
+                      >
+                        {etiqueta}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <p className={styles.infoText}>
-                  {lugarSeguro.notaIA || "Este lugar o negocio no tiene descripción pública disponible por el momento."}
-                </p>
-              </div>
+              )}
             </section>
 
             <aside className={styles.quickInfoColumn}>
