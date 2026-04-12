@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Papa from "papaparse";
-import { FiCheck, FiChevronDown, FiChevronUp, FiImage, FiSave, FiTrash2, FiUpload } from "react-icons/fi";
+import { FiCheck, FiChevronDown, FiChevronUp, FiImage, FiPlus, FiSave, FiTrash2, FiUpload, FiX } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 import { storage } from "@/lib/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
@@ -20,15 +20,14 @@ export default function DatosLugaresPage() {
   const [lugares, setLugares] = useState<Lugar[]>([]);
   const [fotosMap, setFotosMap] = useState<Record<string, string[]>>({});
   const [expandido, setExpandido] = useState<string | null>(null);
-  const [inputFotos, setInputFotos] = useState<[string, string, string]>(["", "", ""]);
+  const [inputFotos, setInputFotos] = useState<string[]>(["", "", ""]);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [autorizado, setAutorizado] = useState(false);
-  // progreso de subida por slot: null = idle, 0-100 = subiendo
-  const [uploadProgress, setUploadProgress] = useState<[number | null, number | null, number | null]>([null, null, null]);
+  const [uploadProgress, setUploadProgress] = useState<(number | null)[]>([null, null, null]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const fileInputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  const fileInputRefsArray = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
@@ -64,13 +63,14 @@ export default function DatosLugaresPage() {
   const abrirLugar = (nombre: string) => {
     if (expandido === nombre) { setExpandido(null); return; }
     const fotos = fotosMap[nombre] || [];
-    setInputFotos([fotos[0] || "", fotos[1] || "", fotos[2] || ""]);
-    setUploadProgress([null, null, null]);
+    const slots = fotos.length > 0 ? [...fotos, ""] : ["", "", ""];
+    setInputFotos(slots);
+    setUploadProgress(slots.map(() => null));
     setExpandido(nombre);
     setMensaje("");
   };
 
-  const handleFileUpload = (slot: 0 | 1 | 2, file: File) => {
+  const handleFileUpload = (slot: number, file: File) => {
     const nombreLugar = expandido || "lugar";
     const ext = file.name.split(".").pop() || "jpg";
     const fileName = `lugares/${nombreLugar.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_${slot + 1}_${Date.now()}.${ext}`;
@@ -81,26 +81,28 @@ export default function DatosLugaresPage() {
       "state_changed",
       snapshot => {
         const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        setUploadProgress(prev => {
-          const next = [...prev] as [number | null, number | null, number | null];
-          next[slot] = pct;
-          return next;
-        });
+        setUploadProgress(prev => { const n = [...prev]; n[slot] = pct; return n; });
       },
       () => {
-        setUploadProgress(prev => { const n = [...prev] as [number | null, number | null, number | null]; n[slot] = null; return n; });
+        setUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
         setMensaje("Error al subir imagen");
       },
       async () => {
         const url = await getDownloadURL(uploadTask.snapshot.ref);
-        setInputFotos(prev => {
-          const n = [...prev] as [string, string, string];
-          n[slot] = url;
-          return n;
-        });
-        setUploadProgress(prev => { const n = [...prev] as [number | null, number | null, number | null]; n[slot] = null; return n; });
+        setInputFotos(prev => { const n = [...prev]; n[slot] = url; return n; });
+        setUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
       }
     );
+  };
+
+  const agregarSlot = () => {
+    setInputFotos(prev => [...prev, ""]);
+    setUploadProgress(prev => [...prev, null]);
+  };
+
+  const eliminarSlot = (i: number) => {
+    setInputFotos(prev => prev.filter((_, idx) => idx !== i));
+    setUploadProgress(prev => prev.filter((_, idx) => idx !== i));
   };
 
   const eliminarLugar = async (nombre: string) => {
@@ -227,24 +229,23 @@ export default function DatosLugaresPage() {
 
                 {abierto && (
                   <div className="px-3 pb-3 border-t border-gray-50">
-                    <p className="text-xs text-gray-400 mt-2 mb-2">Imágenes (máx. 3) — pega un URL o sube un archivo</p>
-                    {([0, 1, 2] as const).map(i => (
+                    <p className="text-xs text-gray-400 mt-2 mb-2">Imágenes — pega un URL o sube un archivo</p>
+                    {inputFotos.map((foto, i) => (
                       <div key={i} className="flex items-center gap-2 mb-2">
                         <FiImage size={13} className="text-gray-400 flex-shrink-0" />
                         <input
                           type="url"
                           placeholder={`URL imagen ${i + 1}`}
-                          value={inputFotos[i]}
+                          value={foto}
                           onChange={e => {
-                            const nuevo: [string, string, string] = [...inputFotos] as [string, string, string];
+                            const nuevo = [...inputFotos];
                             nuevo[i] = e.target.value;
                             setInputFotos(nuevo);
                           }}
                           className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-black focus:outline-none focus:border-[#1A4D2E]"
                         />
-                        {/* Botón subir archivo */}
                         <input
-                          ref={fileInputRefs[i]}
+                          ref={el => { fileInputRefsArray.current[i] = el; }}
                           type="file"
                           accept="image/*"
                           className="hidden"
@@ -255,9 +256,9 @@ export default function DatosLugaresPage() {
                           }}
                         />
                         <button
-                          onClick={() => fileInputRefs[i].current?.click()}
+                          onClick={() => fileInputRefsArray.current[i]?.click()}
                           disabled={uploadProgress[i] !== null}
-                          title="Subir imagen a Firebase"
+                          title="Subir imagen"
                           className="flex-shrink-0 p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
                         >
                           {uploadProgress[i] !== null
@@ -265,8 +266,23 @@ export default function DatosLugaresPage() {
                             : <FiUpload size={13} className="text-gray-500" />
                           }
                         </button>
+                        {inputFotos.length > 1 && (
+                          <button
+                            onClick={() => eliminarSlot(i)}
+                            title="Eliminar este campo"
+                            className="flex-shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors"
+                          >
+                            <FiX size={13} />
+                          </button>
+                        )}
                       </div>
                     ))}
+                    <button
+                      onClick={agregarSlot}
+                      className="flex items-center gap-1 text-xs text-[#1A4D2E] hover:text-[#0D601E] mb-3 transition-colors"
+                    >
+                      <FiPlus size={13} /> Agregar otra imagen
+                    </button>
                     <div className="flex items-center gap-3 mt-3">
                       <button
                         onClick={() => guardarFotos(lugar.nombre)}
