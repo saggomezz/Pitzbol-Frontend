@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2, FiPhone, FiGlobe, FiMail } from "react-icons/fi";
+import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2, FiPhone, FiGlobe, FiMail, FiPlus, FiX, FiCheck } from "react-icons/fi";
 import styles from "../informacion.module.css";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import DeletedBusinessModal from "@/app/components/DeletedBusinessModal";
@@ -173,6 +173,15 @@ function getMapEmbedSrc(lugar: Lugar): string {
   return `https://maps.google.com/maps?q=${query}&z=15&output=embed`;
 }
 
+const EMAIL_ADMIN_LUGARES = "cua@hotmail.com";
+
+const TODAS_CATEGORIAS = [
+  "Gastronomía", "Cultura", "Vida Nocturna", "Cafetería", "Futbol",
+  "Arte", "Deporte", "Turismo", "Compras", "Hotel", "Transporte",
+  "Salud", "Hospital", "Entretenimiento", "Museos", "Naturaleza",
+  "Mercado", "Bar", "Restaurante", "Museo", "Parque", "Estadio",
+];
+
 export default function InformacionLugar() {
   const params = useParams();
   const router = useRouter();
@@ -183,6 +192,11 @@ export default function InformacionLugar() {
   const [fotoIdx, setFotoIdx] = useState(0);
   const [deletedBusinessNotification, setDeletedBusinessNotification] = useState<DeletedBusinessNotification | null>(null);
   const [showDeletedBusinessModal, setShowDeletedBusinessModal] = useState(false);
+  const [esAdminLugares, setEsAdminLugares] = useState(false);
+  const [etiquetasEdit, setEtiquetasEdit] = useState<string[]>([]);
+  const [mostrarSelector, setMostrarSelector] = useState(false);
+  const [guardandoCats, setGuardandoCats] = useState(false);
+  const [mensajeCats, setMensajeCats] = useState("");
   // Registrar vista del lugar
   const nombreRaw = params.nombre;
   const nombreLugar = typeof nombreRaw === "string" ? decodeURIComponent(nombreRaw) : null;
@@ -260,6 +274,10 @@ export default function InformacionLugar() {
         const lugarEncontrado = lugarRecord ? mapPlaceToPublicDetail(lugarRecord) : null;
         setLugar(lugarEncontrado);
         setFotos((lugarEncontrado?.fotos || []).slice(0, 6));
+        if (lugarEncontrado) setEtiquetasEdit(lugarEncontrado.etiquetas);
+
+        const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+        setEsAdminLugares(userLocal.email === EMAIL_ADMIN_LUGARES);
 
         // Verificar si esta en favoritos
         try {
@@ -362,6 +380,36 @@ export default function InformacionLugar() {
         ? lugar.website
         : `https://${lugar.website}`)
     : null;
+
+  const guardarCategorias = async () => {
+    if (!nombreLugar || etiquetasEdit.length === 0) return;
+    setGuardandoCats(true);
+    setMensajeCats("");
+    const token = localStorage.getItem("pitzbol_token");
+    try {
+      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}/categorias`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({ categorias: etiquetasEdit }),
+      });
+      if (res.ok) {
+        setLugar(prev => prev ? { ...prev, etiquetas: etiquetasEdit } : prev);
+        setMensajeCats("✓ Guardado");
+        setMostrarSelector(false);
+      } else {
+        setMensajeCats("Error al guardar");
+      }
+    } catch {
+      setMensajeCats("Error de conexión");
+    } finally {
+      setGuardandoCats(false);
+      setTimeout(() => setMensajeCats(""), 3000);
+    }
+  };
 
   if (loading) {
     return (
@@ -540,27 +588,101 @@ export default function InformacionLugar() {
           {/* Etiquetas + panel derecho (tiempo/costo/contacto) */}
           <div className={styles.overviewLayout}>
             <section className={styles.descriptionColumn}>
-              {lugarSeguro.etiquetas.length > 0 && (
+              {(lugarSeguro.etiquetas.length > 0 || esAdminLugares) && (
                 <div className={styles.descriptionCard}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                    {lugarSeguro.etiquetas.map((etiqueta) => (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
+                    {(esAdminLugares ? etiquetasEdit : lugarSeguro.etiquetas).map((etiqueta) => (
                       <span
                         key={etiqueta}
                         style={{
-                          display: "inline-block",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.3rem",
                           background: "#E0F2F1",
                           color: "#1A4D2E",
                           fontWeight: 600,
                           fontSize: "0.75rem",
-                          padding: "0.3rem 0.85rem",
+                          padding: "0.3rem 0.65rem",
                           borderRadius: "999px",
                           letterSpacing: "0.01em",
                         }}
                       >
                         {etiqueta}
+                        {esAdminLugares && (
+                          <button
+                            onClick={() => setEtiquetasEdit(prev => prev.filter(e => e !== etiqueta))}
+                            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "#1A4D2E", display: "flex", alignItems: "center" }}
+                            title="Eliminar etiqueta"
+                          >
+                            <FiX size={11} />
+                          </button>
+                        )}
                       </span>
                     ))}
+
+                    {esAdminLugares && (
+                      <div style={{ position: "relative" }}>
+                        <button
+                          onClick={() => setMostrarSelector(prev => !prev)}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: "0.3rem",
+                            background: "#1A4D2E", color: "white", border: "none",
+                            fontWeight: 600, fontSize: "0.75rem", padding: "0.3rem 0.65rem",
+                            borderRadius: "999px", cursor: "pointer",
+                          }}
+                          title="Agregar etiqueta"
+                        >
+                          <FiPlus size={11} /> Agregar
+                        </button>
+
+                        {mostrarSelector && (
+                          <div style={{
+                            position: "absolute", top: "2rem", left: 0, zIndex: 50,
+                            background: "white", border: "1px solid #e5e7eb",
+                            borderRadius: "0.75rem", padding: "0.75rem",
+                            boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+                            display: "flex", flexWrap: "wrap", gap: "0.4rem", maxWidth: "280px",
+                          }}>
+                            {TODAS_CATEGORIAS.filter(c => !etiquetasEdit.includes(c)).map(cat => (
+                              <button
+                                key={cat}
+                                onClick={() => { setEtiquetasEdit(prev => [...prev, cat]); }}
+                                style={{
+                                  background: "#f3f4f6", color: "#374151", border: "none",
+                                  fontSize: "0.72rem", fontWeight: 600, padding: "0.25rem 0.6rem",
+                                  borderRadius: "999px", cursor: "pointer",
+                                }}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+
+                  {esAdminLugares && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginTop: "0.75rem" }}>
+                      <button
+                        onClick={guardarCategorias}
+                        disabled={guardandoCats}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: "0.4rem",
+                          background: "#1A4D2E", color: "white", border: "none",
+                          fontSize: "0.75rem", fontWeight: 600, padding: "0.4rem 1rem",
+                          borderRadius: "0.5rem", cursor: "pointer", opacity: guardandoCats ? 0.6 : 1,
+                        }}
+                      >
+                        <FiCheck size={12} /> {guardandoCats ? "Guardando..." : "Guardar categorías"}
+                      </button>
+                      {mensajeCats && (
+                        <span style={{ fontSize: "0.75rem", fontWeight: 600, color: mensajeCats.startsWith("✓") ? "#16a34a" : "#dc2626" }}>
+                          {mensajeCats}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </section>
