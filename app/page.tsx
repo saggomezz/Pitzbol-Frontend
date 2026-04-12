@@ -201,7 +201,7 @@ const GdlMatchCarousel = ({ partidos, sede, tHome }: { partidos: Partido[]; sede
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -dir * 60, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-2 shadow-md min-h-[60px] md:min-h-[50px]"
+            className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-1 md:py-2 shadow-md min-h-[44px] md:min-h-[50px]"
           >
             <div className="flex flex-1 items-center justify-end gap-2">
               <span className="text-xs md:text-base font-normal text-right leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>{current.equipo1}</span>
