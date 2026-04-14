@@ -1481,7 +1481,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
               )}
 
               {saveError && (
-                <div className="mt-14 mb-2 mx-4 px-4 py-3 rounded-2xl bg-[#8B0000]/10 text-[#8B0000] text-center text-sm border border-[#8B0000]/30">
+                <div className="mt-14 mb-2 mx-4 px-6 py-3 rounded-2xl bg-[#8B0000] text-white text-center font-bold text-sm shadow-lg animate-pulse border-2 border-[#8B0000]/60">
                   {saveError}
                 </div>
               )}
