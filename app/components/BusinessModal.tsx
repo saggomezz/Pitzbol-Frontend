@@ -2238,28 +2238,28 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   <button
                     type="button"
                     onClick={() => applyPresetSchedule(WEEKDAY_KEYS, "09:00", "18:00")}
-                    className="px-3 py-1.5 rounded-full border border-[#0D601E]/20 bg-[#0D601E]/10 text-[#0D601E] text-[11px] font-bold uppercase tracking-wide hover:bg-[#0D601E]/20 transition-all"
+                    className="px-3 py-1.5 rounded-full border border-[#0D601E]/20 bg-[#0D601E]/10 text-[#0D601E] text-[11px] tracking-wide hover:bg-[#0D601E]/20 transition-all"
                   >
-                    Lunes a Viernes
+                    Lunes a viernes
                   </button>
                   <button
                     type="button"
                     onClick={() => applyPresetSchedule(DAY_LABELS.map((day) => day.key), "10:00", "22:00")}
-                    className="px-3 py-1.5 rounded-full border border-[#0D601E]/20 bg-[#0D601E]/10 text-[#0D601E] text-[11px] font-bold uppercase tracking-wide hover:bg-[#0D601E]/20 transition-all"
+                    className="px-3 py-1.5 rounded-full border border-[#0D601E]/20 bg-[#0D601E]/10 text-[#0D601E] text-[11px] tracking-wide hover:bg-[#0D601E]/20 transition-all"
                   >
-                    Todos los dias
+                    Todos los días
                   </button>
                   <button
                     type="button"
                     onClick={clearAllSchedules}
-                    className="px-3 py-1.5 rounded-full border border-[#8B0000]/20 bg-[#8B0000]/10 text-[#8B0000] text-[11px] font-bold uppercase tracking-wide hover:bg-[#8B0000]/20 transition-all"
+                    className="px-3 py-1.5 rounded-full border border-[#8B0000]/20 bg-[#8B0000]/10 text-[#8B0000] text-[11px] tracking-wide hover:bg-[#8B0000]/20 transition-all"
                   >
                     Limpiar
                   </button>
                 </div>
 
                 <div>
-                  <p className="text-[11px] uppercase tracking-wide font-bold text-[#769C7B] mb-2">Selecciona dias</p>
+                  <p className="text-[11px] tracking-wide text-[#769C7B] mb-2">Selecciona días</p>
                   <div className="flex flex-wrap gap-2">
                     {DAY_LABELS.map((day) => {
                       const isSelected = scheduleSelection.includes(day.key);
@@ -2268,7 +2268,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           key={day.key}
                           type="button"
                           onClick={() => toggleScheduleSelection(day.key)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wide border transition-all ${
+                          className={`px-3 py-1.5 rounded-full text-xs tracking-wide border transition-all ${
                             isSelected
                               ? "bg-[#0D601E] text-white border-[#0D601E]"
                               : "bg-white text-[#1A4D2E] border-[#1A4D2E]/20 hover:bg-[#F3EEE4]"
@@ -2297,14 +2297,14 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   <button
                     type="button"
                     onClick={applyScheduleToSelection}
-                    className="px-4 py-2.5 rounded-full bg-[#0D601E] text-white text-xs font-black uppercase tracking-wide hover:bg-[#094d18] transition-all active:scale-95"
+                    className="px-4 py-2.5 rounded-full bg-[#0D601E] text-white text-xs tracking-wide hover:bg-[#094d18] transition-all active:scale-95"
                   >
                     Aplicar
                   </button>
                 </div>
                 {enabledScheduleCount > 0 && (
                   <div className="rounded-2xl border border-[#1A4D2E]/15 bg-[#FDFBF7] p-3 sm:p-4">
-                    <p className="text-[11px] uppercase tracking-wide font-bold text-[#769C7B] mb-2">Dias activos</p>
+                    <p className="text-[11px] tracking-wide text-[#769C7B] mb-2">Días activos</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {DAY_LABELS.filter((day) => form.horario[day.key].enabled).map((day) => (
                         <div
@@ -2312,13 +2312,13 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           className="flex items-center justify-between gap-2 rounded-xl border border-[#1A4D2E]/15 bg-white px-3 py-2"
                         >
                           <div>
-                            <p className="text-[11px] uppercase tracking-wide font-bold text-[#769C7B]">{day.label}</p>
-                            <p className="text-sm font-bold text-[#1A4D2E]">{form.horario[day.key].open} - {form.horario[day.key].close}</p>
+                            <p className="text-[11px] tracking-wide text-[#769C7B]">{day.label}</p>
+                            <p className="text-sm text-[#1A4D2E]">{form.horario[day.key].open} - {form.horario[day.key].close}</p>
                           </div>
                           <button
                             type="button"
                             onClick={() => disableScheduleDay(day.key)}
-                            className="text-[11px] px-2.5 py-1 rounded-full border border-[#8B0000]/25 text-[#8B0000] font-bold hover:bg-[#8B0000]/10 transition-all"
+                            className="text-[11px] px-2.5 py-1 rounded-full border border-[#8B0000]/25 text-[#8B0000] hover:bg-[#8B0000]/10 transition-all"
                           >
                             Quitar
                           </button>
@@ -2332,7 +2332,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   <button
                     type="button"
                     onClick={() => setIsScheduleModalOpen(false)}
-                    className="px-5 py-2.5 rounded-full bg-[#0D601E] text-white text-xs font-black uppercase tracking-wide hover:bg-[#094d18] transition-all active:scale-95"
+                    className="px-5 py-2.5 rounded-full bg-[#0D601E] text-white text-xs tracking-wide hover:bg-[#094d18] transition-all active:scale-95"
                   >
                     Listo
                   </button>
