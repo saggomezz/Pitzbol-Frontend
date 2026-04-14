@@ -263,7 +263,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
   const IMAGES_CACHE_KEY = "pitzbol_business_images";
 
-  const getBusinessApiUrl = (path: string) => path;
+  // Para uploads con imágenes, ir directo al backend (evita límite de 4.5MB de Vercel en rewrites)
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443';
+  const getBusinessApiUrl = (path: string) => `${BACKEND_URL}${path}`;
 
   // Validaciones de imagen
   const allowedExts = [".jpg", ".jpeg", ".png", ".webp"];
