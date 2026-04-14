@@ -116,7 +116,10 @@ export default function CategoryPlacesPage({
         setLoading(true);
         const mergedPlaces = await getMergedPlaces();
         setPlaces(
-          mergedPlaces.filter((place) => matchesAnyCategory(place.categoria, normalizedTargets))
+          mergedPlaces.filter((place) => {
+            const allCats = place.rawCategoria.split(',').map(c => c.trim()).filter(Boolean);
+            return allCats.some(cat => matchesAnyCategory(cat, normalizedTargets));
+          })
         );
       } catch (error) {
         console.error(`Error cargando lugares de ${categoryName.toLowerCase()}:`, error);

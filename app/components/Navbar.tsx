@@ -285,7 +285,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         <nav className="flex justify-between items-center bg-[#F6F0E6] px-3 md:px-8 h-16 md:h-20 lg:h-24 sticky top-0 z-[100] shadow-sm text-[#1A4D2E]">
             {/* LOGO Y NOMBRE */}
             <div className="flex items-center h-full gap-1">
-                <motion.div whileHover={{ rotate: 190 }} transition={{ duration: 2.0, ease: "easeInOut" }} className="relative h-14 w-14 md:h-20 md:w-20 lg:h-28 lg:w-28 flex-shrink-0 cursor-pointer">
+                <motion.div whileHover={{ rotate: 190 }} transition={{ duration: 2.0, ease: "easeInOut" }} className="relative h-16 w-16 md:h-20 md:w-20 lg:h-28 lg:w-28 flex-shrink-0 cursor-pointer">
                     <Link href="/" className="relative block h-full w-full">
                         <Image
                             src={imglogo}
@@ -298,10 +298,10 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                     </Link>
                 </motion.div>
                 <div className="relative flex items-center h-full pointer-events-none">
-                    <div className="absolute inset-y-0 -left-3 md:-left-5 top-3 md:top-5 lg:top-7 z-0 flex items-center w-[95%] md:w-[105%] min-w-[105px] md:min-w-[125px] lg:min-w-[220px]">
-                        <Image src={imgPasto} alt="pasto" className="object-contain" loading="eager" priority />
+                    <div className="absolute inset-y-0 -left-3 md:-left-5 top-6 md:top-5 lg:top-7 z-0 flex items-center w-[95%] md:w-[105%] min-w-[110px] md:min-w-[125px] lg:min-w-[220px]">
+                        <Image src={imgPasto} alt="pasto" className="object-contain origin-left" loading="eager" priority />
                     </div>
-                    <h1 className="relative z-10 ml-1 md:ml-2 text-[20px] md:text-[28px] lg:text-[42px] leading-none drop-shadow-[2px_4px_4px_rgba(0,0,0,0.5)] text-white" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    <h1 className="relative z-10 ml-1 md:ml-2 text-[26px] md:text-[28px] lg:text-[42px] leading-none drop-shadow-[2px_4px_4px_rgba(0,0,0,0.5)] text-white" style={{ fontFamily: "'Jockey One', sans-serif" }}>
                         PITZ<span className="text-[#F00808]">BOL</span>
                     </h1>
                 </div>
@@ -324,7 +324,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                 {user && <NotificationsPanel userId={user.uid} />}
                 {/* Selector de Idioma */}
                 <LanguageSwitcher />
-                <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 z-[110] bg-white/40 rounded-full hover:bg-white transition-all shadow-sm relative">
+                <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 z-[110] hover:text-[#F00808] transition-colors relative">
                     {isMenuOpen ? <FiX size={22} className="md:w-[24px] md:h-[24px]" /> : <FiMenu size={22} className="md:w-[24px] md:h-[24px]" />}
                 </button>
                 {/* MENÚ DESPLEGABLE */}

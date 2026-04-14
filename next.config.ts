@@ -1,5 +1,7 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import withPWA from '@ducanh2912/next-pwa';
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443',
     NEXT_PUBLIC_IA_URL: process.env.NEXT_PUBLIC_IA_URL || 'https://ia.pitzbol.me:8443',
@@ -14,6 +16,27 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.googletagmanager.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "img-src 'self' data: blob: https:",
+              "font-src 'self' https://fonts.gstatic.com",
+              "connect-src 'self' https://api.pitzbol.me:8443 https://ia.pitzbol.me:8443 wss://api.pitzbol.me:8443 https://res.cloudinary.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.googleapis.com https://js.stripe.com",
+              "frame-src 'self' https://js.stripe.com",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "object-src 'none'",
+              "upgrade-insecure-requests",
+            ].join('; '),
+          },
         ],
       },
     ];
@@ -75,4 +98,8 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withPWA({
+  dest: 'public',
+  register: true,
+  disable: process.env.NODE_ENV === 'development',
+})(nextConfig);

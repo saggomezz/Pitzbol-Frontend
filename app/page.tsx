@@ -164,7 +164,7 @@ return (
           })}
 
           <Link href="/calendario">
-            <button className="ml-1 md:ml-2 p-2 md:p-3 text-black hover:scale-110 transition-transform flex-shrink-0">
+            <button className="ml-0 md:ml-2 p-2 md:p-3 text-black hover:scale-110 transition-transform flex-shrink-0">
               <FiChevronRight size={28} className="md:w-[35px] md:h-[35px]" />
             </button>
           </Link>
@@ -182,9 +182,9 @@ const GdlMatchCarousel = ({ partidos, sede, tHome }: { partidos: Partido[]; sede
   const prev = () => { setDir(-1); setIdx(i => Math.max(0, i - 1)); };
   const next = () => { setDir(1); setIdx(i => Math.min(partidos.length - 1, i + 1)); };
   return (
-    <div className="w-full mb-2">
-      <div className="flex items-center justify-between mb-0.5">
-        <h3 className="text-center text-[#0D601E] text-xs md:text-sm font-medium flex-1" style={{ fontFamily: 'var(--font-roboto)' }}>
+    <div className="w-full mb-0">
+      <div className="flex items-center justify-between mb-0">
+        <h3 className="text-center text-[#0D601E] text-xs md:text-sm font-medium flex-1 my-0" style={{ fontFamily: 'var(--font-roboto)' }}>
           {tHome('nextMatchIn')} <span className="font-bold">{sede}</span> - {current.fechaDisplay}
         </h3>
         <div className="flex items-center gap-1 ml-2 flex-shrink-0">
@@ -201,7 +201,7 @@ const GdlMatchCarousel = ({ partidos, sede, tHome }: { partidos: Partido[]; sede
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -dir * 60, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-2 shadow-md min-h-[60px] md:min-h-[50px]"
+            className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-1 md:py-2 shadow-md min-h-[44px] md:min-h-[50px]"
           >
             <div className="flex flex-1 items-center justify-end gap-2">
               <span className="text-xs md:text-base font-normal text-right leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>{current.equipo1}</span>
@@ -549,19 +549,21 @@ function HomeContent() {
           {/* Indicadores */}
           <div className="flex justify-center items-center gap-1.5 md:gap-2 mt-2 md:mt-4">
             {allCategories.map((_, idx) => (
-              <motion.button
+              <div
                 key={idx}
                 onClick={() => {
                   setCurrentIndex(idx);
                   setIsAutoPlay(false);
                 }}
-                className={`rounded-full transition-all ${
-                  idx === currentIndex
-                    ? "bg-[#0D601E] w-2 md:w-8 h-2 md:h-3"
-                    : "bg-[#F6F0E6] w-2 md:w-3 h-2 md:h-3 hover:bg-[#1A4D2E]"
-                }`}
-                whileHover={{ scale: 1.2 }}
-                whileTap={{ scale: 0.9 }}
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  cursor: 'pointer',
+                  backgroundColor: idx === currentIndex ? '#0D601E' : '#F6F0E6',
+                  transition: 'background-color 0.2s',
+                }}
               />
             ))}
           </div>
@@ -849,8 +851,8 @@ function HomeContent() {
       
       <CategoryCarousel categories={ALL_CATEGORIES} />
       <DateSlider />
-      <main className="flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-10 px-3 md:px-8 lg:px-22 w-full max-w-[1600px] mx-auto">
-        <div className="flex flex-col gap-3 md:gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
+      <main className="flex flex-col md:flex-row gap-4 md:gap-8 py-1 md:py-10 px-3 md:px-8 lg:px-22 w-full max-w-[1600px] mx-auto">
+        <div className="flex flex-col gap-1 md:gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
           <GdlMatchCarousel partidos={PARTIDOS_GDL} sede="GDL" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_CDMX} sede="CDMX" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_MTY} sede="MTY" tHome={tHome} />

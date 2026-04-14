@@ -222,6 +222,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [numeroError, setNumeroError] = useState("");
   const [coloniaError, setColoniaError] = useState("");
   const [codigoPostalError, setCodigoPostalError] = useState("");
+  const [coloniasCP, setColoniasCP] = useState<string[]>([]);
+  const [loadingColonias, setLoadingColonias] = useState(false);
   const [ciudadError, setCiudadError] = useState("");
   const [estadoError, setEstadoError] = useState("");
   const [sitioWebError, setSitioWebError] = useState("");
@@ -655,6 +657,25 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       !form.longitud
     );
   }, [form.calle, form.colonia, form.codigoPostal, form.latitud, form.longitud]);
+
+  // Buscar colonias por código postal
+  useEffect(() => {
+    const cp = form.codigoPostal;
+    if (!/^\d{5}$/.test(cp)) { setColoniasCP([]); return; }
+    setLoadingColonias(true);
+    fetch(`/api/colonias?cp=${cp}`)
+      .then(r => r.json())
+      .then(data => {
+        const list: string[] = data.colonias || [];
+        setColoniasCP(list);
+        if (list.length === 1 && !form.colonia) {
+          setForm(f => ({ ...f, colonia: list[0]! }));
+          setColoniaError("");
+        }
+      })
+      .catch(() => setColoniasCP([]))
+      .finally(() => setLoadingColonias(false));
+  }, [form.codigoPostal]);
 
   // Buscar coordenadas automáticamente cuando se cumplen las condiciones (con debounce)
   useEffect(() => {
@@ -1395,11 +1416,11 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   if (!isOpen) return null;
 
   const inputClass = "w-full px-6 py-2.5 bg-transparent border border-[#1A4D2E]/20 rounded-full outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm";
-  const labelClass = "text-[10px] uppercase tracking-widest text-[#4F6757] font-black ml-4 mb-2 block";
+  const labelClass = "text-[10px] tracking-wide text-[#4F6757] font-bold ml-4 mb-2 block";
   const cardClass = "bg-[#F6F0E6]/20 p-6 rounded-[35px] border border-[#1A4D2E]/10 transition-all duration-300 hover:shadow-[0_0_20px_rgba(13,96,30,0.1)] hover:border-[#0D601E]/80";
   
-  const btnPrimary = "w-full bg-[#0D601E] text-white py-3 rounded-full font-bold uppercase tracking-widest text-xs shadow-lg hover:bg-[#094d18] transition-all active:scale-95";
-  const btnFinish = "w-full bg-[#8B0000] text-white py-4 rounded-full font-black uppercase tracking-[0.2em] text-sm shadow-xl hover:scale-[1.02] transition-transform active:scale-95";
+  const btnPrimary = "w-full bg-[#0D601E] text-white py-3 rounded-full font-bold tracking-wide text-xs shadow-lg hover:bg-[#094d18] transition-all active:scale-95";
+  const btnFinish = "w-full bg-[#8B0000] text-white py-3 rounded-full font-bold tracking-wide text-xs shadow-lg hover:bg-[#6B0000] transition-all active:scale-95";
   const formContainerClass = step === 1 ? "max-w-5xl mx-auto space-y-2" : step === 2 ? "w-fit max-w-full mx-auto space-y-2" : "max-w-2xl mx-auto space-y-2";
   const modalWidthClass = step === 2 ? "w-fit" : "w-full";
   return (
@@ -1408,12 +1429,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
         className={`relative bg-white ${modalWidthClass} rounded-[50px] shadow-2xl border border-white/20 ${
           step === 1
-            ? "max-w-[900px] max-h-[92vh] overflow-hidden p-4 md:p-6"
+            ? "max-w-[900px] max-h-[92vh] overflow-y-auto p-4 md:p-6"
             : step === 2
-            ? "max-w-[840px] max-h-[96vh] overflow-hidden p-3 md:p-5"
+            ? "max-w-[840px] max-h-[96vh] overflow-y-auto p-3 md:p-5"
             : step === 3
-            ? "max-w-[850px] h-[calc(100vh-1.25rem)] md:h-[calc(100vh-2rem)] max-h-[calc(100vh-1.25rem)] overflow-hidden p-4 md:p-6"
-            : "max-w-[850px] min-h-[500px] max-h-[90vh] overflow-hidden p-6 md:p-8"
+            ? "max-w-[850px] h-[calc(100vh-1.25rem)] md:h-[calc(100vh-2rem)] max-h-[calc(100vh-1.25rem)] overflow-y-auto p-4 md:p-6"
+            : "max-w-[850px] min-h-[500px] max-h-[90vh] overflow-y-auto p-6 md:p-8"
         }`}
       >
         <AnimatePresence mode="wait">
@@ -1424,7 +1445,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
               </button>
               
               {step > 0 && (
-                <button onClick={() => setStep(step - 1)} className="absolute top-8 left-10 text-[#769C7B] hover:text-[#0D601E] flex items-center gap-1 text-xs font-bold uppercase transition-all">
+                <button onClick={() => setStep(step - 1)} className="absolute top-8 left-10 text-[#769C7B] hover:text-[#0D601E] flex items-center gap-1 text-xs font-bold transition-all">
                   <FiChevronLeft size={20} /> {t('back')}
                 </button>
               )}
@@ -1474,7 +1495,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               }
                             }}
                           />
-                          {nombreError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{nombreError}</p>}
+                          {nombreError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{nombreError}</p>}
                         </div>
                         <div className="relative pb-5">
                           <select 
@@ -1503,7 +1524,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" 
                             size={18} 
                           />
-                          {categoriaError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{categoriaError}</p>}
+                          {categoriaError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{categoriaError}</p>}
                         </div>
                       </div>
                     </div>
@@ -1532,7 +1553,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               }
                             }}
                           />
-                          {emailError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{emailError}</p>}
+                          {emailError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{emailError}</p>}
                         </div>
                         <div className="relative pb-5">
                           <input 
@@ -1558,7 +1579,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             }}
                             maxLength={10}
                           />
-                          {telefonoError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{telefonoError}</p>}
+                          {telefonoError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{telefonoError}</p>}
                         </div>
                       </div>
                     </div>
@@ -1578,8 +1599,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 {step === 1 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_1.25fr] gap-2 md:items-stretch">
-                      <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[340px] md:h-full flex flex-col">
-                          <span className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-2 mb-1">
+                      <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 md:h-full flex flex-col">
+                          <span className="block text-[10px] tracking-wide text-[#769C7B] font-bold ml-2 mb-1">
                             Ubicación en el mapa
                           </span>
                           <div className="h-[180px] md:flex-1 md:min-h-[280px]">
@@ -1621,7 +1642,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                   else setCalleError("");
                                 }}
                               />
-                              {calleError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{calleError}</p>}
+                              {calleError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{calleError}</p>}
                             </div>
                             <div className="relative pb-2">
                               <input
@@ -1638,7 +1659,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                   else setNumeroError("");
                                 }}
                               />
-                              {numeroError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{numeroError}</p>}
+                              {numeroError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{numeroError}</p>}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 mb-1">
@@ -1658,23 +1679,37 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             <p className="text-[9px] text-red-500 mb-2 ml-4 italic bg-red-50 p-2 rounded border border-red-200">{geocodeError}</p>
                           )}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="relative pb-2">
-                              <input
-                                placeholder="Colonia"
-                                disabled
-                                className={inputClass.replace('bg-transparent', '') + " text-[12px] py-2 bg-gray-300 text-gray-800 border-gray-400 cursor-not-allowed" + (coloniaError ? " border-red-500 bg-red-50/50" : "")}
-                                value={form.colonia}
-                                onChange={e => {
-                                  setForm((f: FormState) => ({ ...f, colonia: e.target.value }));
-                                  if (!e.target.value.trim()) setColoniaError("La colonia es obligatoria");
-                                  else setColoniaError("");
-                                }}
-                                onBlur={e => {
-                                  if (!e.target.value.trim()) setColoniaError("La colonia es obligatoria");
-                                  else setColoniaError("");
-                                }}
-                              />
-                              {coloniaError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{coloniaError}</p>}
+                            <div className="relative">
+                              {coloniasCP.length > 1 ? (
+                                <select
+                                  className={inputClass + " text-[12px] py-2" + (coloniaError ? " border-red-500 bg-red-50/50" : "")}
+                                  value={form.colonia}
+                                  onChange={e => {
+                                    setForm((f: FormState) => ({ ...f, colonia: e.target.value }));
+                                    if (!e.target.value) setColoniaError("La colonia es obligatoria");
+                                    else setColoniaError("");
+                                  }}
+                                >
+                                  <option value="">Selecciona tu colonia</option>
+                                  {coloniasCP.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                              ) : (
+                                <input
+                                  placeholder={loadingColonias ? "Buscando colonia..." : "Colonia"}
+                                  className={inputClass + " text-[12px] py-2" + (coloniaError ? " border-red-500 bg-red-50/50" : "")}
+                                  value={form.colonia}
+                                  onChange={e => {
+                                    setForm((f: FormState) => ({ ...f, colonia: e.target.value }));
+                                    if (!e.target.value.trim()) setColoniaError("La colonia es obligatoria");
+                                    else setColoniaError("");
+                                  }}
+                                  onBlur={e => {
+                                    if (!e.target.value.trim()) setColoniaError("La colonia es obligatoria");
+                                    else setColoniaError("");
+                                  }}
+                                />
+                              )}
+                              {coloniaError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{coloniaError}</p>}
                             </div>
                             <div className="relative pb-2">
                               <input
@@ -1695,7 +1730,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                 }}
                                 maxLength={5}
                               />
-                              {codigoPostalError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{codigoPostalError}</p>}
+                              {codigoPostalError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{codigoPostalError}</p>}
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1715,7 +1750,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                   else setCiudadError("");
                                 }}
                               />
-                              {ciudadError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{ciudadError}</p>}
+                              {ciudadError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{ciudadError}</p>}
                             </div>
                             <div className="relative pb-2">
                               <input
@@ -1733,7 +1768,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                   else setEstadoError("");
                                 }}
                               />
-                              {estadoError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{estadoError}</p>}
+                              {estadoError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{estadoError}</p>}
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1760,7 +1795,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="relative pb-2">
-                            <label className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-1">
+                            <label className="block text-[10px] tracking-wide text-[#769C7B] font-bold ml-4 mb-1">
                               Latitud {form.latitud && <span className="text-green-600 text-[9px]">OK</span>}
                             </label>
                             <input
@@ -1771,7 +1806,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             />
                           </div>
                           <div className="relative pb-2">
-                            <label className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-4 mb-1">
+                            <label className="block text-[10px] tracking-wide text-[#769C7B] font-bold ml-4 mb-1">
                               Longitud {form.longitud && <span className="text-green-600 text-[9px]">OK</span>}
                             </label>
                             <input
@@ -1875,7 +1910,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   >
                     <div className="flex items-center gap-2 px-1 text-[#1E3A29] shrink-0">
                       <FiInfo size={18} className="shrink-0 text-[#2E5A3D]" />
-                      <h4 className="font-black uppercase text-[11px] md:text-xs tracking-tighter">Información complementaria</h4>
+                      <h4 className="font-bold text-[11px] md:text-xs tracking-normal">Información complementaria</h4>
                     </div>
 
                     <div className={cardClass + " !bg-[#FBFAF7] !border-[#D6E0D7] hover:!border-[#D6E0D7] hover:!shadow-none !p-2.5 md:!p-3 min-h-0 overflow-hidden flex flex-col"}>
@@ -1947,7 +1982,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                         : "border-[#C9D4CB] bg-white text-[#1F3528] hover:border-[#8BA592] hover:bg-[#FAFCFA]"
                                     }`}
                                   >
-                                    <span className={`w-full text-center text-[10px] font-black uppercase tracking-widest ${isSelected ? "text-white/85" : "text-[#5C7564]"}`}>
+                                    <span className={`w-full text-center text-[10px] font-bold tracking-wide ${isSelected ? "text-white/85" : "text-[#5C7564]"}`}>
                                       {option.label}
                                     </span>
                                     <span className="mt-0.5 w-full text-center text-[13px] font-black leading-none">{option.accent}</span>
@@ -2023,7 +2058,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               <div className="min-w-0 flex-1 flex flex-col">
                                 <div className="flex items-center gap-2 text-[#1F3528]">
                                   <FiClock size={13} className="text-[#2E5A3D]" />
-                                  <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-wide">
+                                  <p className="text-[10px] md:text-[11px] font-bold tracking-normal">
                                     {enabledScheduleCount > 0 ? `${enabledScheduleCount} día(s) configurado(s)` : "Sin horario configurado"}
                                   </p>
                                 </div>
@@ -2042,7 +2077,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                       const compactClose = item.close.replace(":00", "");
                                       return (
                                         <div key={item.label} className="rounded-lg border border-[#BFD0C2] bg-[#F8FBF8] px-2 py-1 min-w-0 h-full flex items-center justify-center">
-                                          <p className="text-[10px] md:text-[11px] font-black text-[#245038] leading-tight truncate uppercase text-center">
+                                          <p className="text-[10px] md:text-[11px] font-bold text-[#245038] leading-tight truncate text-center">
                                             {compactLabel} {compactOpen}-{compactClose}
                                           </p>
                                         </div>
@@ -2061,7 +2096,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               <button
                                 type="button"
                                 onClick={() => setIsScheduleModalOpen(true)}
-                                className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 rounded-xl border border-[#0A4D19] bg-[#0D601E] text-white text-[11px] md:text-[12px] font-black uppercase tracking-wide hover:bg-[#094d18] transition-all active:scale-95 shadow-[0_6px_16px_rgba(13,96,30,0.22)] mt-1"
+                                className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 rounded-xl border border-[#0A4D19] bg-[#0D601E] text-white text-[11px] md:text-[12px] font-bold tracking-wide hover:bg-[#094d18] transition-all active:scale-95 shadow-[0_6px_16px_rgba(13,96,30,0.22)] mt-1"
                               >
                                 <FiPlus size={13} />
                                 Agregar Horario
@@ -2092,7 +2127,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                     <div className={cardClass}>
                       <div className="flex items-center gap-2 mb-4 text-[#0D601E]">
                         <FiUser size={20} />
-                        <h4 className="font-bold uppercase text-xs tracking-tighter">{t('billing')}</h4>
+                        <h4 className="font-bold text-xs tracking-normal">Facturación</h4>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="relative pb-5">
@@ -2111,7 +2146,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             }}
                             maxLength={13}
                           />
-                          {rfcError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{rfcError}</p>}
+                          {rfcError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{rfcError}</p>}
                         </div>
                         <div className="relative pb-5">
                           <input 
@@ -2130,7 +2165,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             }}
                             maxLength={5}
                           />
-                          {cpError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{cpError}</p>}
+                          {cpError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{cpError}</p>}
                         </div>
                       </div>
                     </div>

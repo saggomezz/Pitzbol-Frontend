@@ -10,6 +10,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthModal from "./components/AuthModal";
 import BecomeGuideFlow from "./components/BecomeGuideFlow";
+import InstallPWAPrompt from "./components/InstallPWAPrompt";
 const PublishBusinessFlow = dynamic(() => import("./components/PublishBusinessFlow"), { ssr: false });
 
 declare global {
@@ -113,6 +114,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang={locale}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="icon" href="/icon-192.png" type="image/png" />
+        <meta name="theme-color" content="#FDFCF9" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Pitzbol" />
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${jockey.variable} ${jetbrains.variable} ${roboto.variable} antialiased bg-[#FDFCF9]`}>
         {messages ? (
           <NextIntlClientProvider locale={locale} messages={messages}>
@@ -129,6 +140,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
 
             <Footer />
+
+            <InstallPWAPrompt />
 
             <AnimatePresence>
               {isAuthOpen && (

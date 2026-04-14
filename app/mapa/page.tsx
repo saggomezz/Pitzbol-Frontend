@@ -460,7 +460,6 @@ export default function MapaPage() {
                                             ubicacion: lugarFirestore.ubicacion || '',
                                             latitud: lugarFirestore.latitud || '',
                                             longitud: lugarFirestore.longitud || ''
-                                        const BACKEND_URL = getBackendOrigin();
                                         });
                                         console.log(`✅ Lugar creado manualmente agregado: ${lugarFirestore.nombre}`);
                                     }

@@ -52,6 +52,7 @@ interface FirestorePlace {
   schedule?: Record<string, { enabled?: boolean; open?: string; close?: string }> | null;
   subcategoria?: string;
   subcategorias?: string[];
+  categorias?: string[];
   fotos?: string[];
   rating?: number | string;
   views?: number | string;
@@ -163,7 +164,9 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
 
       const nextValue: PlaceRecord = {
         nombre,
-        rawCategoria: existing?.rawCategoria || normalizeCategory(String(firestorePlace.categoria || "")),
+        rawCategoria: (Array.isArray(firestorePlace.categorias) && firestorePlace.categorias.length > 1)
+          ? firestorePlace.categorias.join(', ')
+          : existing?.rawCategoria || normalizeCategory(String(firestorePlace.categoria || "")),
         categoria: normalizeCategory(String(firestorePlace.categoria || existing?.categoria || "")),
         subcategoria:
           String(
