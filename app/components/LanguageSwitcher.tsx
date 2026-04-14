@@ -13,7 +13,7 @@ export default function LanguageSwitcher() {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: Event) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
       }
