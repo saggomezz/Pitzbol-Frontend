@@ -1398,7 +1398,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const labelClass = "text-[10px] uppercase tracking-widest text-[#4F6757] font-black ml-4 mb-2 block";
   const cardClass = "bg-[#F6F0E6]/20 p-6 rounded-[35px] border border-[#1A4D2E]/10 transition-all duration-300 hover:shadow-[0_0_20px_rgba(13,96,30,0.1)] hover:border-[#0D601E]/80";
   
-  const btnPrimary = "w-full bg-[#0D601E] text-white py-3 rounded-full font-bold uppercase tracking-widest text-xs shadow-lg hover:bg-[#094d18] transition-all active:scale-95";
+  const btnPrimary = "w-full bg-[#0D601E] text-white py-3 rounded-full font-bold tracking-wide text-xs shadow-lg hover:bg-[#094d18] transition-all active:scale-95";
   const btnFinish = "w-full bg-[#8B0000] text-white py-4 rounded-full font-black uppercase tracking-[0.2em] text-sm shadow-xl hover:scale-[1.02] transition-transform active:scale-95";
   const formContainerClass = step === 1 ? "max-w-5xl mx-auto space-y-2" : step === 2 ? "w-fit max-w-full mx-auto space-y-2" : "max-w-2xl mx-auto space-y-2";
   const modalWidthClass = step === 2 ? "w-fit" : "w-full";
@@ -1424,7 +1424,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
               </button>
               
               {step > 0 && (
-                <button onClick={() => setStep(step - 1)} className="absolute top-8 left-10 text-[#769C7B] hover:text-[#0D601E] flex items-center gap-1 text-xs font-bold uppercase transition-all">
+                <button onClick={() => setStep(step - 1)} className="absolute top-8 left-10 text-[#769C7B] hover:text-[#0D601E] flex items-center gap-1 text-xs font-bold transition-all">
                   <FiChevronLeft size={20} /> {t('back')}
                 </button>
               )}
