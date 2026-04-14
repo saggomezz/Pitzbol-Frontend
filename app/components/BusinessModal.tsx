@@ -270,7 +270,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const maxFileSize = 5 * 1024 * 1024; // 5MB
 
   // Comprimir imagen a máx 1200px y calidad 82% para mantener total < 4MB
-  async function compressImage(file: File, maxPx = 1200, quality = 0.82): Promise<File> {
+  async function compressImage(file: File, maxPx = 800, quality = 0.70): Promise<File> {
     return new Promise((resolve) => {
       const img = new window.Image();
       const url = URL.createObjectURL(file);
@@ -1481,7 +1481,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
               )}
 
               {saveError && (
-                <div className="mb-6 px-6 py-3 rounded-2xl bg-[#8B0000] text-white text-center font-bold text-sm shadow-lg animate-pulse border-2 border-[#8B0000]/60">
+                <div className="mt-14 mb-2 mx-4 px-4 py-3 rounded-2xl bg-[#8B0000]/10 text-[#8B0000] text-center text-sm border border-[#8B0000]/30">
                   {saveError}
                 </div>
               )}
