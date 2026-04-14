@@ -222,6 +222,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [numeroError, setNumeroError] = useState("");
   const [coloniaError, setColoniaError] = useState("");
   const [codigoPostalError, setCodigoPostalError] = useState("");
+  const [coloniasCP, setColoniasCP] = useState<string[]>([]);
+  const [loadingColonias, setLoadingColonias] = useState(false);
   const [ciudadError, setCiudadError] = useState("");
   const [estadoError, setEstadoError] = useState("");
   const [sitioWebError, setSitioWebError] = useState("");
@@ -655,6 +657,25 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       !form.longitud
     );
   }, [form.calle, form.colonia, form.codigoPostal, form.latitud, form.longitud]);
+
+  // Buscar colonias por código postal
+  useEffect(() => {
+    const cp = form.codigoPostal;
+    if (!/^\d{5}$/.test(cp)) { setColoniasCP([]); return; }
+    setLoadingColonias(true);
+    fetch(`/api/colonias?cp=${cp}`)
+      .then(r => r.json())
+      .then(data => {
+        const list: string[] = data.colonias || [];
+        setColoniasCP(list);
+        if (list.length === 1 && !form.colonia) {
+          setForm(f => ({ ...f, colonia: list[0]! }));
+          setColoniaError("");
+        }
+      })
+      .catch(() => setColoniasCP([]))
+      .finally(() => setLoadingColonias(false));
+  }, [form.codigoPostal]);
 
   // Buscar coordenadas automáticamente cuando se cumplen las condiciones (con debounce)
   useEffect(() => {
@@ -1474,7 +1495,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               }
                             }}
                           />
-                          {nombreError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{nombreError}</p>}
+                          {nombreError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{nombreError}</p>}
                         </div>
                         <div className="relative pb-5">
                           <select 
@@ -1503,7 +1524,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" 
                             size={18} 
                           />
-                          {categoriaError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{categoriaError}</p>}
+                          {categoriaError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{categoriaError}</p>}
                         </div>
                       </div>
                     </div>
@@ -1532,7 +1553,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               }
                             }}
                           />
-                          {emailError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{emailError}</p>}
+                          {emailError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{emailError}</p>}
                         </div>
                         <div className="relative pb-5">
                           <input 
@@ -1558,7 +1579,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             }}
                             maxLength={10}
                           />
-                          {telefonoError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{telefonoError}</p>}
+                          {telefonoError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{telefonoError}</p>}
                         </div>
                       </div>
                     </div>
@@ -1578,8 +1599,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 {step === 1 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_1.25fr] gap-2 md:items-stretch">
-                      <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 min-h-[340px] md:h-full flex flex-col">
-                          <span className="block text-[10px] uppercase tracking-widest text-[#769C7B] font-bold ml-2 mb-1">
+                      <div className="p-2 rounded-[24px] border border-[#1A4D2E]/10 bg-[#F6F0E6]/30 md:h-full flex flex-col">
+                          <span className="block text-[10px] tracking-widest text-[#769C7B] font-bold ml-2 mb-1">
                             Ubicación en el mapa
                           </span>
                           <div className="h-[180px] md:flex-1 md:min-h-[280px]">
@@ -1621,7 +1642,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                   else setCalleError("");
                                 }}
                               />
-                              {calleError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{calleError}</p>}
+                              {calleError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{calleError}</p>}
                             </div>
                             <div className="relative pb-2">
                               <input
@@ -1638,7 +1659,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                   else setNumeroError("");
                                 }}
                               />
-                              {numeroError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{numeroError}</p>}
+                              {numeroError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{numeroError}</p>}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 mb-1">
@@ -1658,22 +1679,37 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             <p className="text-[9px] text-red-500 mb-2 ml-4 italic bg-red-50 p-2 rounded border border-red-200">{geocodeError}</p>
                           )}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="relative pb-2">
-                              <input
-                                placeholder="Colonia"
-                                className={inputClass + " text-[12px] py-2" + (coloniaError ? " border-red-500 bg-red-50/50" : "")}
-                                value={form.colonia}
-                                onChange={e => {
-                                  setForm((f: FormState) => ({ ...f, colonia: e.target.value }));
-                                  if (!e.target.value.trim()) setColoniaError("La colonia es obligatoria");
-                                  else setColoniaError("");
-                                }}
-                                onBlur={e => {
-                                  if (!e.target.value.trim()) setColoniaError("La colonia es obligatoria");
-                                  else setColoniaError("");
-                                }}
-                              />
-                              {coloniaError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{coloniaError}</p>}
+                            <div className="relative">
+                              {coloniasCP.length > 1 ? (
+                                <select
+                                  className={inputClass + " text-[12px] py-2" + (coloniaError ? " border-red-500 bg-red-50/50" : "")}
+                                  value={form.colonia}
+                                  onChange={e => {
+                                    setForm((f: FormState) => ({ ...f, colonia: e.target.value }));
+                                    if (!e.target.value) setColoniaError("La colonia es obligatoria");
+                                    else setColoniaError("");
+                                  }}
+                                >
+                                  <option value="">Selecciona tu colonia</option>
+                                  {coloniasCP.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                              ) : (
+                                <input
+                                  placeholder={loadingColonias ? "Buscando colonia..." : "Colonia"}
+                                  className={inputClass + " text-[12px] py-2" + (coloniaError ? " border-red-500 bg-red-50/50" : "")}
+                                  value={form.colonia}
+                                  onChange={e => {
+                                    setForm((f: FormState) => ({ ...f, colonia: e.target.value }));
+                                    if (!e.target.value.trim()) setColoniaError("La colonia es obligatoria");
+                                    else setColoniaError("");
+                                  }}
+                                  onBlur={e => {
+                                    if (!e.target.value.trim()) setColoniaError("La colonia es obligatoria");
+                                    else setColoniaError("");
+                                  }}
+                                />
+                              )}
+                              {coloniaError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{coloniaError}</p>}
                             </div>
                             <div className="relative pb-2">
                               <input
@@ -1694,7 +1730,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                 }}
                                 maxLength={5}
                               />
-                              {codigoPostalError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{codigoPostalError}</p>}
+                              {codigoPostalError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{codigoPostalError}</p>}
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1714,7 +1750,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                   else setCiudadError("");
                                 }}
                               />
-                              {ciudadError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{ciudadError}</p>}
+                              {ciudadError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{ciudadError}</p>}
                             </div>
                             <div className="relative pb-2">
                               <input
@@ -1732,7 +1768,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                   else setEstadoError("");
                                 }}
                               />
-                              {estadoError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{estadoError}</p>}
+                              {estadoError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{estadoError}</p>}
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -2110,7 +2146,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             }}
                             maxLength={13}
                           />
-                          {rfcError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{rfcError}</p>}
+                          {rfcError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{rfcError}</p>}
                         </div>
                         <div className="relative pb-5">
                           <input 
@@ -2129,7 +2165,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             }}
                             maxLength={5}
                           />
-                          {cpError && <p className="text-[9px] text-red-500 mt-1 ml-4 italic absolute left-0 bottom-0">{cpError}</p>}
+                          {cpError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{cpError}</p>}
                         </div>
                       </div>
                     </div>
