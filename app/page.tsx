@@ -184,7 +184,7 @@ const GdlMatchCarousel = ({ partidos, sede, tHome }: { partidos: Partido[]; sede
   return (
     <div className="w-full mb-0">
       <div className="flex items-center justify-between mb-0">
-        <h3 className="text-center text-[#0D601E] text-xs md:text-sm font-medium flex-1" style={{ fontFamily: 'var(--font-roboto)' }}>
+        <h3 className="text-center text-[#0D601E] text-xs md:text-sm font-medium flex-1 my-0" style={{ fontFamily: 'var(--font-roboto)' }}>
           {tHome('nextMatchIn')} <span className="font-bold">{sede}</span> - {current.fechaDisplay}
         </h3>
         <div className="flex items-center gap-1 ml-2 flex-shrink-0">
