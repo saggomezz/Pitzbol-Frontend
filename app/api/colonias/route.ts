@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     if (!res.ok) return NextResponse.json({ colonias: [] });
     const data = await res.json();
     const colonias: string[] = [
-      ...new Set((data.zip_codes || []).map((z: any) => z.d_asenta as string)),
+      ...new Set<string>((data.zip_codes || []).map((z: any) => z.d_asenta as string)),
     ].sort();
     return NextResponse.json({ colonias });
   } catch {
