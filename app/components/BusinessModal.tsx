@@ -1408,7 +1408,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
         className={`relative bg-white ${modalWidthClass} rounded-[50px] shadow-2xl border border-white/20 ${
           step === 1
-            ? "max-w-[900px] max-h-[92vh] overflow-hidden p-4 md:p-6"
+            ? "max-w-[900px] max-h-[92vh] overflow-y-auto p-4 md:p-6"
             : step === 2
             ? "max-w-[840px] max-h-[96vh] overflow-hidden p-3 md:p-5"
             : step === 3
@@ -1661,8 +1661,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             <div className="relative pb-2">
                               <input
                                 placeholder="Colonia"
-                                disabled
-                                className={inputClass.replace('bg-transparent', '') + " text-[12px] py-2 bg-gray-300 text-gray-800 border-gray-400 cursor-not-allowed" + (coloniaError ? " border-red-500 bg-red-50/50" : "")}
+                                className={inputClass + " text-[12px] py-2" + (coloniaError ? " border-red-500 bg-red-50/50" : "")}
                                 value={form.colonia}
                                 onChange={e => {
                                   setForm((f: FormState) => ({ ...f, colonia: e.target.value }));
