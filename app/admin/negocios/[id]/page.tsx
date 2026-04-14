@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -1033,47 +1033,80 @@ export default function AdminViewBusinessPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FDFCF9] to-[#F6F0E6] px-4 py-8 md:py-12">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-[#F6F8F7] relative">
+      <div
+        className="absolute inset-x-0 top-0 h-[22rem] md:h-[24rem] lg:h-[26rem] overflow-hidden"
+        style={{
+          backgroundImage: business.business.images?.[0]
+            ? `url(${business.business.images[0]})`
+            : business.business.logo
+              ? `url(${business.business.logo})`
+              : "linear-gradient(135deg, #0D601E 0%, #1A4D2E 100%)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-[#0D601E]/55" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0D601E]/75 via-[#0D601E]/45 to-[#0D601E]/35" />
+      </div>
+
+      <div className="relative z-10 max-w-6xl mx-auto px-4 pt-6 md:pt-8 pb-8 md:pb-12">
         <Link
           href="/admin/negocios?tab=pendientes"
-          className="inline-flex items-center gap-2 text-[#0D601E] hover:text-[#094d18] font-semibold mb-6 transition-colors"
+          className="relative z-20 inline-flex items-center gap-2 text-white hover:text-white/85 font-semibold mb-6 transition-colors"
         >
           <FiArrowLeft size={20} /> Volver
         </Link>
 
+        <div className="h-28 md:h-32 lg:h-36" />
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[40px] shadow-lg overflow-hidden border border-[#1A4D2E]/10"
+          className="relative z-10 bg-white rounded-[40px] shadow-lg overflow-hidden border border-[#1A4D2E]/10"
         >
-          <div className={`border-b-4 p-8 md:p-12 ${config.bgColor}`}>
-            <div className="flex justify-center mb-4">{config.icon}</div>
-            <h1 className="text-3xl md:text-4xl font-black text-[#1A4D2E] mb-2 text-center" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-              {business.business.name}
-            </h1>
-            <div className="text-center mb-4">
-              <span className={`inline-block px-6 py-2 rounded-full font-bold text-sm ${config.color} bg-white/40`}>
-                {config.label}
-              </span>
+          <div className="p-6 md:p-8 bg-[#F8FBF8]">
+            <div className="max-w-3xl mx-auto text-center">
+              <div className="flex justify-center mb-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#0D601E]/10 border border-[#0D601E]/25 px-4 py-2">
+                  <FiBriefcase className="text-[#0D601E]" size={15} />
+                  <span className="text-[11px] font-black uppercase tracking-[0.18em] text-[#1A4D2E]">Gestión Administrativa</span>
+                </div>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-black text-[#1A4D2E] leading-tight" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                {business.business.name}
+              </h1>
+              <p className="text-[#4F6757] font-black text-lg md:text-xl mt-1" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                {business.business.category}
+              </p>
+              <div className="flex justify-center mt-4">
+                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-black text-xs uppercase tracking-wide ${config.color} bg-white border border-[#1A4D2E]/15 shadow-sm`}>
+                  {config.icon}
+                  {config.label}
+                </span>
+              </div>
+              <p className="mt-4 text-[#1A4D2E]/80 text-sm md:text-base font-medium">{config.description}</p>
             </div>
-            <p className="text-[#1A4D2E]/70 max-w-2xl mx-auto text-center">{config.description}</p>
           </div>
 
-          <div className="p-8 md:p-12">
-            <div className={`mb-8 grid gap-6 ${hasAdministrativeActions ? "xl:grid-cols-2 xl:items-stretch" : ""}`}>
+          <div className="h-[2px] w-full bg-[#1A4D2E]/20" />
+
+          <div className="px-6 md:px-8 pt-6 md:pt-8 pb-8 md:pb-10 bg-gradient-to-b from-white to-[#FCFEFC]">
+            <div className={`mb-8 grid gap-5 ${hasAdministrativeActions ? "xl:grid-cols-2 xl:items-stretch" : ""}`}>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="h-full bg-gradient-to-br from-[#F6F0E6]/50 to-[#E8F5E9]/50 rounded-3xl p-6 border border-[#1A4D2E]/10 flex flex-col"
+                className="h-full bg-white rounded-3xl p-5 border-2 border-[#1A4D2E]/20 flex flex-col shadow-sm"
               >
                 <button
                   type="button"
                   onClick={() => toggleSection("solicitante")}
-                  className="w-full flex items-center justify-between text-left"
+                  className="w-full flex items-center justify-between text-left pb-3 border-b-2 border-[#1A4D2E]/15"
                 >
-                  <h3 className="text-xl font-black text-[#1A4D2E]">Información del Solicitante</h3>
+                  <h3 className="text-xl font-black text-[#1A4D2E] inline-flex items-center gap-2">
+                    <FiUser className="text-[#0D601E]" size={18} /> Información del Solicitante
+                  </h3>
                   <FiChevronRight
                     size={22}
                     className={`text-[#1A4D2E] transition-transform duration-200 ${openSections.solicitante ? "rotate-90" : ""}`}
@@ -1093,7 +1126,7 @@ export default function AdminViewBusinessPage() {
                         {ownerProfileIdentifier && (
                           <Link
                             href={`/perfil/${encodeURIComponent(ownerProfileIdentifier)}`}
-                            className="block w-full bg-white border border-[#1A4D2E]/10 rounded-2xl p-4 hover:shadow-lg hover:border-[#0D601E]/30 transition-all group cursor-pointer"
+                            className="block w-full bg-[#FCFEFC] border-2 border-[#1A4D2E]/15 rounded-2xl p-4 hover:shadow-lg hover:border-[#0D601E]/35 transition-all group cursor-pointer"
                           >
                             <div className="flex items-center gap-3">
                               <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#1A4D2E]/20 bg-[#F6F0E6] flex-shrink-0">
@@ -1101,13 +1134,16 @@ export default function AdminViewBusinessPage() {
                                   <img src={owner.fotoPerfil} alt={ownerName} className="w-full h-full object-cover" />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center text-[#769C7B]">
-                                    <FiUser size={22} />
+                                    <FiUser size={20} />
                                   </div>
                                 )}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="text-xs text-[#769C7B] font-semibold uppercase mb-1">Propietario</p>
-                                <p className="text-sm font-bold text-[#1A4D2E] break-all mb-2">{ownerName || "No disponible"}</p>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <FiUser size={16} className="text-[#0D601E]" />
+                                  <p className="text-xs text-[#769C7B] font-black uppercase tracking-wide">Propietario</p>
+                                </div>
+                                <p className="text-sm font-black text-[#1A4D2E] break-all mb-1">{ownerName || "No disponible"}</p>
                                 <p className="text-xs text-[#769C7B] break-all">{owner?.email || "No disponible"}</p>
                               </div>
                               <FiChevronRight size={20} className="text-[#0D601E] flex-shrink-0 group-hover:translate-x-1 transition-transform" />
@@ -1149,18 +1185,22 @@ export default function AdminViewBusinessPage() {
               </div>
             </div>
 
+            <div className="mb-6 h-[2px] w-full bg-[#1A4D2E]/20" />
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="mb-8"
+              className="mb-8 -mx-6 md:-mx-8 px-6 md:px-8 py-5 bg-[#F8FBF8]"
             >
               <button
                 type="button"
                 onClick={() => toggleSection("negocio")}
-                className="w-full flex items-center justify-between text-left mb-4"
+                className="w-full flex items-center justify-between text-left mb-2"
               >
-                <h3 className="text-2xl font-black text-[#1A4D2E]">Información del Negocio</h3>
+                <h3 className="text-2xl font-black text-[#1A4D2E] inline-flex items-center gap-2">
+                  <FiBriefcase className="text-[#0D601E]" size={20} /> Información del Negocio
+                </h3>
                 <FiChevronRight
                   size={24}
                   className={`text-[#1A4D2E] transition-transform duration-200 ${openSections.negocio ? "rotate-90" : ""}`}
@@ -1176,417 +1216,417 @@ export default function AdminViewBusinessPage() {
                     transition={{ duration: 0.25, ease: "easeInOut" }}
                     className="overflow-hidden"
                   >
-                    <div className="pt-1">
-                  <div className="grid lg:grid-cols-2 gap-6 mb-6">
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="flex flex-col gap-4"
-                    >
-                      <LocationMap
-                        location={business.business.location}
-                        businessName={business.business.name}
-                        latitud={isEditingLocation ? (locationDraftCoords?.latitud ?? business.business.latitud ?? "") : business.business.latitud}
-                        longitud={isEditingLocation ? (locationDraftCoords?.longitud ?? business.business.longitud ?? "") : business.business.longitud}
-                        editable={isEditingLocation}
-                        onLocationChange={(lat, lng) => {
-                          setLocationDraftCoords({ latitud: lat, longitud: lng });
-                        }}
-                      />
-
-                      <div className="space-y-3">
-                        <AdminEditableField
-                          label="Nombre del negocio"
-                          value={business.business.name || ""}
-                          icon={<FiBriefcase className="text-[#0D601E]" size={24} />}
-                          required
-                          validate={validateBusinessName}
-                          onSave={async (value) => {
-                            await validateUniquenessField("businessName", value);
-                            await handleUpdateBusinessField("businessName", value);
-                          }}
-                        />
-
-                        <AdminEditableField
-                          label="Categoría"
-                          value={business.business.category}
-                          icon={<FiBriefcase className="text-[#0D601E]" size={24} />}
-                          options={
-                            businessCategoryOptions.some((option) => option.value === business.business.category)
-                              ? businessCategoryOptions
-                              : [{ value: business.business.category, label: business.business.category }, ...businessCategoryOptions]
-                          }
-                          required
-                          onSave={(value) => handleUpdateBusinessField("category", value)}
-                        />
-
-                        <AdminEditableField
-                          label="Descripción"
-                          value={business.business.description || ""}
-                          multiline={true}
-                          rows={4}
-                          required
-                          maxLength={500}
-                          validate={(value) => (value.trim() ? null : "La descripción es obligatoria")}
-                          icon={<FiFileText className="text-[#0D601E]" size={24} />}
-                          onSave={(value) => handleUpdateBusinessField("description", value)}
-                        />
-                      </div>
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.25 }}
-                      className="flex flex-col gap-4"
-                    >
-                      <div className="bg-[#F6F0E6] p-4 rounded-2xl">
-                        <p className="text-xs text-[#769C7B] font-semibold uppercase mb-1">Fecha de solicitud</p>
-                        <p className="text-lg font-bold text-[#1A4D2E]">
-                          {new Date(business.business.createdAt).toLocaleDateString("es-MX", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                        </p>
-                      </div>
-
-                      <AdminEditableField
-                        label="Teléfono"
-                        value={business.business.phone}
-                        icon={<FiPhone className="text-[#0D601E]" size={24} />}
-                        inputType="tel"
-                        required
-                        maxLength={10}
-                        normalizeValue={(value) => value.replace(/\D/g, "").slice(0, 10)}
-                        validate={validatePhone}
-                        onSave={async (value) => {
-                          await validateUniquenessField("phone", value);
-                          await handleUpdateBusinessField("phone", value);
-                        }}
-                      />
-
-                      <AdminEditableLocation
-                        location={business.business.location}
-                        latitud={business.business.latitud}
-                        longitud={business.business.longitud}
-                        calle={business.business.calle}
-                        numero={business.business.numero}
-                        colonia={business.business.colonia}
-                        codigoPostal={business.business.codigoPostal}
-                        ciudad={business.business.ciudad}
-                        estado={business.business.estado}
-                        local={business.business.local}
-                        referencias={business.business.referencias}
-                        linkedLatitud={locationDraftCoords?.latitud || ""}
-                        linkedLongitud={locationDraftCoords?.longitud || ""}
-                        onCoordinatesChange={(lat, lng) => setLocationDraftCoords({ latitud: lat, longitud: lng })}
-                        onEditModeChange={setIsEditingLocation}
-                        onSave={handleUpdateLocation}
-                      />
-
-                      <AdminEditableField
-                        label="Sitio web"
-                        value={business.business.website || ""}
-                        icon={<FiGlobe className="text-[#0D601E]" size={24} />}
-                        inputType="url"
-                        required
-                        validate={validateURL}
-                        onSave={async (value) => {
-                          await validateUniquenessField("website", value);
-                          await handleUpdateBusinessField("website", value);
-                        }}
-                      />
-
-                      <AdminEditableField
-                        label="RFC"
-                        value={business.business.rfc}
-                        icon={<FiBriefcase className="text-[#0D601E]" size={24} />}
-                        required
-                        maxLength={13}
-                        normalizeValue={(value) => value.toUpperCase()}
-                        validate={validateRFC}
-                        onSave={async (value) => {
-                          await validateUniquenessField("rfc", value);
-                          await handleUpdateBusinessField("rfc", value);
-                        }}
-                      />
-                      <AdminEditableField
-                        label="Código Postal"
-                        value={business.business.cp || ""}
-                        icon={<FiMapPin className="text-[#0D601E]" size={24} />}
-                        required
-                        maxLength={5}
-                        inputType="tel"
-                        normalizeValue={(value) => value.replace(/\D/g, "").slice(0, 5)}
-                        validate={validateCP}
-                        onSave={async (value) => {
-                          await validateUniquenessField("cp", value);
-                          await handleUpdateBusinessField("cp", value);
-                        }}
-                      />
-                      <AdminEditableField
-                        label="Email del negocio"
-                        value={business.email || ""}
-                        icon={<FiMail className="text-[#0D601E]" size={24} />}
-                        inputType="email"
-                        required
-                        validate={validateEmail}
-                        onSave={async (value) => {
-                          await validateUniquenessField("email", value);
-                          await handleUpdateBusinessField("email", value);
-                        }}
-                      />
-                    </motion.div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="bg-white border border-[#1A4D2E]/10 rounded-2xl p-4">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <p className="text-[10px] uppercase tracking-widest text-[#4F6757] font-black ml-2">Subcategorías / palabras clave</p>
-                        {editingAdditional.subcategorias ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => saveAdditionalSection("subcategorias")}
-                              disabled={savingAdditionalInfo}
-                              className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#0D601E] text-white disabled:opacity-60"
-                            >
-                              Guardar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => cancelAdditionalSectionEdit("subcategorias")}
-                              className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border border-[#C9D4CB] text-[#1F3528]"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => startAdditionalSectionEdit("subcategorias")}
-                            className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#EEF4EF] border border-[#C9D4CB] text-[#245038]"
-                            aria-label="Editar subcategorías"
-                            title="Editar subcategorías"
-                          >
-                            <FiEdit2 size={12} />
-                          </button>
-                        )}
-                      </div>
-                      <div className="border border-[#C9D4CB] rounded-2xl p-2 bg-white min-h-[130px] flex flex-col">
-                        <input
-                          placeholder="Escribe subcategoría y presiona Enter"
-                          className="w-full px-4 py-2 bg-transparent border border-[#1A4D2E]/20 rounded-full outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm"
-                          value={subcategoriaInput}
-                          disabled={!editingAdditional.subcategorias}
-                          onChange={(e) => setSubcategoriaInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (!editingAdditional.subcategorias) return;
-                            if (e.key === "Enter" || e.key === ",") {
-                              e.preventDefault();
-                              addSubcategory(subcategoriaInput);
-                            }
-                          }}
-                          onBlur={() => {
-                            if (subcategoriaInput.trim()) addSubcategory(subcategoriaInput);
-                          }}
-                        />
-
-                        <div className="mt-2 flex flex-wrap gap-1.5 min-h-[38px]">
-                          {draftSubcategorias.map((sub) => (
-                            <span key={sub} className="inline-flex items-center gap-1 bg-[#EEF4EF] text-[#245038] border border-[#C9D4CB] px-2.5 py-1 rounded-full text-[11px] font-bold">
-                              {sub}
-                              {editingAdditional.subcategorias && (
-                                <button type="button" onClick={() => removeSubcategory(sub)} className="text-[#8B0000] font-black">
-                                  x
-                                </button>
-                              )}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white border border-[#1A4D2E]/10 rounded-2xl p-4">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <p className="text-[10px] uppercase tracking-widest text-[#4F6757] font-black ml-2">Rango estimado</p>
-                        {editingAdditional.costoEstimado ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => saveAdditionalSection("costoEstimado")}
-                              disabled={savingAdditionalInfo}
-                              className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#0D601E] text-white disabled:opacity-60"
-                            >
-                              Guardar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => cancelAdditionalSectionEdit("costoEstimado")}
-                              className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border border-[#C9D4CB] text-[#1F3528]"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => startAdditionalSectionEdit("costoEstimado")}
-                            className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#EEF4EF] border border-[#C9D4CB] text-[#245038]"
-                            aria-label="Editar rango estimado"
-                            title="Editar rango estimado"
-                          >
-                            <FiEdit2 size={12} />
-                          </button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {COST_OPTIONS.map((option) => {
-                          const isSelected = draftCostoEstimado === option.value;
-                          return (
-                            <button
-                              key={option.value}
-                              type="button"
-                              disabled={!editingAdditional.costoEstimado}
-                              onClick={() => setDraftCostoEstimado(isSelected ? "" : option.value)}
-                              className={`flex min-h-[62px] flex-col items-center justify-center rounded-2xl border px-2 py-1 text-center transition-all ${
-                                isSelected
-                                  ? "border-[#0D601E] bg-[#0D601E] text-white shadow-[0_8px_18px_rgba(13,96,30,0.18)]"
-                                  : "border-[#C9D4CB] bg-white text-[#1F3528] hover:border-[#8BA592]"
-                              }`}
-                            >
-                              <span className={`text-[10px] font-black uppercase tracking-widest ${isSelected ? "text-white/85" : "text-[#5C7564]"}`}>{option.label}</span>
-                              <span className="mt-0.5 w-full text-center text-[13px] font-black leading-none">{option.accent}</span>
-                              <span className={`mt-0.5 w-full text-center text-[10px] font-semibold ${isSelected ? "text-white/85" : "text-[#5C7564]"}`}>{option.value}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="bg-white border border-[#1A4D2E]/10 rounded-2xl p-4">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <p className="text-[10px] uppercase tracking-widest text-[#4F6757] font-black ml-2">Tiempo sugerido</p>
-                        {editingAdditional.tiempoSugerido ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => saveAdditionalSection("tiempoSugerido")}
-                              disabled={savingAdditionalInfo}
-                              className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#0D601E] text-white disabled:opacity-60"
-                            >
-                              Guardar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => cancelAdditionalSectionEdit("tiempoSugerido")}
-                              className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border border-[#C9D4CB] text-[#1F3528]"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => startAdditionalSectionEdit("tiempoSugerido")}
-                            className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#EEF4EF] border border-[#C9D4CB] text-[#245038]"
-                            aria-label="Editar tiempo sugerido"
-                            title="Editar tiempo sugerido"
-                          >
-                            <FiEdit2 size={12} />
-                          </button>
-                        )}
-                      </div>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          placeholder="Ej. 1.5"
-                          className="w-full px-4 py-2 bg-transparent border border-[#1A4D2E]/20 rounded-full outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm pr-16"
-                          value={draftTiempoSugerido}
-                          disabled={!editingAdditional.tiempoSugerido}
-                          onChange={(e) => setDraftTiempoSugerido(e.target.value)}
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#5C7564] font-bold">horas</span>
-                      </div>
-                    </div>
-
-                    <div className="bg-white border border-[#1A4D2E]/10 rounded-2xl p-4">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <p className="text-[10px] uppercase tracking-widest text-[#4F6757] font-black ml-2">Horario</p>
-                        {editingAdditional.horario ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => saveAdditionalSection("horario")}
-                              disabled={savingAdditionalInfo}
-                              className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#0D601E] text-white disabled:opacity-60"
-                            >
-                              Guardar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => cancelAdditionalSectionEdit("horario")}
-                              className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border border-[#C9D4CB] text-[#1F3528]"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => startAdditionalSectionEdit("horario")}
-                            className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#EEF4EF] border border-[#C9D4CB] text-[#245038]"
-                            aria-label="Editar horario"
-                            title="Editar horario"
-                          >
-                            <FiEdit2 size={12} />
-                          </button>
-                        )}
-                      </div>
-                      <div className="border border-[#C9D4CB] rounded-2xl p-2 bg-white">
-                        <div className="flex items-center gap-2 text-[#1F3528]">
-                          <FiClock size={13} className="text-[#2E5A3D]" />
-                          <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-wide">
-                            {activeSchedulePreview.length > 0 ? `${activeSchedulePreview.length} día(s) configurado(s)` : "Sin horario configurado"}
-                          </p>
-                        </div>
-
-                        {activeSchedulePreview.length > 0 && (
-                          <div className={`grid gap-1 mt-1 ${activeSchedulePreview.length === 4 ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2"}`}>
-                            {(activeSchedulePreview.length > 4 ? activeSchedulePreview.slice(0, 4) : activeSchedulePreview).map((item) => (
-                              <div key={item.key} className="rounded-lg border border-[#BFD0C2] bg-[#F8FBF8] px-2 py-1 min-w-0">
-                                <p className="text-[10px] md:text-[11px] font-black text-[#245038] leading-tight truncate uppercase text-center">
-                                  {item.label.slice(0, 3)} {item.open.replace(":00", "")}-{item.close.replace(":00", "")}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {activeSchedulePreview.length > 4 && (
-                          <p className="mt-1 text-[10px] font-semibold text-[#5C7564] italic leading-tight text-center">
-                            Más días: {activeSchedulePreview.slice(4).map((item) => item.label).join(" • ")}
-                          </p>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => setIsScheduleEditorOpen(true)}
-                          disabled={!editingAdditional.horario}
-                          className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 rounded-xl border border-[#0A4D19] bg-[#0D601E] text-white text-[11px] md:text-[12px] font-black uppercase tracking-wide hover:bg-[#094d18] transition-all active:scale-95 shadow-[0_6px_16px_rgba(13,96,30,0.22)] mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    <div className="pt-2">
+                      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.2 }}
+                          className="flex flex-col gap-4"
                         >
-                          <FiPlus size={13} />
-                          Configurar Horario
-                        </button>
-                      </div>
-                    </div>
+                          <LocationMap
+                            location={business.business.location}
+                            businessName={business.business.name}
+                            latitud={isEditingLocation ? (locationDraftCoords?.latitud ?? business.business.latitud ?? "") : business.business.latitud}
+                            longitud={isEditingLocation ? (locationDraftCoords?.longitud ?? business.business.longitud ?? "") : business.business.longitud}
+                            editable={isEditingLocation}
+                            onLocationChange={(lat, lng) => {
+                              setLocationDraftCoords({ latitud: lat, longitud: lng });
+                            }}
+                          />
 
-                    {additionalInfoError && <p className="text-[11px] text-[#8B0000] mt-1 font-semibold">{additionalInfoError}</p>}
-                  </div>
+                          <div className="space-y-3">
+                            <AdminEditableField
+                              label="Nombre del negocio"
+                              value={business.business.name || ""}
+                              icon={<FiBriefcase className="text-[#0D601E]" size={24} />}
+                              required
+                              validate={validateBusinessName}
+                              onSave={async (value) => {
+                                await validateUniquenessField("businessName", value);
+                                await handleUpdateBusinessField("businessName", value);
+                              }}
+                            />
+
+                            <AdminEditableField
+                              label="Categoría"
+                              value={business.business.category}
+                              icon={<FiBriefcase className="text-[#0D601E]" size={24} />}
+                              options={
+                                businessCategoryOptions.some((option) => option.value === business.business.category)
+                                  ? businessCategoryOptions
+                                  : [{ value: business.business.category, label: business.business.category }, ...businessCategoryOptions]
+                              }
+                              required
+                              onSave={(value) => handleUpdateBusinessField("category", value)}
+                            />
+
+                            <AdminEditableField
+                              label="Descripción"
+                              value={business.business.description || ""}
+                              multiline={true}
+                              rows={4}
+                              required
+                              maxLength={500}
+                              validate={(value) => (value.trim() ? null : "La descripción es obligatoria")}
+                              icon={<FiFileText className="text-[#0D601E]" size={24} />}
+                              onSave={(value) => handleUpdateBusinessField("description", value)}
+                            />
+                          </div>
+                        </motion.div>
+
+                        <motion.div
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.25 }}
+                          className="flex flex-col gap-4"
+                        >
+                          <div className="bg-[#F6F0E6] p-4 rounded-2xl">
+                            <p className="text-xs text-[#769C7B] font-semibold uppercase mb-1">Fecha de solicitud</p>
+                            <p className="text-lg font-bold text-[#1A4D2E]">
+                              {new Date(business.business.createdAt).toLocaleDateString("es-MX", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </p>
+                          </div>
+
+                          <AdminEditableField
+                            label="Teléfono"
+                            value={business.business.phone}
+                            icon={<FiPhone className="text-[#0D601E]" size={24} />}
+                            inputType="tel"
+                            required
+                            maxLength={10}
+                            normalizeValue={(value) => value.replace(/\D/g, "").slice(0, 10)}
+                            validate={validatePhone}
+                            onSave={async (value) => {
+                              await validateUniquenessField("phone", value);
+                              await handleUpdateBusinessField("phone", value);
+                            }}
+                          />
+
+                          <AdminEditableLocation
+                            location={business.business.location}
+                            latitud={business.business.latitud}
+                            longitud={business.business.longitud}
+                            calle={business.business.calle}
+                            numero={business.business.numero}
+                            colonia={business.business.colonia}
+                            codigoPostal={business.business.codigoPostal}
+                            ciudad={business.business.ciudad}
+                            estado={business.business.estado}
+                            local={business.business.local}
+                            referencias={business.business.referencias}
+                            linkedLatitud={locationDraftCoords?.latitud || ""}
+                            linkedLongitud={locationDraftCoords?.longitud || ""}
+                            onCoordinatesChange={(lat, lng) => setLocationDraftCoords({ latitud: lat, longitud: lng })}
+                            onEditModeChange={setIsEditingLocation}
+                            onSave={handleUpdateLocation}
+                          />
+
+                          <AdminEditableField
+                            label="Sitio web"
+                            value={business.business.website || ""}
+                            icon={<FiGlobe className="text-[#0D601E]" size={24} />}
+                            inputType="url"
+                            required
+                            validate={validateURL}
+                            onSave={async (value) => {
+                              await validateUniquenessField("website", value);
+                              await handleUpdateBusinessField("website", value);
+                            }}
+                          />
+
+                          <AdminEditableField
+                            label="RFC"
+                            value={business.business.rfc}
+                            icon={<FiBriefcase className="text-[#0D601E]" size={24} />}
+                            required
+                            maxLength={13}
+                            normalizeValue={(value) => value.toUpperCase()}
+                            validate={validateRFC}
+                            onSave={async (value) => {
+                              await validateUniquenessField("rfc", value);
+                              await handleUpdateBusinessField("rfc", value);
+                            }}
+                          />
+                          <AdminEditableField
+                            label="Código Postal"
+                            value={business.business.cp || ""}
+                            icon={<FiMapPin className="text-[#0D601E]" size={24} />}
+                            required
+                            maxLength={5}
+                            inputType="tel"
+                            normalizeValue={(value) => value.replace(/\D/g, "").slice(0, 5)}
+                            validate={validateCP}
+                            onSave={async (value) => {
+                              await validateUniquenessField("cp", value);
+                              await handleUpdateBusinessField("cp", value);
+                            }}
+                          />
+                          <AdminEditableField
+                            label="Email del negocio"
+                            value={business.email || ""}
+                            icon={<FiMail className="text-[#0D601E]" size={24} />}
+                            inputType="email"
+                            required
+                            validate={validateEmail}
+                            onSave={async (value) => {
+                              await validateUniquenessField("email", value);
+                              await handleUpdateBusinessField("email", value);
+                            }}
+                          />
+                        </motion.div>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="bg-white border border-[#1A4D2E]/10 rounded-2xl p-4">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <p className="text-[10px] uppercase tracking-widest text-[#4F6757] font-black ml-2">Subcategorías / palabras clave</p>
+                            {editingAdditional.subcategorias ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => saveAdditionalSection("subcategorias")}
+                                  disabled={savingAdditionalInfo}
+                                  className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#0D601E] text-white disabled:opacity-60"
+                                >
+                                  Guardar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => cancelAdditionalSectionEdit("subcategorias")}
+                                  className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border border-[#C9D4CB] text-[#1F3528]"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => startAdditionalSectionEdit("subcategorias")}
+                                className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#EEF4EF] border border-[#C9D4CB] text-[#245038]"
+                                aria-label="Editar subcategorías"
+                                title="Editar subcategorías"
+                              >
+                                <FiEdit2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                          <div className="border border-[#C9D4CB] rounded-2xl p-2 bg-white min-h-[130px] flex flex-col">
+                            <input
+                              placeholder="Escribe subcategoría y presiona Enter"
+                              className="w-full px-4 py-2 bg-transparent border border-[#1A4D2E]/20 rounded-full outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm"
+                              value={subcategoriaInput}
+                              disabled={!editingAdditional.subcategorias}
+                              onChange={(e) => setSubcategoriaInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (!editingAdditional.subcategorias) return;
+                                if (e.key === "Enter" || e.key === ",") {
+                                  e.preventDefault();
+                                  addSubcategory(subcategoriaInput);
+                                }
+                              }}
+                              onBlur={() => {
+                                if (subcategoriaInput.trim()) addSubcategory(subcategoriaInput);
+                              }}
+                            />
+
+                            <div className="mt-2 flex flex-wrap gap-1.5 min-h-[38px]">
+                              {draftSubcategorias.map((sub) => (
+                                <span key={sub} className="inline-flex items-center gap-1 bg-[#EEF4EF] text-[#245038] border border-[#C9D4CB] px-2.5 py-1 rounded-full text-[11px] font-bold">
+                                  {sub}
+                                  {editingAdditional.subcategorias && (
+                                    <button type="button" onClick={() => removeSubcategory(sub)} className="text-[#8B0000] font-black">
+                                      x
+                                    </button>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-white border border-[#1A4D2E]/10 rounded-2xl p-4">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <p className="text-[10px] uppercase tracking-widest text-[#4F6757] font-black ml-2">Rango estimado</p>
+                            {editingAdditional.costoEstimado ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => saveAdditionalSection("costoEstimado")}
+                                  disabled={savingAdditionalInfo}
+                                  className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#0D601E] text-white disabled:opacity-60"
+                                >
+                                  Guardar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => cancelAdditionalSectionEdit("costoEstimado")}
+                                  className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border border-[#C9D4CB] text-[#1F3528]"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => startAdditionalSectionEdit("costoEstimado")}
+                                className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#EEF4EF] border border-[#C9D4CB] text-[#245038]"
+                                aria-label="Editar rango estimado"
+                                title="Editar rango estimado"
+                              >
+                                <FiEdit2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {COST_OPTIONS.map((option) => {
+                              const isSelected = draftCostoEstimado === option.value;
+                              return (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  disabled={!editingAdditional.costoEstimado}
+                                  onClick={() => setDraftCostoEstimado(isSelected ? "" : option.value)}
+                                  className={`flex min-h-[62px] flex-col items-center justify-center rounded-2xl border px-2 py-1 text-center transition-all ${
+                                    isSelected
+                                      ? "border-[#0D601E] bg-[#0D601E] text-white shadow-[0_8px_18px_rgba(13,96,30,0.18)]"
+                                      : "border-[#C9D4CB] bg-white text-[#1F3528] hover:border-[#8BA592]"
+                                  }`}
+                                >
+                                  <span className={`text-[10px] font-black uppercase tracking-widest ${isSelected ? "text-white/85" : "text-[#5C7564]"}`}>{option.label}</span>
+                                  <span className="mt-0.5 w-full text-center text-[13px] font-black leading-none">{option.accent}</span>
+                                  <span className={`mt-0.5 w-full text-center text-[10px] font-semibold ${isSelected ? "text-white/85" : "text-[#5C7564]"}`}>{option.value}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="bg-white border border-[#1A4D2E]/10 rounded-2xl p-4">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <p className="text-[10px] uppercase tracking-widest text-[#4F6757] font-black ml-2">Tiempo sugerido</p>
+                            {editingAdditional.tiempoSugerido ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => saveAdditionalSection("tiempoSugerido")}
+                                  disabled={savingAdditionalInfo}
+                                  className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#0D601E] text-white disabled:opacity-60"
+                                >
+                                  Guardar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => cancelAdditionalSectionEdit("tiempoSugerido")}
+                                  className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border border-[#C9D4CB] text-[#1F3528]"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => startAdditionalSectionEdit("tiempoSugerido")}
+                                className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#EEF4EF] border border-[#C9D4CB] text-[#245038]"
+                                aria-label="Editar tiempo sugerido"
+                                title="Editar tiempo sugerido"
+                              >
+                                <FiEdit2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              placeholder="Ej. 1.5"
+                              className="w-full px-4 py-2 bg-transparent border border-[#1A4D2E]/20 rounded-full outline-none text-[#1A4D2E] transition-all focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 placeholder:text-gray-500 text-sm pr-16"
+                              value={draftTiempoSugerido}
+                              disabled={!editingAdditional.tiempoSugerido}
+                              onChange={(e) => setDraftTiempoSugerido(e.target.value)}
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#5C7564] font-bold">horas</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-white border border-[#1A4D2E]/10 rounded-2xl p-4">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <p className="text-[10px] uppercase tracking-widest text-[#4F6757] font-black ml-2">Horario</p>
+                            {editingAdditional.horario ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => saveAdditionalSection("horario")}
+                                  disabled={savingAdditionalInfo}
+                                  className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#0D601E] text-white disabled:opacity-60"
+                                >
+                                  Guardar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => cancelAdditionalSectionEdit("horario")}
+                                  className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border border-[#C9D4CB] text-[#1F3528]"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => startAdditionalSectionEdit("horario")}
+                                className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#EEF4EF] border border-[#C9D4CB] text-[#245038]"
+                                aria-label="Editar horario"
+                                title="Editar horario"
+                              >
+                                <FiEdit2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                          <div className="border border-[#C9D4CB] rounded-2xl p-2 bg-white">
+                            <div className="flex items-center gap-2 text-[#1F3528]">
+                              <FiClock size={13} className="text-[#2E5A3D]" />
+                              <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-wide">
+                                {activeSchedulePreview.length > 0 ? `${activeSchedulePreview.length} día(s) configurado(s)` : "Sin horario configurado"}
+                              </p>
+                            </div>
+
+                            {activeSchedulePreview.length > 0 && (
+                              <div className={`grid gap-1 mt-1 ${activeSchedulePreview.length === 4 ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2"}`}>
+                                {(activeSchedulePreview.length > 4 ? activeSchedulePreview.slice(0, 4) : activeSchedulePreview).map((item) => (
+                                  <div key={item.key} className="rounded-lg border border-[#BFD0C2] bg-[#F8FBF8] px-2 py-1 min-w-0">
+                                    <p className="text-[10px] md:text-[11px] font-black text-[#245038] leading-tight truncate uppercase text-center">
+                                      {item.label.slice(0, 3)} {item.open.replace(":00", "")}-{item.close.replace(":00", "")}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {activeSchedulePreview.length > 4 && (
+                              <p className="mt-1 text-[10px] font-semibold text-[#5C7564] italic leading-tight text-center">
+                                Más días: {activeSchedulePreview.slice(4).map((item) => item.label).join(" • ")}
+                              </p>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => setIsScheduleEditorOpen(true)}
+                              disabled={!editingAdditional.horario}
+                              className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 rounded-xl border border-[#0A4D19] bg-[#0D601E] text-white text-[11px] md:text-[12px] font-black uppercase tracking-wide hover:bg-[#094d18] transition-all active:scale-95 shadow-[0_6px_16px_rgba(13,96,30,0.22)] mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <FiPlus size={13} />
+                              Configurar Horario
+                            </button>
+                          </div>
+                        </div>
+
+                        {additionalInfoError && <p className="text-[11px] text-[#8B0000] mt-1 font-semibold">{additionalInfoError}</p>}
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -1597,8 +1637,9 @@ export default function AdminViewBusinessPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35 }}
-              className="mb-8"
+              className="mb-8 -mx-6 md:-mx-8 px-6 md:px-8 py-5 bg-[#F8FBF8]"
             >
+              <div className="mb-4 h-px w-full bg-gradient-to-r from-transparent via-[#1A4D2E]/30 to-transparent" />
               <div className="flex flex-col gap-4">
                 {/* Logo - Arriba */}
                 <motion.div
@@ -1622,26 +1663,29 @@ export default function AdminViewBusinessPage() {
                   className="flex flex-col gap-3"
                 >
                   <div>
-                    <p className="text-xs text-[#769C7B] font-semibold uppercase mb-3 block">
+                    <p className="text-sm text-[#4F6757] font-black uppercase tracking-wide mb-3 block">
                       Galería de imágenes ({business.business.images?.length || 0}/10)
                     </p>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {business.business.images?.map((image, index) => (
-                        <AdminEditableImage
-                          key={index}
-                          imageUrl={image}
-                          index={index}
-                          onSave={(file) => handleUpdateImage(index, file)}
-                          onView={(url) => setSelectedImage(url)}
-                        />
+                        <div key={index} className="bg-white border border-[#1A4D2E]/10 rounded-2xl p-2">
+                          <AdminEditableImage
+                            imageUrl={image}
+                            index={index}
+                            onSave={(file) => handleUpdateImage(index, file)}
+                            onView={(url) => setSelectedImage(url)}
+                          />
+                        </div>
                       ))}
-                      <AnimatePresence>
-                        <AdminImageUploader
-                          onUpload={handleAddImage}
-                          currentImageCount={business.business.images?.length || 0}
-                          maxImages={10}
-                        />
-                      </AnimatePresence>
+                      <div className="bg-white border border-dashed border-[#1A4D2E]/30 rounded-2xl p-2 min-h-[180px] flex items-center justify-center">
+                        <AnimatePresence>
+                          <AdminImageUploader
+                            onUpload={handleAddImage}
+                            currentImageCount={business.business.images?.length || 0}
+                            maxImages={10}
+                          />
+                        </AnimatePresence>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -1976,11 +2020,11 @@ function PendingDecisionPanel({
 }) {
   return (
     <div
-      className={`h-full mb-8 rounded-3xl border border-[#1A4D2E]/15 bg-gradient-to-br from-[#F6F0E6] via-[#FCF8F1] to-[#E8F5E9] shadow-sm flex flex-col ${
+      className={`h-full rounded-3xl border-2 border-[#1A4D2E]/18 bg-white shadow-sm flex flex-col ${
         compact ? "p-5" : "p-6"
       }`}
     >
-      <div className="flex items-start justify-between gap-4 mb-4">
+      <div className="flex items-start justify-between gap-4 mb-4 pb-3 border-b border-[#1A4D2E]/12">
         <div>
           <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Accion administrativa</p>
           <h3 className="text-xl font-black text-[#1A4D2E]">Gestionar solicitud del negocio</h3>
@@ -2023,12 +2067,12 @@ function ApprovedBusinessPanel({
   onArchivar: () => void;
 }) {
   return (
-    <div className="h-full mb-8 rounded-3xl border border-[#1A4D2E]/15 bg-gradient-to-br from-[#E9F7EE] via-[#F0FFF4] to-[#E8F5E9] shadow-sm p-6 flex flex-col">
-      <div className="flex items-start justify-between gap-4 mb-4">
+    <div className="h-full rounded-3xl border-2 border-[#1A4D2E]/18 bg-white shadow-sm p-6 flex flex-col">
+      <div className="flex items-start justify-between gap-4 mb-4 pb-3 border-b border-[#1A4D2E]/12">
         <div>
           <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Acción administrativa</p>
           <h3 className="text-xl font-black text-[#1A4D2E]">Gestionar negocio activo</h3>
-          <p className="text-sm text-[#1A4D2E]/70 mt-1">Este negocio está activo. Puedes regresarlo a pendientes o archivarlo.</p>
+          <p className="text-sm text-[#4F6757] mt-1">Este negocio está activo. Puedes regresarlo a pendientes o archivarlo.</p>
         </div>
       </div>
 
@@ -2036,7 +2080,7 @@ function ApprovedBusinessPanel({
         <button
           onClick={onRegresarPendientes}
           disabled={procesando}
-          className="inline-flex items-center justify-center gap-2 bg-[#FFF7E8] hover:bg-[#FFF3D6] text-[#B56A00] font-bold py-3.5 px-6 rounded-2xl transition-all border border-[#F2C47C] shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center gap-2 bg-[#EEF4EF] hover:bg-[#E4EFE5] text-[#1A4D2E] font-bold py-3.5 px-6 rounded-2xl transition-all border border-[#BFD0C2] shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FiRotateCcw size={18} />
           {procesando ? "Procesando..." : "Regresar a pendientes"}
@@ -2045,7 +2089,7 @@ function ApprovedBusinessPanel({
         <button
           onClick={onArchivar}
           disabled={procesando}
-          className="inline-flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3.5 px-6 rounded-2xl transition-all border border-gray-300 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center gap-2 bg-[#F6F0E6] hover:bg-[#EFE5D6] text-[#1A4D2E] font-bold py-3.5 px-6 rounded-2xl transition-all border border-[#D6CDBF] shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FiArchive size={18} />
           {procesando ? "Procesando..." : "Archivar negocio"}
@@ -2065,12 +2109,12 @@ function ArchivedBusinessPanel({
   onEliminar: () => void;
 }) {
   return (
-    <div className="h-full mb-8 rounded-3xl border border-gray-300 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 shadow-sm p-6 flex flex-col">
-      <div className="flex items-start justify-between gap-4 mb-4">
+    <div className="h-full rounded-3xl border-2 border-[#1A4D2E]/18 bg-white shadow-sm p-6 flex flex-col">
+      <div className="flex items-start justify-between gap-4 mb-4 pb-3 border-b border-[#1A4D2E]/12">
         <div>
-          <p className="text-xs uppercase tracking-wide font-bold text-gray-500 mb-1">Acción administrativa</p>
-          <h3 className="text-xl font-black text-gray-700">Gestionar negocio archivado</h3>
-          <p className="text-sm text-gray-600 mt-1">Este negocio está archivado. Puedes desarchivarlo o eliminarlo permanentemente.</p>
+          <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Acción administrativa</p>
+          <h3 className="text-xl font-black text-[#1A4D2E]">Gestionar negocio archivado</h3>
+          <p className="text-sm text-[#4F6757] mt-1">Este negocio está archivado. Puedes desarchivarlo o eliminarlo permanentemente.</p>
         </div>
       </div>
 
