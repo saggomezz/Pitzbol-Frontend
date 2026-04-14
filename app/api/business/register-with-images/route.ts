@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const config = {
+  api: { bodyParser: false },
+};
+
+// Aumentar el límite de tamaño para uploads de imágenes (logo + galería)
+export const maxDuration = 30;
+
 const BACKEND = process.env.BACKEND_INTERNAL_URL || 'https://api.pitzbol.me:8443';
 
 export async function POST(req: NextRequest) {
