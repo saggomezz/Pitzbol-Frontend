@@ -269,6 +269,32 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const allowedExts = [".jpg", ".jpeg", ".png", ".webp"];
   const maxFileSize = 5 * 1024 * 1024; // 5MB
 
+  // Comprimir imagen a máx 1200px y calidad 82% para mantener total < 4MB
+  async function compressImage(file: File, maxPx = 1200, quality = 0.82): Promise<File> {
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        if (width > maxPx || height > maxPx) {
+          if (width > height) { height = Math.round(height * maxPx / width); width = maxPx; }
+          else { width = Math.round(width * maxPx / height); height = maxPx; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          if (!blob) { resolve(file); return; }
+          resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
   function validateImageFile(file: File): string | null {
     const ext = file.name.toLowerCase().slice(-4);
     if (!allowedExts.includes(ext)) {
@@ -293,13 +319,15 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         return;
       }
       setLogoError("");
-      const reader = new FileReader();
-      reader.onload = ev => {
-        setImagePreview(prev => ({ ...prev, logoUrl: ev.target?.result as string }));
-        setFiles((f) => ({ ...f, logo: file }));
-        console.log("[Logo] Imagen cargada correctamente:", file.name);
-      };
-      reader.readAsDataURL(file);
+      compressImage(file).then(compressed => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          setImagePreview(prev => ({ ...prev, logoUrl: ev.target?.result as string }));
+          setFiles((f) => ({ ...f, logo: compressed }));
+          console.log("[Logo] Imagen cargada correctamente:", compressed.name, `${(compressed.size/1024).toFixed(0)}KB`);
+        };
+        reader.readAsDataURL(compressed);
+      });
     } else {
       setLogoError("");
       setImagePreview(prev => ({ ...prev, logoUrl: null }));
@@ -336,26 +364,28 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         console.error(`[Galería ${i+1}]`, error);
         return;
       }
-      const reader = new FileReader();
-      reader.onload = ev => {
-        setImagePreview(prev => {
-          const arr = [...prev.galeriaUrls];
-          arr[i] = ev.target?.result as string;
-          return { ...prev, galeriaUrls: arr };
-        });
-        setFiles((f) => {
-          const gal = [...f.galeria];
-          gal[i] = file;
-          return { ...f, galeria: gal };
-        });
-        setGaleriaErrors((prev: string[]) => {
-          const arr = [...prev];
-          arr[i] = "";
-          return arr;
-        });
-        console.log(`[Galería ${i+1}] Imagen cargada correctamente:`, file.name);
-      };
-      reader.readAsDataURL(file);
+      compressImage(file).then(compressed => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          setImagePreview(prev => {
+            const arr = [...prev.galeriaUrls];
+            arr[i] = ev.target?.result as string;
+            return { ...prev, galeriaUrls: arr };
+          });
+          setFiles((f) => {
+            const gal = [...f.galeria];
+            gal[i] = compressed;
+            return { ...f, galeria: gal };
+          });
+          setGaleriaErrors((prev: string[]) => {
+            const arr = [...prev];
+            arr[i] = "";
+            return arr;
+          });
+          console.log(`[Galería ${i+1}] Imagen cargada correctamente:`, compressed.name, `${(compressed.size/1024).toFixed(0)}KB`);
+        };
+        reader.readAsDataURL(compressed);
+      });
     } else {
       setFiles((f) => {
         const gal = [...f.galeria];
