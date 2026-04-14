@@ -1409,12 +1409,26 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       });
       
       const data = await res.json().catch(() => ({}));
-      
+
       if (!res.ok) {
         console.error("[BusinessModal] Error del servidor:", data);
-        setSaveError(data.message || "Error al guardar el negocio. Intenta de nuevo.");
-        if (data.missingFields) {
-          console.error("[BusinessModal] Campos faltantes:", data.missingFields);
+        if (res.status === 413) {
+          setSaveError("Las imágenes son demasiado pesadas. Usa fotos más pequeñas (menos de 2MB cada una) e intenta de nuevo.");
+        } else if (data.missingFields && data.missingFields.length > 0) {
+          const labels: Record<string, string> = {
+            businessName: "Nombre del negocio",
+            email: "Correo electrónico",
+            category: "Categoría",
+            phone: "Teléfono",
+            location: "Dirección",
+            website: "Sitio web o redes sociales",
+            rfc: "RFC",
+            cp: "Código Postal fiscal",
+          };
+          const legibles = data.missingFields.map((f: string) => labels[f] || f).join(", ");
+          setSaveError(`Faltan los siguientes campos: ${legibles}.`);
+        } else {
+          setSaveError(data.message || "Error al guardar el negocio. Intenta de nuevo.");
         }
         setIsFinishing(false);
         return;
@@ -1436,9 +1450,15 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         setSuccess(false);
         onClose();
       }, 3500);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error:", e);
-      setSaveError("Error de red al guardar el negocio. Verifica tu conexión.");
+      if (e?.message?.includes('413') || e?.message?.includes('Too Large')) {
+        setSaveError("Las imágenes son demasiado pesadas. Usa fotos más pequeñas e intenta de nuevo.");
+      } else if (e?.message?.includes('fetch')) {
+        setSaveError("No se pudo conectar con el servidor. Verifica tu conexión a internet e intenta de nuevo.");
+      } else {
+        setSaveError("Ocurrió un error inesperado. Intenta de nuevo o contacta a soporte.");
+      }
       setIsFinishing(false);
     }
   };
