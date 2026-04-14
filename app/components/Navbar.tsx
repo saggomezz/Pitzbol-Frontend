@@ -13,7 +13,6 @@ import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
 import NotificationsPanel from "./NotificationsPanel";
 import HistorialSolicitudesModal from "./HistorialSolicitudesModal";
-import LanguageSwitcher from "./LanguageSwitcher";
 import { useMessageNotifications } from "@/lib/useMessageNotifications";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
@@ -322,9 +321,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                 
                 {/* Panel de Notificaciones */}
                 {user && <NotificationsPanel userId={user.uid} />}
-                {/* Selector de Idioma */}
-                <LanguageSwitcher />
-                <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 z-[110] hover:text-[#F00808] transition-colors relative">
+<button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 z-[110] hover:text-[#F00808] transition-colors relative">
                     {isMenuOpen ? <FiX size={22} className="md:w-[24px] md:h-[24px]" /> : <FiMenu size={22} className="md:w-[24px] md:h-[24px]" />}
                 </button>
                 {/* MENÚ DESPLEGABLE */}
