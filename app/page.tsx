@@ -459,10 +459,10 @@ function HomeContent() {
                     transition={{ duration: 1.8, times: [0, 0.6, 1], ease: "easeInOut" }}
                     className="flex flex-col"
                   >
-                    <span className="h-10 flex items-center text-xl md:text-2xl font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    <span className="h-10 flex items-center text-[23px] md:text-[27px] font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
                       {isNewWelcome ? "¡Bienvenido," : "¡Hola,"}&nbsp;<span className="text-[#0D601E]">{welcomeMessage}!</span>
                     </span>
-                    <span className="h-10 flex items-center text-xl md:text-2xl font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    <span className="h-10 flex items-center text-[23px] md:text-[27px] font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
                       ¿Listo para explorar?
                     </span>
                   </motion.div>
@@ -794,7 +794,7 @@ function HomeContent() {
         // Ocultar después de 3.5 segundos
         setTimeout(() => {
           setShowWelcome(false);
-        }, 3500);
+        }, 3800);
       }
     };
     
