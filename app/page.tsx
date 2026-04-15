@@ -202,21 +202,21 @@ const GdlMatchCarousel = ({ partidos, sede, tHome }: { partidos: Partido[]; sede
             transition={{ duration: 0.2 }}
             className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-1 md:py-2 shadow-md min-h-[44px] md:min-h-[50px]"
           >
-            <div className="flex flex-1 items-center justify-end gap-2">
-              <span className="text-xs md:text-base font-normal text-right leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>{current.equipo1}</span>
+            <div className="flex flex-1 items-center justify-end gap-2 min-w-0">
+              <span className="font-normal text-right leading-tight min-w-0" style={{ fontFamily: 'var(--font-roboto)', fontSize: 'clamp(9px, 2.5vw, 16px)' }}>{current.equipo1}</span>
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
                 <Image src={current.bandera1} alt={current.equipo1} fill className="object-cover" />
               </div>
             </div>
-            <div className="flex flex-col items-center justify-center px-2 md:px-4 border-x border-white/20 mx-2">
+            <div className="flex flex-col items-center justify-center px-2 md:px-4 border-x border-white/20 mx-2 flex-shrink-0">
               <span className="text-base md:text-xl font-bold text-black leading-none" style={{ fontFamily: 'var(--font-roboto)' }}>{current.hora}</span>
               <span className="text-[10px] md:text-xs font-medium text-black" style={{ fontFamily: 'var(--font-roboto)' }}>{tHome('hours')}</span>
             </div>
-            <div className="flex flex-1 items-center justify-start gap-2">
+            <div className="flex flex-1 items-center justify-start gap-2 min-w-0">
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
                 <Image src={current.bandera2} alt={current.equipo2} fill className="object-cover" />
               </div>
-              <span className="text-xs md:text-base font-normal text-left leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>{current.equipo2}</span>
+              <span className="font-normal text-left leading-tight min-w-0" style={{ fontFamily: 'var(--font-roboto)', fontSize: 'clamp(9px, 2.5vw, 16px)' }}>{current.equipo2}</span>
             </div>
           </motion.div>
         </AnimatePresence>
@@ -451,7 +451,7 @@ function HomeContent() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.5 }}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 overflow-hidden h-10"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 overflow-hidden h-10 hidden md:flex"
                 >
                   <motion.div
                     initial={{ y: 0 }}
@@ -650,11 +650,12 @@ function HomeContent() {
 
       if (justLoggedIn === "true" || justRegistered === "true") {
         setWelcomeMessage(user.nombre || "Usuario");
-        setShowWelcome(true);
         setIsNewWelcome(justRegistered === "true");
         sessionStorage.removeItem("justLoggedIn");
         sessionStorage.removeItem("justRegistered");
         setIsLogged(true);
+        setShowWelcome(true);
+        setTimeout(() => setShowWelcome(false), 3800);
       }
     }
   }, []);
