@@ -9,7 +9,6 @@ import Papa from 'papaparse';
 import { Suspense, useEffect, useRef, useState } from "react";
 import { FiBriefcase, FiCalendar, FiChevronLeft, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiRefreshCw, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi";
-import WelcomeNotification from './components/WelcomeNotification';
 import { getPlaceImageByCategory } from '@/lib/placeImages';
 import PlaceRating from './components/PlaceRating';
 import { getMergedPlaces } from '@/lib/placesApi';
@@ -765,11 +764,10 @@ function HomeContent() {
         localStorage.removeItem("pitzbol_showWelcome");
         localStorage.removeItem("pitzbol_welcomeName");
         
-        // Ocultar después de 3 segundos
+        // Ocultar después de 3.5 segundos
         setTimeout(() => {
-          console.log("⏰ Ocultando mensaje");
           setShowWelcome(false);
-        }, 3000);
+        }, 3500);
       }
     };
     
@@ -840,19 +838,37 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
-      {/* Notificación de Bienvenida */}
-       <WelcomeNotification
-         userName={welcomeMessage}
-         isVisible={showWelcome}
-         onClose={() => setShowWelcome(false)}
-         duration={5000}
-         isNew={isNewWelcome}
-       />
-      
       <CategoryCarousel categories={ALL_CATEGORIES} />
       <DateSlider />
       <main className="flex flex-col md:flex-row gap-4 md:gap-8 py-1 md:py-10 px-3 md:px-8 lg:px-22 w-full max-w-[1600px] mx-auto">
         <div className="flex flex-col gap-1 md:gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
+          {/* Saludo animado inline */}
+          <AnimatePresence>
+            {showWelcome && (
+              <motion.div
+                key="welcome-greeting"
+                initial={{ opacity: 1 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                className="overflow-hidden h-8"
+              >
+                <motion.div
+                  initial={{ y: 0 }}
+                  animate={{ y: [0, 0, -32] }}
+                  transition={{ duration: 1.8, times: [0, 0.6, 1], ease: "easeInOut" }}
+                  className="flex flex-col"
+                >
+                  <span className="h-8 flex items-center text-lg font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    {isNewWelcome ? "¡Bienvenido," : "¡Hola,"} <span className="text-[#0D601E] ml-1">{welcomeMessage}!</span>
+                  </span>
+                  <span className="h-8 flex items-center text-lg font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    ¿Listo para explorar?
+                  </span>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <GdlMatchCarousel partidos={PARTIDOS_GDL} sede="GDL" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_CDMX} sede="CDMX" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_MTY} sede="MTY" tHome={tHome} />
