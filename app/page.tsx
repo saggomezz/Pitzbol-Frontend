@@ -441,7 +441,34 @@ function HomeContent() {
       <section className="relative bg-gradient-to-r from-[#FDFCF9] via-white to-[#FDFCF9] py-3 md:py-5 px-3 md:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-1 md:mb-2">
+          <div className="relative text-center mb-1 md:mb-2">
+            {/* Saludo animado inline — lado izquierdo */}
+            <AnimatePresence>
+              {showWelcome && (
+                <motion.div
+                  key="welcome-greeting"
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 overflow-hidden h-10"
+                >
+                  <motion.div
+                    initial={{ y: 0 }}
+                    animate={{ y: [0, 0, -40] }}
+                    transition={{ duration: 1.8, times: [0, 0.6, 1], ease: "easeInOut" }}
+                    className="flex flex-col"
+                  >
+                    <span className="h-10 flex items-center text-xl md:text-2xl font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                      {isNewWelcome ? "¡Bienvenido," : "¡Hola,"}&nbsp;<span className="text-[#0D601E]">{welcomeMessage}!</span>
+                    </span>
+                    <span className="h-10 flex items-center text-xl md:text-2xl font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                      ¿Listo para explorar?
+                    </span>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <h2 className="text-2xl md:text-4xl font-black text-[#1A4D2E] uppercase mb-2" style={{ fontFamily: "var(--font-jockey)" }}>
               Categorías
             </h2>
@@ -842,33 +869,6 @@ function HomeContent() {
       <DateSlider />
       <main className="flex flex-col md:flex-row gap-4 md:gap-8 py-1 md:py-10 px-3 md:px-8 lg:px-22 w-full max-w-[1600px] mx-auto">
         <div className="flex flex-col gap-1 md:gap-4 w-full md:w-1/2 lg:w-2/5 flex-shrink-0 md:py-3">
-          {/* Saludo animado inline */}
-          <AnimatePresence>
-            {showWelcome && (
-              <motion.div
-                key="welcome-greeting"
-                initial={{ opacity: 1 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.5 }}
-                className="overflow-hidden h-8"
-              >
-                <motion.div
-                  initial={{ y: 0 }}
-                  animate={{ y: [0, 0, -32] }}
-                  transition={{ duration: 1.8, times: [0, 0.6, 1], ease: "easeInOut" }}
-                  className="flex flex-col"
-                >
-                  <span className="h-8 flex items-center text-lg font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-                    {isNewWelcome ? "¡Bienvenido," : "¡Hola,"} <span className="text-[#0D601E] ml-1">{welcomeMessage}!</span>
-                  </span>
-                  <span className="h-8 flex items-center text-lg font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-                    ¿Listo para explorar?
-                  </span>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
           <GdlMatchCarousel partidos={PARTIDOS_GDL} sede="GDL" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_CDMX} sede="CDMX" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_MTY} sede="MTY" tHome={tHome} />
