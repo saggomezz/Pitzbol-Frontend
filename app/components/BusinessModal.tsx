@@ -638,43 +638,77 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   // Función para reverse geocoding usando Nominatim
   const obtenerCiudadEstado = async (lat: string, lng: string) => {
     if (!lat || !lng) return;
-    
+
+    let address: any | null = null;
+
+    // 1) Intentar reverse geocoding vía backend
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&countrycodes=mx`
-      );
-      
-      if (!response.ok) throw new Error('Error en reverse geocoding');
-      
-      const address = await response.json();
-      console.log('Reverse Geocoding Response:', address);
-      
-      // Extraer información
-      const calle = address.address?.road || '';
-      const ciudad = address.address?.city || address.address?.town || address.address?.municipality || '';
-      const estado = address.address?.state || '';
-      const colonia = address.address?.neighbourhood || address.address?.suburb || address.address?.village || address.address?.hamlet || address.address?.county || '';
-      const numero = address.address?.house_number || '';
-      const codigoPostal = address.address?.postcode || '';
-      
-      // Solo actualizar calle si fue un cambio manual del marcador
-      const isManualChange = isManualMapChangeRef.current;
-      console.log('Cambio manual del mapa:', isManualChange);
-      
-      // Actualizar form con los datos extraídos
-      setForm((f: FormState) => ({
-        ...f,
-        // Solo sobrescribir la calle si el usuario movió el marcador manualmente
-        calle: isManualChange ? (calle || f.calle) : f.calle,
-        ciudad: ciudad || f.ciudad,
-        estado: estado || f.estado,
-        colonia: colonia || f.colonia,
-        numero: numero || f.numero,
-        codigoPostal: codigoPostal || f.codigoPostal
-      }));
-    } catch (error) {
-      console.error('Error en reverse geocoding:', error);
+      const response = await fetch(`/api/lugares/reverse-geocode`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ latitud: lat, longitud: lng }),
+      });
+
+      if (response.ok) {
+        const payload = await response.json();
+        if (payload?.success && payload?.address) {
+          address = payload.address;
+        }
+      }
+    } catch {
+      // Continuar con fallback directo.
     }
+
+    // 2) Fallback: comportamiento anterior directo a Nominatim
+    if (!address) {
+      try {
+        const directResponse = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&countrycodes=mx`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+
+        if (directResponse.ok) {
+          const directPayload = await directResponse.json();
+          if (directPayload?.address) {
+            address = directPayload.address;
+          }
+        }
+      } catch {
+        // Si también falla, salir sin romper UI.
+      }
+    }
+
+    if (!address) return;
+
+    // Extraer información
+    const calle = address.road || '';
+    const ciudad = address.city || address.town || address.municipality || '';
+    const estado = address.state || '';
+    const colonia = address.neighbourhood || address.suburb || address.village || address.hamlet || address.county || '';
+    const numero = address.house_number || '';
+    const codigoPostal = address.postcode || '';
+
+    // Solo actualizar calle si fue un cambio manual del marcador
+    const isManualChange = isManualMapChangeRef.current;
+
+    // Actualizar form con los datos extraídos
+    setForm((f: FormState) => ({
+      ...f,
+      // Solo sobrescribir la calle si el usuario movió el marcador manualmente
+      calle: isManualChange ? (calle || f.calle) : f.calle,
+      ciudad: ciudad || f.ciudad,
+      estado: estado || f.estado,
+      colonia: colonia || f.colonia,
+      numero: numero || f.numero,
+      codigoPostal: codigoPostal || f.codigoPostal
+    }));
   };
 
   // Calcular si debemos hacer geocoding automático

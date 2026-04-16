@@ -35,6 +35,8 @@ interface EditableLocationProps {
   onCoordinatesChange?: (lat: string, lng: string) => void;
   onEditModeChange?: (isEditing: boolean) => void;
   isLoading?: boolean;
+  forceEditMode?: boolean;
+  editModeSurface?: "green" | "white";
 }
 
 export default function AdminEditableLocation({
@@ -55,8 +57,11 @@ export default function AdminEditableLocation({
   onCoordinatesChange,
   onEditModeChange,
   isLoading = false,
+  forceEditMode = false,
+  editModeSurface = "green",
 }: EditableLocationProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(forceEditMode);
+  const isGreenSurface = editModeSurface === "green";
   const [isSaving, setIsSaving] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -159,6 +164,14 @@ export default function AdminEditableLocation({
     }
   }, [location, latitud, longitud, calle, numero, colonia, codigoPostal, ciudad, estado, local, referencias, isEditing]);
 
+  useEffect(() => {
+    if (forceEditMode) {
+      setIsEditing(true);
+      hydrateAddressFields();
+      onEditModeChange?.(true);
+    }
+  }, [forceEditMode]);
+
   const handleEdit = () => {
     setIsEditing(true);
     hydrateAddressFields();
@@ -178,38 +191,75 @@ export default function AdminEditableLocation({
   const obtenerCiudadEstado = async (lat: string, lng: string) => {
     if (!lat || !lng) return;
 
+    let address: any | null = null;
+
+    // 1) Intentar reverse geocoding vía backend
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&countrycodes=mx`
-      );
+      const response = await fetch(`/api/lugares/reverse-geocode`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ latitud: lat, longitud: lng }),
+      });
 
-      if (!response.ok) throw new Error("Error en reverse geocoding");
-
-      const address = await response.json();
-      const calleDetectada = address.address?.road || "";
-      const ciudadDetectada = address.address?.city || address.address?.town || address.address?.municipality || "";
-      const estadoDetectado = address.address?.state || "";
-      const coloniaDetectada =
-        address.address?.neighbourhood ||
-        address.address?.suburb ||
-        address.address?.village ||
-        address.address?.hamlet ||
-        address.address?.county ||
-        "";
-      const numeroDetectado = address.address?.house_number || "";
-      const codigoPostalDetectado = address.address?.postcode || "";
-
-      const isManualChange = isManualMapChangeRef.current;
-
-      setCalleValue((prev) => (isManualChange ? calleDetectada || prev : prev));
-      setCiudadValue((prev) => ciudadDetectada || prev);
-      setEstadoValue((prev) => estadoDetectado || prev);
-      setColoniaValue((prev) => coloniaDetectada || prev);
-      setNumeroValue((prev) => numeroDetectado || prev);
-      setCodigoPostalValue((prev) => codigoPostalDetectado || prev);
-    } catch (reverseError) {
-      console.error("Error en reverse geocoding:", reverseError);
+      if (response.ok) {
+        const payload = await response.json();
+        if (payload?.success && payload?.address) {
+          address = payload.address;
+        }
+      }
+    } catch {
+      // Continuar con fallback directo.
     }
+
+    // 2) Fallback: comportamiento anterior directo a Nominatim
+    if (!address) {
+      try {
+        const directResponse = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&countrycodes=mx`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+
+        if (directResponse.ok) {
+          const directPayload = await directResponse.json();
+          if (directPayload?.address) {
+            address = directPayload.address;
+          }
+        }
+      } catch {
+        // Si también falla, salir sin romper UI.
+      }
+    }
+
+    if (!address) return;
+
+    const calleDetectada = address.road || "";
+    const ciudadDetectada = address.city || address.town || address.municipality || "";
+    const estadoDetectado = address.state || "";
+    const coloniaDetectada =
+      address.neighbourhood ||
+      address.suburb ||
+      address.village ||
+      address.hamlet ||
+      address.county ||
+      "";
+    const numeroDetectado = address.house_number || "";
+    const codigoPostalDetectado = address.postcode || "";
+
+    const isManualChange = isManualMapChangeRef.current;
+
+    setCalleValue((prev) => (isManualChange ? calleDetectada || prev : prev));
+    setCiudadValue((prev) => ciudadDetectada || prev);
+    setEstadoValue((prev) => estadoDetectado || prev);
+    setColoniaValue((prev) => coloniaDetectada || prev);
+    setNumeroValue((prev) => numeroDetectado || prev);
+    setCodigoPostalValue((prev) => codigoPostalDetectado || prev);
   };
 
   const buscarCoordenadas = async (direccion: string) => {
@@ -439,9 +489,13 @@ export default function AdminEditableLocation({
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="bg-gradient-to-br from-[#F6F0E6]/50 to-[#E8F5E9]/50 border-2 border-[#0D601E] rounded-2xl p-5"
+          className={
+            editModeSurface === "white"
+              ? "bg-white border-2 border-[#DCE7DF] rounded-2xl p-5"
+              : "bg-[#F3FAF5] border-2 border-[#0D601E]/45 rounded-2xl p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
+          }
         >
-          <p className="text-xs text-[#769C7B] font-semibold uppercase mb-4">
+          <p className={`text-xs font-semibold uppercase mb-4 ${isGreenSurface ? "text-[#1A4D2E]" : "text-[#769C7B]"}`}>
             Editar dirección completa
           </p>
 
@@ -456,7 +510,7 @@ export default function AdminEditableLocation({
                 onCoordinatesChange?.("", "");
                 if (error) setError(null);
               }}
-              className="w-full border-2 border-[#1A4D2E]/20 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E]"
+              className={`w-full border-2 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E] ${isGreenSurface ? "bg-white border-[#1A4D2E]/25" : "border-[#1A4D2E]/20"}`}
               placeholder="Calle"
               disabled={isSaving}
             />
@@ -464,7 +518,7 @@ export default function AdminEditableLocation({
               type="text"
               value={numeroValue}
               onChange={(event) => setNumeroValue(event.target.value)}
-              className="w-full border-2 border-[#1A4D2E]/20 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E]"
+              className={`w-full border-2 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E] ${isGreenSurface ? "bg-white border-[#1A4D2E]/25" : "border-[#1A4D2E]/20"}`}
               placeholder="Número"
               disabled={isSaving}
             />
@@ -475,7 +529,7 @@ export default function AdminEditableLocation({
               type="button"
               onClick={handleGeocode}
               disabled={isSaving || isGeocoding}
-              className="text-[12px] px-4 py-2 rounded-full bg-[#0D601E]/10 text-[#0D601E] hover:bg-[#0D601E]/20 font-bold disabled:bg-gray-100 disabled:text-gray-400"
+              className={`text-[12px] px-4 py-2 rounded-full font-bold disabled:bg-gray-100 disabled:text-gray-400 ${isGreenSurface ? "bg-[#0D601E] text-white hover:bg-[#094d18]" : "bg-[#0D601E]/10 text-[#0D601E] hover:bg-[#0D601E]/20"}`}
             >
               {isGeocoding ? "Calculando..." : "Calcular coordenadas en el mapa"}
             </button>
@@ -486,7 +540,7 @@ export default function AdminEditableLocation({
               type="text"
               value={coloniaValue}
               onChange={(event) => setColoniaValue(event.target.value)}
-              className="w-full border-2 border-[#1A4D2E]/20 rounded-lg p-3 font-medium text-[#1A4D2E] bg-gray-100"
+              className={`w-full border-2 rounded-lg p-3 font-medium text-[#1A4D2E] ${isGreenSurface ? "border-[#1A4D2E]/20 bg-[#F1F5F2]" : "border-[#1A4D2E]/20 bg-gray-100"}`}
               placeholder="Colonia"
               disabled
             />
@@ -499,13 +553,13 @@ export default function AdminEditableLocation({
                 setMapLongitud("");
                 onCoordinatesChange?.("", "");
               }}
-              className="w-full border-2 border-[#1A4D2E]/20 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E]"
+              className={`w-full border-2 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E] ${isGreenSurface ? "bg-white border-[#1A4D2E]/25" : "border-[#1A4D2E]/20"}`}
               placeholder="Código Postal"
               disabled={isSaving}
             />
           </div>
 
-          <p className="text-[11px] text-[#769C7B] mb-3">
+          <p className={`text-[11px] mb-3 ${isGreenSurface ? "text-[#245038]" : "text-[#769C7B]"}`}>
             Ajusta el marcador en el mapa de la izquierda para actualizar coordenadas y dirección.
           </p>
 
@@ -520,7 +574,7 @@ export default function AdminEditableLocation({
               type="text"
               value={ciudadValue}
               onChange={(event) => setCiudadValue(event.target.value)}
-              className="w-full border-2 border-[#1A4D2E]/20 rounded-lg p-3 font-medium text-[#1A4D2E] bg-gray-100"
+              className={`w-full border-2 rounded-lg p-3 font-medium text-[#1A4D2E] ${isGreenSurface ? "border-[#1A4D2E]/20 bg-[#F1F5F2]" : "border-[#1A4D2E]/20 bg-gray-100"}`}
               placeholder="Ciudad"
               disabled
             />
@@ -528,7 +582,7 @@ export default function AdminEditableLocation({
               type="text"
               value={estadoValue}
               onChange={(event) => setEstadoValue(event.target.value)}
-              className="w-full border-2 border-[#1A4D2E]/20 rounded-lg p-3 font-medium text-[#1A4D2E] bg-gray-100"
+              className={`w-full border-2 rounded-lg p-3 font-medium text-[#1A4D2E] ${isGreenSurface ? "border-[#1A4D2E]/20 bg-[#F1F5F2]" : "border-[#1A4D2E]/20 bg-gray-100"}`}
               placeholder="Estado"
               disabled
             />
@@ -539,7 +593,7 @@ export default function AdminEditableLocation({
               type="text"
               value={localValue}
               onChange={(event) => setLocalValue(event.target.value)}
-              className="w-full border-2 border-[#1A4D2E]/20 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E]"
+              className={`w-full border-2 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E] ${isGreenSurface ? "bg-white border-[#1A4D2E]/25" : "border-[#1A4D2E]/20"}`}
               placeholder="Local (opcional)"
               disabled={isSaving}
             />
@@ -547,7 +601,7 @@ export default function AdminEditableLocation({
               type="text"
               value={referenciasValue}
               onChange={(event) => setReferenciasValue(event.target.value)}
-              className="w-full border-2 border-[#1A4D2E]/20 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E]"
+              className={`w-full border-2 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E] ${isGreenSurface ? "bg-white border-[#1A4D2E]/25" : "border-[#1A4D2E]/20"}`}
               placeholder="Referencias (opcional)"
               disabled={isSaving}
             />
@@ -558,7 +612,7 @@ export default function AdminEditableLocation({
               type="text"
               value={mapLatitud}
               onChange={(event) => setMapLatitud(event.target.value)}
-              className="w-full border-2 border-[#1A4D2E]/20 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E]"
+              className={`w-full border-2 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E] ${isGreenSurface ? "bg-white border-[#1A4D2E]/25" : "border-[#1A4D2E]/20"}`}
               placeholder="Latitud"
               disabled={isSaving}
             />
@@ -566,7 +620,7 @@ export default function AdminEditableLocation({
               type="text"
               value={mapLongitud}
               onChange={(event) => setMapLongitud(event.target.value)}
-              className="w-full border-2 border-[#1A4D2E]/20 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E]"
+              className={`w-full border-2 rounded-lg p-3 font-medium text-[#1A4D2E] focus:outline-none focus:border-[#0D601E] ${isGreenSurface ? "bg-white border-[#1A4D2E]/25" : "border-[#1A4D2E]/20"}`}
               placeholder="Longitud"
               disabled={isSaving}
             />
