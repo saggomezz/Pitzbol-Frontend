@@ -1069,96 +1069,109 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="absolute top-[120%] right-0 w-88 max-h-[520px] bg-[#FAFAF8] rounded-3xl shadow-xl border border-[#1A4D2E]/10 flex flex-col z-[120] overflow-hidden"
+            className="absolute top-[120%] right-0 w-96 max-h-[600px] bg-white rounded-[28px] shadow-2xl border border-gray-100 flex flex-col z-[120] overflow-hidden"
           >
-            {/* Encabezado minimalista */}
-            <div className="px-5 py-4 flex justify-between items-center border-b border-[#1A4D2E]/8">
-              <div className="flex items-center gap-2">
-                <FiBell size={15} className="text-[#1A4D2E]/50" />
-                <span className="text-sm text-[#1A4D2E] tracking-wide">Notificaciones</span>
-                {noLeidas > 0 && (
-                  <span className="text-[10px] bg-[#F00808] text-white rounded-full px-1.5 py-0.5 leading-none">{noLeidas}</span>
-                )}
+            {/* Encabezado */}
+            <div className="bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white px-6 py-5 flex justify-between items-center">
+              <div>
+                <h3 className="font-black text-lg">Notificaciones</h3>
+                <p className="text-white/70 text-xs font-light mt-0.5">
+                  {noLeidas > 0 ? `${noLeidas} sin leer` : 'Todo al día'}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="p-1 hover:bg-[#1A4D2E]/8 rounded-full transition-colors text-[#1A4D2E]/40 hover:text-[#1A4D2E]"
+                className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
               >
-                <FiX size={16} />
+                <FiX size={20} />
               </button>
             </div>
 
             {/* Contenido */}
             <div className="flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {cargando && notificaciones.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-14 px-6">
+                <div className="flex flex-col items-center justify-center py-16 px-6">
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="w-6 h-6 border-2 border-[#0D601E]/20 border-t-[#0D601E] rounded-full mb-3"
+                    className="w-8 h-8 border-3 border-[#0D601E]/20 border-t-[#0D601E] rounded-full mb-4"
                   />
-                  <p className="text-gray-400 text-xs">Cargando...</p>
+                  <p className="text-gray-500 font-medium text-sm">Cargando notificaciones...</p>
                 </div>
               ) : notificaciones.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
-                  <FiBell size={28} className="text-[#1A4D2E]/20 mb-3" />
-                  <p className="text-gray-500 text-sm">Sin notificaciones</p>
-                  <p className="text-gray-400 text-xs mt-1">Te avisaremos cuando haya novedades</p>
+                <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <FiBell size={32} className="text-gray-300" />
+                  </div>
+                  <p className="text-gray-500 font-medium text-sm">Sin notificaciones</p>
+                  <p className="text-gray-400 text-xs mt-1">Te notificaremos cuando haya actualizaciones</p>
                 </div>
               ) : (
-                <div>
+                <div className="divide-y divide-gray-100">
                   {notificaciones.map((notif, index) => (
                     <motion.div
                       key={`${notif.id || 'notif'}-${index}`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: index * 0.03 }}
-                      className={`group relative px-5 py-3.5 cursor-pointer transition-colors hover:bg-[#1A4D2E]/5 ${
-                        index < notificaciones.length - 1 ? 'border-b border-[#1A4D2E]/6' : ''
-                      } ${!notif.leido ? 'bg-[#0D601E]/[0.03]' : ''}`}
-                      onClick={() => { void handleNotificationClick(notif); }}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      whileHover={{ y: -2, scale: 1.01, boxShadow: "0 12px 28px rgba(13, 96, 30, 0.12)" }}
+                      whileTap={{ scale: 0.995 }}
+                      transition={{ delay: index * 0.05 }}
+                      className={`group relative p-4 border-l-4 ${getColorNotificacion(notif.tipo)} cursor-pointer transition-all duration-300 ${
+                        !notif.leido ? 'border-l-[#F00808] bg-opacity-60' : 'border-l-gray-200'
+                      }`}
+                      onClick={() => {
+                        void handleNotificationClick(notif);
+                      }}
                     >
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0D601E]/0 via-[#0D601E]/[0.06] to-[#0D601E]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="flex gap-3">
-                        {!notif.leido && (
-                          <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[#F00808] mt-1.5" />
-                        )}
-                        <div className={`flex-shrink-0 mt-0.5 ${notif.leido ? '' : '-ml-0'}`}>
+                        <div className="flex-shrink-0 mt-1 transition-transform duration-300 group-hover:-translate-y-0.5">
                           {getIconoNotificacion(notif.tipo)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-xs text-[#1A4D2E] leading-snug line-clamp-1">
+                            <h4 className="font-bold text-sm text-gray-800">
                               {notif.titulo}
-                            </p>
-                            <span className="text-[10px] text-gray-400 flex-shrink-0">
+                            </h4>
+                            <span className="text-xs text-gray-500 flex-shrink-0">
                               {formatearFecha(notif.fecha)}
                             </span>
                           </div>
-                          <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">
                             {notif.mensaje}
                           </p>
+                          {/* Botón para revisar solicitud de guía pendiente */}
                           {notif.tipo === 'solicitud_guia_pendiente' && notif.enlace && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                marcarComoLeida(notif.id);
-                                if (typeof notif.enlace === 'string') router.push(notif.enlace);
-                              }}
-                              className="mt-1.5 text-[10px] px-2.5 py-1 bg-[#0D601E] hover:bg-[#1A4D2E] rounded-full text-white transition-colors"
-                            >
-                              Revisar solicitud
-                            </button>
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  marcarComoLeida(notif.id);
+                                  if (typeof notif.enlace === 'string') {
+                                    router.push(notif.enlace);
+                                  }
+                                }}
+                                className="text-xs px-3 py-1 bg-[#0D601E] hover:bg-[#1A4D2E] rounded text-white font-bold transition-colors"
+                              >
+                                Revisar solicitud
+                              </button>
+                            </div>
                           )}
                           {!notif.leido && notif.tipo !== 'solicitud_guia_pendiente' && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); marcarComoLeida(notif.id); }}
-                              className="mt-1.5 text-[10px] px-2.5 py-1 border border-[#1A4D2E]/20 hover:bg-[#1A4D2E]/5 rounded-full text-gray-500 transition-colors"
-                            >
-                              Marcar leída
-                            </button>
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  marcarComoLeida(notif.id);
+                                }}
+                                className="text-xs px-2 py-1 bg-white/50 hover:bg-white rounded text-gray-600 font-medium transition-colors"
+                              >
+                                Marcar leída
+                              </button>
+                            </div>
                           )}
                         </div>
                         <button
