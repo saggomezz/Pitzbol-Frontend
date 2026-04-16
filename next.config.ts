@@ -2,6 +2,11 @@ import withPWA from '@ducanh2912/next-pwa';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '20mb',
+    },
+  },
   env: {
     NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443',
     NEXT_PUBLIC_IA_URL: process.env.NEXT_PUBLIC_IA_URL || 'https://ia.pitzbol.me:8443',

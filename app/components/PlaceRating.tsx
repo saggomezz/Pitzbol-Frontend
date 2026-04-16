@@ -56,7 +56,7 @@ interface PlaceRatingProps {
   showLabel?: boolean;
   size?: "small" | "medium" | "large";
   readonly?: boolean;
-  displayMode?: "single" | "split";
+  displayMode?: "single" | "split" | "compact";
   onRatingChange?: (newRating: number) => void;
 }
 
@@ -249,6 +249,22 @@ export default function PlaceRating({
       </div>
     );
   };
+
+  if (displayMode === "compact") {
+    if (!hasAverageRatings) return null;
+    return (
+      <div className="flex items-center gap-1">
+        <FiStar
+          size={starSizes[size]}
+          className="text-[#FDB813] fill-[#FDB813]"
+          fill="currentColor"
+        />
+        <span className="font-bold text-[#1A4D2E] text-xs leading-none">
+          {averageRating.toFixed(1)}
+        </span>
+      </div>
+    );
+  }
 
   if (displayMode === "split") {
     const myActiveRating = hoverRating || userRating;

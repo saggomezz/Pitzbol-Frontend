@@ -794,24 +794,24 @@ export default function MapaPage() {
                                             <div className={styles.placeContent}>
                                                 <div className={styles.placeHeader}>
                                                     <div>
-                                                        <span className={styles.placeCategory}>
-                                                            {lugar.categoria}
-                                                        </span>
+                                                        <div className={styles.placeCategoryRow}>
+                                                            <span className={styles.placeCategory}>
+                                                                {lugar.categoria}
+                                                            </span>
+                                                            <div className={`${styles.placeRatingBadge} ${styles.ratingDesktop}`}>
+                                                                <PlaceRating
+                                                                    placeName={lugar.nombre}
+                                                                    showLabel={true}
+                                                                    size="small"
+                                                                    readonly={true}
+                                                                />
+                                                            </div>
+                                                        </div>
                                                         <h3 className={styles.placeName}>{lugar.nombre}</h3>
                                                         <p className={styles.placeDescription}>
                                                             {lugar.descripcion?.substring(0, 60)}
                                                             {(lugar.descripcion?.length || 0) > 60 ? "..." : ""}
                                                         </p>
-                                                    </div>
-                                                    <div className={styles.placeActions}>
-                                                        <div className={styles.placeRatingBadge}>
-                                                            <PlaceRating
-                                                                placeName={lugar.nombre}
-                                                                showLabel={true}
-                                                                size="small"
-                                                                readonly={true}
-                                                            />
-                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className={styles.placeFooter}>
@@ -820,6 +820,15 @@ export default function MapaPage() {
                                                         <span>{lugar.ubicacion}</span>
                                                     </div>
                                                 </div>
+                                            </div>
+                                            <div className={`${styles.placeRatingBadge} ${styles.ratingMobile}`}>
+                                                <PlaceRating
+                                                    placeName={lugar.nombre}
+                                                    showLabel={true}
+                                                    size="small"
+                                                    readonly={true}
+                                                    displayMode="compact"
+                                                />
                                             </div>
                                             <motion.button
                                                 className={`${styles.favoriteButton} ${styles.favoriteButtonFloating} ${

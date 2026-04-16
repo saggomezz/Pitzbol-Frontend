@@ -412,14 +412,10 @@ export default function MisSolicitudesPage() {
             </div>
             <button
               onClick={openBusinessFlowLikeNavbar}
-              className="group w-full sm:w-auto lg:w-[calc((100%-3rem)/4)] lg:flex-none inline-flex items-center justify-start gap-3 self-center h-fit px-5 py-3 bg-white rounded-2xl text-[#0D601E] shadow-lg border-2 border-[#0D601E] hover:bg-[#1A4D2E] hover:text-white hover:shadow-xl hover:-translate-y-0.5 transition-all text-left"
+              className="group inline-flex items-center gap-2 self-center px-4 py-2 bg-white rounded-full text-[#0D601E] shadow border-2 border-[#0D601E] hover:bg-[#1A4D2E] hover:text-white hover:shadow-md transition-all"
             >
-              <div className="w-10 h-10 rounded-xl bg-[#0D601E]/10 flex items-center justify-center shrink-0 transition-colors group-hover:bg-white/15">
-                <FaPlus className="text-sm" />
-              </div>
-              <p className="text-xs md:text-sm uppercase tracking-wide font-bold text-inherit text-center whitespace-nowrap transition-colors">
-                Nuevo negocio
-              </p>
+              <FaPlus className="text-xs shrink-0" />
+              <span className="text-xs tracking-wide whitespace-nowrap transition-colors">Nuevo negocio</span>
             </button>
           </div>
         </motion.div>
@@ -438,8 +434,8 @@ export default function MisSolicitudesPage() {
             }}
             className={metricCardClass(selectedMetric === "activos")}
           >
-            <p className={`text-xs uppercase tracking-wide font-bold transition-colors ${selectedMetric === "activos" ? "text-white/80" : "text-[#1A4D2E]/70 group-hover:text-white/80"}`}>Negocios Activos</p>
-            <p className={`text-3xl font-black mt-2 transition-colors ${selectedMetric === "activos" ? "text-white" : "text-emerald-700 group-hover:text-white"}`}>{countByTab("aprobado")}</p>
+            <p className={`text-xs tracking-wide transition-colors ${selectedMetric === "activos" ? "text-white/80" : "text-[#1A4D2E]/70 group-hover:text-white/80"}`}>Negocios activos</p>
+            <p className={`text-3xl font-bold mt-2 transition-colors ${selectedMetric === "activos" ? "text-white" : "text-emerald-700 group-hover:text-white"}`}>{countByTab("aprobado")}</p>
           </button>
           <button
             onClick={() => {
@@ -449,8 +445,8 @@ export default function MisSolicitudesPage() {
             }}
             className={metricCardClass(selectedMetric === "pendiente")}
           >
-            <p className={`text-xs uppercase tracking-wide font-bold transition-colors ${selectedMetric === "pendiente" ? "text-white/80" : "text-[#1A4D2E]/70 group-hover:text-white/80"}`}>Solicitudes en revisión</p>
-            <p className={`text-3xl font-black mt-2 transition-colors ${selectedMetric === "pendiente" ? "text-white" : "text-amber-600 group-hover:text-white"}`}>{countByTab("pendiente")}</p>
+            <p className={`text-xs tracking-wide transition-colors ${selectedMetric === "pendiente" ? "text-white/80" : "text-[#1A4D2E]/70 group-hover:text-white/80"}`}>Solicitudes en revisión</p>
+            <p className={`text-3xl font-bold mt-2 transition-colors ${selectedMetric === "pendiente" ? "text-white" : "text-amber-600 group-hover:text-white"}`}>{countByTab("pendiente")}</p>
           </button>
           <button
             onClick={() => {
@@ -460,8 +456,8 @@ export default function MisSolicitudesPage() {
             }}
             className={metricCardClass(selectedMetric === "rechazado")}
           >
-            <p className={`text-xs uppercase tracking-wide font-bold transition-colors ${selectedMetric === "rechazado" ? "text-white/80" : "text-[#1A4D2E]/70 group-hover:text-white/80"}`}>Solicitudes rechazadas</p>
-            <p className={`text-3xl font-black mt-2 transition-colors ${selectedMetric === "rechazado" ? "text-white" : "text-red-600 group-hover:text-white"}`}>{countByTab("rechazado")}</p>
+            <p className={`text-xs tracking-wide transition-colors ${selectedMetric === "rechazado" ? "text-white/80" : "text-[#1A4D2E]/70 group-hover:text-white/80"}`}>Solicitudes rechazadas</p>
+            <p className={`text-3xl font-bold mt-2 transition-colors ${selectedMetric === "rechazado" ? "text-white" : "text-red-600 group-hover:text-white"}`}>{countByTab("rechazado")}</p>
           </button>
           <button
             onClick={() => {
@@ -471,8 +467,8 @@ export default function MisSolicitudesPage() {
             }}
             className={metricCardClass(selectedMetric === "todas")}
           >
-            <p className={`text-xs uppercase tracking-wide font-bold transition-colors ${selectedMetric === "todas" ? "text-white/80" : "text-[#1A4D2E]/70 group-hover:text-white/80"}`}>Total de solicitudes</p>
-            <p className={`text-3xl font-black mt-2 transition-colors ${selectedMetric === "todas" ? "text-white" : "text-[#0D601E] group-hover:text-white"}`}>{requestsPool.length}</p>
+            <p className={`text-xs tracking-wide transition-colors ${selectedMetric === "todas" ? "text-white/80" : "text-[#1A4D2E]/70 group-hover:text-white/80"}`}>Total de solicitudes</p>
+            <p className={`text-3xl font-bold mt-2 transition-colors ${selectedMetric === "todas" ? "text-white" : "text-[#0D601E] group-hover:text-white"}`}>{requestsPool.length}</p>
           </button>
         </motion.div>
 
@@ -490,7 +486,7 @@ export default function MisSolicitudesPage() {
               placeholder="Buscar por nombre, categoría o correo..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-[#0D601E]/20 focus:border-[#0D601E] focus:outline-none bg-white shadow-md text-gray-700 placeholder-gray-400 transition-all"
+              className="w-full pl-12 pr-4 py-3 rounded-full border-2 border-[#0D601E]/20 focus:border-[#0D601E] focus:outline-none bg-white shadow-md text-gray-700 placeholder-gray-400 transition-all"
             />
           </div>
         </motion.div>

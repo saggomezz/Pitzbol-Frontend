@@ -269,6 +269,32 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const allowedExts = [".jpg", ".jpeg", ".png", ".webp"];
   const maxFileSize = 5 * 1024 * 1024; // 5MB
 
+  // Comprimir imagen a máx 1200px y calidad 82% para mantener total < 4MB
+  async function compressImage(file: File, maxPx = 800, quality = 0.70): Promise<File> {
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        if (width > maxPx || height > maxPx) {
+          if (width > height) { height = Math.round(height * maxPx / width); width = maxPx; }
+          else { width = Math.round(width * maxPx / height); height = maxPx; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          if (!blob) { resolve(file); return; }
+          resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
   function validateImageFile(file: File): string | null {
     const ext = file.name.toLowerCase().slice(-4);
     if (!allowedExts.includes(ext)) {
@@ -293,13 +319,15 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         return;
       }
       setLogoError("");
-      const reader = new FileReader();
-      reader.onload = ev => {
-        setImagePreview(prev => ({ ...prev, logoUrl: ev.target?.result as string }));
-        setFiles((f) => ({ ...f, logo: file }));
-        console.log("[Logo] Imagen cargada correctamente:", file.name);
-      };
-      reader.readAsDataURL(file);
+      compressImage(file).then(compressed => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          setImagePreview(prev => ({ ...prev, logoUrl: ev.target?.result as string }));
+          setFiles((f) => ({ ...f, logo: compressed }));
+          console.log("[Logo] Imagen cargada correctamente:", compressed.name, `${(compressed.size/1024).toFixed(0)}KB`);
+        };
+        reader.readAsDataURL(compressed);
+      });
     } else {
       setLogoError("");
       setImagePreview(prev => ({ ...prev, logoUrl: null }));
@@ -336,26 +364,28 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         console.error(`[Galería ${i+1}]`, error);
         return;
       }
-      const reader = new FileReader();
-      reader.onload = ev => {
-        setImagePreview(prev => {
-          const arr = [...prev.galeriaUrls];
-          arr[i] = ev.target?.result as string;
-          return { ...prev, galeriaUrls: arr };
-        });
-        setFiles((f) => {
-          const gal = [...f.galeria];
-          gal[i] = file;
-          return { ...f, galeria: gal };
-        });
-        setGaleriaErrors((prev: string[]) => {
-          const arr = [...prev];
-          arr[i] = "";
-          return arr;
-        });
-        console.log(`[Galería ${i+1}] Imagen cargada correctamente:`, file.name);
-      };
-      reader.readAsDataURL(file);
+      compressImage(file).then(compressed => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          setImagePreview(prev => {
+            const arr = [...prev.galeriaUrls];
+            arr[i] = ev.target?.result as string;
+            return { ...prev, galeriaUrls: arr };
+          });
+          setFiles((f) => {
+            const gal = [...f.galeria];
+            gal[i] = compressed;
+            return { ...f, galeria: gal };
+          });
+          setGaleriaErrors((prev: string[]) => {
+            const arr = [...prev];
+            arr[i] = "";
+            return arr;
+          });
+          console.log(`[Galería ${i+1}] Imagen cargada correctamente:`, compressed.name, `${(compressed.size/1024).toFixed(0)}KB`);
+        };
+        reader.readAsDataURL(compressed);
+      });
     } else {
       setFiles((f) => {
         const gal = [...f.galeria];
@@ -1413,12 +1443,26 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       });
       
       const data = await res.json().catch(() => ({}));
-      
+
       if (!res.ok) {
         console.error("[BusinessModal] Error del servidor:", data);
-        setSaveError(data.message || "Error al guardar el negocio. Intenta de nuevo.");
-        if (data.missingFields) {
-          console.error("[BusinessModal] Campos faltantes:", data.missingFields);
+        if (res.status === 413) {
+          setSaveError("Las imágenes son demasiado pesadas. Usa fotos más pequeñas (menos de 2MB cada una) e intenta de nuevo.");
+        } else if (data.missingFields && data.missingFields.length > 0) {
+          const labels: Record<string, string> = {
+            businessName: "Nombre del negocio",
+            email: "Correo electrónico",
+            category: "Categoría",
+            phone: "Teléfono",
+            location: "Dirección",
+            website: "Sitio web o redes sociales",
+            rfc: "RFC",
+            cp: "Código Postal fiscal",
+          };
+          const legibles = data.missingFields.map((f: string) => labels[f] || f).join(", ");
+          setSaveError(`Faltan los siguientes campos: ${legibles}.`);
+        } else {
+          setSaveError(data.message || "Error al guardar el negocio. Intenta de nuevo.");
         }
         setIsFinishing(false);
         return;
@@ -1440,9 +1484,15 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         setSuccess(false);
         onClose();
       }, 3500);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error:", e);
-      setSaveError("Error de red al guardar el negocio. Verifica tu conexión.");
+      if (e?.message?.includes('413') || e?.message?.includes('Too Large')) {
+        setSaveError("Las imágenes son demasiado pesadas. Usa fotos más pequeñas e intenta de nuevo.");
+      } else if (e?.message?.includes('fetch')) {
+        setSaveError("No se pudo conectar con el servidor. Verifica tu conexión a internet e intenta de nuevo.");
+      } else {
+        setSaveError("Ocurrió un error inesperado. Intenta de nuevo o contacta a soporte.");
+      }
       setIsFinishing(false);
     }
   };
@@ -1485,7 +1535,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
               )}
 
               {saveError && (
-                <div className="mb-6 px-6 py-3 rounded-2xl bg-[#8B0000] text-white text-center font-bold text-sm shadow-lg animate-pulse border-2 border-[#8B0000]/60">
+                <div className="mt-14 mb-2 mx-4 px-6 py-3 rounded-2xl bg-[#8B0000] text-white text-center font-bold text-sm shadow-lg animate-pulse border-2 border-[#8B0000]/60">
                   {saveError}
                 </div>
               )}
@@ -2272,28 +2322,28 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   <button
                     type="button"
                     onClick={() => applyPresetSchedule(WEEKDAY_KEYS, "09:00", "18:00")}
-                    className="px-3 py-1.5 rounded-full border border-[#0D601E]/20 bg-[#0D601E]/10 text-[#0D601E] text-[11px] font-bold uppercase tracking-wide hover:bg-[#0D601E]/20 transition-all"
+                    className="px-3 py-1.5 rounded-full border border-[#0D601E]/20 bg-[#0D601E]/10 text-[#0D601E] text-[11px] tracking-wide hover:bg-[#0D601E]/20 transition-all"
                   >
-                    Lunes a Viernes
+                    Lunes a viernes
                   </button>
                   <button
                     type="button"
                     onClick={() => applyPresetSchedule(DAY_LABELS.map((day) => day.key), "10:00", "22:00")}
-                    className="px-3 py-1.5 rounded-full border border-[#0D601E]/20 bg-[#0D601E]/10 text-[#0D601E] text-[11px] font-bold uppercase tracking-wide hover:bg-[#0D601E]/20 transition-all"
+                    className="px-3 py-1.5 rounded-full border border-[#0D601E]/20 bg-[#0D601E]/10 text-[#0D601E] text-[11px] tracking-wide hover:bg-[#0D601E]/20 transition-all"
                   >
-                    Todos los dias
+                    Todos los días
                   </button>
                   <button
                     type="button"
                     onClick={clearAllSchedules}
-                    className="px-3 py-1.5 rounded-full border border-[#8B0000]/20 bg-[#8B0000]/10 text-[#8B0000] text-[11px] font-bold uppercase tracking-wide hover:bg-[#8B0000]/20 transition-all"
+                    className="px-3 py-1.5 rounded-full border border-[#8B0000]/20 bg-[#8B0000]/10 text-[#8B0000] text-[11px] tracking-wide hover:bg-[#8B0000]/20 transition-all"
                   >
                     Limpiar
                   </button>
                 </div>
 
                 <div>
-                  <p className="text-[11px] uppercase tracking-wide font-bold text-[#769C7B] mb-2">Selecciona dias</p>
+                  <p className="text-[11px] tracking-wide text-[#769C7B] mb-2">Selecciona días</p>
                   <div className="flex flex-wrap gap-2">
                     {DAY_LABELS.map((day) => {
                       const isSelected = scheduleSelection.includes(day.key);
@@ -2302,7 +2352,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           key={day.key}
                           type="button"
                           onClick={() => toggleScheduleSelection(day.key)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wide border transition-all ${
+                          className={`px-3 py-1.5 rounded-full text-xs tracking-wide border transition-all ${
                             isSelected
                               ? "bg-[#0D601E] text-white border-[#0D601E]"
                               : "bg-white text-[#1A4D2E] border-[#1A4D2E]/20 hover:bg-[#F3EEE4]"
@@ -2331,14 +2381,14 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   <button
                     type="button"
                     onClick={applyScheduleToSelection}
-                    className="px-4 py-2.5 rounded-full bg-[#0D601E] text-white text-xs font-black uppercase tracking-wide hover:bg-[#094d18] transition-all active:scale-95"
+                    className="px-4 py-2.5 rounded-full bg-[#0D601E] text-white text-xs tracking-wide hover:bg-[#094d18] transition-all active:scale-95"
                   >
                     Aplicar
                   </button>
                 </div>
                 {enabledScheduleCount > 0 && (
                   <div className="rounded-2xl border border-[#1A4D2E]/15 bg-[#FDFBF7] p-3 sm:p-4">
-                    <p className="text-[11px] uppercase tracking-wide font-bold text-[#769C7B] mb-2">Dias activos</p>
+                    <p className="text-[11px] tracking-wide text-[#769C7B] mb-2">Días activos</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {DAY_LABELS.filter((day) => form.horario[day.key].enabled).map((day) => (
                         <div
@@ -2346,13 +2396,13 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           className="flex items-center justify-between gap-2 rounded-xl border border-[#1A4D2E]/15 bg-white px-3 py-2"
                         >
                           <div>
-                            <p className="text-[11px] uppercase tracking-wide font-bold text-[#769C7B]">{day.label}</p>
-                            <p className="text-sm font-bold text-[#1A4D2E]">{form.horario[day.key].open} - {form.horario[day.key].close}</p>
+                            <p className="text-[11px] tracking-wide text-[#769C7B]">{day.label}</p>
+                            <p className="text-sm text-[#1A4D2E]">{form.horario[day.key].open} - {form.horario[day.key].close}</p>
                           </div>
                           <button
                             type="button"
                             onClick={() => disableScheduleDay(day.key)}
-                            className="text-[11px] px-2.5 py-1 rounded-full border border-[#8B0000]/25 text-[#8B0000] font-bold hover:bg-[#8B0000]/10 transition-all"
+                            className="text-[11px] px-2.5 py-1 rounded-full border border-[#8B0000]/25 text-[#8B0000] hover:bg-[#8B0000]/10 transition-all"
                           >
                             Quitar
                           </button>
@@ -2366,7 +2416,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   <button
                     type="button"
                     onClick={() => setIsScheduleModalOpen(false)}
-                    className="px-5 py-2.5 rounded-full bg-[#0D601E] text-white text-xs font-black uppercase tracking-wide hover:bg-[#094d18] transition-all active:scale-95"
+                    className="px-5 py-2.5 rounded-full bg-[#0D601E] text-white text-xs tracking-wide hover:bg-[#094d18] transition-all active:scale-95"
                   >
                     Listo
                   </button>

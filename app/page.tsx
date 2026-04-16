@@ -9,7 +9,6 @@ import Papa from 'papaparse';
 import { Suspense, useEffect, useRef, useState } from "react";
 import { FiBriefcase, FiCalendar, FiChevronLeft, FiChevronRight, FiHeart, FiMapPin, FiMenu, FiRefreshCw, FiSearch, FiUser, FiX } from "react-icons/fi";
 import { GiSoccerBall } from "react-icons/gi";
-import WelcomeNotification from './components/WelcomeNotification';
 import { getPlaceImageByCategory } from '@/lib/placeImages';
 import PlaceRating from './components/PlaceRating';
 import { getMergedPlaces } from '@/lib/placesApi';
@@ -203,21 +202,21 @@ const GdlMatchCarousel = ({ partidos, sede, tHome }: { partidos: Partido[]; sede
             transition={{ duration: 0.2 }}
             className="flex items-center gap-4 md:gap-8 bg-[#B3ACAC] text-white rounded-[15px] md:rounded-[20px] px-3 md:px-5 py-1 md:py-2 shadow-md min-h-[44px] md:min-h-[50px]"
           >
-            <div className="flex flex-1 items-center justify-end gap-2">
-              <span className="text-xs md:text-base font-normal text-right leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>{current.equipo1}</span>
+            <div className="flex flex-1 items-center justify-end gap-2 min-w-0">
+              <span className="font-normal text-right leading-tight min-w-0" style={{ fontFamily: 'var(--font-roboto)', fontSize: 'clamp(9px, 2.5vw, 16px)' }}>{current.equipo1}</span>
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
                 <Image src={current.bandera1} alt={current.equipo1} fill className="object-cover" />
               </div>
             </div>
-            <div className="flex flex-col items-center justify-center px-2 md:px-4 border-x border-white/20 mx-2">
+            <div className="flex flex-col items-center justify-center px-2 md:px-4 border-x border-white/20 mx-2 flex-shrink-0">
               <span className="text-base md:text-xl font-bold text-black leading-none" style={{ fontFamily: 'var(--font-roboto)' }}>{current.hora}</span>
               <span className="text-[10px] md:text-xs font-medium text-black" style={{ fontFamily: 'var(--font-roboto)' }}>{tHome('hours')}</span>
             </div>
-            <div className="flex flex-1 items-center justify-start gap-2">
+            <div className="flex flex-1 items-center justify-start gap-2 min-w-0">
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden relative flex-shrink-0 border border-white/30">
                 <Image src={current.bandera2} alt={current.equipo2} fill className="object-cover" />
               </div>
-              <span className="text-xs md:text-base font-normal text-left leading-tight" style={{ fontFamily: 'var(--font-roboto)' }}>{current.equipo2}</span>
+              <span className="font-normal text-left leading-tight min-w-0" style={{ fontFamily: 'var(--font-roboto)', fontSize: 'clamp(9px, 2.5vw, 16px)' }}>{current.equipo2}</span>
             </div>
           </motion.div>
         </AnimatePresence>
@@ -442,7 +441,34 @@ function HomeContent() {
       <section className="relative bg-gradient-to-r from-[#FDFCF9] via-white to-[#FDFCF9] py-3 md:py-5 px-3 md:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-1 md:mb-2">
+          <div className="relative text-center mb-1 md:mb-2">
+            {/* Saludo animado inline — lado izquierdo */}
+            <AnimatePresence>
+              {showWelcome && (
+                <motion.div
+                  key="welcome-greeting"
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 overflow-hidden h-10 hidden md:flex"
+                >
+                  <motion.div
+                    initial={{ y: 0 }}
+                    animate={{ y: [0, 0, -40] }}
+                    transition={{ duration: 1.8, times: [0, 0.6, 1], ease: "easeInOut" }}
+                    className="flex flex-col"
+                  >
+                    <span className="h-10 flex items-center text-[23px] md:text-[27px] font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                      {isNewWelcome ? "¡Bienvenido," : "¡Hola,"}&nbsp;<span className="text-[#0D601E]">{welcomeMessage}!</span>
+                    </span>
+                    <span className="h-10 flex items-center text-[23px] md:text-[27px] font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                      ¿Listo para explorar?
+                    </span>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <h2 className="text-2xl md:text-4xl font-black text-[#1A4D2E] uppercase mb-2" style={{ fontFamily: "var(--font-jockey)" }}>
               Categorías
             </h2>
@@ -624,11 +650,12 @@ function HomeContent() {
 
       if (justLoggedIn === "true" || justRegistered === "true") {
         setWelcomeMessage(user.nombre || "Usuario");
-        setShowWelcome(true);
         setIsNewWelcome(justRegistered === "true");
         sessionStorage.removeItem("justLoggedIn");
         sessionStorage.removeItem("justRegistered");
         setIsLogged(true);
+        setShowWelcome(true);
+        setTimeout(() => setShowWelcome(false), 3800);
       }
     }
   }, []);
@@ -765,11 +792,10 @@ function HomeContent() {
         localStorage.removeItem("pitzbol_showWelcome");
         localStorage.removeItem("pitzbol_welcomeName");
         
-        // Ocultar después de 3 segundos
+        // Ocultar después de 3.5 segundos
         setTimeout(() => {
-          console.log("⏰ Ocultando mensaje");
           setShowWelcome(false);
-        }, 3000);
+        }, 3800);
       }
     };
     
@@ -840,15 +866,6 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen bg-white md:bg-[#f5f5f5] font-sans">
-      {/* Notificación de Bienvenida */}
-       <WelcomeNotification
-         userName={welcomeMessage}
-         isVisible={showWelcome}
-         onClose={() => setShowWelcome(false)}
-         duration={5000}
-         isNew={isNewWelcome}
-       />
-      
       <CategoryCarousel categories={ALL_CATEGORIES} />
       <DateSlider />
       <main className="flex flex-col md:flex-row gap-4 md:gap-8 py-1 md:py-10 px-3 md:px-8 lg:px-22 w-full max-w-[1600px] mx-auto">
