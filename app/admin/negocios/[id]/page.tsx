@@ -1,8 +1,9 @@
 ﻿"use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
+import publicInfoStyles from "@/app/informacion/informacion.module.css";
 import {
   FiMapPin,
   FiPhone,
@@ -28,10 +29,7 @@ import { gestionarNegocioPendiente } from "@/lib/gestionarNegocioApi";
 import dynamic from "next/dynamic";
 import GestionarNegocioModal from "@/app/components/GestionarNegocioModal";
 import AdminEditableField from "@/app/components/AdminEditableField";
-import AdminEditableLogo from "@/app/components/AdminEditableLogo";
-import AdminEditableImage from "@/app/components/AdminEditableImage";
 import AdminEditableLocation from "@/app/components/AdminEditableLocation";
-import AdminImageUploader from "@/app/components/AdminImageUploader";
 import "leaflet/dist/leaflet.css";
 import { getBackendOrigin } from "@/lib/backendUrl";
 
@@ -136,6 +134,20 @@ const validateBusinessName = (value: string) => {
   return null;
 };
 
+const normalizeMediaUrl = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  try {
+    const parsed = new URL(trimmed);
+    parsed.hash = "";
+    parsed.search = "";
+    return parsed.toString();
+  } catch {
+    return trimmed.split("#")[0].split("?")[0];
+  }
+};
+
 type UniquenessField = "businessName" | "email" | "phone" | "website" | "location" | "rfc" | "cp";
 
 interface OwnerData {
@@ -215,13 +227,17 @@ export default function AdminViewBusinessPage() {
   const [motivoRechazo, setMotivoRechazo] = useState("");
   const [resultadoMensaje, setResultadoMensaje] = useState<{ tipo: "exito" | "error"; mensaje: string } | null>(null);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [showInlineLocationEditor, setShowInlineLocationEditor] = useState(false);
   const [locationDraftCoords, setLocationDraftCoords] = useState<{ latitud: string; longitud: string } | null>(null);
+  const [editingLocationCardHeight, setEditingLocationCardHeight] = useState<number>(400);
+  const locationCardRef = useRef<HTMLDivElement | null>(null);
   
   // Nuevos estados para acciones de negocios activos y archivados
   const [modalArchivar, setModalArchivar] = useState(false);
   const [motivoArchivo, setMotivoArchivo] = useState("");
   const [modalEliminar, setModalEliminar] = useState(false);
   const [procesandoAccion, setProcesandoAccion] = useState(false);
+  const [galleryPreviewIndex, setGalleryPreviewIndex] = useState(0);
   const [subcategoriaInput, setSubcategoriaInput] = useState("");
   const [draftSubcategorias, setDraftSubcategorias] = useState<string[]>([]);
   const [draftCostoEstimado, setDraftCostoEstimado] = useState("");
@@ -239,6 +255,49 @@ export default function AdminViewBusinessPage() {
     tiempoSugerido: false,
     horario: false,
   });
+
+  const galleryImages = useMemo(() => {
+    const images = business?.business.images || [];
+    const logoRaw = (business?.business.logo || "").trim();
+
+    const logoKey = normalizeMediaUrl(logoRaw);
+    const seen = new Set<string>();
+    const unique: string[] = [];
+
+    for (const raw of images) {
+      const src = (raw || "").trim();
+      if (!src) continue;
+
+      const key = normalizeMediaUrl(src);
+      if (!key) continue;
+      if (logoKey && key === logoKey) continue;
+      if (seen.has(key)) continue;
+
+      seen.add(key);
+      unique.push(src);
+    }
+
+    return unique;
+  }, [business?.business.images, business?.business.logo]);
+
+  const unifiedGalleryImages = useMemo(() => {
+    const merged: string[] = [];
+    const seen = new Set<string>();
+
+    const candidates = [business?.business.logo || "", ...galleryImages];
+    for (const raw of candidates) {
+      const src = (raw || "").trim();
+      if (!src) continue;
+
+      const key = normalizeMediaUrl(src);
+      if (!key || seen.has(key)) continue;
+
+      seen.add(key);
+      merged.push(src);
+    }
+
+    return merged;
+  }, [business?.business.logo, galleryImages]);
 
   const BACKEND_URL = getBackendOrigin();
 
@@ -321,6 +380,44 @@ export default function AdminViewBusinessPage() {
     setAdditionalInfoError("");
     setSubcategoriaInput("");
   }, [business]);
+
+  useEffect(() => {
+    const totalImages = unifiedGalleryImages.length;
+    if (totalImages === 0) {
+      if (galleryPreviewIndex !== 0) setGalleryPreviewIndex(0);
+      return;
+    }
+
+    if (galleryPreviewIndex > totalImages - 1) {
+      setGalleryPreviewIndex(totalImages - 1);
+    }
+  }, [unifiedGalleryImages, galleryPreviewIndex]);
+
+  useEffect(() => {
+    if (!showInlineLocationEditor) {
+      setEditingLocationCardHeight(400);
+      return;
+    }
+
+    const target = locationCardRef.current;
+    if (!target) return;
+
+    const updateHeight = () => {
+      const nextHeight = Math.max(target.offsetHeight, 400);
+      setEditingLocationCardHeight(nextHeight);
+    };
+
+    updateHeight();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(() => updateHeight());
+      observer.observe(target);
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, [showInlineLocationEditor, business?.id]);
 
   const addSubcategory = (rawValue: string) => {
     const value = rawValue.trim();
@@ -808,44 +905,6 @@ export default function AdminViewBusinessPage() {
     });
   };
 
-  const handleUpdateLogo = async (file: File) => {
-    if (!business) return;
-
-    const token = localStorage.getItem("pitzbol_token");
-    const formData = new FormData();
-    formData.append("logo", file);
-    if (business.business.logo) {
-      formData.append("deleteLogoUrl", business.business.logo);
-    }
-
-    const response = await fetch(`/api/business/${business.id}/images`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      credentials: "include",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error("Error al actualizar el logo");
-    }
-
-    const data = await response.json();
-    if (data.data?.logo) {
-      setBusiness((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          business: {
-            ...prev.business,
-            logo: data.data.logo,
-          },
-        };
-      });
-    }
-  };
-
   const handleUpdateImage = async (index: number, file: File) => {
     if (!business) return;
 
@@ -1039,9 +1098,7 @@ export default function AdminViewBusinessPage() {
         style={{
           backgroundImage: business.business.images?.[0]
             ? `url(${business.business.images[0]})`
-            : business.business.logo
-              ? `url(${business.business.logo})`
-              : "linear-gradient(135deg, #0D601E 0%, #1A4D2E 100%)",
+            : "linear-gradient(135deg, #0D601E 0%, #1A4D2E 100%)",
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
@@ -1050,7 +1107,7 @@ export default function AdminViewBusinessPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-[#0D601E]/75 via-[#0D601E]/45 to-[#0D601E]/35" />
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 pt-6 md:pt-8 pb-8 md:pb-12">
+      <div className="relative z-10 max-w-[1200px] mx-auto px-4 pt-6 md:pt-8 pb-8 md:pb-12">
         <Link
           href="/admin/negocios?tab=pendientes"
           className="relative z-20 inline-flex items-center gap-2 text-white hover:text-white/85 font-semibold mb-6 transition-colors"
@@ -1224,17 +1281,6 @@ export default function AdminViewBusinessPage() {
                           transition={{ delay: 0.2 }}
                           className="flex flex-col gap-4"
                         >
-                          <LocationMap
-                            location={business.business.location}
-                            businessName={business.business.name}
-                            latitud={isEditingLocation ? (locationDraftCoords?.latitud ?? business.business.latitud ?? "") : business.business.latitud}
-                            longitud={isEditingLocation ? (locationDraftCoords?.longitud ?? business.business.longitud ?? "") : business.business.longitud}
-                            editable={isEditingLocation}
-                            onLocationChange={(lat, lng) => {
-                              setLocationDraftCoords({ latitud: lat, longitud: lng });
-                            }}
-                          />
-
                           <div className="space-y-3">
                             <AdminEditableField
                               label="Nombre del negocio"
@@ -1305,25 +1351,6 @@ export default function AdminViewBusinessPage() {
                               await validateUniquenessField("phone", value);
                               await handleUpdateBusinessField("phone", value);
                             }}
-                          />
-
-                          <AdminEditableLocation
-                            location={business.business.location}
-                            latitud={business.business.latitud}
-                            longitud={business.business.longitud}
-                            calle={business.business.calle}
-                            numero={business.business.numero}
-                            colonia={business.business.colonia}
-                            codigoPostal={business.business.codigoPostal}
-                            ciudad={business.business.ciudad}
-                            estado={business.business.estado}
-                            local={business.business.local}
-                            referencias={business.business.referencias}
-                            linkedLatitud={locationDraftCoords?.latitud || ""}
-                            linkedLongitud={locationDraftCoords?.longitud || ""}
-                            onCoordinatesChange={(lat, lng) => setLocationDraftCoords({ latitud: lat, longitud: lng })}
-                            onEditModeChange={setIsEditingLocation}
-                            onSave={handleUpdateLocation}
                           />
 
                           <AdminEditableField
@@ -1641,22 +1668,6 @@ export default function AdminViewBusinessPage() {
             >
               <div className="mb-4 h-px w-full bg-gradient-to-r from-transparent via-[#1A4D2E]/30 to-transparent" />
               <div className="flex flex-col gap-4">
-                {/* Logo - Arriba */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex flex-col gap-4 max-w-sm"
-                >
-                  <AdminEditableLogo
-                    logoUrl={business.business.logo}
-                    businessName={business.business.name}
-                    onSave={handleUpdateLogo}
-                    isLoading={false}
-                    onView={(url) => setSelectedImage(url)}
-                  />
-                </motion.div>
-
-                {/* Galería - Debajo */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1664,33 +1675,157 @@ export default function AdminViewBusinessPage() {
                 >
                   <div>
                     <p className="text-sm text-[#4F6757] font-black uppercase tracking-wide mb-3 block">
-                      Galería de imágenes ({business.business.images?.length || 0}/10)
+                      Galería de imágenes ({unifiedGalleryImages.length})
                     </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {business.business.images?.map((image, index) => (
-                        <div key={index} className="bg-white border border-[#1A4D2E]/10 rounded-2xl p-2">
-                          <AdminEditableImage
-                            imageUrl={image}
-                            index={index}
-                            onSave={(file) => handleUpdateImage(index, file)}
-                            onView={(url) => setSelectedImage(url)}
+
+                    {unifiedGalleryImages.length > 0 ? (
+                      <section className={publicInfoStyles.gallerySplit}>
+                        <div className={publicInfoStyles.galleryViewer}>
+                          <img
+                            src={unifiedGalleryImages[galleryPreviewIndex]}
+                            alt={`${business.business.name} imagen ${galleryPreviewIndex + 1}`}
+                            className={publicInfoStyles.galleryMainImage}
+                            onClick={() => setSelectedImage(unifiedGalleryImages[galleryPreviewIndex])}
                           />
                         </div>
-                      ))}
-                      <div className="bg-white border border-dashed border-[#1A4D2E]/30 rounded-2xl p-2 min-h-[180px] flex items-center justify-center">
-                        <AnimatePresence>
-                          <AdminImageUploader
-                            onUpload={handleAddImage}
-                            currentImageCount={business.business.images?.length || 0}
-                            maxImages={10}
-                          />
-                        </AnimatePresence>
+
+                        <aside className={publicInfoStyles.galleryThumbsColumn}>
+                          {unifiedGalleryImages.map((image, index) => (
+                            <button
+                              key={`${image}-${index}`}
+                              type="button"
+                              className={`${publicInfoStyles.galleryThumbButton} ${index === galleryPreviewIndex ? publicInfoStyles.galleryThumbButtonActive : ""}`}
+                              onClick={() => setGalleryPreviewIndex(index)}
+                              aria-label={`Ver imagen ${index + 1}`}
+                              aria-pressed={index === galleryPreviewIndex}
+                            >
+                              <img
+                                src={image}
+                                alt={`${business.business.name} miniatura ${index + 1}`}
+                                className={publicInfoStyles.galleryThumbImage}
+                              />
+                            </button>
+                          ))}
+                        </aside>
+                      </section>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-[#1A4D2E]/30 bg-white p-8 text-center text-[#769C7B] font-semibold">
+                        Este negocio todavía no tiene imágenes en la galería.
                       </div>
-                    </div>
+                    )}
                   </div>
                 </motion.div>
               </div>
             </motion.div>
+
+            <section className={`${publicInfoStyles.mapSection} -mx-6 md:-mx-8`}>
+              <h2 className={publicInfoStyles.mapTitle}>Mapa</h2>
+              <div
+                className={publicInfoStyles.mapAndSidebar}
+                style={{
+                  gridTemplateColumns: showInlineLocationEditor
+                    ? "minmax(0, 1fr) minmax(0, 1fr)"
+                    : undefined,
+                  alignItems: showInlineLocationEditor ? "stretch" : undefined,
+                  transition: "grid-template-columns 320ms ease, align-items 320ms ease",
+                }}
+              >
+                <div className={publicInfoStyles.mapColumn}>
+                  <motion.div
+                    className={publicInfoStyles.mapContainer}
+                    style={showInlineLocationEditor ? { height: `${editingLocationCardHeight}px` } : undefined}
+                    animate={showInlineLocationEditor ? { height: editingLocationCardHeight } : { height: 400 }}
+                    transition={{ duration: 0.32, ease: "easeInOut" }}
+                  >
+                    <LocationMap
+                      location={business.business.location}
+                      businessName={business.business.name}
+                      latitud={isEditingLocation ? (locationDraftCoords?.latitud ?? business.business.latitud ?? "") : business.business.latitud}
+                      longitud={isEditingLocation ? (locationDraftCoords?.longitud ?? business.business.longitud ?? "") : business.business.longitud}
+                      editable={isEditingLocation}
+                      onLocationChange={(lat, lng) => {
+                        setLocationDraftCoords({ latitud: lat, longitud: lng });
+                      }}
+                    />
+                  </motion.div>
+                </div>
+
+                <aside className={publicInfoStyles.sidebarColumn}>
+                  <div
+                    ref={locationCardRef}
+                    className={`${publicInfoStyles.locationCard} relative transition-all duration-300 ${showInlineLocationEditor ? "!h-auto min-h-[400px]" : ""}`}
+                  >
+                    <div className={publicInfoStyles.locationHeader}>
+                      <FiMapPin />
+                      <h2>Ubicación</h2>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (showInlineLocationEditor) {
+                          setShowInlineLocationEditor(false);
+                          setIsEditingLocation(false);
+                          setLocationDraftCoords({
+                            latitud: business.business.latitud || "",
+                            longitud: business.business.longitud || "",
+                          });
+                        } else {
+                          setShowInlineLocationEditor(true);
+                          setIsEditingLocation(true);
+                        }
+                      }}
+                      className={`absolute top-4 right-4 inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm hover:shadow-md hover:scale-105 transition-all ${
+                        showInlineLocationEditor
+                          ? "bg-[#FDEAEA] text-[#8B0000] border-[#F2A5A5]"
+                          : "bg-white text-[#1A4D2E] border-[#1A4D2E]/20"
+                      }`}
+                      title={showInlineLocationEditor ? "Cerrar edición de ubicación" : "Editar ubicación"}
+                      aria-label={showInlineLocationEditor ? "Cerrar edición de ubicación" : "Editar ubicación"}
+                    >
+                      {showInlineLocationEditor ? <FiX size={16} /> : <FiEdit2 size={16} />}
+                    </button>
+
+                    {!showInlineLocationEditor ? (
+                      <>
+                        <p className={publicInfoStyles.locationAddress}>{business.business.location}</p>
+                        {business.business.codigoPostal && (
+                          <p className={publicInfoStyles.locationMeta}>CP: {business.business.codigoPostal}</p>
+                        )}
+                      </>
+                    ) : (
+                      <div className="w-full">
+                        <AdminEditableLocation
+                          location={business.business.location}
+                          latitud={business.business.latitud}
+                          longitud={business.business.longitud}
+                          calle={business.business.calle}
+                          numero={business.business.numero}
+                          colonia={business.business.colonia}
+                          codigoPostal={business.business.codigoPostal}
+                          ciudad={business.business.ciudad}
+                          estado={business.business.estado}
+                          local={business.business.local}
+                          referencias={business.business.referencias}
+                          linkedLatitud={locationDraftCoords?.latitud || ""}
+                          linkedLongitud={locationDraftCoords?.longitud || ""}
+                          onCoordinatesChange={(lat, lng) => setLocationDraftCoords({ latitud: lat, longitud: lng })}
+                          onEditModeChange={(editing) => {
+                            setIsEditingLocation(editing);
+                            if (!editing) {
+                              setShowInlineLocationEditor(false);
+                            }
+                          }}
+                          onSave={handleUpdateLocation}
+                          forceEditMode
+                          editModeSurface="green"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </aside>
+              </div>
+            </section>
           </div>
         </motion.div>
       </div>
@@ -2183,7 +2318,7 @@ function InfoCard({
 const LocationMap = dynamic(() => Promise.resolve(LocationMapComponent), {
   ssr: false,
   loading: () => (
-    <div className="h-[400px] bg-[#F6F0E6] rounded-3xl flex items-center justify-center border border-[#1A4D2E]/10">
+    <div className="h-full w-full bg-[#F6F0E6] flex items-center justify-center">
       <p className="text-[#769C7B] font-semibold">Cargando mapa...</p>
     </div>
   ),
@@ -2248,7 +2383,7 @@ function LocationMapComponent({
 
   if (loading) {
     return (
-      <div className="h-[400px] bg-[#F6F0E6] rounded-3xl flex items-center justify-center border border-[#1A4D2E]/10">
+      <div className="h-full w-full bg-[#F6F0E6] flex items-center justify-center">
         <p className="text-[#769C7B] font-semibold">Cargando ubicación...</p>
       </div>
     );
@@ -2256,7 +2391,7 @@ function LocationMapComponent({
 
   if (error || !coordinates) {
     return (
-      <div className="bg-[#F6F0E6] rounded-3xl p-6 border border-[#1A4D2E]/10">
+      <div className="h-full w-full bg-[#F6F0E6] p-6">
         <div className="flex items-center gap-3 mb-3">
           <FiMapPin className="text-[#0D601E]" size={24} />
           <h4 className="font-bold text-[#1A4D2E]">Ubicación</h4>
@@ -2285,6 +2420,20 @@ function LocationMapComponent({
     return null;
   };
 
+  const MapResizeHandler = ({ dependencies }: { dependencies: Array<string | number | boolean | null | undefined> }) => {
+    const map = useMap();
+
+    useEffect(() => {
+      const timer = window.setTimeout(() => {
+        map.invalidateSize();
+      }, 80);
+
+      return () => window.clearTimeout(timer);
+    }, [map, ...dependencies]);
+
+    return null;
+  };
+
   const MapClickHandler = ({ onPick }: { onPick: (lat: number, lng: number) => void }) => {
     useMapEvents({
       click(event: any) {
@@ -2304,11 +2453,11 @@ function LocationMapComponent({
   });
 
   return (
-    <div className="rounded-3xl overflow-hidden border-2 border-[#1A4D2E]/20">
+    <div className="h-full w-full">
       <MapContainer
         center={coordinates}
         zoom={15}
-        style={{ height: "400px", width: "100%" }}
+        style={{ height: "100%", width: "100%" }}
         scrollWheelZoom
         dragging
         zoomControl
@@ -2318,6 +2467,7 @@ function LocationMapComponent({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapCenter center={coordinates} />
+        <MapResizeHandler dependencies={[editable, coordinates[0], coordinates[1]]} />
         <MapClickHandler
           onPick={(lat, lng) => {
             const next: [number, number] = [lat, lng];
@@ -2347,9 +2497,6 @@ function LocationMapComponent({
           </Popup>
         </Marker>
       </MapContainer>
-      <div className="bg-[#0D601E] text-white text-center py-2 text-sm font-semibold">
-        {editable ? "?? Arrastra o da clic en el mapa para ajustar ubicación" : `?? ${location}`}
-      </div>
     </div>
   );
 }
