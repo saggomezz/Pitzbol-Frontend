@@ -400,6 +400,19 @@
     flex-wrap: wrap;
 }
 
+/* Rating: desktop visible, mobile hidden */
+.ratingDesktop {
+    display: block;
+}
+
+.ratingMobile {
+    display: none;
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 2;
+}
+
 .placeCardMap .placeCategory {
     display: inline-block;
     background: #1A4D2E;
@@ -898,7 +911,13 @@
         height: 100px;
     }
 
+    .ratingDesktop {
+        display: none;
+    }
 
+    .ratingMobile {
+        display: block;
+    }
 
     .placeCardMap .favoriteButtonFloating {
         bottom: 0.8rem;

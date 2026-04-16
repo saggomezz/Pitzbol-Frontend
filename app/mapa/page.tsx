@@ -798,7 +798,7 @@ export default function MapaPage() {
                                                             <span className={styles.placeCategory}>
                                                                 {lugar.categoria}
                                                             </span>
-                                                            <div className={styles.placeRatingBadge}>
+                                                            <div className={`${styles.placeRatingBadge} ${styles.ratingDesktop}`}>
                                                                 <PlaceRating
                                                                     placeName={lugar.nombre}
                                                                     showLabel={true}
@@ -820,6 +820,15 @@ export default function MapaPage() {
                                                         <span>{lugar.ubicacion}</span>
                                                     </div>
                                                 </div>
+                                            </div>
+                                            <div className={`${styles.placeRatingBadge} ${styles.ratingMobile}`}>
+                                                <PlaceRating
+                                                    placeName={lugar.nombre}
+                                                    showLabel={true}
+                                                    size="small"
+                                                    readonly={true}
+                                                    displayMode="compact"
+                                                />
                                             </div>
                                             <motion.button
                                                 className={`${styles.favoriteButton} ${styles.favoriteButtonFloating} ${

@@ -1,4 +1,24 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA256
+
 Contact: pitbol2026@gmail.com
 Expires: 2027-04-10T00:00:00.000Z
 Preferred-Languages: es, en
 Canonical: https://www.pitzbol.me/.well-known/security.txt
+-----BEGIN PGP SIGNATURE-----
+
+iQJlBAEBCABPFiEEf2cjvBt8ATSkiGW6dqphVLF83YYFAmngyK0bFIAAAAAABAAO
+bWFudTIsMi41KzEuMTIsMiwxFRxwaXRib2wyMDI2QGdtYWlsLmNvbQAKCRB2qmFU
+sXzdhlYiD/93yVx/CJ3ewpLCT2A/NSkYTsE6nnLfZrdVXxef+ax9VnIXw/raH/B5
+uXOh8h02Jbp/C5R6g2YP2dZYdvDoHOF+qt+HaQPImEv7m09rSwvtwgnzdeKJnKMr
+1Z7QpZ/ZhipqN9iO4XVhxXLV/KgRkIznabfXWsRAzJLfb5/63bR7nssk7f9Nqi8B
+e54e1RV82tTuRP65aTyjv7MdY1QDWH87RpMwZm2D6zt/2RZ3Cg5G3Y5Ea+P0RbMc
+Tw4iQYkrbjv2/jbxnGrM/RndE+O3fV9EGztW3Ue1MCThLxCtCgz7cCTbTQr/iLTw
+U1WMIPg/ykRazlWr1gcm69kUAkVxryA1KF5rjC5ARmLUv4KOKOxDOQc0iTJg6V3Q
+OREqPBzUJnVcgb1h9zfEYCBUfUFVEw4K1LCDCSRsEYB3IpuCG8YYf8p67h1YXs31
+gly5Ey5eFi5Jflir/v4OtQfpEF2bS9edA22zIdQzbaCr1nmU7aE/FTYvkfTeaSsy
+TsbPowjae9Y/VknpO7sxAp7xp1OuBPtVCUepYCSYLb9kUBt+UV/dc6K7ljzeDkSh
+hAEbMYVl5ekjCgrSw02UNsBGAnGCH8X+TPZQYSw8/1J73+fFfc78UWNtValKwAN+
+XDVKpq8qOAyv77pmP/mMxXBA8BARXfo5vHNk+29LxS9rTPqaHF0d+g==
+=+P+A
+-----END PGP SIGNATURE-----
