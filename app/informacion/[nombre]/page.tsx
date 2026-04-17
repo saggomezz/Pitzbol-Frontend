@@ -168,11 +168,17 @@ function mapPlaceToPublicDetail(place: PlaceRecord): Lugar {
 
 function getMapEmbedSrc(lugar: Lugar): string {
   const hasCoordinates = lugar.latitud !== 0 && lugar.longitud !== 0;
-  const query = hasCoordinates
-    ? `${lugar.latitud},${lugar.longitud}`
-    : encodeURIComponent(lugar.direccion || lugar.nombre);
+  if (hasCoordinates) {
+    const delta = 0.005;
+    const left = lugar.longitud - delta;
+    const right = lugar.longitud + delta;
+    const top = lugar.latitud + delta;
+    const bottom = lugar.latitud - delta;
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lugar.latitud}%2C${lugar.longitud}`;
+  }
 
-  return `https://maps.google.com/maps?q=${query}&z=15&output=embed`;
+  const query = encodeURIComponent(lugar.direccion || lugar.nombre);
+  return `https://www.openstreetmap.org/export/embed.html?bbox=-103.45%2C20.59%2C-103.25%2C20.76&layer=mapnik&query=${query}`;
 }
 
 const EMAIL_ADMIN_LUGARES = "cua@hotmail.com";
@@ -324,10 +330,10 @@ export default function InformacionLugar() {
   const abrirEnMaps = () => {
     if (lugar) {
       const hasCoordinates = lugar.latitud !== 0 && lugar.longitud !== 0;
-      const query = hasCoordinates
-        ? `${lugar.latitud},${lugar.longitud}`
-        : encodeURIComponent(lugar.direccion || lugar.nombre);
-      const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
+      const query = encodeURIComponent(lugar.direccion || lugar.nombre);
+      const url = hasCoordinates
+        ? `https://www.openstreetmap.org/?mlat=${lugar.latitud}&mlon=${lugar.longitud}#map=17/${lugar.latitud}/${lugar.longitud}`
+        : `https://www.openstreetmap.org/search?query=${query}`;
       window.open(url, "_blank");
     }
   };
