@@ -17,10 +17,10 @@ export default function CulturaPage() {
       sectionTitle="Lugares de Cultura"
       sectionSubtitle="Encuentra experiencias auténticas para vivir la ciudad más allá del estadio."
       searchPlaceholder="Buscar museo, plaza, tradición, zona..."
-      quickFilters={["Museos", "Arte e Historia", "Arquitectura"]}
+      quickFilters={["Museos", "Arte e historia", "Arquitectura"]}
       quickFilterKeywords={{
         "Museos": ["museo", "museos", "exposicion", "coleccion", "galeria"],
-        "Arte e Historia": ["arte", "historia", "historico", "patrimonio", "mural", "cabanas", "degollado"],
+        "Arte e historia": ["arte", "historia", "historico", "patrimonio", "mural", "cabanas", "degollado"],
         "Arquitectura": ["arquitectura", "arquitectonico", "edificio", "catedral", "palacio", "expiatorio"]
       }}
       loadingText="Cargando lugares de cultura..."

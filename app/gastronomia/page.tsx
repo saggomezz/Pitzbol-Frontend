@@ -19,7 +19,7 @@ type FilterOptions = {
   soloFavoritos?: boolean;
 };
 
-const quickFilters = ["Gastronomía Mexicana", "Cafeterías", "Comida Calle", "Postre", "Vegana"];
+const quickFilters = ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana"];
 
 const normalizeText = (value: string) =>
   value
@@ -124,8 +124,7 @@ export default function GastronomiaPage() {
       if (!activeQuickFilter) return true;
       const raw = (place.rawCategoria || place.categoria || "").toLowerCase();
       const filter = activeQuickFilter.toLowerCase();
-      if (place.subcategoria) return place.subcategoria.toLowerCase() === filter;
-      return raw.includes(filter) || raw.includes(filter.normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+      return raw.includes(filter);
     };
 
     const matchesZone = (place: PlaceRecord) => {

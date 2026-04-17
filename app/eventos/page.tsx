@@ -17,10 +17,10 @@ export default function EventosPage() {
       sectionTitle="Eventos Cercanos"
       sectionSubtitle="Planea tu día con actividades destacadas en Guadalajara."
       searchPlaceholder="Buscar concierto, actividad, evento, zona..."
-      quickFilters={["Vida Nocturna", "Casas de Cambio", "Hospital"]}
+      quickFilters={["Vida nocturna", "Casas de cambio", "Hospital"]}
       quickFilterKeywords={{
-        "Vida Nocturna": ["nocturna", "nocturno", "bar", "club", "cantina", "noche"],
-        "Casas de Cambio": ["cambio", "divisas", "moneda", "exchange"],
+        "Vida nocturna": ["nocturna", "nocturno", "bar", "club", "cantina", "noche"],
+        "Casas de cambio": ["cambio", "divisas", "moneda", "exchange"],
         "Hospital": ["hospital", "clinica", "medico", "salud", "urgencias"]
       }}
       loadingText="Cargando eventos..."
