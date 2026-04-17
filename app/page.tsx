@@ -52,7 +52,6 @@ const ALL_CATEGORIES: Category[] = [
   { name: "Eventos", img: "https://www.buenosviajes.co/wp-content/uploads/2024/03/Guadalajara2.jpg" },
   { name: "Casas de Cambio", img: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1528" },
   { name: "Hospitales", img: "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=1700" },
-  { name: "Médico", img: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&q=80&w=1528" },
   { name: "Explora más lugares", img: "https://res.cloudinary.com/dckbtxa4a/image/upload/v1776398876/Guadalajara-Jalisco_wbm1m1.webp" },
 ];
 
@@ -380,7 +379,6 @@ function HomeContent() {
       "Eventos": "/eventos",
       "Casas de Cambio": "/casas-cambio",
       "Hospitales": "/hospitales",
-      "Médico": "/medico",
       "Explora más lugares": "/tours"
     };
 
@@ -540,7 +538,15 @@ function HomeContent() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-70 group-hover:opacity-50 transition-opacity duration-300"></div>
 
                         <div className="absolute inset-0 flex flex-col items-center justify-end p-6 text-center">
-                          <h3 className="text-xl md:text-2xl font-black text-white uppercase drop-shadow-lg leading-tight tracking-wide" style={{ fontFamily: "var(--font-jockey)" }}>
+                          <h3
+                            className="text-xl md:text-2xl font-black text-white uppercase leading-tight tracking-wide"
+                            style={{
+                              fontFamily: "var(--font-jockey)",
+                              textShadow: activeCategory.name === "Explora más lugares"
+                                ? "0 2px 8px rgba(0,0,0,0.9), 0 0px 20px rgba(0,0,0,0.7)"
+                                : "0 2px 4px rgba(0,0,0,0.5)"
+                            }}
+                          >
                             {getCategoryName(activeCategory.name)}
                           </h3>
                           <p className="text-xs md:text-sm text-white/80 mt-2 font-medium">Descubre más →</p>
