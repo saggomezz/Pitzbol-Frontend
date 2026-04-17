@@ -542,9 +542,7 @@ function HomeContent() {
                             className="text-xl md:text-2xl font-black text-white uppercase leading-tight tracking-wide"
                             style={{
                               fontFamily: "var(--font-jockey)",
-                              textShadow: activeCategory.name === "Explora más lugares"
-                                ? "0 2px 8px rgba(0,0,0,0.9), 0 0px 20px rgba(0,0,0,0.7)"
-                                : "0 2px 4px rgba(0,0,0,0.5)"
+                              textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 0px 20px rgba(0,0,0,0.7)"
                             }}
                           >
                             {getCategoryName(activeCategory.name)}
