@@ -1074,7 +1074,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
             {/* Encabezado */}
             <div className="bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white px-6 py-5 flex justify-between items-center">
               <div>
-                <h3 className="font-black text-lg">Notificaciones</h3>
+                <h3 className="font-normal text-lg">Notificaciones</h3>
                 <p className="text-white/70 text-xs font-light mt-0.5">
                   {noLeidas > 0 ? `${noLeidas} sin leer` : 'Todo al día'}
                 </p>
