@@ -11,6 +11,21 @@ type DaySchedule = {
 
 type WeeklySchedule = Record<WeekDayKey, DaySchedule>;
 
+const CATEGORY_CONFIG: Record<string, { descripcion: string; subcategorias: string[] }> = {
+  "Gastronomía": {
+    descripcion: "Restaurantes, cafeterías, puestos de comida, postrerías, opciones veganas y todo lo relacionado con alimentación.",
+    subcategorias: ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana"],
+  },
+  "Entretenimiento": {
+    descripcion: "Bares, cantinas, venues de música en vivo, espacios para eventos privados y vida nocturna en general.",
+    subcategorias: ["Vida nocturna", "Música en vivo", "Bares y cantinas", "Eventos privados"],
+  },
+  "Explora más lugares": {
+    descripcion: "Tiendas, mercados, artesanías, centros comerciales, tours, actividades al aire libre, fotografía, naturaleza y experiencias únicas en Guadalajara.",
+    subcategorias: ["Compras", "Mercados locales", "Artesanías", "Centros comerciales", "Aventura", "Tours guiados", "Fotografía", "Música", "Naturaleza"],
+  },
+};
+
 interface FormState {
   nombre: string;
   categoria: string;
@@ -37,6 +52,8 @@ interface FormState {
   subcategorias: string[];
   galeria: (File | null)[];
   logo: File | null;
+  solicitaRevisionAdmin: boolean;
+  justificacionAdmin: string;
 }
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -195,7 +212,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       tiempoSugerido: "",
       subcategorias: [],
       galeria: createEmptyGallery<File | null>(null),
-      logo: null
+      logo: null,
+      solicitaRevisionAdmin: false,
+      justificacionAdmin: "",
     } as FormState;
     if (saved) {
       try {
@@ -1620,12 +1639,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           />
                           {nombreError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{nombreError}</p>}
                         </div>
-                        <div className="relative pb-5">
-                          <select 
+                        <div className="relative pb-2">
+                          <select
                             className={inputClass + " appearance-none cursor-pointer pr-10" + (categoriaError ? " border-red-500 bg-red-50/50" : "")}
                             value={form.categoria}
                             onChange={e => {
-                              setForm((f: FormState) => ({ ...f, categoria: e.target.value }));
+                              setForm((f: FormState) => ({ ...f, categoria: e.target.value, subcategorias: [], solicitaRevisionAdmin: false, justificacionAdmin: "" }));
                               if (!e.target.value.trim()) setCategoriaError("Selecciona una categoría");
                               else setCategoriaError("");
                             }}
@@ -1634,20 +1653,52 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                               else setCategoriaError("");
                             }}
                           >
-                            <option value="" disabled>{t('partnerCategory')}</option>
-                            <option value="Restaurante / Bar">{t('categories.restaurant')}</option>
-                            <option value="Cafetería / Desayunos">{t('categories.cafe')}</option>
-                            <option value="Hotelería / Hostal / Airbnb">{t('categories.hotel')}</option>
-                            <option value="Transporte / Traslados">{t('categories.transport')}</option>
-                            <option value="Renta de Equipo Deportivo">{t('categories.equipment')}</option>
-                            <option value="Artesanías / Souvenirs">{t('categories.crafts')}</option>
-                            <option value="Vida Nocturna / Club">{t('categories.nightlife')}</option>
+                            <option value="" disabled>Selecciona una categoría</option>
+                            <option value="Gastronomía">Gastronomía</option>
+                            <option value="Entretenimiento">Entretenimiento</option>
+                            <option value="Explora más lugares">Explora más lugares</option>
                           </select>
-                          <FiChevronDown 
-                            className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]" 
-                            size={18} 
+                          <FiChevronDown
+                            className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]"
+                            size={18}
                           />
                           {categoriaError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{categoriaError}</p>}
+                        </div>
+
+                        {/* Preview de categoría */}
+                        {form.categoria && CATEGORY_CONFIG[form.categoria] && (
+                          <div className="mb-3 bg-[#F0F7F1] border border-[#C9D4CB] rounded-2xl px-4 py-3">
+                            <p className="text-[11px] text-[#4A7A5A] mb-2">{CATEGORY_CONFIG[form.categoria].descripcion}</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {CATEGORY_CONFIG[form.categoria].subcategorias.map(sub => (
+                                <span key={sub} className="text-[10px] bg-white border border-[#C9D4CB] text-[#245038] px-2.5 py-0.5 rounded-full">{sub}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Checkbox admin */}
+                        <div className="mt-1">
+                          <label className="flex items-start gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={form.solicitaRevisionAdmin}
+                              onChange={e => setForm((f: FormState) => ({ ...f, solicitaRevisionAdmin: e.target.checked, justificacionAdmin: e.target.checked ? f.justificacionAdmin : "" }))}
+                              className="mt-0.5 accent-[#0D601E]"
+                            />
+                            <span className="text-[11px] text-[#4A7A5A] leading-tight">
+                              Creo que mi negocio pertenece a <strong>Fútbol, Cultura o Eventos</strong> y quisiera que el equipo de Pitzbol lo revise.
+                            </span>
+                          </label>
+                          {form.solicitaRevisionAdmin && (
+                            <textarea
+                              placeholder="Explica brevemente por qué tu negocio encaja en esa categoría..."
+                              className={inputClass + " mt-2 resize-none"}
+                              rows={2}
+                              value={form.justificacionAdmin}
+                              onChange={e => setForm((f: FormState) => ({ ...f, justificacionAdmin: e.target.value }))}
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2141,37 +2192,47 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         </div>
 
                         <div className="lg:col-span-6 mt-0.25 md:mt-0.5 h-full flex flex-col">
-                          <label className={labelClass + " mb-1"}>Subcategorías (palabras clave)</label>
-                          <div className="border border-[#C9D4CB] rounded-2xl p-1.5 bg-white min-h-[96px] md:min-h-[22vh] flex flex-col">
-                            <input
-                              placeholder="Escribe subcategoría y presiona Enter"
-                              className={inputClass}
-                              value={subcategoriaInput}
-                              onChange={(e) => setSubcategoriaInput(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === ",") {
-                                  e.preventDefault();
-                                  addSubcategory(subcategoriaInput);
-                                }
-                              }}
-                              onBlur={() => {
-                                if (subcategoriaInput.trim()) addSubcategory(subcategoriaInput);
-                              }}
-                            />
-                            <div className="mt-1.5 flex flex-wrap gap-1.5 min-h-[36px] md:min-h-[15vh]">
-                              {form.subcategorias.slice(0, 6).map((sub) => (
-                                <span key={sub} className="inline-flex items-center gap-1 bg-[#EEF4EF] text-[#245038] border border-[#C9D4CB] px-2.5 py-1 rounded-full text-[11px] font-bold">
-                                  {sub}
-                                  <button type="button" onClick={() => removeSubcategory(sub)} className="text-[#8B0000] font-black">x</button>
-                                </span>
-                              ))}
-                              {form.subcategorias.length > 6 && (
-                                <span className="inline-flex items-center bg-[#EEF4EF] text-[#245038] border border-[#C9D4CB] px-2.5 py-1 rounded-full text-[11px] font-bold">
-                                  +{form.subcategorias.length - 6}
-                                </span>
+                          <label className={labelClass + " mb-1"}>Subcategorías complementarias</label>
+                          {form.categoria && CATEGORY_CONFIG[form.categoria] ? (
+                            <div className="border border-[#C9D4CB] rounded-2xl p-3 bg-white flex flex-col gap-2">
+                              <p className="text-[10px] text-[#769C7B]">Selecciona las que apliquen a tu negocio:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {CATEGORY_CONFIG[form.categoria].subcategorias.map(sub => {
+                                  const selected = form.subcategorias.includes(sub);
+                                  return (
+                                    <button
+                                      key={sub}
+                                      type="button"
+                                      onClick={() => {
+                                        setForm((f: FormState) => ({
+                                          ...f,
+                                          subcategorias: selected
+                                            ? f.subcategorias.filter(s => s !== sub)
+                                            : [...f.subcategorias, sub]
+                                        }));
+                                      }}
+                                      className={`text-[11px] px-3 py-1 rounded-full border transition-all ${
+                                        selected
+                                          ? "bg-[#1A4D2E] text-white border-[#1A4D2E]"
+                                          : "bg-white text-[#245038] border-[#C9D4CB] hover:border-[#1A4D2E]"
+                                      }`}
+                                    >
+                                      {sub}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              {form.subcategorias.length > 0 && (
+                                <p className="text-[10px] text-[#1A4D2E] font-medium mt-1">
+                                  {form.subcategorias.length} seleccionada{form.subcategorias.length > 1 ? "s" : ""}
+                                </p>
                               )}
                             </div>
-                          </div>
+                          ) : (
+                            <div className="border border-[#C9D4CB] rounded-2xl p-3 bg-[#F9F9F9] flex items-center justify-center min-h-[80px]">
+                              <p className="text-[11px] text-[#9AB0A0] text-center">Selecciona primero una categoría en el paso 1</p>
+                            </div>
+                          )}
                           {subcategoriasError && <p className="text-[10px] text-red-500 mt-1 italic">{subcategoriasError}</p>}
                         </div>
 
