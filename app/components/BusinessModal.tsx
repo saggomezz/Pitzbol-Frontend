@@ -636,7 +636,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   };
 
   // Función para reverse geocoding usando Nominatim
-  const obtenerCiudadEstado = async (lat: string, lng: string) => {
+  const obtenerCiudadEstado = async (lat: string, lng: string, forceManualUpdate = false) => {
     if (!lat || !lng) return;
 
     let address: any | null = null;
@@ -687,16 +687,55 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
     if (!address) return;
 
-    // Extraer información
-    const calle = address.road || '';
-    const ciudad = address.city || address.town || address.municipality || '';
-    const estado = address.state || '';
-    const colonia = address.neighbourhood || address.suburb || address.village || address.hamlet || address.county || '';
-    const numero = address.house_number || '';
+    // Extraer información (considera variaciones comunes de Nominatim)
+    const displayName = typeof address?.display_name === "string" ? address.display_name : "";
+    const firstDisplaySegment = displayName ? displayName.split(",")[0]?.trim() || "" : "";
+
+    const calle =
+      address.road ||
+      address.pedestrian ||
+      address.footway ||
+      address.path ||
+      address.cycleway ||
+      address.residential ||
+      address.living_street ||
+      address.street ||
+      address.construction ||
+      firstDisplaySegment ||
+      '';
+
+    const ciudad =
+      address.city ||
+      address.town ||
+      address.municipality ||
+      address.city_district ||
+      address.county ||
+      '';
+
+    const estado = address.state || address.region || address.state_district || '';
+
+    const colonia =
+      address.neighbourhood ||
+      address.suburb ||
+      address.quarter ||
+      address.borough ||
+      address.city_district ||
+      address.township ||
+      address.subdistrict ||
+      address.village ||
+      address.hamlet ||
+      address.county ||
+      '';
+
+    const numero =
+      address.house_number ||
+      address.housenumber ||
+      address.house_name ||
+      '';
     const codigoPostal = address.postcode || '';
 
     // Solo actualizar calle si fue un cambio manual del marcador
-    const isManualChange = isManualMapChangeRef.current;
+    const isManualChange = forceManualUpdate || isManualMapChangeRef.current;
 
     // Actualizar form con los datos extraídos
     setForm((f: FormState) => ({
@@ -1700,6 +1739,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                   latitud: lat,
                                   longitud: lng
                                 }));
+                                void obtenerCiudadEstado(lat, lng, true);
                               }}
                               height="100%"
                             />

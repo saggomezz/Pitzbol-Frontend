@@ -188,7 +188,7 @@ export default function AdminEditableLocation({
     onCoordinatesChange?.(latitud || "", longitud || "");
   };
 
-  const obtenerCiudadEstado = async (lat: string, lng: string) => {
+  const obtenerCiudadEstado = async (lat: string, lng: string, forceManualUpdate = false) => {
     if (!lat || !lng) return;
 
     let address: any | null = null;
@@ -239,20 +239,48 @@ export default function AdminEditableLocation({
 
     if (!address) return;
 
-    const calleDetectada = address.road || "";
-    const ciudadDetectada = address.city || address.town || address.municipality || "";
-    const estadoDetectado = address.state || "";
+    const displayName = typeof address?.display_name === "string" ? address.display_name : "";
+    const firstDisplaySegment = displayName ? displayName.split(",")[0]?.trim() || "" : "";
+
+    const calleDetectada =
+      address.road ||
+      address.pedestrian ||
+      address.footway ||
+      address.path ||
+      address.cycleway ||
+      address.residential ||
+      address.living_street ||
+      address.street ||
+      address.construction ||
+      firstDisplaySegment ||
+      "";
+
+    const ciudadDetectada =
+      address.city ||
+      address.town ||
+      address.municipality ||
+      address.city_district ||
+      address.county ||
+      "";
+
+    const estadoDetectado = address.state || address.region || address.state_district || "";
+
     const coloniaDetectada =
       address.neighbourhood ||
       address.suburb ||
+      address.quarter ||
+      address.borough ||
+      address.city_district ||
+      address.township ||
+      address.subdistrict ||
       address.village ||
       address.hamlet ||
       address.county ||
       "";
-    const numeroDetectado = address.house_number || "";
+    const numeroDetectado = address.house_number || address.housenumber || address.house_name || "";
     const codigoPostalDetectado = address.postcode || "";
 
-    const isManualChange = isManualMapChangeRef.current;
+    const isManualChange = forceManualUpdate || isManualMapChangeRef.current;
 
     setCalleValue((prev) => (isManualChange ? calleDetectada || prev : prev));
     setCiudadValue((prev) => ciudadDetectada || prev);
@@ -381,7 +409,7 @@ export default function AdminEditableLocation({
         }
 
         reverseGeocodeTimeoutRef.current = setTimeout(() => {
-          obtenerCiudadEstado(nextLat, nextLng);
+          obtenerCiudadEstado(nextLat, nextLng, true);
         }, 300);
       }
     }
