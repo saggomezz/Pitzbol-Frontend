@@ -17,13 +17,11 @@ export default function CulturaPage() {
       sectionTitle="Lugares de Cultura"
       sectionSubtitle="Encuentra experiencias auténticas para vivir la ciudad más allá del estadio."
       searchPlaceholder="Buscar museo, plaza, tradición, zona..."
-      quickFilters={["Tradición", "Historia", "Centro", "Patrimonio", "Familiar"]}
+      quickFilters={["Museos", "Arte e Historia", "Arquitectura"]}
       quickFilterKeywords={{
-        "Tradición": ["tradicion", "tradicional", "cultural", "folklor", "artesania"],
-        "Historia": ["historia", "historico", "museo", "patrimonio", "centro"],
-        "Centro": ["centro", "centro historico", "guadalajara centro"],
-        "Patrimonio": ["patrimonio", "arquitectura", "monumento", "catedral"],
-        "Familiar": ["familiar", "familia", "plaza", "parque", "museo"]
+        "Museos": ["museo", "museos", "exposicion", "coleccion", "galeria"],
+        "Arte e Historia": ["arte", "historia", "historico", "patrimonio", "mural", "cabanas", "degollado"],
+        "Arquitectura": ["arquitectura", "arquitectonico", "edificio", "catedral", "palacio", "expiatorio"]
       }}
       loadingText="Cargando lugares de cultura..."
       emptyText="No se encontraron lugares de cultura con ese criterio."

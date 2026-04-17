@@ -17,13 +17,11 @@ export default function EventosPage() {
       sectionTitle="Eventos Cercanos"
       sectionSubtitle="Planea tu día con actividades destacadas en Guadalajara."
       searchPlaceholder="Buscar concierto, actividad, evento, zona..."
-      quickFilters={["Conciertos", "Festivales", "Nocturno", "Familiar", "Temporada"]}
+      quickFilters={["Vida Nocturna", "Casas de Cambio", "Hospital"]}
       quickFilterKeywords={{
-        "Conciertos": ["concierto", "musica", "show", "arena", "teatro"],
-        "Festivales": ["festival", "feria", "cultural", "evento", "celebracion"],
-        "Nocturno": ["noche", "nocturno", "bar", "club", "after"],
-        "Familiar": ["familiar", "familia", "ninos", "actividad", "parque"],
-        "Temporada": ["temporada", "especial", "mundial", "junio", "julio"]
+        "Vida Nocturna": ["nocturna", "nocturno", "bar", "club", "cantina", "noche"],
+        "Casas de Cambio": ["cambio", "divisas", "moneda", "exchange"],
+        "Hospital": ["hospital", "clinica", "medico", "salud", "urgencias"]
       }}
       loadingText="Cargando eventos..."
       emptyText="No se encontraron eventos con ese criterio."

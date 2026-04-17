@@ -19,7 +19,7 @@ type FilterOptions = {
   soloFavoritos?: boolean;
 };
 
-const quickFilters = ["Tradicional", "Gourmet", "Callejero", "Mercados", "Cafeterías", "Vegana", "Vida Nocturna"];
+const quickFilters = ["Gastronomía Mexicana", "Cafeterías", "Comida Calle", "Postre", "Vegana"];
 
 const normalizeText = (value: string) =>
   value
@@ -62,7 +62,7 @@ export default function GastronomiaPage() {
     const loadPlaces = async () => {
       try {
         setLoading(true);
-        const GASTRO_SUBCATEGORIAS = new Set(["Tradicional", "Gourmet", "Callejero", "Mercados", "Cafeterías", "Vegana", "Vida Nocturna"]);
+        const GASTRO_SUBCATEGORIAS = new Set(["Gastronomía Mexicana", "Cafeterías", "Comida Calle", "Postre", "Vegana", "Gastronomía"]);
         const mergedPlaces = await getMergedPlaces();
         setPlaces(mergedPlaces.filter((place) => {
           // Subcategoría explícita tiene prioridad
@@ -122,8 +122,10 @@ export default function GastronomiaPage() {
 
     const matchesQuickFilter = (place: PlaceRecord) => {
       if (!activeQuickFilter) return true;
-      if (place.subcategoria) return place.subcategoria === activeQuickFilter;
-      return false;
+      const raw = (place.rawCategoria || place.categoria || "").toLowerCase();
+      const filter = activeQuickFilter.toLowerCase();
+      if (place.subcategoria) return place.subcategoria.toLowerCase() === filter;
+      return raw.includes(filter) || raw.includes(filter.normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
     };
 
     const matchesZone = (place: PlaceRecord) => {
