@@ -1,240 +1,29 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
-import { useTranslations } from 'next-intl';
-import { FiSearch, FiFilter } from "react-icons/fi";
-import GuideCard from "../components/GuideCard";
-import styles from "./tours.module.css";
-import { getBackendOrigin } from "@/lib/backendUrl";
 
-const BACKEND_URL = getBackendOrigin();
-
-interface Guide {
-  uid: string;
-  nombre: string;
-  fotoPerfil?: string;
-  descripcion?: string;
-  idiomas?: string[];
-  especialidades?: string[];
-  tarifa?: number;
-  ubicacion?: string;
-}
+import { FiCompass } from "react-icons/fi";
+import CategoryPlacesPage from "@/app/components/CategoryPlacesPage";
 
 export default function ToursPage() {
-  const t = useTranslations('tours');
-  const [guides, setGuides] = useState<Guide[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLanguage, setSelectedLanguage] = useState<string>("all");
-  const [selectedSpecialty, setSelectedSpecialty] = useState<string>("all");
-  const [lastUpdate, setLastUpdate] = useState<string>("");
-
-  // Cargar guías desde el backend
-  useEffect(() => {
-    const fetchGuides = async () => {
-      try {
-        setLoading(true);
-        // Añadir timestamp para evitar caché
-        const timestamp = new Date().getTime();
-        const response = await fetch(`/api/guides/verified?t=${timestamp}`);
-        
-        if (!response.ok) {
-          console.warn(`Error al cargar guías: ${response.status} ${response.statusText}`);
-          setGuides([]);
-          return;
-        }
-
-        const data = await response.json();
-        const ahora = new Date().toLocaleTimeString('es-MX');
-        console.log(`📋 [${ahora}] Guías cargados:`, data.guides?.length || 0);
-        if (data.guides?.length > 0) {
-          console.log('🔍 Datos completos del primer guía:', {
-            uid: data.guides[0].uid,
-            nombre: data.guides[0].nombre,
-            descripcion: data.guides[0].descripcion?.substring(0, 50),
-            idiomas: data.guides[0].idiomas,
-            especialidades: data.guides[0].especialidades,
-            fotoPerfil: data.guides[0].fotoPerfil ? 'Sí' : 'No'
-          });
-        }
-        
-        // Forzar actualización completa creando un nuevo array
-        setGuides([...data.guides || []]);
-        setLastUpdate(ahora);
-      } catch (error) {
-        console.error("Error fetching guides:", error);
-        setGuides([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchGuides();
-
-    // Escuchar actualizaciones del perfil para recargar guías automáticamente
-    const handleProfileUpdate = (event: Event) => {
-      const ahora = new Date().toLocaleTimeString('es-MX');
-      console.log(`🔄 [${ahora}] Evento recibido: ${event.type} - Recargando lista de guías...`);
-      // Pequeño delay para asegurar que Firebase se actualizó
-      setTimeout(() => {
-        fetchGuides();
-      }, 500);
-    };
-
-    // Escuchar eventos de actualización
-    console.log('👂 Iniciando listeners de eventos en Tours...');
-    window.addEventListener('guideProfileUpdated', handleProfileUpdate);
-    window.addEventListener('authStateChanged', handleProfileUpdate);
-    window.addEventListener('fotoPerfilActualizada', handleProfileUpdate);
-
-    return () => {
-      console.log('🔇 Removiendo listeners de eventos en Tours...');
-      window.removeEventListener('guideProfileUpdated', handleProfileUpdate);
-      window.removeEventListener('authStateChanged', handleProfileUpdate);
-      window.removeEventListener('fotoPerfilActualizada', handleProfileUpdate);
-    };
-  }, []);
-
-  // Extraer idiomas y especialidades únicos para los filtros
-  const availableLanguages = useMemo(() => {
-    const languages = new Set<string>();
-    guides.forEach(guide => {
-      guide.idiomas?.forEach(lang => languages.add(lang));
-    });
-    return Array.from(languages).sort();
-  }, [guides]);
-
-  const availableSpecialties = useMemo(() => {
-    const specialties = new Set<string>();
-    guides.forEach(guide => {
-      guide.especialidades?.forEach(spec => specialties.add(spec));
-    });
-    return Array.from(specialties).sort();
-  }, [guides]);
-
-  // Filtrar guías
-  const filteredGuides = useMemo(() => {
-    return guides.filter(guide => {
-      // Filtro de búsqueda
-      const matchesSearch = searchTerm === "" || 
-        guide.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        guide.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        guide.idiomas?.some(lang => lang.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        guide.especialidades?.some(spec => spec.toLowerCase().includes(searchTerm.toLowerCase()));
-
-      // Filtro de idioma
-      const matchesLanguage = selectedLanguage === "all" || 
-        guide.idiomas?.includes(selectedLanguage);
-
-      // Filtro de especialidad
-      const matchesSpecialty = selectedSpecialty === "all" || 
-        guide.especialidades?.includes(selectedSpecialty);
-
-      return matchesSearch && matchesLanguage && matchesSpecialty;
-    });
-  }, [guides, searchTerm, selectedLanguage, selectedSpecialty]);
-
   return (
-    <div className={styles.container}>
-      {/* Hero Section */}
-      <section className={styles.hero}>
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className={styles.heroContent}
-        >
-          <h1 className={styles.title}>
-            {t('title')}
-          </h1>
-          <p className={styles.subtitle}>
-            {t('subtitle')}
-          </p>
-        </motion.div>
-      </section>
-
-      {/* Barra de búsqueda y filtros */}
-      <section className={styles.searchSection}>
-        <div className={styles.searchContainer}>
-          {/* Buscador */}
-          <div className={styles.searchBox}>
-            <FiSearch className={styles.searchIcon} />
-            <input
-              type="text"
-              placeholder={t('searchPlaceholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={styles.searchInput}
-            />
-          </div>
-
-          {/* Filtros */}
-          <div className={styles.filters}>
-            <div className={styles.filterGroup}>
-              <FiFilter className={styles.filterIcon} />
-              <select
-                value={selectedLanguage}
-                onChange={(e) => setSelectedLanguage(e.target.value)}
-                className={styles.filterSelect}
-              >
-                <option value="all">{t('allLanguages')}</option>
-                {availableLanguages.map(lang => (
-                  <option key={lang} value={lang}>{lang}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className={styles.filterGroup}>
-              <FiFilter className={styles.filterIcon} />
-              <select
-                value={selectedSpecialty}
-                onChange={(e) => setSelectedSpecialty(e.target.value)}
-                className={styles.filterSelect}
-              >
-                <option value="all">{t('allSpecialties')}</option>
-                {availableSpecialties.map(spec => (
-                  <option key={spec} value={spec}>{spec}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Contador de resultados */}
-        {!loading && (
-          <p className={styles.resultsCount}>
-            {filteredGuides.length} {filteredGuides.length === 1 ? t('guideFound') : t('guidesFound')}
-          </p>
-        )}
-      </section>
-
-      {/* Grid de guías */}
-      <section className={styles.guidesSection}>
-        {loading ? (
-          <div className={styles.loadingContainer}>
-            <div className={styles.spinner}></div>
-            <p className={styles.loadingText}>{t('loading')}</p>
-          </div>
-        ) : filteredGuides.length === 0 ? (
-          <div className={styles.emptyState}>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className={styles.emptyContent}
-            >
-              <h3 className={styles.emptyTitle}>{t('noGuides')}</h3>
-              <p className={styles.emptyDescription}>{t('noGuidesDescription')}</p>
-            </motion.div>
-          </div>
-        ) : (
-          <div className={styles.guidesGrid}>
-            {filteredGuides.map(guide => (
-              <GuideCard key={guide.uid} guide={guide} />
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
+    <CategoryPlacesPage
+      categoryName="Tours"
+      heroImage="https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484529/a2_go8rka.jpg"
+      heroLabel="Experiencias guiadas"
+      heroTitle="Tours en y alrededor de GDL"
+      heroDescription="Explora Guadalajara y sus alrededores con tours guiados, recorridos culturales, rutas en bici y experiencias únicas."
+      statusIcon={FiCompass}
+      statusText="Turismo • Recomendaciones"
+      sectionTitle="Tours Disponibles"
+      sectionSubtitle="Recorridos dentro y alrededor de Guadalajara para todos los gustos."
+      searchPlaceholder="Buscar tour, recorrido, ruta, zona..."
+      quickFilters={["Tours en GDL", "Tours alrededor de GDL"]}
+      quickFilterKeywords={{
+        "Tours en GDL": ["tour", "recorrido", "city tour", "a pie", "bici", "guiado", "guadalajara"],
+        "Tours alrededor de GDL": ["tequila", "tlaquepaque", "tonala", "chapala", "tapalpa", "alrededores", "excursion"],
+      }}
+      loadingText="Cargando tours..."
+      emptyText="No se encontraron tours con ese criterio."
+      defaultDescription="Descubre este tour recomendado para vivir una experiencia única en Guadalajara y sus alrededores."
+    />
   );
 }

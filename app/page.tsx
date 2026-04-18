@@ -50,6 +50,8 @@ const ALL_CATEGORIES: Category[] = [
   { name: "Gastronomía", img: "https://images.unsplash.com/photo-1711306722944-70b776bb4394?auto=format&fit=crop&q=80&w=1528" },
   { name: "Cultura", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Voladores_de_Papantla.png/1200px-Voladores_de_Papantla.png" },
   { name: "Eventos", img: "https://www.buenosviajes.co/wp-content/uploads/2024/03/Guadalajara2.jpg" },
+  { name: "Clubs", img: "https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484397/ideas-tema-fiesta_rq0r9b.jpg" },
+  { name: "Tours", img: "https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484529/a2_go8rka.jpg" },
   { name: "Casas de Cambio", img: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1528" },
   { name: "Hospitales", img: "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=1700" },
   { name: "Explora más lugares", img: "https://res.cloudinary.com/dckbtxa4a/image/upload/v1776398876/Guadalajara-Jalisco_wbm1m1.webp" },
@@ -377,6 +379,8 @@ function HomeContent() {
       "Gastronomía": "/gastronomia",
       "Cultura": "/cultura",
       "Eventos": "/eventos",
+      "Clubs": "/clubs",
+      "Tours": "/tours",
       "Casas de Cambio": "/casas-cambio",
       "Hospitales": "/hospitales",
       "Explora más lugares": "/tours"
