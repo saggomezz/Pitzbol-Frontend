@@ -30,7 +30,8 @@ export default function AdminPerfil() {
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-    if (!user.uid || user.role !== "admin") {
+    const role = (user.role || "").toLowerCase();
+    if (!user.uid || (role !== "admin" && role !== "admins")) {
       router.replace("/");
       return;
     }

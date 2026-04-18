@@ -25,7 +25,8 @@ export default function AdminLlamadas() {
   useEffect(() => {
     // Verificar que sea admin
     const user = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-    if (!user.uid || user.role !== "admin") {
+    const role = (user.role || "").toLowerCase();
+    if (!user.uid || (role !== "admin" && role !== "admins")) {
       window.location.href = "/";
       return;
     }
