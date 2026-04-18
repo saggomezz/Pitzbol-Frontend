@@ -51,8 +51,12 @@ export default function AdminLugaresPage() {
     ubicacion: '',
     latitud: '',
     longitud: '',
-    descripcion: ''
+    descripcion: '',
+    costoEstimado: '',
+    tiempoEstancia: '',
   });
+  const [fotosNuevas, setFotosNuevas] = useState<string[]>([]);
+  const [urlInputNuevo, setUrlInputNuevo] = useState('');
   const [buscandoCoordenadas, setBuscandoCoordenadas] = useState(false);
   const [editPlaceData, setEditPlaceData] = useState<Partial<Lugar>>({});
   const [buscandoCoordenadasEdicion, setBuscandoCoordenadasEdicion] = useState(false);
@@ -61,12 +65,19 @@ export default function AdminLugaresPage() {
   const categoriasSistema = [
     'Fútbol',
     'Gastronomía',
-    'Arte',
     'Cultura',
     'Eventos',
+    'Clubs',
+    'Tours',
+    'Artesanías / Souvenirs',
+    'Compras',
+    'Mercados locales',
+    'Naturaleza',
+    'Fotografía',
+    'Aventura',
+    'Transporte / Traslados / Tours',
     'Casas de Cambio',
     'Hospitales',
-    'Médico'
   ];
 
   // Función para obtener coordenadas usando el endpoint del backend (evita problemas de CORS)
@@ -437,7 +448,7 @@ export default function AdminLugaresPage() {
       const response = await fetchWithAuth(`/api/lugares`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevoLugar)
+        body: JSON.stringify({ ...nuevoLugar, fotos: fotosNuevas })
       });
 
       if (response.ok) {
@@ -445,14 +456,9 @@ export default function AdminLugaresPage() {
         mostrarNotificacion('exito', `Lugar "${data.lugar.nombre}" creado correctamente`);
         await fetchLugares();
         setShowCreateModal(false);
-        setNuevoLugar({
-          nombre: '',
-          categoria: '',
-          ubicacion: '',
-          latitud: '',
-          longitud: '',
-          descripcion: ''
-        });
+        setNuevoLugar({ nombre: '', categoria: '', ubicacion: '', latitud: '', longitud: '', descripcion: '', costoEstimado: '', tiempoEstancia: '' });
+        setFotosNuevas([]);
+        setUrlInputNuevo('');
       } else {
         const error = await response.json();
         mostrarNotificacion('error', error.message || 'Error al crear lugar');
@@ -989,9 +995,88 @@ export default function AdminLugaresPage() {
                         value={nuevoLugar.descripcion}
                         onChange={(e) => setNuevoLugar({ ...nuevoLugar, descripcion: e.target.value })}
                         placeholder="Información adicional sobre el lugar..."
-                        rows={4}
+                        rows={3}
                         className="w-full px-4 py-3 border border-[#1A4D2E]/20 rounded-xl outline-none focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 transition-all text-[#1A4D2E] resize-none"
                       />
+                    </div>
+
+                    {/* Precio y Tiempo estimado */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-[#1A4D2E] mb-2">
+                          Costo estimado
+                        </label>
+                        <input
+                          type="text"
+                          value={nuevoLugar.costoEstimado}
+                          onChange={(e) => setNuevoLugar({ ...nuevoLugar, costoEstimado: e.target.value })}
+                          placeholder="Ej: $150 MXN, Gratis"
+                          className="w-full px-4 py-3 border border-[#1A4D2E]/20 rounded-full outline-none focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 transition-all text-[#1A4D2E]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-[#1A4D2E] mb-2">
+                          Tiempo estimado (min)
+                        </label>
+                        <input
+                          type="number"
+                          value={nuevoLugar.tiempoEstancia}
+                          onChange={(e) => setNuevoLugar({ ...nuevoLugar, tiempoEstancia: e.target.value })}
+                          placeholder="Ej: 60"
+                          min="0"
+                          className="w-full px-4 py-3 border border-[#1A4D2E]/20 rounded-full outline-none focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 transition-all text-[#1A4D2E]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Fotos (URLs) */}
+                    <div>
+                      <label className="block text-sm font-bold text-[#1A4D2E] mb-2">
+                        Fotos <span className="text-[#769C7B] font-normal text-xs">(URLs)</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={urlInputNuevo}
+                          onChange={(e) => setUrlInputNuevo(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && urlInputNuevo.startsWith('http')) {
+                              setFotosNuevas(prev => [...prev, urlInputNuevo.trim()]);
+                              setUrlInputNuevo('');
+                            }
+                          }}
+                          placeholder="https://... pega la URL y presiona Agregar"
+                          className="flex-1 px-4 py-3 border border-[#1A4D2E]/20 rounded-full outline-none focus:border-[#0D601E] text-[#1A4D2E] text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (urlInputNuevo.trim().startsWith('http')) {
+                              setFotosNuevas(prev => [...prev, urlInputNuevo.trim()]);
+                              setUrlInputNuevo('');
+                            }
+                          }}
+                          className="px-4 py-2 bg-[#1A4D2E] text-white rounded-full text-sm font-bold hover:bg-[#0D601E] transition-colors whitespace-nowrap"
+                        >
+                          Agregar
+                        </button>
+                      </div>
+                      {fotosNuevas.length > 0 && (
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          {fotosNuevas.map((url, i) => (
+                            <div key={i} className="relative group">
+                              <img src={url} alt={`foto-${i}`} className="w-full h-20 object-cover rounded-xl border border-[#1A4D2E]/10" />
+                              <button
+                                type="button"
+                                onClick={() => setFotosNuevas(prev => prev.filter((_, idx) => idx !== i))}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <FiX size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
