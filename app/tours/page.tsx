@@ -9,7 +9,7 @@ export default function ToursPage() {
       categoryName="Tours"
       heroImage="https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484529/a2_go8rka.jpg"
       heroLabel="Experiencias guiadas"
-      heroTitle="Tours en y alrededor de GDL"
+      heroTitle="Tours dentro y alrededor de Guadalajara"
       heroDescription="Explora Guadalajara y sus alrededores con tours guiados, recorridos culturales, rutas en bici y experiencias únicas."
       statusIcon={FiCompass}
       statusText="Turismo • Recomendaciones"

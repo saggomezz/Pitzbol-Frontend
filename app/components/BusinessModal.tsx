@@ -12,21 +12,29 @@ type DaySchedule = {
 type WeeklySchedule = Record<WeekDayKey, DaySchedule>;
 
 const CATEGORY_CONFIG: Record<string, { descripcion: string; subcategorias: string[] }> = {
-  "Gastronomía": {
-    descripcion: "Restaurantes, cafeterías, puestos de comida, postrerías, opciones veganas y todo lo relacionado con alimentación.",
-    subcategorias: ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana"],
+  "Restaurante / Cafetería": {
+    descripcion: "Restaurantes de cocina mexicana e internacional, cafeterías, postrerías, comida de calle, opciones veganas y todo tipo de experiencias gastronómicas.",
+    subcategorias: ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana", "Internacional"],
   },
-  "Transporte/Traslados/Tours": {
+  "Transporte / Traslados / Tours": {
     descripcion: "Empresas de traslados al aeropuerto, transporte privado, renta de autos, tours turísticos por la ciudad, city tours en bici o a pie, y operadoras de viajes.",
     subcategorias: ["Traslados al aeropuerto", "Transporte privado", "Renta de autos", "Tours guiados", "Tour en bici", "Tour a pie"],
+  },
+  "Artesanías / Souvenirs": {
+    descripcion: "Tiendas de artesanías locales, souvenirs, arte popular, joyería artesanal, textiles típicos y productos hechos a mano que representan la cultura de Guadalajara y Jalisco.",
+    subcategorias: ["Artesanías", "Souvenirs", "Arte popular", "Joyería artesanal", "Textiles", "Talavera"],
+  },
+  "Clubs / Bar": {
+    descripcion: "Clubs nocturnos, antros, bares, cantinas y pubs para disfrutar la vida nocturna de Guadalajara.",
+    subcategorias: ["Club / Antro", "Bar", "Cantina", "Pub", "Música en vivo"],
   },
   "Casas de cambio": {
     descripcion: "Establecimientos dedicados al cambio de divisas, compra y venta de moneda extranjera, y transferencias internacionales.",
     subcategorias: ["Cambio de divisas", "Transferencias internacionales"],
   },
   "Explora más lugares": {
-    descripcion: "Tiendas, mercados, artesanías, centros comerciales, actividades al aire libre, fotografía, naturaleza y experiencias únicas en Guadalajara.",
-    subcategorias: ["Compras", "Mercados locales", "Artesanías", "Centros comerciales", "Aventura", "Fotografía", "Música", "Naturaleza"],
+    descripcion: "Tiendas, mercados locales, centros comerciales, actividades al aire libre, fotografía, naturaleza y experiencias únicas en Guadalajara.",
+    subcategorias: ["Compras", "Mercados locales", "Centros comerciales", "Aventura", "Fotografía", "Naturaleza"],
   },
 };
 
@@ -1661,8 +1669,10 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             }}
                           >
                             <option value="" disabled>Selecciona una categoría</option>
-                            <option value="Gastronomía">Gastronomía</option>
-                            <option value="Transporte/Traslados/Tours">Transporte / Traslados / Tours</option>
+                            <option value="Restaurante / Cafetería">Restaurante / Cafetería</option>
+                            <option value="Transporte / Traslados / Tours">Transporte / Traslados / Tours</option>
+                            <option value="Artesanías / Souvenirs">Artesanías / Souvenirs</option>
+                            <option value="Clubs / Bar">Clubs / Bar</option>
                             <option value="Casas de cambio">Casas de cambio</option>
                             <option value="Explora más lugares">Otros</option>
                           </select>
@@ -1677,7 +1687,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         {form.categoria && CATEGORY_CONFIG[form.categoria] && (
                           <div className="mb-3 bg-[#F0F7F1] border border-[#C9D4CB] rounded-2xl px-4 py-3">
                             <p className="text-[11px] text-[#4A7A5A]">
-                              <span className="font-semibold">{form.categoria === "Explora más lugares" ? "Otros" : form.categoria}:</span>{" "}
+                              <span className="font-semibold">{form.categoria === "Explora más lugares" ? "Otros" : form.categoria === "Restaurante / Cafetería" ? "Restaurante / Cafetería" : form.categoria}:</span>{" "}
                               {CATEGORY_CONFIG[form.categoria].descripcion}
                             </p>
                           </div>
