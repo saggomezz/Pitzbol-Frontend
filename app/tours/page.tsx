@@ -7,6 +7,7 @@ export default function ToursPage() {
   return (
     <CategoryPlacesPage
       categoryName="Tours"
+      categoriesToMatch={["Tours", "Transporte / Traslados / Tours", "Tour", "Traslados"]}
       heroImage="https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484529/a2_go8rka.jpg"
       heroLabel="Experiencias guiadas"
       heroTitle="Tours dentro y alrededor de Guadalajara"

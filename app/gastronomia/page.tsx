@@ -72,7 +72,9 @@ export default function GastronomiaPage() {
             raw.includes("cafetería") ||
             raw.includes("cafeteria") ||
             raw.includes("comida calle") ||
-            raw.includes("vegana")
+            raw.includes("vegana") ||
+            raw.includes("restaurante / cafetería") ||
+            raw.includes("restaurante / cafeteria")
           );
         }));
       } catch (error) {

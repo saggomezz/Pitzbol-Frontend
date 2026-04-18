@@ -383,7 +383,7 @@ function HomeContent() {
       "Tours": "/tours",
       "Casas de Cambio": "/casas-cambio",
       "Hospitales": "/hospitales",
-      "Explora más lugares": "/tours"
+      "Explora más lugares": "/explora"
     };
 
     const [currentIndex, setCurrentIndex] = useState(0);

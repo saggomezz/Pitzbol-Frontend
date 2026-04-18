@@ -7,6 +7,7 @@ export default function ClubsPage() {
   return (
     <CategoryPlacesPage
       categoryName="Clubs"
+      categoriesToMatch={["Clubs", "Clubs / Bar", "Vida Nocturna", "Bar"]}
       heroImage="https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484397/ideas-tema-fiesta_rq0r9b.jpg"
       heroLabel="Vida nocturna"
       heroTitle="Clubs y Bares en GDL"
