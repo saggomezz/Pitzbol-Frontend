@@ -16,13 +16,17 @@ const CATEGORY_CONFIG: Record<string, { descripcion: string; subcategorias: stri
     descripcion: "Restaurantes, cafeterías, puestos de comida, postrerías, opciones veganas y todo lo relacionado con alimentación.",
     subcategorias: ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana"],
   },
-  "Entretenimiento": {
-    descripcion: "Bares, cantinas, venues de música en vivo, espacios para eventos privados y vida nocturna en general.",
-    subcategorias: ["Vida nocturna", "Música en vivo", "Bares y cantinas", "Eventos privados"],
+  "Transporte/Traslados/Tours": {
+    descripcion: "Empresas de traslados al aeropuerto, transporte privado, renta de autos, tours turísticos por la ciudad, city tours en bici o a pie, y operadoras de viajes.",
+    subcategorias: ["Traslados al aeropuerto", "Transporte privado", "Renta de autos", "Tours guiados", "Tour en bici", "Tour a pie"],
+  },
+  "Casas de cambio": {
+    descripcion: "Establecimientos dedicados al cambio de divisas, compra y venta de moneda extranjera, y transferencias internacionales.",
+    subcategorias: ["Cambio de divisas", "Transferencias internacionales"],
   },
   "Explora más lugares": {
-    descripcion: "Tiendas, mercados, artesanías, centros comerciales, tours, actividades al aire libre, fotografía, naturaleza y experiencias únicas en Guadalajara.",
-    subcategorias: ["Compras", "Mercados locales", "Artesanías", "Centros comerciales", "Aventura", "Tours guiados", "Fotografía", "Música", "Naturaleza"],
+    descripcion: "Tiendas, mercados, artesanías, centros comerciales, actividades al aire libre, fotografía, naturaleza y experiencias únicas en Guadalajara.",
+    subcategorias: ["Compras", "Mercados locales", "Artesanías", "Centros comerciales", "Aventura", "Fotografía", "Música", "Naturaleza"],
   },
 };
 
@@ -1658,7 +1662,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           >
                             <option value="" disabled>Selecciona una categoría</option>
                             <option value="Gastronomía">Gastronomía</option>
-                            <option value="Entretenimiento">Entretenimiento</option>
+                            <option value="Transporte/Traslados/Tours">Transporte / Traslados / Tours</option>
+                            <option value="Casas de cambio">Casas de cambio</option>
                             <option value="Explora más lugares">Otros</option>
                           </select>
                           <FiChevronDown
