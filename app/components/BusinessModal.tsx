@@ -1616,7 +1616,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 {step === 0 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
                     <div className={cardClass}>
-                      <span className={labelClass}>{t('brandIdentity')}</span>
+                      <span className="text-sm tracking-wide text-[#4F6757] font-bold ml-4 mb-2 block">{t('brandIdentity')}</span>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="relative pb-3">
                           <input 
@@ -1668,42 +1668,34 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         {/* Preview de categoría */}
                         {form.categoria && CATEGORY_CONFIG[form.categoria] && (
                           <div className="mb-3 bg-[#F0F7F1] border border-[#C9D4CB] rounded-2xl px-4 py-3">
-                            <p className="text-[11px] text-[#4A7A5A] mb-2">{CATEGORY_CONFIG[form.categoria].descripcion}</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {CATEGORY_CONFIG[form.categoria].subcategorias.map(sub => (
-                                <span key={sub} className="text-[10px] bg-white border border-[#C9D4CB] text-[#245038] px-2.5 py-0.5 rounded-full">{sub}</span>
-                              ))}
-                            </div>
+                            <p className="text-[11px] text-[#4A7A5A]">
+                              <span className="font-semibold">{form.categoria === "Explora más lugares" ? "Explora más lugares → Otros" : form.categoria}:</span>{" "}
+                              {CATEGORY_CONFIG[form.categoria].descripcion}
+                            </p>
                           </div>
                         )}
 
                         {/* Checkbox admin */}
                         <div className="mt-1">
+                          <p className="text-[11px] text-[#4A7A5A] leading-relaxed mb-2">
+                            Pitzbol gestiona directamente los lugares correspondientes a las categorías de <strong>Fútbol, Cultura y Eventos</strong>, garantizando la calidad y precisión de la información publicada en la plataforma. Si consideras que tu negocio debería formar parte de alguna de estas categorías, nuestro equipo lo revisará y tomará una decisión.
+                          </p>
                           <label className="flex items-start gap-2 cursor-pointer">
                             <input
                               type="checkbox"
                               checked={form.solicitaRevisionAdmin}
-                              onChange={e => setForm((f: FormState) => ({ ...f, solicitaRevisionAdmin: e.target.checked, justificacionAdmin: e.target.checked ? f.justificacionAdmin : "" }))}
+                              onChange={e => setForm((f: FormState) => ({ ...f, solicitaRevisionAdmin: e.target.checked }))}
                               className="mt-0.5 accent-[#0D601E]"
                             />
                             <span className="text-[11px] text-[#4A7A5A] leading-tight">
-                              Creo que mi negocio pertenece a <strong>Fútbol, Cultura o Eventos</strong> y quisiera que el equipo de Pitzbol lo revise.
+                              Considero que mi negocio puede ser parte de las categorías de <strong>Fútbol, Cultura o Eventos</strong>.
                             </span>
                           </label>
-                          {form.solicitaRevisionAdmin && (
-                            <textarea
-                              placeholder="Explica brevemente por qué tu negocio encaja en esa categoría..."
-                              className={inputClass + " mt-2 resize-none"}
-                              rows={2}
-                              value={form.justificacionAdmin}
-                              onChange={e => setForm((f: FormState) => ({ ...f, justificacionAdmin: e.target.value }))}
-                            />
-                          )}
                         </div>
                       </div>
                     </div>
                     <div className={cardClass}>
-                      <span className={labelClass}>{t('officialContact')}</span>
+                      <span className="text-sm tracking-wide text-[#4F6757] font-bold ml-4 mb-2 block">{t('officialContact')}</span>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="relative pb-3">
                           <input 
@@ -2494,19 +2486,33 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                       {DAY_LABELS.filter((day) => form.horario[day.key].enabled).map((day) => (
                         <div
                           key={day.key}
-                          className="flex items-center justify-between gap-2 rounded-xl border border-[#1A4D2E]/15 bg-white px-3 py-2"
+                          className="flex flex-col gap-1.5 rounded-xl border border-[#1A4D2E]/15 bg-white px-3 py-2"
                         >
-                          <div>
+                          <div className="flex items-center justify-between">
                             <p className="text-[11px] tracking-wide text-[#769C7B]">{day.label}</p>
-                            <p className="text-sm text-[#1A4D2E]">{form.horario[day.key].open} - {form.horario[day.key].close}</p>
+                            <button
+                              type="button"
+                              onClick={() => disableScheduleDay(day.key)}
+                              className="text-[11px] px-2.5 py-1 rounded-full border border-[#8B0000]/25 text-[#8B0000] hover:bg-[#8B0000]/10 transition-all"
+                            >
+                              Quitar
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => disableScheduleDay(day.key)}
-                            className="text-[11px] px-2.5 py-1 rounded-full border border-[#8B0000]/25 text-[#8B0000] hover:bg-[#8B0000]/10 transition-all"
-                          >
-                            Quitar
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="time"
+                              value={form.horario[day.key].open}
+                              onChange={e => updateScheduleDay(day.key, { open: e.target.value })}
+                              className="flex-1 text-xs text-[#1A4D2E] border border-[#C9D4CB] rounded-lg px-2 py-1 focus:outline-none focus:border-[#1A4D2E]"
+                            />
+                            <span className="text-[11px] text-[#769C7B]">–</span>
+                            <input
+                              type="time"
+                              value={form.horario[day.key].close}
+                              onChange={e => updateScheduleDay(day.key, { close: e.target.value })}
+                              className="flex-1 text-xs text-[#1A4D2E] border border-[#C9D4CB] rounded-lg px-2 py-1 focus:outline-none focus:border-[#1A4D2E]"
+                            />
+                          </div>
                         </div>
                       ))}
                     </div>
