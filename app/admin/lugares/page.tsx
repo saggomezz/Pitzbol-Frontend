@@ -194,6 +194,7 @@ export default function AdminLugaresPage() {
               // Agregar lugares que solo están en Firestore (creados manualmente)
               lugaresConFotos.forEach((lugarFirestore: any) => {
                 const nombreFirestore = lugarFirestore.nombre;
+                if (!nombreFirestore) return;
                 const existeEnCSV = lugaresCombinados.some(l => l.nombre === nombreFirestore);
                 if (!existeEnCSV) {
                   lugaresCombinados.push({
@@ -465,7 +466,7 @@ export default function AdminLugaresPage() {
   };
 
   const lugaresFiltrados = lugares.filter(lugar =>
-    lugar.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+    (lugar.nombre || "").toLowerCase().includes((searchTerm || "").toLowerCase())
   );
 
   if (loading) {
