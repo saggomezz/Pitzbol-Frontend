@@ -944,9 +944,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   }, [isScheduleModalOpen, form.horario]);
 
   const toggleScheduleSelection = (day: WeekDayKey) => {
-    setScheduleSelection((prev) =>
-      prev.includes(day) ? prev.filter((key) => key !== day) : [...prev, day]
-    );
+    const isEnabled = form.horario[day].enabled;
+    updateScheduleDay(day, {
+      enabled: !isEnabled,
+      open: form.horario[day].open || "09:00",
+      close: form.horario[day].close || "18:00",
+    });
   };
 
   const applyScheduleToSelection = () => {
@@ -1656,7 +1659,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             <option value="" disabled>Selecciona una categoría</option>
                             <option value="Gastronomía">Gastronomía</option>
                             <option value="Entretenimiento">Entretenimiento</option>
-                            <option value="Explora más lugares">Explora más lugares</option>
+                            <option value="Explora más lugares">Otros</option>
                           </select>
                           <FiChevronDown
                             className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]"
@@ -2439,14 +2442,14 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   <p className="text-[11px] tracking-wide text-[#769C7B] mb-2">Selecciona días</p>
                   <div className="flex flex-wrap gap-2">
                     {DAY_LABELS.map((day) => {
-                      const isSelected = scheduleSelection.includes(day.key);
+                      const isEnabled = form.horario[day.key].enabled;
                       return (
                         <button
                           key={day.key}
                           type="button"
                           onClick={() => toggleScheduleSelection(day.key)}
                           className={`px-3 py-1.5 rounded-full text-xs tracking-wide border transition-all ${
-                            isSelected
+                            isEnabled
                               ? "bg-[#0D601E] text-white border-[#0D601E]"
                               : "bg-white text-[#1A4D2E] border-[#1A4D2E]/20 hover:bg-[#F3EEE4]"
                           }`}
@@ -2456,28 +2459,6 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                       );
                     })}
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-center">
-                  <input
-                    type="time"
-                    value={bulkOpenTime}
-                    onChange={(e) => setBulkOpenTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-[#1A4D2E]/20 text-sm font-semibold text-[#1A4D2E] bg-white"
-                  />
-                  <input
-                    type="time"
-                    value={bulkCloseTime}
-                    onChange={(e) => setBulkCloseTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-[#1A4D2E]/20 text-sm font-semibold text-[#1A4D2E] bg-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={applyScheduleToSelection}
-                    className="px-4 py-2.5 rounded-full bg-[#0D601E] text-white text-xs tracking-wide hover:bg-[#094d18] transition-all active:scale-95"
-                  >
-                    Aplicar
-                  </button>
                 </div>
                 {enabledScheduleCount > 0 && (
                   <div className="rounded-2xl border border-[#1A4D2E]/15 bg-[#FDFBF7] p-3 sm:p-4">
