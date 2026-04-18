@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 
-import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase } from "react-icons/fi";
+import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase, FiMapPin } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { getSocketBackendOrigin } from "@/lib/backendUrl";
@@ -12,7 +12,7 @@ import DeletedBusinessModal from "./DeletedBusinessModal";
 
 interface Notification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado' | 'negocio_eliminado' | 'negocio_desarchivado' | 'negocio_pendiente';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado' | 'negocio_eliminado' | 'negocio_desarchivado' | 'negocio_pendiente' | 'ver_negocio_publicado';
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -851,6 +851,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return <FiBriefcase className="text-blue-600" size={20} />;
       case 'negocio_eliminado':
         return <FiAlertCircle className="text-red-600" size={20} />;
+      case 'ver_negocio_publicado':
+        return <FiMapPin className="text-[#0D601E]" size={20} />;
       default:
         return <FiBell className="text-blue-600" size={20} />;
     }
@@ -880,6 +882,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return 'bg-blue-50 border-blue-100';
       case 'negocio_eliminado':
         return 'bg-red-50 border-red-100';
+      case 'ver_negocio_publicado':
+        return 'bg-[#F0F7F1] border-[#C9D4CB]';
       default:
         return 'bg-blue-50 border-blue-100';
     }
@@ -1005,6 +1009,13 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     setIsOpen(false);
 
     let targetLink = resolveNotifLink(notif, user?.role);
+
+    if (notif.tipo === "ver_negocio_publicado") {
+      if (notif.enlace) {
+        router.push(notif.enlace);
+      }
+      return;
+    }
 
     if (notif.tipo === "negocio_aprobado") {
       const shouldResolveById = !targetLink || targetLink.startsWith("/negocio/mis-solicitudes/");

@@ -3,8 +3,8 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FiFilter, FiHeart, FiInfo, FiMapPin, FiSearch } from "react-icons/fi";
 import type { IconType } from "react-icons";
 import { useFavoritesSync } from "@/lib/favoritesApi";
@@ -89,6 +89,10 @@ export default function CategoryPlacesPage({
   defaultDescription,
 }: CategoryPlacesPageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const highlightName = searchParams.get("highlight") || "";
+  const highlightRef = useRef<HTMLElement | null>(null);
+  const [highlightedCard, setHighlightedCard] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -130,6 +134,19 @@ export default function CategoryPlacesPage({
 
     loadPlaces();
   }, [normalizedTargets, categoryName]);
+
+  useEffect(() => {
+    if (!highlightName || loading) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`place-card-${CSS.escape(highlightName)}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightedCard(highlightName);
+        setTimeout(() => setHighlightedCard(""), 3000);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [highlightName, loading]);
 
   useEffect(() => {
     const loadFavorites = async () => {
@@ -360,7 +377,10 @@ export default function CategoryPlacesPage({
               {filteredPlaces.map((place) => (
                 <motion.article
                   key={place.nombre}
+                  id={`place-card-${place.nombre}`}
                   whileHover={{ y: -8 }}
+                  animate={highlightedCard === place.nombre ? { scale: [1, 1.02, 1] } : {}}
+                  transition={highlightedCard === place.nombre ? { duration: 0.5, repeat: 4, repeatType: "reverse" } : { type: "spring", stiffness: 260, damping: 28 }}
                   onClick={() => goToPlaceDetail(place.nombre)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -370,7 +390,7 @@ export default function CategoryPlacesPage({
                   }}
                   role="button"
                   tabIndex={0}
-                  className="bg-white rounded-[28px] md:rounded-[34px] overflow-hidden border border-[#F6F0E6] shadow-[0_10px_30px_rgba(26,77,46,0.05)] flex flex-col cursor-pointer"
+                  className={`bg-white rounded-[28px] md:rounded-[34px] overflow-hidden border shadow-[0_10px_30px_rgba(26,77,46,0.05)] flex flex-col cursor-pointer transition-all duration-300 ${highlightedCard === place.nombre ? "border-[#0D601E] shadow-[0_0_0_3px_rgba(13,96,30,0.25)]" : "border-[#F6F0E6]"}`}
                 >
                   <div className="relative h-52 w-full overflow-hidden">
                     <img
