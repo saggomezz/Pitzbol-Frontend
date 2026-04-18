@@ -1672,7 +1672,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         {form.categoria && CATEGORY_CONFIG[form.categoria] && (
                           <div className="mb-3 bg-[#F0F7F1] border border-[#C9D4CB] rounded-2xl px-4 py-3">
                             <p className="text-[11px] text-[#4A7A5A]">
-                              <span className="font-semibold">{form.categoria === "Explora más lugares" ? "Explora más lugares → Otros" : form.categoria}:</span>{" "}
+                              <span className="font-semibold">{form.categoria === "Explora más lugares" ? "Otros" : form.categoria}:</span>{" "}
                               {CATEGORY_CONFIG[form.categoria].descripcion}
                             </p>
                           </div>
