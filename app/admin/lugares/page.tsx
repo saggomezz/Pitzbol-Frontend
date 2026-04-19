@@ -1000,30 +1000,37 @@ export default function AdminLugaresPage() {
                       />
                     </div>
 
-                    {/* Precio y Tiempo estimado */}
+                    {/* Precio y Tiempo sugerido */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-bold text-[#1A4D2E] mb-2">
                           Costo estimado
                         </label>
-                        <input
-                          type="text"
+                        <select
                           value={nuevoLugar.costoEstimado}
                           onChange={(e) => setNuevoLugar({ ...nuevoLugar, costoEstimado: e.target.value })}
-                          placeholder="Ej: $150 MXN, Gratis"
-                          className="w-full px-4 py-3 border border-[#1A4D2E]/20 rounded-full outline-none focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 transition-all text-[#1A4D2E]"
-                        />
+                          className="w-full px-4 py-3 border border-[#1A4D2E]/20 rounded-full outline-none focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 transition-all text-[#1A4D2E] bg-white"
+                        >
+                          <option value="">Seleccionar...</option>
+                          <option value="Gratis">Gratis</option>
+                          <option value="$50 - $100">$50 - $100</option>
+                          <option value="$100 - $300">$100 - $300</option>
+                          <option value="$300 - $500">$300 - $500</option>
+                          <option value="$500 - $1,000">$500 - $1,000</option>
+                          <option value="$1,000 - $2,500">$1,000 - $2,500</option>
+                          <option value="Varía">Varía</option>
+                        </select>
                       </div>
                       <div>
                         <label className="block text-sm font-bold text-[#1A4D2E] mb-2">
-                          Tiempo estimado (min)
+                          Tiempo sugerido (min)
                         </label>
                         <input
                           type="number"
                           value={nuevoLugar.tiempoEstancia}
                           onChange={(e) => setNuevoLugar({ ...nuevoLugar, tiempoEstancia: e.target.value })}
                           placeholder="Ej: 60"
-                          min="0"
+                          min="1"
                           className="w-full px-4 py-3 border border-[#1A4D2E]/20 rounded-full outline-none focus:border-[#0D601E] focus:ring-2 focus:ring-[#0D601E]/10 transition-all text-[#1A4D2E]"
                         />
                       </div>

@@ -66,6 +66,12 @@ interface FormState {
   logo: File | null;
   solicitaRevisionAdmin: boolean;
   justificacionAdmin: string;
+  tipoVehiculo: string[];
+  puntoRecogida: string;
+  idiomas: string[];
+  capacidad: string;
+  queIncluye: string[];
+  destinosRutas: string[];
 }
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -116,6 +122,18 @@ const COST_OPTIONS: { label: string; value: string; accent: string }[] = [
   { label: "Alto", value: "$500 - $900 MXN", accent: "$$$" },
   { label: "Premium", value: "$900+ MXN", accent: "$$$$" },
 ];
+
+const TOUR_COST_OPTIONS: { label: string; value: string; accent: string }[] = [
+  { label: "Económico", value: "$300 - $600 MXN", accent: "$" },
+  { label: "Estándar", value: "$600 - $1,200 MXN", accent: "$$" },
+  { label: "Plus", value: "$1,200 - $2,500 MXN", accent: "$$$" },
+  { label: "Premium", value: "$2,500+ MXN", accent: "$$$$" },
+];
+
+const VEHICLE_TYPES = ["Van", "Camión", "Minibús", "Auto / SUV", "Bicicleta", "A pie", "Barco / Lancha", "Otro"];
+const TOUR_IDIOMAS = ["Español", "Inglés", "Francés", "Alemán", "Italiano", "Portugués", "Japonés", "Chino"];
+const TOUR_INCLUYE = ["Guía certificado", "Agua", "Transporte", "Comida", "Entradas a museos", "Seguro", "Fotografía"];
+const TOUR_DESTINOS = ["Centro Histórico", "Tequila", "Tlaquepaque", "Tonalá", "Chapala", "Mazamitla", "Zona Metropolitana", "Puerto Vallarta"];
 
 const IMAGE_PREVIEW_DB = "pitzbolBusinessDraftDb";
 const IMAGE_PREVIEW_STORE = "draftCache";
@@ -227,6 +245,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       logo: null,
       solicitaRevisionAdmin: false,
       justificacionAdmin: "",
+      tipoVehiculo: [],
+      puntoRecogida: "",
+      idiomas: [],
+      capacidad: "",
+      queIncluye: [],
+      destinosRutas: [],
     } as FormState;
     if (saved) {
       try {
@@ -1693,6 +1717,37 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           </div>
                         )}
 
+                        {/* Tipo de vehículo — solo Tours */}
+                        {form.categoria === "Transporte / Traslados / Tours" && (
+                          <div className="md:col-span-2">
+                            <label className="block text-[11px] font-bold text-[#1A4D2E] mb-2">Tipo de transporte / vehículo</label>
+                            <div className="flex flex-wrap gap-2">
+                              {VEHICLE_TYPES.map(v => {
+                                const selected = form.tipoVehiculo.includes(v);
+                                return (
+                                  <button
+                                    key={v}
+                                    type="button"
+                                    onClick={() => setForm((f: FormState) => ({
+                                      ...f,
+                                      tipoVehiculo: selected
+                                        ? f.tipoVehiculo.filter(t => t !== v)
+                                        : [...f.tipoVehiculo, v]
+                                    }))}
+                                    className={`text-[11px] px-3 py-1.5 rounded-full border transition-all ${
+                                      selected
+                                        ? "bg-[#1A4D2E] text-white border-[#1A4D2E]"
+                                        : "bg-white text-[#245038] border-[#C9D4CB] hover:border-[#1A4D2E]"
+                                    }`}
+                                  >
+                                    {v}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Checkbox admin */}
                         <div className="mt-1">
                           <p className="text-[11px] text-[#4A7A5A] leading-relaxed mb-2">
@@ -1973,6 +2028,17 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                 onChange={e => setForm((f: FormState) => ({ ...f, referencias: e.target.value }))}
                               />
                             </div>
+                            {form.categoria === "Transporte / Traslados / Tours" && (
+                              <div className="relative pb-2 md:col-span-2">
+                                <input
+                                  placeholder="Punto de recogida / Pick-up (ej: Hotel Hilton, Glorieta Minerva...)"
+                                  className={inputClass + " text-[12px] py-2"}
+                                  value={form.puntoRecogida}
+                                  onChange={e => setForm((f: FormState) => ({ ...f, puntoRecogida: e.target.value }))}
+                                />
+                                <p className="text-[9px] text-[#769C7B] mt-0.5 ml-4 italic">Si recoges clientes en un punto distinto a tu oficina</p>
+                              </div>
+                            )}
                           </div>
                           {ubicacionError && (
                             <p className="text-[9px] text-red-500 mt-1 ml-4 italic">{ubicacionError}</p>
@@ -2068,6 +2134,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                 <FiInfo className="inline mb-0.5 mr-1 text-[#0D601E]" />
                                 <strong>Nota:</strong> Estas imágenes son clave para validar tu perfil. Podrás subir más fotos detalladas cuando sea aprobado.
                               </p>
+                              {form.categoria === "Transporte / Traslados / Tours" && (
+                                <p className="text-[8px] md:text-[9px] text-[#0D601E] leading-relaxed italic mt-1 font-semibold">
+                                  <FiInfo className="inline mb-0.5 mr-1" />
+                                  Incluye fotos de tus destinos y del transporte que utilizas.
+                                </p>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2147,9 +2219,11 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
                         <div className="lg:col-span-6 space-y-0.75 md:space-y-1 flex flex-col">
                           <div>
-                            <label className={labelClass + " mb-1"}>Rango estimado (opcional)</label>
+                            <label className={labelClass + " mb-1"}>
+                              {form.categoria === "Transporte / Traslados / Tours" ? "Precio por persona (opcional)" : "Rango estimado (opcional)"}
+                            </label>
                             <div className="grid grid-cols-2 gap-1.5">
-                              {COST_OPTIONS.map((option) => {
+                              {(form.categoria === "Transporte / Traslados / Tours" ? TOUR_COST_OPTIONS : COST_OPTIONS).map((option) => {
                                 const isSelected = form.costoEstimado === option.value;
                                 return (
                                   <button
@@ -2184,7 +2258,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           </div>
 
                           <div className="mt-0.5">
-                            <label className={labelClass + " mb-1"}>Tiempo sugerido (opcional)</label>
+                            <label className={labelClass + " mb-1"}>
+                              {form.categoria === "Transporte / Traslados / Tours" ? "Duración del servicio (opcional)" : "Tiempo sugerido (opcional)"}
+                            </label>
                             <div className="relative">
                               <input
                                 type="number"
@@ -2246,8 +2322,83 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           {subcategoriasError && <p className="text-[10px] text-red-500 mt-1 italic">{subcategoriasError}</p>}
                         </div>
 
+                        {/* Campos exclusivos para Tours */}
+                        {form.categoria === "Transporte / Traslados / Tours" && (
+                          <>
+                            {/* Idiomas */}
+                            <div className="lg:col-span-6 mt-0.25 md:mt-0.5">
+                              <label className={labelClass + " mb-1"}>Idiomas disponibles</label>
+                              <div className="border border-[#C9D4CB] rounded-2xl p-3 bg-white flex flex-wrap gap-2">
+                                {TOUR_IDIOMAS.map(idioma => {
+                                  const selected = form.idiomas.includes(idioma);
+                                  return (
+                                    <button key={idioma} type="button"
+                                      onClick={() => setForm((f: FormState) => ({
+                                        ...f,
+                                        idiomas: selected ? f.idiomas.filter(i => i !== idioma) : [...f.idiomas, idioma]
+                                      }))}
+                                      className={`text-[11px] px-3 py-1 rounded-full border transition-all ${selected ? "bg-[#1A4D2E] text-white border-[#1A4D2E]" : "bg-white text-[#245038] border-[#C9D4CB] hover:border-[#1A4D2E]"}`}
+                                    >{idioma}</button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Capacidad */}
+                            <div className="lg:col-span-6 mt-0.25 md:mt-0.5">
+                              <label className={labelClass + " mb-1"}>Capacidad (personas por tour/vehículo)</label>
+                              <input
+                                type="number" min="1" placeholder="Ej: 8"
+                                className={inputClass}
+                                value={form.capacidad}
+                                onChange={e => setForm((f: FormState) => ({ ...f, capacidad: e.target.value }))}
+                              />
+                            </div>
+
+                            {/* Qué incluye */}
+                            <div className="lg:col-span-6 mt-0.25 md:mt-0.5">
+                              <label className={labelClass + " mb-1"}>¿Qué incluye?</label>
+                              <div className="border border-[#C9D4CB] rounded-2xl p-3 bg-white flex flex-wrap gap-2">
+                                {TOUR_INCLUYE.map(item => {
+                                  const selected = form.queIncluye.includes(item);
+                                  return (
+                                    <button key={item} type="button"
+                                      onClick={() => setForm((f: FormState) => ({
+                                        ...f,
+                                        queIncluye: selected ? f.queIncluye.filter(q => q !== item) : [...f.queIncluye, item]
+                                      }))}
+                                      className={`text-[11px] px-3 py-1 rounded-full border transition-all ${selected ? "bg-[#1A4D2E] text-white border-[#1A4D2E]" : "bg-white text-[#245038] border-[#C9D4CB] hover:border-[#1A4D2E]"}`}
+                                    >{item}</button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Destinos / Rutas */}
+                            <div className="lg:col-span-6 mt-0.25 md:mt-0.5">
+                              <label className={labelClass + " mb-1"}>Destinos / Rutas</label>
+                              <div className="border border-[#C9D4CB] rounded-2xl p-3 bg-white flex flex-wrap gap-2">
+                                {TOUR_DESTINOS.map(dest => {
+                                  const selected = form.destinosRutas.includes(dest);
+                                  return (
+                                    <button key={dest} type="button"
+                                      onClick={() => setForm((f: FormState) => ({
+                                        ...f,
+                                        destinosRutas: selected ? f.destinosRutas.filter(d => d !== dest) : [...f.destinosRutas, dest]
+                                      }))}
+                                      className={`text-[11px] px-3 py-1 rounded-full border transition-all ${selected ? "bg-[#1A4D2E] text-white border-[#1A4D2E]" : "bg-white text-[#245038] border-[#C9D4CB] hover:border-[#1A4D2E]"}`}
+                                    >{dest}</button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </>
+                        )}
+
                         <div className="lg:col-span-6 mt-0.25 md:mt-0.5 shrink-0 h-full flex flex-col">
-                          <label className={labelClass + " mb-1"}>Horario (opcional)</label>
+                          <label className={labelClass + " mb-1"}>
+                            {form.categoria === "Transporte / Traslados / Tours" ? "Disponibilidad (días y hora de salida)" : "Horario (opcional)"}
+                          </label>
                           <div className="border border-[#C9D4CB] rounded-2xl p-1 bg-white min-h-[96px] md:min-h-[24vh] flex flex-col">
                             <div className="flex h-full flex-col gap-2">
                               <div className="min-w-0 flex-1 flex flex-col">
@@ -2294,7 +2445,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                 className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 rounded-xl border border-[#0A4D19] bg-[#0D601E] text-white text-[11px] md:text-[12px] font-bold tracking-wide hover:bg-[#094d18] transition-all active:scale-95 shadow-[0_6px_16px_rgba(13,96,30,0.22)] mt-1"
                               >
                                 <FiPlus size={13} />
-                                Agregar Horario
+                                {form.categoria === "Transporte / Traslados / Tours" ? "Agregar disponibilidad" : "Agregar Horario"}
                               </button>
                             </div>
                           </div>
