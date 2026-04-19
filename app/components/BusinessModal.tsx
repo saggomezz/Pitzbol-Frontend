@@ -17,7 +17,7 @@ const CATEGORY_CONFIG: Record<string, { descripcion: string; subcategorias: stri
     subcategorias: ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana", "Internacional"],
   },
   "Transporte / Traslados / Tours": {
-    descripcion: "Empresas de traslados al aeropuerto, transporte privado, renta de autos, tours turísticos por la ciudad, city tours en bici o a pie, y operadoras de viajes.",
+    descripcion: "Empresas de traslados al aeropuerto, transporte privado, renta de autos, tours turísticos por la ciudad y operadoras de viajes.",
     subcategorias: ["Traslados al aeropuerto", "Transporte privado", "Renta de autos", "Tours guiados", "Tour en bici", "Tour a pie"],
   },
   "Artesanías / Souvenirs": {
@@ -287,6 +287,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [subcategoriasError, setSubcategoriasError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [logoError, setLogoError] = useState("");
+  const [tipoVehiculoError, setTipoVehiculoError] = useState("");
   const [subcategoriaInput, setSubcategoriaInput] = useState("");
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [scheduleSelection, setScheduleSelection] = useState<WeekDayKey[]>(WEEKDAY_KEYS);
@@ -1140,6 +1141,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     setEmailError("");
     setTelefonoError("");
     setCategoriaError("");
+    setTipoVehiculoError("");
 
     let hasErrors = false;
 
@@ -1152,6 +1154,12 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     // Validar categoría
     if (!form.categoria.trim()) {
       setCategoriaError("Debes seleccionar una categoría");
+      hasErrors = true;
+    }
+
+    // Validar tipo de vehículo (obligatorio para Tours)
+    if (form.categoria === "Transporte / Traslados / Tours" && form.tipoVehiculo.length === 0) {
+      setTipoVehiculoError("Selecciona al menos un tipo de transporte o vehículo");
       hasErrors = true;
     }
 
@@ -1487,6 +1495,14 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       }
       formData.append("subcategories", JSON.stringify(form.subcategorias));
       formData.append("solicitaRevisionAdmin", String(form.solicitaRevisionAdmin));
+      if (form.categoria === "Transporte / Traslados / Tours") {
+        formData.append("tipoVehiculo", JSON.stringify(form.tipoVehiculo));
+        formData.append("puntoRecogida", form.puntoRecogida);
+        formData.append("idiomas", JSON.stringify(form.idiomas));
+        formData.append("capacidad", form.capacidad);
+        formData.append("queIncluye", JSON.stringify(form.queIncluye));
+        formData.append("destinosRutas", JSON.stringify(form.destinosRutas));
+      }
       if (ownerUid) {
         formData.append("ownerUid", ownerUid);
         console.log("[BusinessModal] [OK] ownerUid agregado al FormData:", ownerUid);
@@ -1722,7 +1738,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         {/* Tipo de vehículo — solo Tours */}
                         {form.categoria === "Transporte / Traslados / Tours" && (
                           <div className="md:col-span-2">
-                            <label className="block text-[11px] font-bold text-[#1A4D2E] mb-2">Tipo de transporte / vehículo</label>
+                            <label className="block text-[11px] font-bold text-[#1A4D2E] mb-2">
+                              Tipo de transporte / vehículo <span className="text-red-500">*</span>
+                            </label>
                             <div className="flex flex-wrap gap-2">
                               {VEHICLE_TYPES.map(v => {
                                 const selected = form.tipoVehiculo.includes(v);
@@ -1730,12 +1748,15 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                   <button
                                     key={v}
                                     type="button"
-                                    onClick={() => setForm((f: FormState) => ({
-                                      ...f,
-                                      tipoVehiculo: selected
-                                        ? f.tipoVehiculo.filter(t => t !== v)
-                                        : [...f.tipoVehiculo, v]
-                                    }))}
+                                    onClick={() => {
+                                      setTipoVehiculoError("");
+                                      setForm((f: FormState) => ({
+                                        ...f,
+                                        tipoVehiculo: selected
+                                          ? f.tipoVehiculo.filter(t => t !== v)
+                                          : [...f.tipoVehiculo, v]
+                                      }));
+                                    }}
                                     className={`text-[11px] px-3 py-1.5 rounded-full border transition-all ${
                                       selected
                                         ? "bg-[#1A4D2E] text-white border-[#1A4D2E]"
@@ -1747,6 +1768,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                 );
                               })}
                             </div>
+                            {tipoVehiculoError && (
+                              <p className="text-[9px] text-red-500 mt-1 ml-1 italic">{tipoVehiculoError}</p>
+                            )}
                           </div>
                         )}
 

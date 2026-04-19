@@ -25,10 +25,12 @@ export interface PlaceRecord {
   fotos: string[];
   rating: number;
   views: number;
+  negocioId?: string;
 }
 
 interface FirestorePlace {
   nombre?: string;
+  negocioId?: string;
   categoria?: string;
   descripcion?: string;
   ubicacion?: string;
@@ -221,9 +223,9 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
           undefined,
         horario: firestorePlace.schedule ?? existing?.horario ?? null,
         fotos: Array.isArray(firestorePlace.fotos) ? firestorePlace.fotos : existing?.fotos || [],
-        // Prioridad: datos reales > CSV > fallback
         rating: realRating ?? existing?.rating ?? fallbackRating(nombre),
         views: realViews ?? existing?.views ?? fallbackViews(nombre),
+        negocioId: firestorePlace.negocioId || (firestorePlace as any).id || existing?.negocioId,
       };
 
       mergedByName.set(nombre, nextValue);

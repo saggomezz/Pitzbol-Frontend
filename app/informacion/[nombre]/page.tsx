@@ -92,6 +92,7 @@ interface Lugar {
   costoEstimado: string;
   notaIA: string;
   fotos: string[];
+  negocioId?: string;
 }
 
 function normalizeName(value: string): string {
@@ -163,6 +164,7 @@ function mapPlaceToPublicDetail(place: PlaceRecord): Lugar {
     costoEstimado: placeAsAny.costoEstimado || "No especificado",
     notaIA: place.descripcion || "",
     fotos: Array.isArray(place.fotos) ? place.fotos : [],
+    negocioId: place.negocioId,
   };
 }
 
@@ -545,6 +547,14 @@ export default function InformacionLugar() {
           <div className={styles.titleSection}>
             <div className={styles.titleTopRow}>
               <span className={styles.categoryBadge}>{lugarSeguro.categoria}</span>
+              {lugarSeguro.categoria === "Transporte" && lugarSeguro.negocioId && (
+                <a
+                  href={`/empresa/transportes/${lugarSeguro.negocioId}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1A4D2E] text-white text-xs font-semibold hover:bg-[#0D601E] transition-colors"
+                >
+                  Ver perfil de empresa
+                </a>
+              )}
               <div className={styles.titleRatingCorner}>
                 <PlaceRating
                   placeName={lugarSeguro.nombre}

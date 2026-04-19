@@ -187,9 +187,15 @@ export default function MisSolicitudesPage() {
   const getCardNavigationHref = (sol: any, kind: "activo" | "solicitud") => {
     const estado = String(sol?.estado || "").toLowerCase();
     const businessName = sol?.business?.name;
+    const businessCategory = sol?.business?.category || "";
 
-    if (kind === "activo" && estado === "aprobado" && businessName) {
-      return `/informacion/${encodeURIComponent(String(businessName))}?origen=gestion-negocios-activo`;
+    if (kind === "activo" && estado === "aprobado") {
+      if (businessCategory === "Transporte / Traslados / Tours") {
+        return `/negocio/transportes/${sol.id}`;
+      }
+      if (businessName) {
+        return `/informacion/${encodeURIComponent(String(businessName))}?origen=gestion-negocios-activo`;
+      }
     }
 
     return `/negocio/mis-solicitudes/${sol.id}`;
