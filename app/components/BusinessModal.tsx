@@ -1702,7 +1702,8 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             <option value="Explora más lugares">Otros</option>
                           </select>
                           <FiChevronDown
-                            className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#769C7B]"
+                            className="absolute right-4 pointer-events-none text-[#769C7B]"
+                            style={{ top: "calc(50% - 4px)", transform: "translateY(-50%)" }}
                             size={18}
                           />
                           {categoriaError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{categoriaError}</p>}
@@ -1710,7 +1711,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
                         {/* Preview de categoría */}
                         {form.categoria && CATEGORY_CONFIG[form.categoria] && (
-                          <div className="mb-3 bg-[#F0F7F1] border border-[#C9D4CB] rounded-2xl px-4 py-3">
+                          <div className="md:col-span-2 mb-3 bg-[#F0F7F1] border border-[#C9D4CB] rounded-2xl px-4 py-3">
                             <p className="text-[11px] text-[#4A7A5A]">
                               <span className="font-semibold">{form.categoria === "Explora más lugares" ? "Otros" : form.categoria === "Restaurante / Cafetería" ? "Restaurante / Cafetería" : form.categoria}:</span>{" "}
                               {CATEGORY_CONFIG[form.categoria].descripcion}
@@ -1750,7 +1751,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         )}
 
                         {/* Checkbox admin */}
-                        <div className="mt-1">
+                        <div className="md:col-span-2 mt-1">
                           <p className="text-[11px] text-[#4A7A5A] leading-relaxed mb-2">
                             Pitzbol gestiona directamente las categorías de <strong>Fútbol, Cultura y Eventos</strong>, garantizando la calidad y precisión de la información publicada. Si consideras que tu negocio debería formar parte de alguna de estas categorías, nuestro equipo lo revisará y tomará una decisión.
                           </p>
