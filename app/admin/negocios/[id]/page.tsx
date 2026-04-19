@@ -190,6 +190,7 @@ interface BusinessData {
     referencias?: string;
     subcategorias?: string[];
     subcategories?: string[];
+    solicitaRevisionAdmin?: boolean;
     costoEstimado?: string;
     estimatedCost?: string;
     tiempoSugerido?: string | number;
@@ -247,6 +248,7 @@ export default function AdminViewBusinessPage() {
   const [scheduleSelection, setScheduleSelection] = useState<WeekDayKey[]>([]);
   const [bulkOpenTime, setBulkOpenTime] = useState("09:00");
   const [bulkCloseTime, setBulkCloseTime] = useState("18:00");
+  const [categoriaEspecial, setCategoriaEspecial] = useState<"Fútbol" | "Cultura" | "Eventos" | "">("");
   const [savingAdditionalInfo, setSavingAdditionalInfo] = useState(false);
   const [additionalInfoError, setAdditionalInfoError] = useState("");
   const [editingAdditional, setEditingAdditional] = useState<Record<AdditionalSectionKey, boolean>>({
@@ -635,6 +637,7 @@ export default function AdminViewBusinessPage() {
         accion: modalAccion,
         adminUid,
         motivoRechazo: modalAccion === "rechazar" ? motivoRechazo.trim() : undefined,
+        categoriaEspecial: modalAccion === "aprobar" && categoriaEspecial ? categoriaEspecial : undefined,
       });
       setResultadoMensaje({
         tipo: "exito",
@@ -1143,6 +1146,31 @@ export default function AdminViewBusinessPage() {
                 </span>
               </div>
               <p className="mt-4 text-[#1A4D2E]/80 text-sm md:text-base font-medium">{config.description}</p>
+
+              {/* Aviso de revisión especial */}
+              {business.business.solicitaRevisionAdmin && (
+                <div className="mt-5 mx-auto max-w-lg bg-yellow-50 border-2 border-yellow-400 rounded-2xl px-5 py-4 flex flex-col gap-3">
+                  <div className="flex items-start gap-3">
+                    <span className="text-yellow-500 text-xl mt-0.5">⚠️</span>
+                    <div className="text-left">
+                      <p className="text-yellow-800 font-bold text-sm">Solicita revisión de categoría especial</p>
+                      <p className="text-yellow-700 text-xs mt-0.5">El propietario considera que este negocio pertenece a <strong>Fútbol, Cultura o Eventos</strong>. Selecciona la categoría correcta antes de aprobar.</p>
+                    </div>
+                  </div>
+                  {isPending && (
+                    <select
+                      value={categoriaEspecial}
+                      onChange={e => setCategoriaEspecial(e.target.value as typeof categoriaEspecial)}
+                      className="w-full px-4 py-2 rounded-xl border-2 border-yellow-300 bg-white text-[#1A4D2E] text-sm font-semibold outline-none focus:border-yellow-500"
+                    >
+                      <option value="">— Mantener categoría original —</option>
+                      <option value="Fútbol">Fútbol</option>
+                      <option value="Cultura">Cultura</option>
+                      <option value="Eventos">Eventos</option>
+                    </select>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

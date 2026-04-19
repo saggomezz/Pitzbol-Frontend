@@ -130,7 +130,7 @@ const TOUR_COST_OPTIONS: { label: string; value: string; accent: string }[] = [
   { label: "Premium", value: "$2,500+ MXN", accent: "$$$$" },
 ];
 
-const VEHICLE_TYPES = ["Van", "Camión", "Minibús", "Auto / SUV", "Bicicleta", "A pie", "Barco / Lancha", "Otro"];
+const VEHICLE_TYPES = ["Van", "Camión", "Minibús", "Auto / SUV", "Otro"];
 const TOUR_IDIOMAS = ["Español", "Inglés", "Francés", "Alemán", "Italiano", "Portugués", "Japonés", "Chino"];
 const TOUR_INCLUYE = ["Guía certificado", "Agua", "Transporte", "Comida", "Entradas a museos", "Seguro", "Fotografía"];
 const TOUR_DESTINOS = ["Centro Histórico", "Tequila", "Tlaquepaque", "Tonalá", "Chapala", "Mazamitla", "Zona Metropolitana", "Puerto Vallarta"];
@@ -1486,6 +1486,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         formData.append("suggestedStayTime", form.tiempoSugerido.trim());
       }
       formData.append("subcategories", JSON.stringify(form.subcategorias));
+      formData.append("solicitaRevisionAdmin", String(form.solicitaRevisionAdmin));
       if (ownerUid) {
         formData.append("ownerUid", ownerUid);
         console.log("[BusinessModal] [OK] ownerUid agregado al FormData:", ownerUid);
@@ -1751,7 +1752,7 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         {/* Checkbox admin */}
                         <div className="mt-1">
                           <p className="text-[11px] text-[#4A7A5A] leading-relaxed mb-2">
-                            Pitzbol gestiona directamente los lugares correspondientes a las categorías de <strong>Fútbol, Cultura y Eventos</strong>, garantizando la calidad y precisión de la información publicada en la plataforma. Si consideras que tu negocio debería formar parte de alguna de estas categorías, nuestro equipo lo revisará y tomará una decisión.
+                            Pitzbol gestiona directamente las categorías de <strong>Fútbol, Cultura y Eventos</strong>, garantizando la calidad y precisión de la información publicada. Si consideras que tu negocio debería formar parte de alguna de estas categorías, nuestro equipo lo revisará y tomará una decisión.
                           </p>
                           <label className="flex items-start gap-2 cursor-pointer">
                             <input
