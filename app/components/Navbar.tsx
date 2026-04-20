@@ -362,16 +362,6 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     <FiUser className="text-[#0D601E]" /> <span className="font-bold text-sm italic text-[#1A4D2E]">{t('login')}</span>
                                 </button>
                             )}
-                            {shouldShowBusinessManager && (
-                                <Link
-                                    href="/negocio/mis-solicitudes"
-                                    onClick={() => setIsMenuOpen(false)}
-                                    className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left"
-                                >
-                                    <FiShoppingBag className="text-[#0D601E]" />
-                                    <span>Gestionar mis negocios</span>
-                                </Link>
-                            )}
                             <div className="h-[1px] bg-gray-100 my-2 mx-2" />
                             <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-3 mb-1">{t('explore')}</p>
                             <Link href="/mapa" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 hover:bg-[#F6F0E6] rounded-2xl text-sm font-medium transition-all text-left">
