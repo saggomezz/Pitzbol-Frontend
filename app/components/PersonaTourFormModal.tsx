@@ -66,6 +66,25 @@ interface Props {
   onSuccess: (tour: any) => void;
 }
 
+async function compressImage(file: File, maxWidth = 1200, quality = 0.82): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => {
+        resolve(new File([blob!], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
+      }, 'image/jpeg', quality);
+    };
+    img.src = url;
+  });
+}
+
 function Chips({ options, selected, toggle }: { options: string[]; selected: string[]; toggle: (v: string) => void }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -183,10 +202,11 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
         fd.append("tipoVehiculo", JSON.stringify(form.tipoVehiculo));
       }
       fd.append("disponibilidad", form.disponibilidad);
-      form.fotos.forEach(f => { if (f) fd.append("fotos", f); });
+      for (const f of form.fotos) {
+        if (f) fd.append("fotos", await compressImage(f));
+      }
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443';
-      const res = await fetchWithAuth(`${backendUrl}/api/tours`, { method: "POST", body: fd });
+      const res = await fetchWithAuth("/api/tours", { method: "POST", body: fd });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || data.error || "Error desconocido");
       onSuccess(data.tour);
