@@ -14,6 +14,7 @@ import { useFavoritesSync } from "@/lib/favoritesApi";
 import { getBackendOrigin } from "@/lib/backendUrl";
 
 import WalletModal from "@/app/components/WalletModal";
+import PersonaTourFormModal from "@/app/components/PersonaTourFormModal";
 
 const API_BASE = "/api";
 
@@ -1719,6 +1720,19 @@ export default function PerfilDetallado() {
 
       {/* Wallet Modal */}
       <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
+
+      {/* Tour Modal para guías persona */}
+      {showTourModal && esGuia && (
+        <PersonaTourFormModal
+          guiaId={perfil?.id || ""}
+          guiaNombre={`${perfil?.nombre || ""} ${perfil?.apellido || ""}`.trim()}
+          onClose={() => setShowTourModal(false)}
+          onSuccess={(tour) => {
+            setTours((prev: any[]) => [tour, ...prev]);
+            setShowTourModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

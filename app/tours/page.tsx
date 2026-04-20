@@ -24,12 +24,18 @@ interface Tour {
 }
 
 const QUICK_FILTERS = ["Todos", "Tequila", "Tlaquepaque", "Tonalá", "Chapala", "Centro Histórico"];
+const TIPO_FILTERS = [
+  { value: "todos", label: "Todos" },
+  { value: "persona", label: "Guía individual" },
+  { value: "empresa", label: "Empresa" },
+];
 
 export default function ToursPage() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [filterDestino, setFilterDestino] = useState("Todos");
+  const [filterTipo, setFilterTipo] = useState("todos");
 
   useEffect(() => {
     fetch("/api/tours")
@@ -51,7 +57,11 @@ export default function ToursPage() {
       filterDestino === "Todos" ||
       tour.destino.toLowerCase().includes(filterDestino.toLowerCase());
 
-    return matchesQuery && matchesFilter;
+    const matchesTipo =
+      filterTipo === "todos" ||
+      (tour as any).tipoGuia === filterTipo;
+
+    return matchesQuery && matchesFilter && matchesTipo;
   });
 
   return (
@@ -93,7 +103,7 @@ export default function ToursPage() {
         </div>
 
         {/* Quick filters */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
           {QUICK_FILTERS.map(f => (
             <button
               key={f}
@@ -105,6 +115,23 @@ export default function ToursPage() {
               }`}
             >
               {f}
+            </button>
+          ))}
+        </div>
+
+        {/* Filtro tipo guía */}
+        <div className="flex gap-2 mb-6">
+          {TIPO_FILTERS.map(f => (
+            <button
+              key={f.value}
+              onClick={() => setFilterTipo(f.value)}
+              className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                filterTipo === f.value
+                  ? "bg-[#F6F0E6] text-[#8B0000] border-[#8B0000]"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
+              }`}
+            >
+              {f.label}
             </button>
           ))}
         </div>
@@ -136,9 +163,9 @@ export default function ToursPage() {
                   : "Intenta con otro destino o elimina los filtros."}
               </p>
             </div>
-            {query || filterDestino !== "Todos" ? (
+            {(query || filterDestino !== "Todos" || filterTipo !== "todos") ? (
               <button
-                onClick={() => { setQuery(""); setFilterDestino("Todos"); }}
+                onClick={() => { setQuery(""); setFilterDestino("Todos"); setFilterTipo("todos"); }}
                 className="text-xs text-[#0D601E] underline mt-1"
               >
                 Limpiar filtros

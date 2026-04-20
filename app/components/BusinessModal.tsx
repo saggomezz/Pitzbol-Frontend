@@ -16,10 +16,6 @@ const CATEGORY_CONFIG: Record<string, { descripcion: string; subcategorias: stri
     descripcion: "Restaurantes de cocina mexicana e internacional, cafeterías, postrerías, comida de calle, opciones veganas y todo tipo de experiencias gastronómicas.",
     subcategorias: ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana", "Internacional"],
   },
-  "Transporte / Traslados / Tours": {
-    descripcion: "Empresas de traslados al aeropuerto, transporte privado, renta de autos, tours turísticos por la ciudad y operadoras de viajes.",
-    subcategorias: ["Traslados al aeropuerto", "Transporte privado", "Renta de autos", "Tours guiados", "Tour en bici", "Tour a pie"],
-  },
   "Artesanías / Souvenirs": {
     descripcion: "Tiendas de artesanías locales, souvenirs, arte popular, joyería artesanal, textiles típicos y productos hechos a mano que representan la cultura de Guadalajara y Jalisco.",
     subcategorias: ["Artesanías", "Souvenirs", "Arte popular", "Joyería artesanal", "Textiles", "Talavera"],
@@ -1711,7 +1707,6 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           >
                             <option value="" disabled>Selecciona una categoría</option>
                             <option value="Restaurante / Cafetería">Restaurante / Cafetería</option>
-                            <option value="Transporte / Traslados / Tours">Transporte / Traslados / Tours</option>
                             <option value="Artesanías / Souvenirs">Artesanías / Souvenirs</option>
                             <option value="Clubs / Bar">Clubs / Bar</option>
                             <option value="Casas de cambio">Casas de cambio</option>
