@@ -311,9 +311,13 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         
         setShowConfirmation(true);
       } else {
-        const err = await response.json();
-        console.error("❌ Error en registro:", err);
-        setErrorMsg(err.message || err.msg || "Error al guardar perfil.");
+        let errMsg = `Error del servidor (${response.status})`;
+        try {
+          const err = await response.json();
+          errMsg = err.message || err.msg || errMsg;
+        } catch {}
+        console.error("❌ Error en registro:", errMsg);
+        setErrorMsg(errMsg);
       }
     } catch (e) { 
       console.error("❌ Error en handleFinish:", e);
