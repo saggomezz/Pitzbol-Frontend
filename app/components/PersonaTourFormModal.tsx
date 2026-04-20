@@ -185,7 +185,8 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
       fd.append("disponibilidad", form.disponibilidad);
       form.fotos.forEach(f => { if (f) fd.append("fotos", f); });
 
-      const res = await fetchWithAuth("/api/tours", { method: "POST", body: fd });
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443';
+      const res = await fetchWithAuth(`${backendUrl}/api/tours`, { method: "POST", body: fd });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || data.error || "Error desconocido");
       onSuccess(data.tour);
