@@ -6,7 +6,7 @@ import { io, Socket } from "socket.io-client";
 
 import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase, FiMapPin } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
-import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import { ensureValidAuthToken, fetchWithAuth } from "@/lib/fetchWithAuth";
 import { getSocketBackendOrigin } from "@/lib/backendUrl";
 import DeletedBusinessModal from "./DeletedBusinessModal";
 
@@ -637,6 +637,20 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     }
   }, [userId, getNotificationBucketId]);
 
+  // Fallback de sincronización: si Socket.IO no logra conectar en deploy/local,
+  // seguimos refrescando desde backend para que las notificaciones aparezcan sin recargar.
+  useEffect(() => {
+    if (!userId) return;
+
+    const intervalId = window.setInterval(() => {
+      void cargarNotificacionesDelBackend();
+    }, 10000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [userId, getNotificationBucketId]);
+
   // Cerrar panel al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -696,57 +710,91 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
   useEffect(() => {
     if (!userId) return;
 
-    const token = localStorage.getItem("pitzbol_token") || "";
-    if (!token) return;
+    let isMounted = true;
 
-    socketRef.current = io(BACKEND_URL, {
-      auth: {
-        token,
-        userId,
-        userType: "tourist",
-      },
-    });
+    const connectRealtimeNotifications = async () => {
+      const token = await ensureValidAuthToken();
+      if (!isMounted || !token) return;
 
-    socketRef.current.on("connect_error", (error) => {
-      if (error?.message === "Invalid token" || error?.message === "Authentication required") {
-        socketRef.current?.disconnect();
-      }
-    });
-
-    socketRef.current.on("new-notification", (notif: Notification) => {
-      const updated = mergeIncomingNotification(notificationsRef.current, notif);
-      notificationsRef.current = updated;
-      setNotificaciones(updated);
-      setNoLeidas(updated.filter((n) => !n.leido).length);
-
-      const bucketId = getNotificationBucketId();
-      if (bucketId) {
-        const key = `pitzbol_notifications_${bucketId}`;
-        localStorage.setItem(key, JSON.stringify(updated));
-        window.dispatchEvent(new CustomEvent('pitzbolNotificationsUpdated', {
-          detail: { key, source: 'socket' },
-        }));
-      }
-    });
-
-    // Listen for explicit business status changes from admin
-    socketRef.current.on("business-status-changed", (data: any) => {
-      const { businessId, status, timestamp } = data;
-      console.log(`[NotificationsPanel] Received business-status-changed: ${businessId} -> ${status}`);
-      
-      // Dispatch a custom window event that pages can listen to
-      window.dispatchEvent(new CustomEvent('businessStatusChanged', {
-        detail: {
-          businessId,
-          status,
-          timestamp,
+      const socket = io(BACKEND_URL, {
+        autoConnect: false,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        auth: {
+          token,
+          userId,
+          userType: "tourist",
         },
-      }));
-    });
+      });
+
+      socketRef.current = socket;
+
+      socket.on("connect_error", async (error) => {
+        if (error?.message !== "Invalid token" && error?.message !== "Authentication required") {
+          return;
+        }
+
+        const refreshedToken = await ensureValidAuthToken(true);
+        if (!isMounted || !refreshedToken) {
+          socket.disconnect();
+          return;
+        }
+
+        socket.auth = {
+          ...(typeof socket.auth === "object" ? socket.auth : {}),
+          token: refreshedToken,
+          userId,
+          userType: "tourist",
+        } as any;
+
+        if (!socket.connected) {
+          socket.connect();
+        }
+      });
+
+      socket.on("new-notification", (notif: Notification) => {
+        const updated = mergeIncomingNotification(notificationsRef.current, notif);
+        notificationsRef.current = updated;
+        setNotificaciones(updated);
+        setNoLeidas(updated.filter((n) => !n.leido).length);
+
+        const bucketId = getNotificationBucketId();
+        if (bucketId) {
+          const key = `pitzbol_notifications_${bucketId}`;
+          localStorage.setItem(key, JSON.stringify(updated));
+          window.dispatchEvent(new CustomEvent('pitzbolNotificationsUpdated', {
+            detail: { key, source: 'socket' },
+          }));
+        }
+      });
+
+      // Listen for explicit business status changes from admin
+      socket.on("business-status-changed", (data: any) => {
+        const { businessId, status, timestamp } = data;
+        console.log(`[NotificationsPanel] Received business-status-changed: ${businessId} -> ${status}`);
+
+        // Dispatch a custom window event that pages can listen to
+        window.dispatchEvent(new CustomEvent('businessStatusChanged', {
+          detail: {
+            businessId,
+            status,
+            timestamp,
+          },
+        }));
+      });
+
+      socket.connect();
+    };
+
+    void connectRealtimeNotifications();
 
     return () => {
+      isMounted = false;
       if (socketRef.current) {
         socketRef.current.disconnect();
+        socketRef.current = null;
       }
     };
   }, [userId, getNotificationBucketId]);
