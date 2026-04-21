@@ -207,6 +207,11 @@ export default function InformacionLugar() {
   const [mostrarSelector, setMostrarSelector] = useState(false);
   const [guardandoCats, setGuardandoCats] = useState(false);
   const [mensajeCats, setMensajeCats] = useState("");
+  const [editTiempo, setEditTiempo] = useState('');
+  const [editCosto, setEditCosto] = useState('');
+  const [editandoInfo, setEditandoInfo] = useState(false);
+  const [guardandoInfo, setGuardandoInfo] = useState(false);
+  const [mensajeInfo, setMensajeInfo] = useState('');
   // Registrar vista del lugar
   const nombreRaw = params.nombre;
   const nombreLugar = typeof nombreRaw === "string" ? decodeURIComponent(nombreRaw) : null;
@@ -284,7 +289,11 @@ export default function InformacionLugar() {
         const lugarEncontrado = lugarRecord ? mapPlaceToPublicDetail(lugarRecord) : null;
         setLugar(lugarEncontrado);
         setFotos((lugarEncontrado?.fotos || []).slice(0, 6));
-        if (lugarEncontrado) setEtiquetasEdit(lugarEncontrado.etiquetas);
+        if (lugarEncontrado) {
+          setEtiquetasEdit(lugarEncontrado.etiquetas);
+          setEditTiempo(String(lugarEncontrado.tiempoEstancia));
+          setEditCosto(lugarEncontrado.costoEstimado);
+        }
 
         const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
         setEsAdminLugares(userLocal.email === EMAIL_ADMIN_LUGARES);
@@ -418,6 +427,39 @@ export default function InformacionLugar() {
     } finally {
       setGuardandoCats(false);
       setTimeout(() => setMensajeCats(""), 3000);
+    }
+  };
+
+  const guardarInfo = async () => {
+    if (!nombreLugar) return;
+    setGuardandoInfo(true);
+    setMensajeInfo("");
+    const token = localStorage.getItem("pitzbol_token");
+    try {
+      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}/info`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          tiempoEstancia: Number(editTiempo),
+          costoEstimado: editCosto,
+        }),
+      });
+      if (res.ok) {
+        setLugar(prev => prev ? { ...prev, tiempoEstancia: Number(editTiempo), costoEstimado: editCosto } : prev);
+        setMensajeInfo("✓ Guardado");
+        setEditandoInfo(false);
+      } else {
+        setMensajeInfo("Error al guardar");
+      }
+    } catch {
+      setMensajeInfo("Error de conexión");
+    } finally {
+      setGuardandoInfo(false);
+      setTimeout(() => setMensajeInfo(""), 3000);
     }
   };
 
@@ -713,7 +755,17 @@ export default function InformacionLugar() {
                   </div>
                   <div className={styles.statInfo}>
                     <span className={styles.statLabel}>Tiempo sugerido</span>
-                    <span className={styles.statValue}>{lugarSeguro.tiempoEstancia} min</span>
+                    {esAdminLugares && editandoInfo ? (
+                      <input
+                        type="number"
+                        value={editTiempo}
+                        onChange={e => setEditTiempo(e.target.value)}
+                        min={1}
+                        style={{ width: "80px", fontSize: "0.9rem", fontWeight: 700, border: "1px solid #1A4D2E", borderRadius: "6px", padding: "2px 6px", color: "#1A4D2E" }}
+                      />
+                    ) : (
+                      <span className={styles.statValue}>{lugarSeguro.tiempoEstancia} min</span>
+                    )}
                   </div>
                 </div>
 
@@ -723,10 +775,54 @@ export default function InformacionLugar() {
                   </div>
                   <div className={styles.statInfo}>
                     <span className={styles.statLabel}>Costo estimado</span>
-                    <span className={styles.statValue}>{lugarSeguro.costoEstimado}</span>
+                    {esAdminLugares && editandoInfo ? (
+                      <input
+                        type="text"
+                        value={editCosto}
+                        onChange={e => setEditCosto(e.target.value)}
+                        placeholder="ej. $100 – $300"
+                        style={{ width: "120px", fontSize: "0.9rem", fontWeight: 700, border: "1px solid #1A4D2E", borderRadius: "6px", padding: "2px 6px", color: "#1A4D2E" }}
+                      />
+                    ) : (
+                      <span className={styles.statValue}>{lugarSeguro.costoEstimado}</span>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {esAdminLugares && (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginTop: "0.75rem" }}>
+                  {editandoInfo ? (
+                    <>
+                      <button
+                        onClick={guardarInfo}
+                        disabled={guardandoInfo}
+                        style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", background: "#1A4D2E", color: "white", border: "none", fontSize: "0.75rem", fontWeight: 600, padding: "0.4rem 1rem", borderRadius: "0.5rem", cursor: "pointer", opacity: guardandoInfo ? 0.6 : 1 }}
+                      >
+                        <FiCheck size={12} /> {guardandoInfo ? "Guardando..." : "Guardar info"}
+                      </button>
+                      <button
+                        onClick={() => { setEditandoInfo(false); setEditTiempo(String(lugarSeguro.tiempoEstancia)); setEditCosto(lugarSeguro.costoEstimado); }}
+                        style={{ fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}
+                      >
+                        Cancelar
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setEditandoInfo(true)}
+                      style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", background: "#f3f4f6", color: "#1A4D2E", border: "1px solid #d1d5db", fontSize: "0.75rem", fontWeight: 600, padding: "0.4rem 1rem", borderRadius: "0.5rem", cursor: "pointer" }}
+                    >
+                      ✏️ Editar tiempo / costo
+                    </button>
+                  )}
+                  {mensajeInfo && (
+                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: mensajeInfo.startsWith("✓") ? "#16a34a" : "#dc2626" }}>
+                      {mensajeInfo}
+                    </span>
+                  )}
+                </div>
+              )}
 
               {(lugarSeguro.telefono || normalizedWebsite || lugarSeguro.email) && (
                 <div className={styles.quickContactCard}>
