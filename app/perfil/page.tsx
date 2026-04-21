@@ -14,6 +14,7 @@ import { useFavoritesSync } from "@/lib/favoritesApi";
 import { getBackendOrigin } from "@/lib/backendUrl";
 
 import WalletModal from "@/app/components/WalletModal";
+import PersonaTourFormModal from "@/app/components/PersonaTourFormModal";
 
 const API_BASE = "/api";
 
@@ -83,6 +84,7 @@ export default function PerfilDetallado() {
   const [perfil, setPerfil] = useState<any>(null);
   const [tours, setTours] = useState<any[]>([]);
   const [showTourModal, setShowTourModal] = useState(false);
+  const [tipoGuia, setTipoGuia] = useState<string>("persona");
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [guardadosCount, setGuardadosCount] = useState(0);
@@ -247,6 +249,17 @@ export default function PerfilDetallado() {
               }
             }
           }
+        }
+
+        // Cargar tipo de guía (empresa/persona)
+        if (rol === "guia") {
+          try {
+            const guideRes = await fetch(`${API_BASE}/guides/profile/${userLocal.uid}`);
+            if (guideRes.ok) {
+              const gData = await guideRes.json();
+              if (gData.success) setTipoGuia(gData.guide?.tipo || "persona");
+            }
+          } catch {}
         }
 
         // Cargar foto de perfil desde el endpoint correcto (JWT del backend)
@@ -1625,9 +1638,19 @@ export default function PerfilDetallado() {
                   </p>
                 </div>
                 {esGuia && (
-                  <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
-                    {tours.length} {t('published')}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {tipoGuia === "empresa" && (
+                      <a
+                        href={`/guia/empresa/${perfil?.id}`}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1A4D2E] text-white text-[11px] font-bold rounded-full hover:bg-[#0D601E] transition-all shadow-sm"
+                      >
+                        <FiAward size={11} /> Ver perfil empresarial
+                      </a>
+                    )}
+                    <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
+                      {tours.length} {t('published')}
+                    </span>
+                  </div>
                 )}
               </div>
 
@@ -1719,6 +1742,19 @@ export default function PerfilDetallado() {
 
       {/* Wallet Modal */}
       <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
+
+      {/* Tour Modal para guías persona */}
+      {showTourModal && esGuia && (
+        <PersonaTourFormModal
+          guiaId={perfil?.id || ""}
+          guiaNombre={`${perfil?.nombre || ""} ${perfil?.apellido || ""}`.trim()}
+          onClose={() => setShowTourModal(false)}
+          onSuccess={(tour) => {
+            setTours((prev: any[]) => [tour, ...prev]);
+            setShowTourModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }
