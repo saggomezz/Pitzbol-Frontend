@@ -20,6 +20,7 @@ interface Notification {
   enlace?: string;
   negocioId?: string;
   rejectionReason?: string;
+  reason?: string;
   rejectedAt?: string;
   solicitudId?: string;
   uidSolicitante?: string;
@@ -219,6 +220,7 @@ const resolveDeletedBusinessFromBackend = async (notif: Notification): Promise<N
       fecha: deletion?.deletedAt || new Date().toISOString(),
       leido: true,
       negocioId: deletion?.businessId || businessId || undefined,
+      reason: deletion?.reason || undefined,
     };
   } catch {
     return null;
@@ -266,6 +268,7 @@ const resolveBusinessNavigationFromBackend = async (notif: Notification, isAdmin
           fecha: deletion.deletedAt || new Date().toISOString(),
           leido: true,
           negocioId: deletion.businessId || businessId || undefined,
+          reason: deletion.reason || undefined,
         },
       };
     }

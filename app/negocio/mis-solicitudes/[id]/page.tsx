@@ -287,14 +287,19 @@ export default function MiSolicitudDetallePage() {
   const business = data.business || {};
   const status: string = data.estado || data.status || business.status || "pendiente";
   const isRejected = status === "rechazado" || status === "REJECTED" || !!data.rejectedAt || !!data.rejectionReason;
+  const isArchived = status === "archivado" || status === "ARCHIVED" || !!data.archivedAt || !!data.archivedReason;
   const cfg = isRejected
     ? statusConfig["rechazado"]
-    : (statusConfig[status] || statusConfig["pendiente"]);
+    : isArchived
+      ? statusConfig["archivado"]
+      : (statusConfig[status] || statusConfig["pendiente"]);
 
   const logo: string = business.logo || "";
   const images: string[] = Array.isArray(business.images) ? business.images.filter(Boolean) : [];
-  const rejectionReason = data.rejectionReason || data.archivedReason || null;
-  const rejectionDate = data.rejectedAt || data.archivedAt || null;
+  const rejectionReason = data.rejectionReason || null;
+  const archivedReason = data.archivedReason || null;
+  const rejectionDate = data.rejectedAt || null;
+  const archivedDate = data.archivedAt || null;
   const email = data.email || business.email || "";
   const scheduleLines = Object.entries(business.schedule || {})
     .filter(([, day]: any) => day?.enabled)
@@ -588,7 +593,7 @@ export default function MiSolicitudDetallePage() {
         </div>
 
         <AnimatePresence initial={false}>
-          {isRejected && (
+          {(isRejected || isArchived) && (
             <motion.aside
               initial={{ opacity: 0, x: 28, scale: 0.98 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -599,18 +604,24 @@ export default function MiSolicitudDetallePage() {
               <div className="bg-white border border-[#E5DACA] rounded-3xl shadow-[0_10px_32px_rgba(26,77,46,0.12)] p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <FiAlertCircle className="text-[#769C7B]" size={18} />
-                    <h3 className="text-sm font-black text-[#1A4D2E] uppercase tracking-widest">Detalle del rechazo</h3>
+                    <h3 className="text-sm font-black text-[#1A4D2E] uppercase tracking-widest">
+                      {isArchived ? "Detalle del archivado" : "Detalle del rechazo"}
+                    </h3>
                   </div>
                   <div className="space-y-3">
                     <div className="bg-[#F6F0E6] rounded-2xl p-4">
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-[#769C7B] mb-1">Motivo</p>
-                      <p className="text-sm text-[#1A4D2E] leading-relaxed">{rejectionReason || "No se especificó un motivo."}</p>
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-[#769C7B] mb-1">
+                        {isArchived ? "Motivo de archivado" : "Motivo"}
+                      </p>
+                      <p className="text-sm text-[#1A4D2E] leading-relaxed">
+                        {isArchived ? archivedReason || "No se especificó un motivo." : rejectionReason || "No se especificó un motivo."}
+                      </p>
                     </div>
-                    {rejectionDate && (
+                    {(isArchived ? archivedDate : rejectionDate) && (
                       <div className="bg-[#F6F0E6] rounded-2xl p-4">
                         <p className="text-[11px] font-bold uppercase tracking-widest text-[#769C7B] mb-1">Fecha</p>
                         <p className="text-sm font-semibold text-[#1A4D2E]">
-                          {new Date(rejectionDate).toLocaleString("es-MX", {
+                          {new Date(isArchived ? archivedDate! : rejectionDate!).toLocaleString("es-MX", {
                             year: "numeric", month: "long", day: "numeric",
                             hour: "2-digit", minute: "2-digit",
                           })}

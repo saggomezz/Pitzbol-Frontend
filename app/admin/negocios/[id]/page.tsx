@@ -237,6 +237,7 @@ export default function AdminViewBusinessPage() {
   const [modalArchivar, setModalArchivar] = useState(false);
   const [motivoArchivo, setMotivoArchivo] = useState("");
   const [modalEliminar, setModalEliminar] = useState(false);
+  const [motivoEliminar, setMotivoEliminar] = useState("");
   const [procesandoAccion, setProcesandoAccion] = useState(false);
   const [galleryPreviewIndex, setGalleryPreviewIndex] = useState(0);
   const [subcategoriaInput, setSubcategoriaInput] = useState("");
@@ -746,6 +747,8 @@ export default function AdminViewBusinessPage() {
   // Eliminar permanentemente negocio
   const handleEliminarPermanentemente = async () => {
     if (!business) return;
+    const motivoFinal = motivoEliminar.trim();
+
     setProcesandoAccion(true);
     try {
       const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
@@ -753,12 +756,13 @@ export default function AdminViewBusinessPage() {
         method: "DELETE",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminUid }),
+        body: JSON.stringify({ adminUid, motivo: motivoFinal || undefined }),
       });
       const data = await response.json();
       if (data.success) {
         setResultadoMensaje({ tipo: "exito", mensaje: "Negocio eliminado permanentemente" });
         setModalEliminar(false);
+        setMotivoEliminar("");
         setTimeout(() => router.push("/admin/negocios?tab=archivados"), 1500);
       } else {
         setResultadoMensaje({ tipo: "error", mensaje: data.message || "Error al eliminar" });
@@ -1085,6 +1089,12 @@ export default function AdminViewBusinessPage() {
   const isApproved = mappedStatus === "APPROVED";
   const isArchived = mappedStatus === "archivado";
   const isRejected = mappedStatus === "REJECTED";
+  const statusReason = isArchived
+    ? business.archivedReason || ""
+    : isRejected
+      ? business.rejectionReason || ""
+      : "";
+  const statusReasonLabel = isArchived ? "Motivo de archivado" : isRejected ? "Motivo de rechazo" : "Motivo";
   const showArchivedStyleActions = isArchived || isRejected;
   const hasAdministrativeActions = isPending || isApproved || showArchivedStyleActions;
   const activeSchedulePreview = DAY_LABELS.filter((day) => draftHorario[day.key].enabled).map((day) => ({
@@ -1146,6 +1156,14 @@ export default function AdminViewBusinessPage() {
                 </span>
               </div>
               <p className="mt-4 text-[#1A4D2E]/80 text-sm md:text-base font-medium">{config.description}</p>
+              {(isArchived || isRejected) && (
+                <div className="mt-5 mx-auto max-w-lg bg-[#FFF7E8] border-2 border-[#F2C47C] rounded-2xl px-5 py-4 text-left shadow-sm">
+                  <p className="text-xs uppercase tracking-wide font-black text-[#B56A00] mb-1">{statusReasonLabel}</p>
+                  <p className="text-sm md:text-base font-medium text-[#1A4D2E]">
+                    {statusReason || "No se especificó un motivo."}
+                  </p>
+                </div>
+              )}
 
               {/* Aviso de revisión especial */}
               {business.business.solicitaRevisionAdmin && (
@@ -2089,6 +2107,17 @@ export default function AdminViewBusinessPage() {
                   ?? Esta acción borrará todos los elementos de la base de datos y de Cloudinary. No se podrá deshacer.
                 </p>
               </div>
+              <label className="block text-sm font-bold text-gray-700 mb-2" htmlFor="motivo-eliminacion">
+                Motivo de la eliminación definitiva (opcional)
+              </label>
+              <textarea
+                id="motivo-eliminacion"
+                value={motivoEliminar}
+                onChange={(e) => setMotivoEliminar(e.target.value)}
+                placeholder="Describe el motivo por el que eliminas definitivamente este negocio (opcional)..."
+                className="w-full border border-gray-300 rounded-xl p-3 mb-6 min-h-[120px] text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-300"
+                disabled={procesandoAccion}
+              />
               <div className="flex gap-3">
                 <button
                   onClick={handleEliminarPermanentemente}
@@ -2098,7 +2127,12 @@ export default function AdminViewBusinessPage() {
                   {procesandoAccion ? "Eliminando..." : "Sí, eliminar"}
                 </button>
                 <button
-                  onClick={() => !procesandoAccion && setModalEliminar(false)}
+                  onClick={() => {
+                    if (!procesandoAccion) {
+                      setModalEliminar(false);
+                      setMotivoEliminar("");
+                    }
+                  }}
                   disabled={procesandoAccion}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
                 >
