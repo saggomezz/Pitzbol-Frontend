@@ -802,6 +802,46 @@ export default function InformacionLugar() {
             })()}
           </section>
 
+          {/* Descripción del lugar */}
+          {(lugarSeguro.notaIA || esAdminLugares) && (
+            <div style={{ marginTop: '1.25rem', padding: '1.15rem 1.25rem', background: '#F7F9F4', borderRadius: '0.875rem', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FiInfo color="#1A4D2E" size={16} />
+                  <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.88rem' }}>Descripción</span>
+                </div>
+                {esAdminLugares && !editandoDesc && (
+                  <button onClick={() => setEditandoDesc(true)} style={{ fontSize: '0.72rem', fontWeight: 600, color: '#1A4D2E', background: 'none', border: '1px solid #1A4D2E', borderRadius: '0.4rem', padding: '0.2rem 0.6rem', cursor: 'pointer' }}>
+                    ✏️ Editar
+                  </button>
+                )}
+              </div>
+              {editandoDesc ? (
+                <div>
+                  <textarea
+                    value={editDescripcion}
+                    onChange={e => setEditDescripcion(e.target.value)}
+                    rows={4}
+                    style={{ width: '100%', fontSize: '0.83rem', border: '1px solid #1A4D2E', borderRadius: '0.5rem', padding: '0.5rem', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    <button onClick={guardarDescripcion} disabled={guardandoDesc} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#1A4D2E', color: 'white', border: 'none', fontSize: '0.75rem', fontWeight: 600, padding: '0.4rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', opacity: guardandoDesc ? 0.6 : 1 }}>
+                      <FiCheck size={12} /> {guardandoDesc ? 'Guardando...' : 'Guardar'}
+                    </button>
+                    <button onClick={() => { setEditandoDesc(false); setEditDescripcion(lugarSeguro.notaIA || ''); }} style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer' }}>
+                      Cancelar
+                    </button>
+                    {mensajeDesc && <span style={{ fontSize: '0.75rem', fontWeight: 600, color: mensajeDesc.startsWith('✓') ? '#16a34a' : '#dc2626' }}>{mensajeDesc}</span>}
+                  </div>
+                </div>
+              ) : lugarSeguro.notaIA ? (
+                <p style={{ fontSize: '0.83rem', color: '#4b5563', margin: 0, lineHeight: 1.65 }}>{lugarSeguro.notaIA}</p>
+              ) : (
+                <p style={{ fontSize: '0.83rem', color: '#9ca3af', margin: 0 }}>Sin descripción disponible</p>
+              )}
+            </div>
+          )}
+
           {/* Etiquetas + panel derecho (tiempo/costo/contacto) */}
           <div className={styles.overviewLayout}>
             <section className={styles.descriptionColumn}>
@@ -1021,46 +1061,6 @@ export default function InformacionLugar() {
               )}
             </aside>
           </div>
-
-          {/* Descripción del lugar */}
-          {(lugarSeguro.notaIA || esAdminLugares) && (
-            <div style={{ marginTop: '1.25rem', padding: '1.15rem 1.25rem', background: '#F7F9F4', borderRadius: '0.875rem', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <FiInfo color="#1A4D2E" size={16} />
-                  <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.88rem' }}>Descripción</span>
-                </div>
-                {esAdminLugares && !editandoDesc && (
-                  <button onClick={() => setEditandoDesc(true)} style={{ fontSize: '0.72rem', fontWeight: 600, color: '#1A4D2E', background: 'none', border: '1px solid #1A4D2E', borderRadius: '0.4rem', padding: '0.2rem 0.6rem', cursor: 'pointer' }}>
-                    ✏️ Editar
-                  </button>
-                )}
-              </div>
-              {editandoDesc ? (
-                <div>
-                  <textarea
-                    value={editDescripcion}
-                    onChange={e => setEditDescripcion(e.target.value)}
-                    rows={4}
-                    style={{ width: '100%', fontSize: '0.83rem', border: '1px solid #1A4D2E', borderRadius: '0.5rem', padding: '0.5rem', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                  />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
-                    <button onClick={guardarDescripcion} disabled={guardandoDesc} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#1A4D2E', color: 'white', border: 'none', fontSize: '0.75rem', fontWeight: 600, padding: '0.4rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', opacity: guardandoDesc ? 0.6 : 1 }}>
-                      <FiCheck size={12} /> {guardandoDesc ? 'Guardando...' : 'Guardar'}
-                    </button>
-                    <button onClick={() => { setEditandoDesc(false); setEditDescripcion(lugarSeguro.notaIA || ''); }} style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer' }}>
-                      Cancelar
-                    </button>
-                    {mensajeDesc && <span style={{ fontSize: '0.75rem', fontWeight: 600, color: mensajeDesc.startsWith('✓') ? '#16a34a' : '#dc2626' }}>{mensajeDesc}</span>}
-                  </div>
-                </div>
-              ) : lugarSeguro.notaIA ? (
-                <p style={{ fontSize: '0.83rem', color: '#4b5563', margin: 0, lineHeight: 1.65 }}>{lugarSeguro.notaIA}</p>
-              ) : (
-                <p style={{ fontSize: '0.83rem', color: '#9ca3af', margin: 0 }}>Sin descripción disponible</p>
-              )}
-            </div>
-          )}
 
           {/* Descripción cultural */}
           {CULTURA_DESCRIPTIONS[lugarSeguro.nombre] && (
