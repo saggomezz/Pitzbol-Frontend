@@ -159,6 +159,13 @@ export function getHorario(nombre: string): Horario | null {
   return HORARIOS[norm(nombre)] ?? null;
 }
 
+export function getHorarioActivo(nombre: string, horariosJson?: string): Horario | null {
+  if (horariosJson) {
+    try { return JSON.parse(horariosJson) as Horario; } catch {}
+  }
+  return getHorario(nombre);
+}
+
 // Devuelve el índice de día (0=lunes … 6=domingo) según JS Date.getDay()
 export function getDiaIdx(): DiaSemana {
   const jsDay = new Date().getDay(); // 0=dom,1=lun,...,6=sab
