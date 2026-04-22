@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2, FiPhone, FiGlobe, FiMail, FiPlus, FiX, FiCheck, FiChevronLeft, FiChevronRight } from "react-icons/fi";
-import { getHorario, formatHora, formatCerrado } from "../horariosData";
+import { getHorario, getDiaIdx, formatRango, DIAS_ES, NOMBRE_DIA } from "../horariosData";
 import styles from "../informacion.module.css";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import DeletedBusinessModal from "@/app/components/DeletedBusinessModal";
@@ -233,11 +233,6 @@ export default function InformacionLugar() {
 
   const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
 
-  useEffect(() => {
-    if (fotos.length <= 1) return;
-    const timer = setInterval(() => setFotoIdx(i => (i + 1) % fotos.length), 1000);
-    return () => clearInterval(timer);
-  }, [fotos.length]);
 
   useEffect(() => {
     if (!nombreLugar || typeof window === "undefined") return;
@@ -654,37 +649,33 @@ export default function InformacionLugar() {
               )}
             </div>
 
-            {/* Panel horario */}
+            {/* Panel horario por día */}
             {(() => {
               const horario = getHorario(lugarSeguro.nombre);
-              const es24h = horario?.apertura === '00:00' && horario?.cierre === '23:59';
+              const hoy = getDiaIdx();
               return (
-                <div style={{ background: '#F7F9F4', borderRadius: '0.875rem', padding: '1.25rem 1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.07)', minHeight: 140 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.9rem' }}>
-                    <FiClock color="#1A4D2E" size={17} />
-                    <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.9rem' }}>Horario</span>
+                <div style={{ background: '#F7F9F4', borderRadius: '0.875rem', padding: '1.1rem 1.15rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <FiClock color="#1A4D2E" size={16} />
+                    <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.88rem' }}>Horario</span>
                   </div>
                   {horario ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-                      {es24h ? (
-                        <span style={{ fontWeight: 700, color: '#0D601E', fontSize: '0.95rem' }}>Abierto 24 horas</span>
-                      ) : (
-                        <>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 500 }}>Apertura</span>
-                            <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.88rem' }}>{formatHora(horario.apertura)}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem' }}>
+                      {DIAS_ES.map(dia => {
+                        const esHoy = dia === hoy;
+                        const rango = formatRango(horario[dia]);
+                        const cerrado = rango === 'Cerrado';
+                        return (
+                          <div key={dia} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0.18rem 0.35rem', borderRadius: '0.4rem', background: esHoy ? '#E8F5E9' : 'transparent' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: esHoy ? 700 : 500, color: esHoy ? '#1A4D2E' : '#4b5563', minWidth: 72 }}>
+                              {NOMBRE_DIA[dia]}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: esHoy ? 700 : 400, color: cerrado ? '#dc2626' : esHoy ? '#0D601E' : '#374151', textAlign: 'right' }}>
+                              {rango}
+                            </span>
                           </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 500 }}>Cierre</span>
-                            <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.88rem' }}>{formatHora(horario.cierre)}</span>
-                          </div>
-                        </>
-                      )}
-                      <div style={{ marginTop: '0.3rem', paddingTop: '0.6rem', borderTop: '1px solid #e5e7eb' }}>
-                        <span style={{ fontSize: '0.75rem', color: horario.cerrado === 'ninguno' ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                          {formatCerrado(horario.cerrado)}
-                        </span>
-                      </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
