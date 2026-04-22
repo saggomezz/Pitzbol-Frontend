@@ -3,7 +3,8 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2, FiPhone, FiGlobe, FiMail, FiPlus, FiX, FiCheck } from "react-icons/fi";
+import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2, FiPhone, FiGlobe, FiMail, FiPlus, FiX, FiCheck, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { getHorario, formatHora, formatCerrado } from "../horariosData";
 import styles from "../informacion.module.css";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import DeletedBusinessModal from "@/app/components/DeletedBusinessModal";
@@ -231,6 +232,12 @@ export default function InformacionLugar() {
   });
 
   const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
+
+  useEffect(() => {
+    if (fotos.length <= 1) return;
+    const timer = setInterval(() => setFotoIdx(i => (i + 1) % fotos.length), 1000);
+    return () => clearInterval(timer);
+  }, [fotos.length]);
 
   useEffect(() => {
     if (!nombreLugar || typeof window === "undefined") return;
@@ -609,41 +616,86 @@ export default function InformacionLugar() {
             <h1 className={styles.title}>{lugarSeguro.nombre}</h1>
           </div>
 
-          {/* Galería dividida: visor principal + miniaturas */}
-          {fotos.length > 0 && (
-            <section className={styles.gallerySplit}>
-              <div className={styles.galleryViewer}>
+          {/* Galería: carrusel + panel de horario */}
+          <section className={styles.gallerySplit}>
+            {/* Carrusel */}
+            <div className={styles.galleryViewer} style={{ position: 'relative' }}>
+              {fotos.length > 0 ? (
                 <img
                   src={fotos[fotoIdx]}
                   alt={`${lugarSeguro.nombre} imagen ${fotoIdx + 1}`}
                   className={styles.galleryMainImage}
                 />
-              </div>
-
-              {fotos.length > 1 && (
-                <aside className={styles.galleryThumbsColumn}>
-                  {fotos
-                    .map((foto, idx) => ({ foto, idx }))
-                    .map((item) => (
-                      <button
-                        key={`${item.foto}-${item.idx}`}
-                        type="button"
-                        className={`${styles.galleryThumbButton} ${item.idx === fotoIdx ? styles.galleryThumbButtonActive : ''}`}
-                        onClick={() => setFotoIdx(item.idx)}
-                        aria-label={`Ver imagen ${item.idx + 1}`}
-                        aria-pressed={item.idx === fotoIdx}
-                      >
-                        <img
-                          src={item.foto}
-                          alt={`${lugarSeguro.nombre} miniatura ${item.idx + 1}`}
-                          className={styles.galleryThumbImage}
-                        />
-                      </button>
-                    ))}
-                </aside>
+              ) : (
+                <div style={{ width: '100%', height: '100%', minHeight: 180, background: '#E0F2F1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.875rem' }}>
+                  <span style={{ fontSize: '2.5rem' }}>📷</span>
+                </div>
               )}
-            </section>
-          )}
+              {fotos.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setFotoIdx(i => (i - 1 + fotos.length) % fotos.length)}
+                    aria-label="Imagen anterior"
+                    style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
+                  >
+                    <FiChevronLeft size={18} />
+                  </button>
+                  <button
+                    onClick={() => setFotoIdx(i => (i + 1) % fotos.length)}
+                    aria-label="Imagen siguiente"
+                    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
+                  >
+                    <FiChevronRight size={18} />
+                  </button>
+                  <div style={{ position: 'absolute', bottom: 8, right: 10, background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '999px' }}>
+                    {fotoIdx + 1}/{fotos.length}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Panel horario */}
+            {(() => {
+              const horario = getHorario(lugarSeguro.nombre);
+              const es24h = horario?.apertura === '00:00' && horario?.cierre === '23:59';
+              return (
+                <div style={{ background: '#F7F9F4', borderRadius: '0.875rem', padding: '1.25rem 1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.07)', minHeight: 140 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.9rem' }}>
+                    <FiClock color="#1A4D2E" size={17} />
+                    <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.9rem' }}>Horario</span>
+                  </div>
+                  {horario ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                      {es24h ? (
+                        <span style={{ fontWeight: 700, color: '#0D601E', fontSize: '0.95rem' }}>Abierto 24 horas</span>
+                      ) : (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 500 }}>Apertura</span>
+                            <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.88rem' }}>{formatHora(horario.apertura)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 500 }}>Cierre</span>
+                            <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.88rem' }}>{formatHora(horario.cierre)}</span>
+                          </div>
+                        </>
+                      )}
+                      <div style={{ marginTop: '0.3rem', paddingTop: '0.6rem', borderTop: '1px solid #e5e7eb' }}>
+                        <span style={{ fontSize: '0.75rem', color: horario.cerrado === 'ninguno' ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                          {formatCerrado(horario.cerrado)}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <span style={{ color: '#9ca3af', fontSize: '0.83rem', fontWeight: 500 }}>Horario no disponible</span>
+                      <span style={{ color: '#d1d5db', fontSize: '0.72rem' }}>Consulta directamente al lugar</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </section>
 
           {/* Etiquetas + panel derecho (tiempo/costo/contacto) */}
           <div className={styles.overviewLayout}>
