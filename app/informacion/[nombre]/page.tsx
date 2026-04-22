@@ -233,6 +233,12 @@ export default function InformacionLugar() {
 
   const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
 
+  useEffect(() => {
+    if (fotos.length <= 1) return;
+    const timer = setInterval(() => setFotoIdx(i => (i + 1) % fotos.length), 4000);
+    return () => clearInterval(timer);
+  }, [fotos.length]);
+
 
   useEffect(() => {
     if (!nombreLugar || typeof window === "undefined") return;
@@ -617,9 +623,11 @@ export default function InformacionLugar() {
             <div className={styles.galleryViewer} style={{ position: 'relative' }}>
               {fotos.length > 0 ? (
                 <img
+                  key={fotoIdx}
                   src={fotos[fotoIdx]}
                   alt={`${lugarSeguro.nombre} imagen ${fotoIdx + 1}`}
                   className={styles.galleryMainImage}
+                  style={{ animation: 'fadeInPhoto 0.5s ease' }}
                 />
               ) : (
                 <div style={{ width: '100%', height: '100%', minHeight: 180, background: '#E0F2F1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.875rem' }}>
@@ -692,7 +700,7 @@ export default function InformacionLugar() {
           <div className={styles.overviewLayout}>
             <section className={styles.descriptionColumn}>
               {(lugarSeguro.etiquetas.length > 0 || esAdminLugares) && (
-                <div className={styles.descriptionCard}>
+                <div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
                     {(esAdminLugares ? etiquetasEdit : lugarSeguro.etiquetas).map((etiqueta) => (
                       <span
