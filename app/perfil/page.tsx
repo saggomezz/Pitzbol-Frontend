@@ -15,6 +15,7 @@ import { getBackendOrigin } from "@/lib/backendUrl";
 
 import WalletModal from "@/app/components/WalletModal";
 import PersonaTourFormModal from "@/app/components/PersonaTourFormModal";
+import TourFormModal from "@/app/components/TourFormModal";
 
 const API_BASE = "/api";
 
@@ -1908,8 +1909,19 @@ export default function PerfilDetallado() {
       {/* Wallet Modal */}
       <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
 
-      {/* Tour Modal para guías persona */}
-      {showTourModal && esGuia && (
+      {/* Modal según tipo de guía */}
+      {showTourModal && esGuia && tipoGuia === "empresa" && (
+        <TourFormModal
+          empresaId={perfil?.id || ""}
+          empresaNombre={`${perfil?.nombre || ""} ${perfil?.apellido || ""}`.trim()}
+          onClose={() => setShowTourModal(false)}
+          onSuccess={(tour: any) => {
+            setTours((prev: any[]) => [tour, ...prev]);
+            setShowTourModal(false);
+          }}
+        />
+      )}
+      {showTourModal && esGuia && tipoGuia !== "empresa" && (
         <PersonaTourFormModal
           guiaId={perfil?.id || ""}
           guiaNombre={`${perfil?.nombre || ""} ${perfil?.apellido || ""}`.trim()}
