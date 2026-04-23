@@ -85,7 +85,13 @@ export default function PerfilDetallado() {
   const [perfil, setPerfil] = useState<any>(null);
   const [tours, setTours] = useState<any[]>([]);
   const [showTourModal, setShowTourModal] = useState(false);
-  const [tipoGuia, setTipoGuia] = useState<string>("persona");
+  const [tipoGuia, setTipoGuia] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const u = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      return u.guia_tipo || "persona";
+    }
+    return "persona";
+  });
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [guardadosCount, setGuardadosCount] = useState(0);
@@ -209,7 +215,11 @@ export default function PerfilDetallado() {
         return;
       }
 
-      const initialEspecialidades = userLocal["07_intereses"] || userLocal.especialidades || userLocal["07_especialidades"] || [];
+      const initialEspecialidades =
+        (userLocal["07_intereses"]?.length > 0 ? userLocal["07_intereses"] : null) ||
+        (userLocal.especialidades?.length > 0 ? userLocal.especialidades : null) ||
+        userLocal["07_especialidades"] ||
+        [];
       const descripcionInicial = userLocal.descripcion ? capitalizarPrimera(userLocal.descripcion) : "";
       
       const initialIdiomas = userLocal.idiomas || userLocal["09_idiomas"] || [];
@@ -298,13 +308,13 @@ export default function PerfilDetallado() {
           }
         }
 
-        // Cargar tipo de guía (empresa/persona)
-        if (rol === "guia") {
+        // Cargar tipo de guía (empresa/persona) — solo si no está guardado localmente
+        if (rol === "guia" && !userLocal.guia_tipo) {
           try {
             const guideRes = await fetch(`${API_BASE}/guides/profile/${userLocal.uid}`);
             if (guideRes.ok) {
               const gData = await guideRes.json();
-              if (gData.success) setTipoGuia(gData.guide?.tipo || "persona");
+              if (gData.success && gData.guide?.tipo) setTipoGuia(gData.guide.tipo);
             }
           } catch {}
         }

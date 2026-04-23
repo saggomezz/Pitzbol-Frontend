@@ -67,7 +67,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         // Actualizar localStorage con los nuevos intereses
         const stored = localStorage.getItem("pitzbol_user");
         const user = stored ? JSON.parse(stored) : {};
-        const updated = { ...user, especialidades: nuevosIntereses };
+        const updated = { ...user, especialidades: nuevosIntereses, "07_intereses": nuevosIntereses };
         localStorage.setItem("pitzbol_user", JSON.stringify(updated));
         
         // Disparar evento personalizado para que el perfil se actualice
@@ -284,11 +284,13 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         
         // Guardar timestamp de cuándo se envió la solicitud
         const timestamp = new Date().toISOString();
-        const updatedUser = { 
+        const updatedUser = {
           ...userLocal,
           role: "turista",  // Explícitamente mantener role como turista
-          guide_status: "pendiente", 
+          guide_status: "pendiente",
           especialidades: selectedCats,
+          "07_intereses": selectedCats,
+          guia_tipo: tipo,
           solicitudEnviadaEn: timestamp
         };
         localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
