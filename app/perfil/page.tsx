@@ -7,7 +7,7 @@ import {
   FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
 } from "react-icons/fa";
 import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
-  FiPlus, FiShield, FiUser, FiX, FiCreditCard
+  FiPlus, FiShield, FiUser, FiX, FiCreditCard, FiDollarSign
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
 import { useFavoritesSync } from "@/lib/favoritesApi";
@@ -120,6 +120,10 @@ export default function PerfilDetallado() {
   const [ladaTemp, setLadaTemp] = useState("+52");
   const [numeroTemp, setNumeroTemp] = useState("");
   const [errorTelefono, setErrorTelefono] = useState("");
+
+  const [editandoTarifa, setEditandoTarifa] = useState(false);
+  const [tarifaTemp, setTarifaTemp] = useState<string>("");
+  const [errorTarifa, setErrorTarifa] = useState("");
   
   const [editandoDescripcion, setEditandoDescripcion] = useState(false);
   const [descripcionTemp, setDescripcionTemp] = useState("");
@@ -141,6 +145,48 @@ export default function PerfilDetallado() {
   const [error, setError] = useState("");
   const [mostrarNotificacionAprobado, setMostrarNotificacionAprobado] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+
+  const guardarTarifa = async () => {
+    const valor = parseFloat(tarifaTemp);
+    if (isNaN(valor) || valor <= 0) {
+      setErrorTarifa("Ingresa una tarifa válida mayor a 0");
+      return;
+    }
+    setGuardando(true);
+    setErrorTarifa("");
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = getBackendOrigin();
+      if (!token) throw new Error("No hay sesión activa");
+      const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tarifa: valor }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || data.msg || "Error al actualizar tarifa");
+      setPerfil((prev: any) => ({ ...prev, tarifa: valor }));
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal.tarifa = valor;
+      userLocal["17_tarifa_mxn"] = valor;
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+      window.dispatchEvent(new Event("guideProfileUpdated"));
+      setExito("Tarifa actualizada exitosamente");
+      setTimeout(() => setExito(""), 3000);
+      setEditandoTarifa(false);
+    } catch (err: any) {
+      setErrorTarifa(err.message || "Error al actualizar");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarTarifa = () => {
+    setTarifaTemp("");
+    setErrorTarifa("");
+    setEditandoTarifa(false);
+  };
 
   const refrescarFavoritos = async () => {
     try {
@@ -793,7 +839,7 @@ export default function PerfilDetallado() {
     // Validar tamaño (5MB)
     const MAX_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      setError(`❌ ${t('fileTooLarge', { size: (file.size / 1024 / 1024).toFixed(2) })}`);
+      setError(`${t('fileTooLarge', { size: (file.size / 1024 / 1024).toFixed(2) })}`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -801,7 +847,7 @@ export default function PerfilDetallado() {
     // Validar formato
     const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/webp'];
     if (!ALLOWED_FORMATS.includes(file.type)) {
-      setError(`❌ ${t('invalidFormat')}`);
+      setError(`${t('invalidFormat')}`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -1236,6 +1282,63 @@ export default function PerfilDetallado() {
                         <p className="text-sm font-medium text-[#1A4D2E] pl-12 break-all">{perfil?.telefono}</p>
                       )}
                     </motion.div>
+
+                    {/* Card de Tarifa por Tour — solo para guías */}
+                    {esGuia && (
+                      <motion.div
+                        whileHover={{ y: -1 }}
+                        className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 bg-[#F1F8F6] rounded-lg">
+                              <FiDollarSign size={16} className="text-[#66BB6A]" />
+                            </div>
+                            <h3 className="text-xs font-medium text-[#81C784] tracking-wide">Cobro por Tour</h3>
+                          </div>
+                          {!editandoTarifa && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => {
+                                setTarifaTemp(perfil?.tarifa ? String(perfil.tarifa) : "");
+                                setEditandoTarifa(true);
+                              }}
+                              className="px-2.5 py-1 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1"
+                            >
+                              <FiEdit2 size={12} /> Editar
+                            </motion.button>
+                          )}
+                        </div>
+
+                        {editandoTarifa ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-[#1A4D2E]">$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="10"
+                                value={tarifaTemp}
+                                onChange={(e) => setTarifaTemp(e.target.value)}
+                                placeholder="Ej. 200"
+                                className="flex-1 text-sm font-medium text-[#1A4D2E] bg-white border-2 rounded-lg px-3 py-2 focus:outline-none border-[#C8E6C9]"
+                              />
+                              <span className="text-xs text-[#81C784] whitespace-nowrap">MXN / hora</span>
+                            </div>
+                            {errorTarifa && <p className="text-xs text-red-600">{errorTarifa}</p>}
+                            <div className="flex gap-2">
+                              <button onClick={guardarTarifa} disabled={guardando} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50">Guardar</button>
+                              <button onClick={cancelarTarifa} disabled={guardando} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors disabled:opacity-50">Cancelar</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm font-medium text-[#1A4D2E] pl-12">
+                            {perfil?.tarifa ? `$${Number(perfil.tarifa).toLocaleString("es-MX")} MXN / hora` : "Sin tarifa definida"}
+                          </p>
+                        )}
+                      </motion.div>
+                    )}
 
                     {/* Card de Billetera */}
                     <button 
