@@ -29,7 +29,8 @@ interface PublicProfile {
   tarifa?: number;
   tarifaCompleta?: number;
   ubicacion?: string;
-  experiencia?: string;
+  experiencia?: string | string[];
+  experiencias?: string[];
   certificaciones?: string[];
   disponibilidad?: {
     lunes: boolean;
@@ -67,6 +68,59 @@ const formatRawValue = (value: any) => {
   } catch {
     return String(value);
   }
+};
+
+const normalizeGuideExperiences = (profile: PublicProfile | null): string[] => {
+  if (!profile) return [];
+
+  const result: string[] = [];
+  const rawSources = [
+    profile.experiencias,
+    (profile as any)?.experiences,
+    profile.experiencia,
+    (profile as any)?.experienciaTours,
+  ];
+
+  for (const raw of rawSources) {
+    if (!raw) continue;
+
+    if (Array.isArray(raw)) {
+      raw.forEach((item) => {
+        if (typeof item === "string" && item.trim()) result.push(item.trim());
+      });
+      continue;
+    }
+
+    if (typeof raw === "string") {
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item) => {
+            if (typeof item === "string" && item.trim()) result.push(item.trim());
+          });
+          continue;
+        }
+      } catch {
+        // Si no es JSON, se trata como texto plano o lista separada por delimitadores.
+      }
+
+      const splitItems = trimmed
+        .split(/\n+|\s*[;|]\s*/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      if (splitItems.length > 1) {
+        result.push(...splitItems);
+      } else {
+        result.push(trimmed);
+      }
+    }
+  }
+
+  return Array.from(new Set(result));
 };
 
 const profileFromAdminData = (adminUser: AdminUserDetail): PublicProfile => {
@@ -112,9 +166,7 @@ export default function GuidePublicProfilePage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [adminDetail, setAdminDetail] = useState<AdminUserDetail | null>(null);
   const [loadingAdminDetail, setLoadingAdminDetail] = useState(false);
-  const [tours, setTours] = useState<any[]>([]);
   const [negocios, setNegocios] = useState<any[]>([]);
-  const [loadingRelated, setLoadingRelated] = useState(false);
   const isAdminViewer = user?.role === "admin";
 
   useEffect(() => {
@@ -154,28 +206,18 @@ export default function GuidePublicProfilePage() {
           }
         }
 
-        // Cargar tours y negocios del usuario
+        // Cargar negocios del usuario
         const uid = fetchedProfile?.uid || profileUid;
         if (uid) {
-          setLoadingRelated(true);
           try {
-            const [toursRes, negociosRes] = await Promise.all([
-              fetch(`/api/perfil/tours/${encodeURIComponent(uid)}`),
-              fetch(`/api/perfil/negocios/${encodeURIComponent(uid)}`),
-            ]);
-
-            if (toursRes.ok) {
-              const toursData = await toursRes.json();
-              setTours(toursData.tours || []);
-            }
+            const negociosRes = await fetch(`/api/perfil/negocios/${encodeURIComponent(uid)}`);
             if (negociosRes.ok) {
               const negociosData = await negociosRes.json();
               setNegocios(negociosData.negocios || []);
             }
           } catch (err) {
-            console.error("Error cargando tours/negocios:", err);
+            console.error("Error cargando negocios:", err);
           }
-          setLoadingRelated(false);
         }
       } catch (error) {
         console.error("Error al cargar perfil público:", error);
@@ -192,6 +234,8 @@ export default function GuidePublicProfilePage() {
 
   const isGuide = profile?.role === "guia";
   const profileName = profile?.nombreCompleto?.trim() || `${profile?.nombre || ""} ${profile?.apellido || ""}`.trim();
+  const guideExperiences = normalizeGuideExperiences(profile);
+  const showPublicPhone = Boolean(profile?.telefono && !isGuide);
 
   const handleContactGuide = () => {
     if (!isGuide) return;
@@ -329,7 +373,7 @@ export default function GuidePublicProfilePage() {
                   </div>
                 )}
 
-                {profile.experiencia && (
+                {typeof profile.experiencia === "string" && profile.experiencia.trim() && (
                   <div className="flex items-center gap-2 text-gray-700 mb-4">
                     <FiAward size={20} />
                     <span>{profile.experiencia} de experiencia</span>
@@ -533,7 +577,7 @@ export default function GuidePublicProfilePage() {
               </motion.div>
             )}
 
-            {(profile.email || profile.telefono || profile.nacionalidad || profile.descripcion) && (
+            {(profile.email || showPublicPhone || profile.nacionalidad || profile.descripcion) && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -560,7 +604,7 @@ export default function GuidePublicProfilePage() {
                     </motion.div>
                   )}
 
-                  {profile.telefono && (
+                  {showPublicPhone && (
                     <motion.div
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -647,7 +691,7 @@ export default function GuidePublicProfilePage() {
               </motion.div>
             )}
 
-            {/* Tours */}
+            {/* Experiencias */}
             {isGuide && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -657,22 +701,14 @@ export default function GuidePublicProfilePage() {
               >
                 <h3 className="text-3xl font-bold text-[#1A4D2E] mb-6 flex items-center gap-3">
                   <div className="bg-[#1A4D2E]/10 p-3 rounded-2xl">
-                    <FiMapPin size={28} className="text-[#1A4D2E]" />
+                    <FiAward size={28} className="text-[#1A4D2E]" />
                   </div>
-                  Mis Tours ({tours.length})
+                  Experiencias ({guideExperiences.length})
                 </h3>
 
-                {tours.length > 0 ? (
+                {guideExperiences.length > 0 ? (
                   <div className="space-y-4">
-                    {tours.map((tour: any, idx: number) => {
-                      const statusColors: { [key: string]: string } = {
-                        PENDING: "bg-yellow-100 text-yellow-800 border-yellow-500",
-                        CONFIRMED: "bg-blue-100 text-blue-800 border-blue-500",
-                        COMPLETED: "bg-green-100 text-green-800 border-green-500",
-                        CANCELLED: "bg-red-100 text-red-800 border-red-500",
-                      };
-                      const statusColor = statusColors[tour.status] || "bg-gray-100 text-gray-800";
-
+                    {guideExperiences.map((experience, idx: number) => {
                       return (
                         <motion.div
                           key={idx}
@@ -681,28 +717,20 @@ export default function GuidePublicProfilePage() {
                           transition={{ delay: 0.3 + idx * 0.05 }}
                           className="p-5 rounded-2xl border-2 border-[#1A4D2E]/15 bg-gradient-to-r from-white to-[#FDFCF9] hover:from-[#F6F0E6] hover:to-white transition-all hover:shadow-md hover:border-[#1A4D2E]/30"
                         >
-                          <div className="flex items-start justify-between gap-3 mb-3">
-                            <div className="flex-1">
-                              <p className="font-bold text-lg text-[#1A4D2E]">👤 {tour.touristName || "Turista"}</p>
-                              <p className="text-sm text-[#1A4D2E]/70">📅 {tour.fecha || "Fecha no especificada"}</p>
-                            </div>
-                            <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${statusColor} whitespace-nowrap`}>
-                              {tour.status || "PENDING"}
+                          <div className="flex items-start gap-3">
+                            <span className="text-xs font-bold px-3 py-1.5 rounded-full border bg-[#1A4D2E]/10 text-[#1A4D2E] border-[#1A4D2E]/25 whitespace-nowrap mt-0.5">
+                              #{idx + 1}
                             </span>
+                            <p className="font-semibold text-[#1A4D2E] leading-relaxed">{experience}</p>
                           </div>
-                          {(tour.horaInicio || tour.horaFin) && (
-                            <p className="text-sm text-[#1A4D2E]/80 font-semibold">
-                              🕐 {tour.horaInicio} - {tour.horaFin}
-                            </p>
-                          )}
                         </motion.div>
                       );
                     })}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-[#1A4D2E]/60">
-                    <p className="text-lg">No hay tours aún</p>
-                    <p className="text-sm mt-2">Los tours aparecerán aquí cuando alguien te reserve</p>
+                    <p className="text-lg">Este guía aún no ha publicado experiencias</p>
+                    <p className="text-sm mt-2">Las experiencias que comparta aparecerán aquí</p>
                   </div>
                 )}
               </motion.div>

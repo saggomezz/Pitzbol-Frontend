@@ -208,7 +208,8 @@ export default function BookTourPage() {
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
                 min={new Date().toISOString().split("T")[0]}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
+                style={{ colorScheme: "light" }}
                 required
               />
             </div>
@@ -266,7 +267,8 @@ export default function BookTourPage() {
                 type="time"
                 value={horaInicio}
                 onChange={(e) => setHoraInicio(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
+                style={{ colorScheme: "light" }}
                 required
               />
             </div>
@@ -283,7 +285,8 @@ export default function BookTourPage() {
                 onChange={(e) => setNumPersonas(parseInt(e.target.value) || 1)}
                 min="1"
                 max="20"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
+                style={{ colorScheme: "light" }}
                 required
               />
             </div>
@@ -299,7 +302,8 @@ export default function BookTourPage() {
                 onChange={(e) => setNotas(e.target.value)}
                 placeholder="Menciona preferencias, necesidades especiales, etc."
                 rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent resize-none"
+                style={{ colorScheme: "light" }}
               />
             </div>
 

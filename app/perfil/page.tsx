@@ -6,8 +6,8 @@ import {
   FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
   FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
 } from "react-icons/fa";
-import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
-  FiPlus, FiShield, FiUser, FiX, FiCreditCard
+import { FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
+  FiPlus, FiShield, FiUser, FiX, FiCreditCard, FiDollarSign
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
 import { useFavoritesSync } from "@/lib/favoritesApi";
@@ -84,7 +84,13 @@ export default function PerfilDetallado() {
   const [perfil, setPerfil] = useState<any>(null);
   const [tours, setTours] = useState<any[]>([]);
   const [showTourModal, setShowTourModal] = useState(false);
-  const [tipoGuia, setTipoGuia] = useState<string>("persona");
+  const [tipoGuia, setTipoGuia] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const u = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      return u.guia_tipo || "persona";
+    }
+    return "persona";
+  });
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [guardadosCount, setGuardadosCount] = useState(0);
@@ -120,6 +126,10 @@ export default function PerfilDetallado() {
   const [ladaTemp, setLadaTemp] = useState("+52");
   const [numeroTemp, setNumeroTemp] = useState("");
   const [errorTelefono, setErrorTelefono] = useState("");
+
+  const [editandoTarifa, setEditandoTarifa] = useState(false);
+  const [tarifaTemp, setTarifaTemp] = useState<string>("");
+  const [errorTarifa, setErrorTarifa] = useState("");
   
   const [editandoDescripcion, setEditandoDescripcion] = useState(false);
   const [descripcionTemp, setDescripcionTemp] = useState("");
@@ -142,6 +152,48 @@ export default function PerfilDetallado() {
   const [mostrarNotificacionAprobado, setMostrarNotificacionAprobado] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
 
+  const guardarTarifa = async () => {
+    const valor = parseFloat(tarifaTemp);
+    if (isNaN(valor) || valor <= 0) {
+      setErrorTarifa("Ingresa una tarifa válida mayor a 0");
+      return;
+    }
+    setGuardando(true);
+    setErrorTarifa("");
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = getBackendOrigin();
+      if (!token) throw new Error("No hay sesión activa");
+      const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tarifa: valor }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || data.msg || "Error al actualizar tarifa");
+      setPerfil((prev: any) => ({ ...prev, tarifa: valor }));
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal.tarifa = valor;
+      userLocal["17_tarifa_mxn"] = valor;
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+      window.dispatchEvent(new Event("guideProfileUpdated"));
+      setExito("Tarifa actualizada exitosamente");
+      setTimeout(() => setExito(""), 3000);
+      setEditandoTarifa(false);
+    } catch (err: any) {
+      setErrorTarifa(err.message || "Error al actualizar");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarTarifa = () => {
+    setTarifaTemp("");
+    setErrorTarifa("");
+    setEditandoTarifa(false);
+  };
+
   const refrescarFavoritos = async () => {
     try {
       const favoritos = await syncLocalFavorites();
@@ -162,7 +214,11 @@ export default function PerfilDetallado() {
         return;
       }
 
-      const initialEspecialidades = userLocal["07_intereses"] || userLocal.especialidades || userLocal["07_especialidades"] || [];
+      const initialEspecialidades =
+        (userLocal["07_intereses"]?.length > 0 ? userLocal["07_intereses"] : null) ||
+        (userLocal.especialidades?.length > 0 ? userLocal.especialidades : null) ||
+        userLocal["07_especialidades"] ||
+        [];
       const descripcionInicial = userLocal.descripcion ? capitalizarPrimera(userLocal.descripcion) : "";
       
       const initialIdiomas = userLocal.idiomas || userLocal["09_idiomas"] || [];
@@ -251,16 +307,29 @@ export default function PerfilDetallado() {
           }
         }
 
-        // Cargar tipo de guía (empresa/persona)
-        if (rol === "guia") {
+        // Cargar tipo de guía (empresa/persona) — solo si no está guardado localmente
+        if (rol === "guia" && !userLocal.guia_tipo) {
           try {
             const guideRes = await fetch(`${API_BASE}/guides/profile/${userLocal.uid}`);
             if (guideRes.ok) {
               const gData = await guideRes.json();
-              if (gData.success) setTipoGuia(gData.guide?.tipo || "persona");
+              if (gData.success && gData.guide?.tipo) setTipoGuia(gData.guide.tipo);
             }
           } catch {}
         }
+
+        // Cargar negocios/lugares publicados por el usuario
+        try {
+          const token = localStorage.getItem("pitzbol_token");
+          const solRes = await fetch(`${API_BASE}/business/my-requests`, {
+            credentials: "include",
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          if (solRes.ok) {
+            const solData = await solRes.json();
+            if (solData.success) setTours(solData.solicitudes || []);
+          }
+        } catch {}
 
         // Cargar foto de perfil desde el endpoint correcto (JWT del backend)
         try {
@@ -780,7 +849,7 @@ export default function PerfilDetallado() {
     // Validar tamaño (5MB)
     const MAX_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      setError(`❌ ${t('fileTooLarge', { size: (file.size / 1024 / 1024).toFixed(2) })}`);
+      setError(`${t('fileTooLarge', { size: (file.size / 1024 / 1024).toFixed(2) })}`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -788,7 +857,7 @@ export default function PerfilDetallado() {
     // Validar formato
     const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/webp'];
     if (!ALLOWED_FORMATS.includes(file.type)) {
-      setError(`❌ ${t('invalidFormat')}`);
+      setError(`${t('invalidFormat')}`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -1224,6 +1293,63 @@ export default function PerfilDetallado() {
                       )}
                     </motion.div>
 
+                    {/* Card de Tarifa por Tour — solo para guías */}
+                    {esGuia && (
+                      <motion.div
+                        whileHover={{ y: -1 }}
+                        className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 bg-[#F1F8F6] rounded-lg">
+                              <FiDollarSign size={16} className="text-[#66BB6A]" />
+                            </div>
+                            <h3 className="text-xs font-medium text-[#81C784] tracking-wide">Cobro por Tour</h3>
+                          </div>
+                          {!editandoTarifa && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => {
+                                setTarifaTemp(perfil?.tarifa ? String(perfil.tarifa) : "");
+                                setEditandoTarifa(true);
+                              }}
+                              className="px-2.5 py-1 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1"
+                            >
+                              <FiEdit2 size={12} /> Editar
+                            </motion.button>
+                          )}
+                        </div>
+
+                        {editandoTarifa ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-[#1A4D2E]">$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="10"
+                                value={tarifaTemp}
+                                onChange={(e) => setTarifaTemp(e.target.value)}
+                                placeholder="Ej. 200"
+                                className="flex-1 text-sm font-medium text-[#1A4D2E] bg-white border-2 rounded-lg px-3 py-2 focus:outline-none border-[#C8E6C9]"
+                              />
+                              <span className="text-xs text-[#81C784] whitespace-nowrap">MXN / hora</span>
+                            </div>
+                            {errorTarifa && <p className="text-xs text-red-600">{errorTarifa}</p>}
+                            <div className="flex gap-2">
+                              <button onClick={guardarTarifa} disabled={guardando} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50">Guardar</button>
+                              <button onClick={cancelarTarifa} disabled={guardando} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors disabled:opacity-50">Cancelar</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm font-medium text-[#1A4D2E] pl-12">
+                            {perfil?.tarifa ? `$${Number(perfil.tarifa).toLocaleString("es-MX")} MXN / hora` : "Sin tarifa definida"}
+                          </p>
+                        )}
+                      </motion.div>
+                    )}
+
                     {/* Card de Billetera */}
                     <button 
                       onClick={() => setShowWalletModal(true)} 
@@ -1244,7 +1370,7 @@ export default function PerfilDetallado() {
                 <div className="w-full bg-gradient-to-r from-[#E8F5E9] to-white rounded-xl p-4 border border-[#E0F2F1]">
                   <div className="flex justify-between items-center">
                     <div className="text-center flex-1">
-                      <p className="text-xl font-semibold text-[#66BB6A]">0</p>
+                      <p className="text-xl font-semibold text-[#66BB6A]">{tours.filter((s: any) => s.estado === 'aprobado').length}</p>
                       <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wide">{t('tours')}</p>
                     </div>
                     <div className="w-px h-8 bg-[#E0F2F1]" />
@@ -1639,16 +1765,8 @@ export default function PerfilDetallado() {
                 </div>
                 {esGuia && (
                   <div className="flex items-center gap-2">
-                    {tipoGuia === "empresa" && (
-                      <a
-                        href={`/guia/empresa/${perfil?.id}`}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1A4D2E] text-white text-[11px] font-bold rounded-full hover:bg-[#0D601E] transition-all shadow-sm"
-                      >
-                        <FiAward size={11} /> Ver perfil empresarial
-                      </a>
-                    )}
                     <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
-                      {tours.length} {t('published')}
+                      {tours.filter((s: any) => s.estado === 'aprobado').length} {t('published')}
                     </span>
                   </div>
                 )}
@@ -1670,11 +1788,60 @@ export default function PerfilDetallado() {
                     <span className="text-sm font-medium tracking-tight">{t('createExperience')}</span>
                   </motion.button>
 
-                  {/* Renderizado de tours  */}
-                  {tours.length === 0 && (
+                  {/* Renderizado de negocios publicados */}
+                  {tours.length === 0 ? (
                     <p className="text-center text-[11px] text-[#81C784] font-normal py-4">
                       {t('noExperiencesYet')}
                     </p>
+                  ) : (
+                    <div className="space-y-3 mt-1">
+                      {tours.map((sol: any, i: number) => {
+                        const nombre = sol.business?.name || sol.businessName || sol.nombre || "Negocio";
+                        const categoria = sol.business?.category || sol.categoria || "";
+                        const logo = sol.business?.logo || (sol.business?.images?.[0]) || null;
+                        const estado = sol.estado as string;
+                        const estadoColor: Record<string, string> = {
+                          aprobado: "bg-[#E8F5E9] text-[#2E7D32]",
+                          pendiente: "bg-amber-50 text-amber-700",
+                          rechazado: "bg-red-50 text-red-600",
+                          archivado: "bg-gray-100 text-gray-500",
+                        };
+                        const estadoLabel: Record<string, string> = {
+                          aprobado: "Publicado",
+                          pendiente: "En revisión",
+                          rechazado: "Rechazado",
+                          archivado: "Archivado",
+                        };
+                        const href = estado === "aprobado"
+                          ? `/informacion/${encodeURIComponent(nombre)}`
+                          : `/negocio/mis-solicitudes/${sol.id}`;
+                        return (
+                          <motion.a
+                            key={sol.id || i}
+                            href={href}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            className="flex items-center gap-3 p-3 rounded-xl border border-[#E0F2F1] hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all group"
+                          >
+                            {logo ? (
+                              <img src={logo} alt={nombre} className="w-11 h-11 rounded-lg object-cover shrink-0 border border-[#E0F2F1]" />
+                            ) : (
+                              <div className="w-11 h-11 rounded-lg bg-[#E8F5E9] flex items-center justify-center shrink-0">
+                                <FiMap size={18} className="text-[#66BB6A]" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-[#1A4D2E] truncate group-hover:text-[#0D601E]">{nombre}</p>
+                              {categoria && <p className="text-[11px] text-gray-400 truncate">{categoria}</p>}
+                            </div>
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${estadoColor[estado] || "bg-gray-100 text-gray-500"}`}>
+                              {estadoLabel[estado] || estado}
+                            </span>
+                          </motion.a>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               ) : (
@@ -1743,13 +1910,13 @@ export default function PerfilDetallado() {
       {/* Wallet Modal */}
       <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
 
-      {/* Tour Modal para guías persona */}
+      {/* Modal crear experiencia */}
       {showTourModal && esGuia && (
         <PersonaTourFormModal
           guiaId={perfil?.id || ""}
           guiaNombre={`${perfil?.nombre || ""} ${perfil?.apellido || ""}`.trim()}
           onClose={() => setShowTourModal(false)}
-          onSuccess={(tour) => {
+          onSuccess={(tour: any) => {
             setTours((prev: any[]) => [tour, ...prev]);
             setShowTourModal(false);
           }}
