@@ -225,6 +225,8 @@ export default function AdminViewBusinessPage() {
   });
   const [modalOpen, setModalOpen] = useState(false);
   const [modalAccion, setModalAccion] = useState<"aprobar" | "rechazar">("aprobar");
+  const [showActionPanel, setShowActionPanel] = useState(true);
+  const [showStatusDetailPanel, setShowStatusDetailPanel] = useState(true);
   const [motivoRechazo, setMotivoRechazo] = useState("");
   const [resultadoMensaje, setResultadoMensaje] = useState<{ tipo: "exito" | "error"; mensaje: string } | null>(null);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -258,6 +260,7 @@ export default function AdminViewBusinessPage() {
     tiempoSugerido: false,
     horario: false,
   });
+  const [rightSidebarLayout, setRightSidebarLayout] = useState({ top: 96, height: 640 });
 
   const galleryImages = useMemo(() => {
     const images = business?.business.images || [];
@@ -307,6 +310,42 @@ export default function AdminViewBusinessPage() {
   const toggleSection = (section: SectionKey) => {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
+
+  useEffect(() => {
+    const updateRightSidebarLayout = () => {
+      let navBottom = 0;
+
+      const topBars = Array.from(document.querySelectorAll<HTMLElement>("header, nav"));
+      topBars.forEach((element) => {
+        const styles = window.getComputedStyle(element);
+        const isPinned = styles.position === "fixed" || styles.position === "sticky";
+        if (!isPinned) return;
+
+        const rect = element.getBoundingClientRect();
+        if (rect.bottom <= 0) return;
+        navBottom = Math.max(navBottom, rect.bottom);
+      });
+
+      const top = Math.max(16, Math.round(navBottom + 12));
+      const height = Math.max(360, Math.round(window.innerHeight - top - 16));
+
+      setRightSidebarLayout((prev) => {
+        if (prev.top === top && prev.height === height) return prev;
+        return { top, height };
+      });
+    };
+
+    updateRightSidebarLayout();
+    window.addEventListener("resize", updateRightSidebarLayout);
+    window.addEventListener("scroll", updateRightSidebarLayout, { passive: true });
+    window.addEventListener("orientationchange", updateRightSidebarLayout);
+
+    return () => {
+      window.removeEventListener("resize", updateRightSidebarLayout);
+      window.removeEventListener("scroll", updateRightSidebarLayout);
+      window.removeEventListener("orientationchange", updateRightSidebarLayout);
+    };
+  }, []);
 
   useEffect(() => {
     if (resultadoMensaje) {
@@ -1089,12 +1128,13 @@ export default function AdminViewBusinessPage() {
   const isApproved = mappedStatus === "APPROVED";
   const isArchived = mappedStatus === "archivado";
   const isRejected = mappedStatus === "REJECTED";
-  const statusReason = isArchived
-    ? business.archivedReason || ""
-    : isRejected
-      ? business.rejectionReason || ""
-      : "";
-  const statusReasonLabel = isArchived ? "Motivo de archivado" : isRejected ? "Motivo de rechazo" : "Motivo";
+  const statusReason = isArchived ? business.archivedReason || "" : business.rejectionReason || "";
+  const rejectionReason = business.rejectionReason || "";
+  const rejectionDate = business.rejectedAt || "";
+  const statusDetailLabel = isArchived ? "Detalle del archivado" : "Detalle del rechazo";
+  const statusDetailReasonLabel = isArchived ? "Motivo de archivado" : "Motivo";
+  const statusDetailDate = isArchived ? business.archivedAt || "" : rejectionDate;
+  const showStatusDetailAside = isArchived || isRejected;
   const showArchivedStyleActions = isArchived || isRejected;
   const hasAdministrativeActions = isPending || isApproved || showArchivedStyleActions;
   const activeSchedulePreview = DAY_LABELS.filter((day) => draftHorario[day.key].enabled).map((day) => ({
@@ -1130,6 +1170,7 @@ export default function AdminViewBusinessPage() {
 
         <div className="h-28 md:h-32 lg:h-36" />
 
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-6 lg:items-start">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1156,15 +1197,6 @@ export default function AdminViewBusinessPage() {
                 </span>
               </div>
               <p className="mt-4 text-[#1A4D2E]/80 text-sm md:text-base font-medium">{config.description}</p>
-              {(isArchived || isRejected) && (
-                <div className="mt-5 mx-auto max-w-lg bg-[#FFF7E8] border-2 border-[#F2C47C] rounded-2xl px-5 py-4 text-left shadow-sm">
-                  <p className="text-xs uppercase tracking-wide font-black text-[#B56A00] mb-1">{statusReasonLabel}</p>
-                  <p className="text-sm md:text-base font-medium text-[#1A4D2E]">
-                    {statusReason || "No se especificó un motivo."}
-                  </p>
-                </div>
-              )}
-
               {/* Aviso de revisión especial */}
               {business.business.solicitaRevisionAdmin && (
                 <div className="mt-5 mx-auto max-w-lg bg-yellow-50 border-2 border-yellow-400 rounded-2xl px-5 py-4 flex flex-col gap-3">
@@ -1194,101 +1226,195 @@ export default function AdminViewBusinessPage() {
 
           <div className="h-[2px] w-full bg-[#1A4D2E]/20" />
 
-          <div className="px-6 md:px-8 pt-6 md:pt-8 pb-8 md:pb-10 bg-gradient-to-b from-white to-[#FCFEFC]">
-            <div className={`mb-8 grid gap-5 ${hasAdministrativeActions ? "xl:grid-cols-2 xl:items-stretch" : ""}`}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="h-full bg-white rounded-3xl p-5 border-2 border-[#1A4D2E]/20 flex flex-col shadow-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleSection("solicitante")}
-                  className="w-full flex items-center justify-between text-left pb-3 border-b-2 border-[#1A4D2E]/15"
+          <div className="relative px-6 md:px-8 pt-6 md:pt-8 pb-8 md:pb-10 bg-gradient-to-b from-white to-[#FCFEFC]">
+            <div className="mb-8 lg:hidden">
+              <aside className="mt-6 space-y-4">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="bg-white rounded-3xl p-5 border-2 border-[#1A4D2E]/20 shadow-sm"
                 >
-                  <h3 className="text-xl font-black text-[#1A4D2E] inline-flex items-center gap-2">
-                    <FiUser className="text-[#0D601E]" size={18} /> Información del Solicitante
-                  </h3>
-                  <FiChevronRight
-                    size={22}
-                    className={`text-[#1A4D2E] transition-transform duration-200 ${openSections.solicitante ? "rotate-90" : ""}`}
-                  />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("solicitante")}
+                    className="w-full flex items-center justify-between text-left pb-3 border-b-2 border-[#1A4D2E]/15"
+                  >
+                    <h3 className="text-xl font-black text-[#1A4D2E] inline-flex items-center gap-2">
+                      <FiUser className="text-[#0D601E]" size={18} /> Información del Solicitante
+                    </h3>
+                    <FiChevronRight
+                      size={22}
+                      className={`text-[#1A4D2E] transition-transform duration-200 ${openSections.solicitante ? "rotate-90" : ""}`}
+                    />
+                  </button>
 
-                <AnimatePresence initial={false}>
-                  {openSections.solicitante && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25, ease: "easeInOut" }}
-                      className="overflow-hidden flex-1"
-                    >
-                      <div className="mt-5 h-full">
-                        {ownerProfileIdentifier && (
-                          <Link
-                            href={`/perfil/${encodeURIComponent(ownerProfileIdentifier)}`}
-                            className="block w-full bg-[#FCFEFC] border-2 border-[#1A4D2E]/15 rounded-2xl p-4 hover:shadow-lg hover:border-[#0D601E]/35 transition-all group cursor-pointer"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#1A4D2E]/20 bg-[#F6F0E6] flex-shrink-0">
-                                {owner?.fotoPerfil ? (
-                                  <img src={owner.fotoPerfil} alt={ownerName} className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-[#769C7B]">
-                                    <FiUser size={20} />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <FiUser size={16} className="text-[#0D601E]" />
-                                  <p className="text-xs text-[#769C7B] font-black uppercase tracking-wide">Propietario</p>
+                  <AnimatePresence initial={false}>
+                    {openSections.solicitante && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-5">
+                          {ownerProfileIdentifier && (
+                            <Link
+                              href={`/perfil/${encodeURIComponent(ownerProfileIdentifier)}`}
+                              className="block w-full bg-[#FCFEFC] border-2 border-[#1A4D2E]/15 rounded-2xl p-4 hover:shadow-lg hover:border-[#0D601E]/35 transition-all group cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#1A4D2E]/20 bg-[#F6F0E6] flex-shrink-0">
+                                  {owner?.fotoPerfil ? (
+                                    <img src={owner.fotoPerfil} alt={ownerName} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-[#769C7B]">
+                                      <FiUser size={20} />
+                                    </div>
+                                  )}
                                 </div>
-                                <p className="text-sm font-black text-[#1A4D2E] break-all mb-1">{ownerName || "No disponible"}</p>
-                                <p className="text-xs text-[#769C7B] break-all">{owner?.email || "No disponible"}</p>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <FiUser size={16} className="text-[#0D601E]" />
+                                    <p className="text-xs text-[#769C7B] font-black uppercase tracking-wide">Propietario</p>
+                                  </div>
+                                  <p className="text-sm font-black text-[#1A4D2E] break-all mb-1">{ownerName || "No disponible"}</p>
+                                  <p className="text-xs text-[#769C7B] break-all">{owner?.email || "No disponible"}</p>
+                                </div>
+                                <FiChevronRight size={20} className="text-[#0D601E] flex-shrink-0 group-hover:translate-x-1 transition-transform" />
                               </div>
-                              <FiChevronRight size={20} className="text-[#0D601E] flex-shrink-0 group-hover:translate-x-1 transition-transform" />
+                            </Link>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="bg-white rounded-3xl p-5 border-2 border-[#1A4D2E]/20 shadow-sm"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setShowActionPanel((prev) => !prev)}
+                    className="w-full flex items-center justify-between text-left pb-3 border-b-2 border-[#1A4D2E]/15"
+                  >
+                    <h3 className="text-xl font-black text-[#1A4D2E] inline-flex items-center gap-2">
+                      <FiBriefcase className="text-[#0D601E]" size={18} /> Acción administrativa
+                    </h3>
+                    <FiChevronRight
+                      size={22}
+                      className={`text-[#1A4D2E] transition-transform duration-200 ${showActionPanel ? "rotate-90" : ""}`}
+                    />
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {showActionPanel && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-5">
+                          {isPending && (
+                            <PendingDecisionPanel
+                              procesando={procesando}
+                              modalAccion={modalAccion}
+                              onAprobar={() => handleGestionarNegocio("aprobar")}
+                              onRechazar={() => handleGestionarNegocio("rechazar")}
+                              compact
+                              showHeader={false}
+                              flat
+                            />
+                          )}
+
+                          {isApproved && (
+                            <ApprovedBusinessPanel
+                              procesando={procesandoAccion}
+                              onRegresarPendientes={handleRegresarAPendientes}
+                              onArchivar={() => setModalArchivar(true)}
+                              showHeader={false}
+                              flat
+                            />
+                          )}
+
+                          {showArchivedStyleActions && (
+                            <ArchivedBusinessPanel
+                              procesando={procesandoAccion}
+                              onDesarchivar={handleDesarchivarNegocio}
+                              onEliminar={() => setModalEliminar(true)}
+                              showHeader={false}
+                              flat
+                            />
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+
+                {showStatusDetailAside && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="bg-white border border-[#E5DACA] rounded-3xl shadow-[0_10px_32px_rgba(26,77,46,0.12)] p-5"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setShowStatusDetailPanel((prev) => !prev)}
+                      className="w-full flex items-center justify-between text-left mb-4"
+                    >
+                      <h3 className="text-sm font-black text-[#1A4D2E] uppercase tracking-widest">{statusDetailLabel}</h3>
+                      <FiChevronRight
+                        size={20}
+                        className={`text-[#1A4D2E] transition-transform duration-200 ${showStatusDetailPanel ? "rotate-90" : ""}`}
+                      />
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {showStatusDetailPanel && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                          className="overflow-hidden"
+                        >
+                          <div className="space-y-3">
+                            <div className="bg-[#F6F0E6] rounded-2xl p-4">
+                              <p className="text-[11px] font-bold uppercase tracking-widest text-[#769C7B] mb-1">{statusDetailReasonLabel}</p>
+                              <p className="text-sm text-[#1A4D2E] leading-relaxed">
+                                {isArchived ? statusReason || "No se especificó un motivo." : rejectionReason || "No se especificó un motivo."}
+                              </p>
                             </div>
-                          </Link>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-
-              <div className="h-full flex">
-                {isPending && (
-                  <PendingDecisionPanel
-                    procesando={procesando}
-                    modalAccion={modalAccion}
-                    onAprobar={() => handleGestionarNegocio("aprobar")}
-                    onRechazar={() => handleGestionarNegocio("rechazar")}
-                    compact
-                  />
+                            {statusDetailDate && (
+                              <div className="bg-[#F6F0E6] rounded-2xl p-4">
+                                <p className="text-[11px] font-bold uppercase tracking-widest text-[#769C7B] mb-1">Fecha</p>
+                                <p className="text-sm font-semibold text-[#1A4D2E]">
+                                  {new Date(statusDetailDate).toLocaleString("es-MX", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
                 )}
-
-                {isApproved && (
-                  <ApprovedBusinessPanel
-                    procesando={procesandoAccion}
-                    onRegresarPendientes={handleRegresarAPendientes}
-                    onArchivar={() => setModalArchivar(true)}
-                  />
-                )}
-
-                {showArchivedStyleActions && (
-                  <ArchivedBusinessPanel
-                    procesando={procesandoAccion}
-                    onDesarchivar={handleDesarchivarNegocio}
-                    onEliminar={() => setModalEliminar(true)}
-                  />
-                )}
-              </div>
+              </aside>
             </div>
-
-            <div className="mb-6 h-[2px] w-full bg-[#1A4D2E]/20" />
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1874,6 +2000,199 @@ export default function AdminViewBusinessPage() {
             </section>
           </div>
         </motion.div>
+
+        <aside className="hidden lg:block lg:w-[380px]">
+          <div
+            className="lg:sticky lg:overflow-y-auto lg:overscroll-contain lg:pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden space-y-4"
+            style={{ top: `${rightSidebarLayout.top}px`, height: `${rightSidebarLayout.height}px` }}
+          >
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-3xl p-5 border-2 border-[#1A4D2E]/20 shadow-sm"
+          >
+            <button
+              type="button"
+              onClick={() => toggleSection("solicitante")}
+              className="w-full flex items-center justify-between text-left pb-3 border-b-2 border-[#1A4D2E]/15"
+            >
+              <h3 className="text-xl font-black text-[#1A4D2E] inline-flex items-center gap-2">
+                <FiUser className="text-[#0D601E]" size={18} /> Información del Solicitante
+              </h3>
+              <FiChevronRight
+                size={22}
+                className={`text-[#1A4D2E] transition-transform duration-200 ${openSections.solicitante ? "rotate-90" : ""}`}
+              />
+            </button>
+
+            <AnimatePresence initial={false}>
+              {openSections.solicitante && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-5">
+                    {ownerProfileIdentifier && (
+                      <Link
+                        href={`/perfil/${encodeURIComponent(ownerProfileIdentifier)}`}
+                        className="block w-full bg-[#FCFEFC] border-2 border-[#1A4D2E]/15 rounded-2xl p-4 hover:shadow-lg hover:border-[#0D601E]/35 transition-all group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#1A4D2E]/20 bg-[#F6F0E6] flex-shrink-0">
+                            {owner?.fotoPerfil ? (
+                              <img src={owner.fotoPerfil} alt={ownerName} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[#769C7B]">
+                                <FiUser size={20} />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <FiUser size={16} className="text-[#0D601E]" />
+                              <p className="text-xs text-[#769C7B] font-black uppercase tracking-wide">Propietario</p>
+                            </div>
+                            <p className="text-sm font-black text-[#1A4D2E] break-all mb-1">{ownerName || "No disponible"}</p>
+                            <p className="text-xs text-[#769C7B] break-all">{owner?.email || "No disponible"}</p>
+                          </div>
+                          <FiChevronRight size={20} className="text-[#0D601E] flex-shrink-0 group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      </Link>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-white rounded-3xl p-5 border-2 border-[#1A4D2E]/20 shadow-sm"
+          >
+            <button
+              type="button"
+              onClick={() => setShowActionPanel((prev) => !prev)}
+              className="w-full flex items-center justify-between text-left pb-3 border-b-2 border-[#1A4D2E]/15"
+            >
+              <h3 className="text-xl font-black text-[#1A4D2E] inline-flex items-center gap-2">
+                <FiBriefcase className="text-[#0D601E]" size={18} /> Acción administrativa
+              </h3>
+              <FiChevronRight
+                size={22}
+                className={`text-[#1A4D2E] transition-transform duration-200 ${showActionPanel ? "rotate-90" : ""}`}
+              />
+            </button>
+
+            <AnimatePresence initial={false}>
+              {showActionPanel && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-5">
+                    {isPending && (
+                      <PendingDecisionPanel
+                        procesando={procesando}
+                        modalAccion={modalAccion}
+                        onAprobar={() => handleGestionarNegocio("aprobar")}
+                        onRechazar={() => handleGestionarNegocio("rechazar")}
+                        compact
+                        showHeader={false}
+                        flat
+                      />
+                    )}
+
+                    {isApproved && (
+                      <ApprovedBusinessPanel
+                        procesando={procesandoAccion}
+                        onRegresarPendientes={handleRegresarAPendientes}
+                        onArchivar={() => setModalArchivar(true)}
+                        showHeader={false}
+                        flat
+                      />
+                    )}
+
+                    {showArchivedStyleActions && (
+                      <ArchivedBusinessPanel
+                        procesando={procesandoAccion}
+                        onDesarchivar={handleDesarchivarNegocio}
+                        onEliminar={() => setModalEliminar(true)}
+                        showHeader={false}
+                        flat
+                      />
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+
+          {showStatusDetailAside && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white border border-[#E5DACA] rounded-3xl shadow-[0_10px_32px_rgba(26,77,46,0.12)] p-5"
+            >
+              <button
+                type="button"
+                onClick={() => setShowStatusDetailPanel((prev) => !prev)}
+                className="w-full flex items-center justify-between text-left mb-4"
+              >
+                <h3 className="text-sm font-black text-[#1A4D2E] uppercase tracking-widest">{statusDetailLabel}</h3>
+                <FiChevronRight
+                  size={20}
+                  className={`text-[#1A4D2E] transition-transform duration-200 ${showStatusDetailPanel ? "rotate-90" : ""}`}
+                />
+              </button>
+              <AnimatePresence initial={false}>
+                {showStatusDetailPanel && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-3">
+                      <div className="bg-[#F6F0E6] rounded-2xl p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-[#769C7B] mb-1">{statusDetailReasonLabel}</p>
+                        <p className="text-sm text-[#1A4D2E] leading-relaxed">
+                          {isArchived ? statusReason || "No se especificó un motivo." : rejectionReason || "No se especificó un motivo."}
+                        </p>
+                      </div>
+                      {statusDetailDate && (
+                        <div className="bg-[#F6F0E6] rounded-2xl p-4">
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-[#769C7B] mb-1">Fecha</p>
+                          <p className="text-sm font-semibold text-[#1A4D2E]">
+                            {new Date(statusDetailDate).toLocaleString("es-MX", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+          </div>
+        </aside>
+        </div>
       </div>
 
       <GestionarNegocioModal
@@ -2208,28 +2527,34 @@ function PendingDecisionPanel({
   onAprobar,
   onRechazar,
   compact = false,
+  showHeader = true,
+  flat = false,
 }: {
   procesando: boolean;
   modalAccion: "aprobar" | "rechazar";
   onAprobar: () => void;
   onRechazar: () => void;
   compact?: boolean;
+  showHeader?: boolean;
+  flat?: boolean;
 }) {
   return (
     <div
-      className={`h-full rounded-3xl border-2 border-[#1A4D2E]/18 bg-white shadow-sm flex flex-col ${
-        compact ? "p-5" : "p-6"
+      className={`h-full flex flex-col ${
+        flat ? "p-0" : `rounded-3xl border-2 border-[#1A4D2E]/18 bg-white shadow-sm ${compact ? "p-5" : "p-6"}`
       }`}
     >
-      <div className="flex items-start justify-between gap-4 mb-4 pb-3 border-b border-[#1A4D2E]/12">
-        <div>
-          <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Accion administrativa</p>
-          <h3 className="text-xl font-black text-[#1A4D2E]">Gestionar solicitud del negocio</h3>
-          {!compact && (
-            <p className="text-sm text-[#1A4D2E]/70 mt-1">Revisa la informacion y confirma si apruebas o rechazas esta solicitud.</p>
-          )}
+      {showHeader && (
+        <div className="flex items-start justify-between gap-4 mb-4 pb-3 border-b border-[#1A4D2E]/12">
+          <div>
+            <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Accion administrativa</p>
+            <h3 className="text-xl font-black text-[#1A4D2E]">Gestionar solicitud del negocio</h3>
+            {!compact && (
+              <p className="text-sm text-[#1A4D2E]/70 mt-1">Revisa la informacion y confirma si apruebas o rechazas esta solicitud.</p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-3">
         <button
@@ -2258,20 +2583,26 @@ function ApprovedBusinessPanel({
   procesando,
   onRegresarPendientes,
   onArchivar,
+  showHeader = true,
+  flat = false,
 }: {
   procesando: boolean;
   onRegresarPendientes: () => void;
   onArchivar: () => void;
+  showHeader?: boolean;
+  flat?: boolean;
 }) {
   return (
-    <div className="h-full rounded-3xl border-2 border-[#1A4D2E]/18 bg-white shadow-sm p-6 flex flex-col">
-      <div className="flex items-start justify-between gap-4 mb-4 pb-3 border-b border-[#1A4D2E]/12">
-        <div>
-          <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Acción administrativa</p>
-          <h3 className="text-xl font-black text-[#1A4D2E]">Gestionar negocio activo</h3>
-          <p className="text-sm text-[#4F6757] mt-1">Este negocio está activo. Puedes regresarlo a pendientes o archivarlo.</p>
+    <div className={`h-full flex flex-col ${flat ? "p-0" : "rounded-3xl border-2 border-[#1A4D2E]/18 bg-white shadow-sm p-6"}`}>
+      {showHeader && (
+        <div className="flex items-start justify-between gap-4 mb-4 pb-3 border-b border-[#1A4D2E]/12">
+          <div>
+            <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Acción administrativa</p>
+            <h3 className="text-xl font-black text-[#1A4D2E]">Gestionar negocio activo</h3>
+            <p className="text-sm text-[#4F6757] mt-1">Este negocio está activo. Puedes regresarlo a pendientes o archivarlo.</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-3">
         <button
@@ -2300,20 +2631,26 @@ function ArchivedBusinessPanel({
   procesando,
   onDesarchivar,
   onEliminar,
+  showHeader = true,
+  flat = false,
 }: {
   procesando: boolean;
   onDesarchivar: () => void;
   onEliminar: () => void;
+  showHeader?: boolean;
+  flat?: boolean;
 }) {
   return (
-    <div className="h-full rounded-3xl border-2 border-[#1A4D2E]/18 bg-white shadow-sm p-6 flex flex-col">
-      <div className="flex items-start justify-between gap-4 mb-4 pb-3 border-b border-[#1A4D2E]/12">
-        <div>
-          <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Acción administrativa</p>
-          <h3 className="text-xl font-black text-[#1A4D2E]">Gestionar negocio archivado</h3>
-          <p className="text-sm text-[#4F6757] mt-1">Este negocio está archivado. Puedes desarchivarlo o eliminarlo permanentemente.</p>
+    <div className={`h-full flex flex-col ${flat ? "p-0" : "rounded-3xl border-2 border-[#1A4D2E]/18 bg-white shadow-sm p-6"}`}>
+      {showHeader && (
+        <div className="flex items-start justify-between gap-4 mb-4 pb-3 border-b border-[#1A4D2E]/12">
+          <div>
+            <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Acción administrativa</p>
+            <h3 className="text-xl font-black text-[#1A4D2E]">Gestionar negocio archivado</h3>
+            <p className="text-sm text-[#4F6757] mt-1">Este negocio está archivado. Puedes desarchivarlo o eliminarlo permanentemente.</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid sm:grid-cols-[1fr_auto] gap-3">
         <button
