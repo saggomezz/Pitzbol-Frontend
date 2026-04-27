@@ -21,6 +21,7 @@ export interface PlaceRecord {
   tiempoEstancia?: number;
   costoEstimado?: string;
   horario?: Record<string, { enabled?: boolean; open?: string; close?: string }> | null;
+  horariosJson?: string;
   subcategorias?: string[];
   fotos: string[];
   rating: number;
@@ -52,6 +53,7 @@ interface FirestorePlace {
   estimatedCost?: string;
   suggestedStayTime?: number | string;
   schedule?: Record<string, { enabled?: boolean; open?: string; close?: string }> | null;
+  horariosJson?: string;
   subcategoria?: string;
   subcategorias?: string[];
   categorias?: string[];
@@ -222,6 +224,7 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
           String(firestorePlace.costoEstimado || firestorePlace.estimatedCost || existing?.costoEstimado || "").trim() ||
           undefined,
         horario: firestorePlace.schedule ?? existing?.horario ?? null,
+        horariosJson: firestorePlace.horariosJson ?? existing?.horariosJson,
         fotos: Array.isArray(firestorePlace.fotos) ? firestorePlace.fotos : existing?.fotos || [],
         rating: realRating ?? existing?.rating ?? fallbackRating(nombre),
         views: realViews ?? existing?.views ?? fallbackViews(nombre),
