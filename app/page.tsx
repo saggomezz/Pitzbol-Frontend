@@ -882,7 +882,7 @@ function HomeContent() {
               </div>
               <button
                 onClick={() => {
-                  const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
+                  const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'https://ia.pitzbol.me';
                   try {
                     const raw = localStorage.getItem('pitzbol_user');
                     if (raw) {
@@ -913,7 +913,7 @@ function HomeContent() {
             onClose={() => {
               setShowAuthForIA(false);
               // Si tras cerrar ya está logeado, abrir la IA
-              const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
+              const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'https://ia.pitzbol.me';
               try {
                 const raw = localStorage.getItem('pitzbol_user');
                 if (raw) {
