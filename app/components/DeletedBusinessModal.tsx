@@ -10,6 +10,7 @@ interface DeletedBusinessModalProps {
     titulo: string;
     mensaje: string;
     fecha: string;
+    reason?: string;
   } | null;
   businessName?: string;
 }
@@ -27,9 +28,10 @@ export default function DeletedBusinessModal({
   const fallbackBusinessName = businessNameMatch ? businessNameMatch[1] : "Sin nombre";
   const resolvedBusinessName = (businessName || fallbackBusinessName).trim() || "Sin nombre";
 
-  // Extraer el motivo (todo después de "por el administrador.")
+  // Priorizar el motivo explícito y usar el texto solo como fallback.
   const reasonMatch = notification.mensaje.match(/por el administrador\.(.+)/);
-  const reason = reasonMatch ? reasonMatch[1].trim() : "";
+  const parsedReason = reasonMatch ? reasonMatch[1].trim() : "";
+  const reason = (notification.reason || parsedReason).trim();
 
   // Formatear la fecha
   const formattedDate = new Date(notification.fecha).toLocaleDateString("es-MX", {

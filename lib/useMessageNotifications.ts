@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { fetchWithAuth } from './fetchWithAuth';
+import { ensureValidAuthToken, fetchWithAuth } from './fetchWithAuth';
 import { getBackendOrigin, getSocketBackendOrigin } from './backendUrl';
 
 const BACKEND_URL = getSocketBackendOrigin();
@@ -141,39 +141,66 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
   useEffect(() => {
     if (!enabled || !userId) return;
 
-    const token = localStorage.getItem("pitzbol_token");
-    if (!token) return;
-    
-    // Conectar al servidor de Socket.IO
-    socketRef.current = io(BACKEND_URL, {
-      auth: {
-        token,
-        userId: userId,
-        userType: userType,
-      },
-    });
+    let isMounted = true;
 
-    socketRef.current.on("connect_error", (error) => {
-      if (error?.message === "Invalid token" || error?.message === "Authentication required") {
-        socketRef.current?.disconnect();
-      }
-    });
+    const connectMessageSocket = async () => {
+      const token = await ensureValidAuthToken();
+      if (!isMounted || !token) return;
 
-    socketRef.current.on("connect", () => {
-      console.log("Socket conectado para notificaciones");
-      setIsConnected(true);
-      
-      // Obtener conteo inicial de mensajes no leídos
-      fetchUnreadCount();
-    });
+      // Conectar al servidor de Socket.IO
+      const socket = io(BACKEND_URL, {
+        autoConnect: false,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        auth: {
+          token,
+          userId: userId,
+          userType: userType,
+        },
+      });
 
-    socketRef.current.on("disconnect", () => {
-      console.log("Socket desconectado");
-      setIsConnected(false);
-    });
+      socketRef.current = socket;
 
-    // Escuchar nuevos mensajes para actualizar notificaciones
-    socketRef.current.on("new-message", (message: any) => {
+      socket.on("connect_error", async (error) => {
+        if (error?.message !== "Invalid token" && error?.message !== "Authentication required") {
+          return;
+        }
+
+        const refreshedToken = await ensureValidAuthToken(true);
+        if (!isMounted || !refreshedToken) {
+          socket.disconnect();
+          return;
+        }
+
+        socket.auth = {
+          ...(typeof socket.auth === "object" ? socket.auth : {}),
+          token: refreshedToken,
+          userId,
+          userType,
+        } as any;
+
+        if (!socket.connected) {
+          socket.connect();
+        }
+      });
+
+      socket.on("connect", () => {
+        console.log("Socket conectado para notificaciones");
+        setIsConnected(true);
+
+        // Obtener conteo inicial de mensajes no leídos
+        fetchUnreadCount();
+      });
+
+      socket.on("disconnect", () => {
+        console.log("Socket desconectado");
+        setIsConnected(false);
+      });
+
+      // Escuchar nuevos mensajes para actualizar notificaciones
+      socket.on("new-message", (message: any) => {
       // Solo contar si el mensaje no es del usuario actual
       if (message.senderId !== userId) {
         setUnreadCount(prev => prev + 1);
@@ -230,16 +257,28 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     });
 
     // Escuchar evento de mensaje leído
-    socketRef.current.on("messages-read", (data: { chatId: string; userId: string }) => {
+      socket.on("messages-read", (data: { chatId: string; userId: string }) => {
       if (data.userId === userId) {
         removeChatFromUnreadState(data.chatId);
       }
     });
 
+      socket.connect();
+    };
+
+    void connectMessageSocket();
+
+    const pollInterval = window.setInterval(() => {
+      void fetchUnreadCount();
+    }, 10000);
+
     // Limpiar al desmontar
     return () => {
+      isMounted = false;
+      window.clearInterval(pollInterval);
       if (socketRef.current) {
         socketRef.current.disconnect();
+        socketRef.current = null;
       }
     };
   }, [userId, userType, enabled, fetchUnreadCount, removeChatFromUnreadState]);

@@ -418,10 +418,14 @@ export default function MisSolicitudesPage() {
             </div>
             <button
               onClick={openBusinessFlowLikeNavbar}
-              className="group inline-flex items-center gap-2 self-center px-4 py-2 bg-white rounded-full text-[#0D601E] shadow border-2 border-[#0D601E] hover:bg-[#1A4D2E] hover:text-white hover:shadow-md transition-all"
+              className="group w-full sm:w-auto lg:w-[calc((100%-3rem)/4)] lg:flex-none inline-flex items-center justify-start gap-3 self-center h-fit px-5 py-3 bg-white rounded-2xl text-[#0D601E] shadow-lg border-2 border-[#0D601E] hover:bg-[#1A4D2E] hover:text-white hover:shadow-xl hover:-translate-y-0.5 transition-all text-left"
             >
-              <FaPlus className="text-xs shrink-0" />
-              <span className="text-xs tracking-wide whitespace-nowrap transition-colors">Nuevo negocio</span>
+              <div className="w-10 h-10 rounded-xl bg-[#0D601E]/10 flex items-center justify-center shrink-0 transition-colors group-hover:bg-white/15">
+                <FaPlus className="text-sm" />
+              </div>
+              <p className="text-xs md:text-sm uppercase tracking-wide font-bold text-inherit text-center whitespace-nowrap transition-colors">
+                Nuevo negocio
+              </p>
             </button>
           </div>
         </motion.div>
