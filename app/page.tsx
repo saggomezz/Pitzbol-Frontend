@@ -731,25 +731,9 @@ function HomeContent() {
 
   const cargarItinerarioHome = async () => {
     setLoadingIA(true);
-    
-    // Coordenadas por defecto (Centro de GDL)
-    let ubicacionUsuario = { lat: 20.6767, lng: -103.3371 };
 
-    // INTENTAR DETECTAR UBICACIÓN REAL
-    if ("geolocation" in navigator) {
-      try {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-        });
-        ubicacionUsuario = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        };
-        console.log("Ubicación detectada con éxito");
-      } catch (error) {
-        console.log("Usando ubicación por defecto (GPS desactivado o timeout)");
-      }
-    }
+    // Coordenadas por defecto (Centro de GDL) — la geolocalización se maneja en ia.pitzbol.me
+    const ubicacionUsuario = { lat: 20.6767, lng: -103.3371 };
 
     try {
       const res = await fetch('/datosLugares.csv');
