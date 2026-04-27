@@ -15,6 +15,7 @@ export interface BusinessData {
   phone?: string;
   location?: string;
   website?: string;
+  schedule?: Record<string, { apertura: string; cierre: string } | "cerrado">;
 }
 
 export async function uploadImagesToCloudinary(files: File[]): Promise<string[]> {
@@ -49,6 +50,7 @@ export async function createBusiness(business: BusinessData) {
   formData.append('cp', business.cp);
   formData.append('description', business.description);
   formData.append('owner', business.owner);
+  if (business.schedule) formData.append('schedule', JSON.stringify(business.schedule));
   if (business.logo) {
     formData.append('logo', business.logo);
   }

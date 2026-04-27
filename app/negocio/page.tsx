@@ -7,6 +7,29 @@ import { enviarNotificacion } from "../../lib/notificaciones";
 import { useRouter } from "next/navigation";
 import { usePitzbolUser } from "../../lib/usePitzbolUser";
 
+type DaySchedule = { apertura: string; cierre: string } | "cerrado";
+type WeekSchedule = Record<string, DaySchedule>;
+
+const DIAS = [
+  { id: "lunes", label: "Lunes" },
+  { id: "martes", label: "Martes" },
+  { id: "miercoles", label: "Miércoles" },
+  { id: "jueves", label: "Jueves" },
+  { id: "viernes", label: "Viernes" },
+  { id: "sabado", label: "Sábado" },
+  { id: "domingo", label: "Domingo" },
+];
+
+const DEFAULT_SCHEDULE: WeekSchedule = {
+  lunes:     { apertura: "09:00", cierre: "18:00" },
+  martes:    { apertura: "09:00", cierre: "18:00" },
+  miercoles: { apertura: "09:00", cierre: "18:00" },
+  jueves:    { apertura: "09:00", cierre: "18:00" },
+  viernes:   { apertura: "09:00", cierre: "18:00" },
+  sabado:    { apertura: "10:00", cierre: "15:00" },
+  domingo:   "cerrado",
+};
+
 export default function PublicarNegocioPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -24,6 +47,22 @@ export default function PublicarNegocioPage() {
   const [phone, setPhone] = useState("");
   const [location, setLocation] = useState("");
   const [website, setWebsite] = useState("");
+  const [schedule, setSchedule] = useState<WeekSchedule>(DEFAULT_SCHEDULE);
+
+  const setDayCerrado = (dia: string, cerrado: boolean) => {
+    setSchedule(prev => ({
+      ...prev,
+      [dia]: cerrado ? "cerrado" : { apertura: "09:00", cierre: "18:00" },
+    }));
+  };
+
+  const setDayHour = (dia: string, field: "apertura" | "cierre", value: string) => {
+    setSchedule(prev => {
+      const current = prev[dia];
+      if (current === "cerrado") return prev;
+      return { ...prev, [dia]: { ...current, [field]: value } };
+    });
+  };
   const router = useRouter();
   const user = usePitzbolUser();
 
@@ -103,7 +142,8 @@ export default function PublicarNegocioPage() {
         category,
         phone,
         location,
-        website
+        website,
+        schedule,
       });
       await enviarNotificacion(
         user.uid,
@@ -203,6 +243,45 @@ export default function PublicarNegocioPage() {
           required
           className="w-full p-2 mb-4 border rounded"
         />
+        <label className="block mb-2 font-semibold text-[#3B5D50]">Horario de atención</label>
+        <div className="mb-4 border rounded-lg overflow-hidden divide-y">
+          {DIAS.map(({ id, label }) => {
+            const day = schedule[id];
+            const cerrado = day === "cerrado";
+            return (
+              <div key={id} className="flex items-center gap-3 px-3 py-2 bg-white">
+                <span className="w-24 text-sm font-medium text-[#3B5D50] shrink-0">{label}</span>
+                <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={cerrado}
+                    onChange={e => setDayCerrado(id, e.target.checked)}
+                    className="accent-[#3B5D50]"
+                  />
+                  Cerrado
+                </label>
+                {!cerrado && typeof day === "object" && (
+                  <div className="flex items-center gap-2 ml-auto">
+                    <input
+                      type="time"
+                      value={day.apertura}
+                      onChange={e => setDayHour(id, "apertura", e.target.value)}
+                      className="border rounded px-2 py-1 text-xs w-24"
+                    />
+                    <span className="text-gray-400 text-xs">–</span>
+                    <input
+                      type="time"
+                      value={day.cierre}
+                      onChange={e => setDayHour(id, "cierre", e.target.value)}
+                      className="border rounded px-2 py-1 text-xs w-24"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
         <label className="block mb-2 text-[#3B5D50]">Logo del negocio <span className="text-red-600">*</span></label>
         <div style={{display:'flex',gap:16,marginBottom:8}}>
           <label style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',border:'2px dashed #B0B0B0',borderRadius:12,width:100,height:100,cursor:'pointer',background:'#FAFAFA'}}>
