@@ -301,9 +301,11 @@ export default function InformacionLugar() {
 
       try {
         const mergedPlaces = await getMergedPlaces();
-        const lugarRecord = mergedPlaces.find(
-          (candidate) => normalizeName(candidate.nombre) === normalizeName(nombreLugar)
-        );
+        const normalizedQuery = normalizeName(nombreLugar);
+        const lugarRecord =
+          mergedPlaces.find((c) => normalizeName(c.nombre) === normalizedQuery) ||
+          mergedPlaces.find((c) => normalizeName(c.nombre).startsWith(normalizedQuery + ',')) ||
+          mergedPlaces.find((c) => normalizeName(c.nombre).startsWith(normalizedQuery + ' '));
 
         const lugarEncontrado = lugarRecord ? mapPlaceToPublicDetail(lugarRecord) : null;
         setLugar(lugarEncontrado);
