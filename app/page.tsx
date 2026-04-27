@@ -60,12 +60,10 @@ const ALL_CATEGORIES: Category[] = [
 type Partido = { fecha: string; fechaDisplay: string; hora: string; equipo1: string; bandera1: string; equipo2: string; bandera2: string; sede?: string; };
 
 const PARTIDOS_GDL: Partido[] = [
-  { fecha: "2026-06-11", fechaDisplay: "11 de Junio", hora: "20:00", equipo1: "Corea del Sur", bandera1: "https://flagcdn.com/kr.svg", equipo2: "Dinamarca", bandera2: "https://flagcdn.com/dk.svg" },
-  { fecha: "2026-06-15", fechaDisplay: "15 de Junio", hora: "16:00", equipo1: "Portugal", bandera1: "https://flagcdn.com/pt.svg", equipo2: "Marruecos", bandera2: "https://flagcdn.com/ma.svg" },
-  { fecha: "2026-06-19", fechaDisplay: "19 de Junio", hora: "19:00", equipo1: "Argentina", bandera1: "https://flagcdn.com/ar.svg", equipo2: "Chile", bandera2: "https://flagcdn.com/cl.svg" },
-  { fecha: "2026-06-22", fechaDisplay: "22 de Junio", hora: "20:00", equipo1: "España", bandera1: "https://flagcdn.com/es.svg", equipo2: "Croacia", bandera2: "https://flagcdn.com/hr.svg" },
-  { fecha: "2026-06-26", fechaDisplay: "26 de Junio", hora: "18:00", equipo1: "Brasil", bandera1: "https://flagcdn.com/br.svg", equipo2: "Uruguay", bandera2: "https://flagcdn.com/uy.svg" },
-  { fecha: "2026-07-02", fechaDisplay: "2 de Julio", hora: "20:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
+  { fecha: "2026-06-11", fechaDisplay: "11 de Junio", hora: "20:00", equipo1: "Corea del Sur", bandera1: "https://flagcdn.com/kr.svg", equipo2: "Chequia", bandera2: "https://flagcdn.com/cz.svg" },
+  { fecha: "2026-06-18", fechaDisplay: "18 de Junio", hora: "19:00", equipo1: "México", bandera1: "https://flagcdn.com/mx.svg", equipo2: "Corea del Sur", bandera2: "https://flagcdn.com/kr.svg" },
+  { fecha: "2026-06-23", fechaDisplay: "23 de Junio", hora: "20:00", equipo1: "Colombia", bandera1: "https://flagcdn.com/co.svg", equipo2: "RD Congo", bandera2: "https://flagcdn.com/cd.svg" },
+  { fecha: "2026-06-26", fechaDisplay: "26 de Junio", hora: "18:00", equipo1: "Uruguay", bandera1: "https://flagcdn.com/uy.svg", equipo2: "España", bandera2: "https://flagcdn.com/es.svg" },
 ];
 
 const PARTIDOS_CDMX: Partido[] = [
