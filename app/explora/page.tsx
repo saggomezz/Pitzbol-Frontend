@@ -9,15 +9,7 @@ export default function ExploraPage() {
       categoryName="Explora más lugares"
       categoriesToMatch={[
         "Explora más lugares",
-        "Artesanías / Souvenirs",
-        "Compras",
-        "Mercados locales",
-        "Artesanías",
-        "Centros comerciales",
-        "Aventura",
-        "Fotografía",
-        "Naturaleza",
-        "Mercados Locales",
+        "Otros",
       ]}
       heroImage="https://res.cloudinary.com/dckbtxa4a/image/upload/v1776398876/Guadalajara-Jalisco_wbm1m1.webp"
       heroLabel="Más de Guadalajara"
