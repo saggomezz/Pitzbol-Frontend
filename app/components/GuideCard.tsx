@@ -128,10 +128,10 @@ export default function GuideCard({ guide }: GuideCardProps) {
           )}
 
           {/* Tarifa */}
-          {guide.tarifa && (
+          {(guide.tarifa != null && Number(guide.tarifa) > 0) && (
             <div className="mb-4 p-3 bg-gradient-to-r from-[#F6F0E6] to-white rounded-xl">
               <p className="text-2xl font-bold text-[#1A4D2E]">
-                ${guide.tarifa.toLocaleString('es-MX')}
+                ${Number(guide.tarifa).toLocaleString('es-MX')}
                 <span className="text-sm font-normal text-gray-600 ml-1">
                   MXN {t('hourlyRate')}
                 </span>

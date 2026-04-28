@@ -78,7 +78,7 @@ export default function ToursPage() {
     const fetchGuides = async () => {
       try {
         setGuidesLoading(true);
-        const res = await fetch(`/api/guides/verified?t=${Date.now()}`);
+        const res = await fetch(`/api/guides/verified?t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) { setGuides([]); return; }
         const data = await res.json();
         setGuides([...(data.guides || [])]);
