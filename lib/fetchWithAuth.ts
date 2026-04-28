@@ -42,6 +42,49 @@ async function tryRefreshToken(currentToken?: string): Promise<string | null> {
 }
 
 /**
+ * Returns a usable JWT token for authenticated realtime connections.
+ * - If `forceRefresh` is true, it always attempts refresh first.
+ * - Otherwise, it tries to recover missing tokens from refresh-token cookie
+ *   and proactively refreshes near-expiration tokens.
+ */
+export async function ensureValidAuthToken(forceRefresh = false): Promise<string | null> {
+  let token = localStorage.getItem('pitzbol_token') || '';
+
+  if (forceRefresh) {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = tryRefreshToken(token || undefined).finally(() => {
+        isRefreshing = false;
+        refreshPromise = null;
+      });
+    }
+
+    const refreshed = await refreshPromise;
+    return refreshed || null;
+  }
+
+  if (!token) {
+    const recovered = await tryRefreshToken();
+    if (recovered) token = recovered;
+  }
+
+  if (token && isTokenExpiringSoon(token)) {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = tryRefreshToken(token).finally(() => {
+        isRefreshing = false;
+        refreshPromise = null;
+      });
+    }
+
+    const refreshed = await refreshPromise;
+    if (refreshed) token = refreshed;
+  }
+
+  return token || null;
+}
+
+/**
  * fetch wrapper that automatically refreshes JWT tokens.
  * - Proactively refreshes the token when it's close to expiring (< 1 day left).
  * - On 401, attempts to refresh once and retries the original request.
@@ -51,26 +94,7 @@ export async function fetchWithAuth(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  let token = localStorage.getItem('pitzbol_token') || '';
-
-  // Si solo existe sesión por cookie (sin token local), intenta rehidratar JWT.
-  if (!token) {
-    const recovered = await tryRefreshToken();
-    if (recovered) token = recovered;
-  }
-
-  // Proactive refresh: renew token before it expires
-  if (token && isTokenExpiringSoon(token)) {
-    if (!isRefreshing) {
-      isRefreshing = true;
-      refreshPromise = tryRefreshToken(token).finally(() => {
-        isRefreshing = false;
-        refreshPromise = null;
-      });
-    }
-    const refreshed = await refreshPromise;
-    if (refreshed) token = refreshed;
-  }
+  let token = (await ensureValidAuthToken()) || '';
 
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> || {}),

@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   },
   env: {
     NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443',
-    NEXT_PUBLIC_IA_URL: process.env.NEXT_PUBLIC_IA_URL || 'https://ia.pitzbol.me:8443',
+    NEXT_PUBLIC_IA_URL: process.env.NEXT_PUBLIC_IA_URL || 'https://ia.pitzbol.me',
   },
   async headers() {
     return [
@@ -39,7 +39,8 @@ const nextConfig: NextConfig = {
               "base-uri 'self'",
               "form-action 'self'",
               "object-src 'none'",
-              "upgrade-insecure-requests",
+               "connect-src 'self' http://localhost:3001 http://127.0.0.1:3001 ws://localhost:3001 ws://127.0.0.1:3001 https://api.pitzbol.me:8443 https://ia.pitzbol.me:8443 wss://api.pitzbol.me:8443 https://res.cloudinary.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.googleapis.com https://js.stripe.com https://www.openstreetmap.org https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://nominatim.openstreetmap.org",
+               "upgrade-insecure-requests",
             ].join('; '),
           },
         ],

@@ -8,6 +8,15 @@
     "react-dom": "^19.2.0",
     "react-scripts": "5.0.1"
   },
+  "overrides": {
+    "@tootallnate/once": "^3.0.1",
+    "nth-check": "^2.1.1",
+    "postcss": "^8.5.12",
+    "serialize-javascript": "^7.0.5",
+    "webpack-dev-server": "^5.2.3",
+    "underscore": "^1.13.8",
+    "uuid": "^14.0.0"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",

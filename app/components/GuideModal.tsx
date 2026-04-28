@@ -25,7 +25,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
   
   const [userLocal, setUserLocal] = useState<any>(null);
   const [step, setStep] = useState(0);
-  const [tipo, setTipo] = useState<"empresa" | "persona" | "">("");
+  const [tipo, setTipo] = useState<"empresa" | "persona" | "">("persona");
   const [empresaNombre, setEmpresaNombre] = useState("");
   const [empresaLogoFile, setEmpresaLogoFile] = useState<File | null>(null);
   const [empresaLogoPreview, setEmpresaLogoPreview] = useState<string | null>(null);
@@ -67,7 +67,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         // Actualizar localStorage con los nuevos intereses
         const stored = localStorage.getItem("pitzbol_user");
         const user = stored ? JSON.parse(stored) : {};
-        const updated = { ...user, especialidades: nuevosIntereses };
+        const updated = { ...user, especialidades: nuevosIntereses, "07_intereses": nuevosIntereses };
         localStorage.setItem("pitzbol_user", JSON.stringify(updated));
         
         // Disparar evento personalizado para que el perfil se actualice
@@ -92,8 +92,8 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         setSelectedCats(especialidadesExistentes);
       }
 
-      setStep(0);
-      setTipo("");
+      setStep(1);
+      setTipo("persona");
       setEmpresaNombre("");
       setEmpresaLogoFile(null);
       setEmpresaLogoPreview(null);
@@ -134,10 +134,6 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
   }, [step, isScannerActive, imgRostro]);
 
   const nextStep = () => {
-    if (step === 0) {
-      if (!tipo) { setErrorMsg("Selecciona si eres empresa o persona individual."); return; }
-      if (tipo === "empresa" && !empresaNombre.trim()) { setErrorMsg("Ingresa el nombre de tu empresa."); return; }
-    }
     if (step === 1 && selectedCats.length === 0) {
         setErrorMsg(t('selectAtLeastOne'));
         return;
@@ -284,11 +280,13 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         
         // Guardar timestamp de cuándo se envió la solicitud
         const timestamp = new Date().toISOString();
-        const updatedUser = { 
+        const updatedUser = {
           ...userLocal,
           role: "turista",  // Explícitamente mantener role como turista
-          guide_status: "pendiente", 
+          guide_status: "pendiente",
           especialidades: selectedCats,
+          "07_intereses": selectedCats,
+          guia_tipo: tipo,
           solicitudEnviadaEn: timestamp
         };
         localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
@@ -362,7 +360,6 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
           {!isFinishing && !showConfirmation && (
             <div className="text-center mt-6 md:mt-2">
               <h2 className="text-[28px] md:text-[42px] text-[#8B0000] font-black uppercase leading-tight" style={{ fontFamily: 'var(--font-jockey)' }}>
-                {step === 0 && "Tipo de Perfil"}
                 {step === 1 && "Tu Especialidad"}
                 {step === 2 && "Identificación"}
                 {step === 3 && "Datos Fiscales"}
@@ -370,7 +367,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
               </h2>
               {/* Indicador de pasos fijo */}
               <div className="flex justify-center gap-2 md:gap-3 mt-4 mb-2">
-                {[0, 1, 2, 3, 4].map((i) => (
+                {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="relative h-1.5 w-8 md:w-10 bg-gray-100 rounded-full overflow-hidden">
                     {step >= i && <motion.div initial={{ width: 0 }} animate={{ width: "100%" }} className="absolute inset-0 bg-[#0D601E]" />}
                   </div>
@@ -438,77 +435,6 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
             ) : (
               <motion.div key={step} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full flex flex-col items-center">
                 
-                {step === 0 && (
-                  <div className="w-full pt-2 max-w-md mx-auto">
-                    <p className="text-[#1A4D2E]/80 text-[14px] md:text-base text-center mb-8">
-                      Cuéntanos cómo operas para personalizar tu perfil.
-                    </p>
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      {([
-                        { value: "persona", label: "Persona individual", icon: <FiUser size={28} /> },
-                        { value: "empresa", label: "Empresa / Agencia", icon: <FiBriefcase size={28} /> },
-                      ] as const).map(opt => (
-                        <button
-                          key={opt.value}
-                          onClick={() => { setTipo(opt.value); setErrorMsg(""); }}
-                          className={`flex flex-col items-center gap-3 p-5 rounded-3xl border-2 transition-all ${tipo === opt.value ? "border-[#0D601E] bg-[#0D601E]/5 text-[#0D601E]" : "border-gray-200 text-[#1A4D2E] hover:border-[#0D601E]/40"}`}
-                        >
-                          {opt.icon}
-                          <span className="text-sm font-bold text-center leading-tight">{opt.label}</span>
-                          {tipo === opt.value && <FiCheck size={16} className="text-[#0D601E]" />}
-                        </button>
-                      ))}
-                    </div>
-
-                    <AnimatePresence>
-                      {tipo === "empresa" && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="space-y-4 overflow-hidden"
-                        >
-                          <div>
-                            <label className="text-[#1A4D2E] font-bold italic text-xs mb-1 block">Nombre de la empresa *</label>
-                            <input
-                              value={empresaNombre}
-                              onChange={e => setEmpresaNombre(e.target.value)}
-                              placeholder="Ej. Tours Guadalajara S.A."
-                              className={inputClass}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[#1A4D2E] font-bold italic text-xs mb-1 block">Página web (opcional)</label>
-                            <div className="relative">
-                              <FiGlobe className="absolute left-4 top-1/2 -translate-y-1/2 text-[#1A4D2E]/40" size={14} />
-                              <input
-                                value={empresaPagina}
-                                onChange={e => setEmpresaPagina(e.target.value)}
-                                placeholder="https://tuempresa.com"
-                                className={`${inputClass} pl-10`}
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-[#1A4D2E] font-bold italic text-xs mb-1 block">Logo de la empresa (opcional)</label>
-                            <label className="flex items-center gap-3 border-2 border-dashed border-gray-200 rounded-2xl p-4 cursor-pointer hover:border-[#0D601E]/40 transition-all">
-                              {empresaLogoPreview ? (
-                                <img src={empresaLogoPreview} alt="logo" className="w-12 h-12 rounded-xl object-cover" />
-                              ) : (
-                                <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
-                                  <FiUpload className="text-gray-400" size={20} />
-                                </div>
-                              )}
-                              <span className="text-sm text-gray-500">{empresaLogoFile ? empresaLogoFile.name : "Subir logo"}</span>
-                              <input type="file" accept="image/*" className="hidden" onChange={handleEmpresaLogo} />
-                            </label>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-
                 {step === 1 && (
                   <div className="w-full pt-2">
                     <motion.div

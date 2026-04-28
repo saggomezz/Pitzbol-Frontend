@@ -1,5 +1,5 @@
 Nombre del Lugar,Categoría,Dirección,Latitud,Longitud,Tiempo de Estancia,Costo Estimado,Imagen,Subcategoría
-"Estadio Akron, Guadalajara",Fútbol,Cto. J.V.C. 2800,"20,6817764","-103,4626455",180,"$400 - $2,500",,
+"Estadio Akron, Guadalajara",Fútbol,Cto. J.V.C. 2800,"20,6817764","-103,4626455",180,,,
 "Glorieta de la Minerva, Guadalajara",Fútbol,Av. Ignacio L Vallarta,"20,6743943","-103,3874128",45,Gratis,,
 "Museo Chivas, Guadalajara",Arquitectura,Cto. J.V.C. 2800,"20,6819467","-103,4626455",90,$150,,
 "La Gran Plaza Fashion Mall, Guadalajara","Eventos, Compras",La Gran Plaza Fashion Mall,"20,6737855","-103,4047841",90,$100,,
@@ -26,7 +26,7 @@ Nombre del Lugar,Categoría,Dirección,Latitud,Longitud,Tiempo de Estancia,Costo
 "Cantina La Fuente, Guadalajara","Gastronomía Mexicana, Música, Vida Nocturna",C. Pino Suárez 78,"20,6777418","-103,3456321",90,$200-$300,,Tradicional
 "El Parián de Tlaquepaque, Guadalajara","Gastronomía Mexicana, Vida Nocturna, Cultura",Calle Progreso 15,"20,6388349","-103,3110439",120,$300,,Tradicional
 "Instituto Cultural Cabañas, Guadalajara","Cultura, Fotografía, Arte e Historia, Museos",Pl. Tapatía,"20,6768911","-103,3406483",120,$80,,
-"Teatro Degollado, Guadalajara ","Fotografía, Vida Nocturna, Música, Arte e Historia, Cultura, Museos, Aventura, Eventos",C. Degollado s/n,"20,6769963","-103,34477",45,$90 - $350,,
+"Teatro Degollado, Guadalajara ","Fotografía, Música, Arte e Historia, Cultura, Museos, Aventura, Eventos",C. Degollado s/n,"20,6769963","-103,34477",45,$90 - $350,,
 "Catedral Metropolitana, Guadalajara","Cultura, Música, Fotografía, Vida Nocturna, Postre",Guadalajara,"20,6751707","-103,3473385",40,Gratis,,
 "Palacio de Gobierno de Jalisco, Guadalajara","Cultura, Museos, Arquitectura, Arte e Historia",Av. Ramón Corona 31,"20,6761701","-103,3463247",60,Gratis,,
 "Rotonda de los Jaliscienses Ilustres, Guadalajara","Naturaleza, Arquitectura, Fotografía",Rotonda de los Jaliscienses Ilustres,"20,6778865","-103,3470261",30,Gratis,,

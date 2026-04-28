@@ -6,7 +6,7 @@ import {
   FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
   FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
 } from "react-icons/fa";
-import { FiAward, FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
+import { FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
   FiPlus, FiShield, FiUser, FiX, FiCreditCard, FiDollarSign
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
@@ -15,7 +15,6 @@ import { getBackendOrigin } from "@/lib/backendUrl";
 
 import WalletModal from "@/app/components/WalletModal";
 import PersonaTourFormModal from "@/app/components/PersonaTourFormModal";
-import TourFormModal from "@/app/components/TourFormModal";
 
 const API_BASE = "/api";
 
@@ -85,7 +84,13 @@ export default function PerfilDetallado() {
   const [perfil, setPerfil] = useState<any>(null);
   const [tours, setTours] = useState<any[]>([]);
   const [showTourModal, setShowTourModal] = useState(false);
-  const [tipoGuia, setTipoGuia] = useState<string>("persona");
+  const [tipoGuia, setTipoGuia] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const u = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      return u.guia_tipo || "persona";
+    }
+    return "persona";
+  });
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [guardadosCount, setGuardadosCount] = useState(0);
@@ -209,7 +214,11 @@ export default function PerfilDetallado() {
         return;
       }
 
-      const initialEspecialidades = userLocal["07_intereses"] || userLocal.especialidades || userLocal["07_especialidades"] || [];
+      const initialEspecialidades =
+        (userLocal["07_intereses"]?.length > 0 ? userLocal["07_intereses"] : null) ||
+        (userLocal.especialidades?.length > 0 ? userLocal.especialidades : null) ||
+        userLocal["07_especialidades"] ||
+        [];
       const descripcionInicial = userLocal.descripcion ? capitalizarPrimera(userLocal.descripcion) : "";
       
       const initialIdiomas = userLocal.idiomas || userLocal["09_idiomas"] || [];
@@ -298,13 +307,13 @@ export default function PerfilDetallado() {
           }
         }
 
-        // Cargar tipo de guía (empresa/persona)
-        if (rol === "guia") {
+        // Cargar tipo de guía (empresa/persona) — solo si no está guardado localmente
+        if (rol === "guia" && !userLocal.guia_tipo) {
           try {
             const guideRes = await fetch(`${API_BASE}/guides/profile/${userLocal.uid}`);
             if (guideRes.ok) {
               const gData = await guideRes.json();
-              if (gData.success) setTipoGuia(gData.guide?.tipo || "persona");
+              if (gData.success && gData.guide?.tipo) setTipoGuia(gData.guide.tipo);
             }
           } catch {}
         }
@@ -1756,14 +1765,6 @@ export default function PerfilDetallado() {
                 </div>
                 {esGuia && (
                   <div className="flex items-center gap-2">
-                    {tipoGuia === "empresa" && (
-                      <a
-                        href={`/guia/empresa/${perfil?.id}`}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1A4D2E] text-white text-[11px] font-bold rounded-full hover:bg-[#0D601E] transition-all shadow-sm"
-                      >
-                        <FiAward size={11} /> Ver perfil empresarial
-                      </a>
-                    )}
                     <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
                       {tours.filter((s: any) => s.estado === 'aprobado').length} {t('published')}
                     </span>
@@ -1909,24 +1910,13 @@ export default function PerfilDetallado() {
       {/* Wallet Modal */}
       <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
 
-      {/* Modal según tipo de guía */}
-      {showTourModal && esGuia && tipoGuia === "empresa" && (
-        <TourFormModal
-          empresaId={perfil?.id || ""}
-          empresaNombre={`${perfil?.nombre || ""} ${perfil?.apellido || ""}`.trim()}
-          onClose={() => setShowTourModal(false)}
-          onSuccess={(tour: any) => {
-            setTours((prev: any[]) => [tour, ...prev]);
-            setShowTourModal(false);
-          }}
-        />
-      )}
-      {showTourModal && esGuia && tipoGuia !== "empresa" && (
+      {/* Modal crear experiencia */}
+      {showTourModal && esGuia && (
         <PersonaTourFormModal
           guiaId={perfil?.id || ""}
           guiaNombre={`${perfil?.nombre || ""} ${perfil?.apellido || ""}`.trim()}
           onClose={() => setShowTourModal(false)}
-          onSuccess={(tour) => {
+          onSuccess={(tour: any) => {
             setTours((prev: any[]) => [tour, ...prev]);
             setShowTourModal(false);
           }}
