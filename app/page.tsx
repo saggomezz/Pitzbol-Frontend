@@ -67,18 +67,17 @@ const PARTIDOS_GDL: Partido[] = [
 
 const PARTIDOS_CDMX: Partido[] = [
   { fecha: "2026-06-11", fechaDisplay: "11 de Junio", hora: "13:00", equipo1: "México", bandera1: "https://flagcdn.com/mx.svg", equipo2: "Sudáfrica", bandera2: "https://flagcdn.com/za.svg" },
-  { fecha: "2026-06-17", fechaDisplay: "17 de Junio", hora: "16:00", equipo1: "Colombia", bandera1: "https://flagcdn.com/co.svg", equipo2: "Bélgica", bandera2: "https://flagcdn.com/be.svg" },
-  { fecha: "2026-06-22", fechaDisplay: "22 de Junio", hora: "19:00", equipo1: "México", bandera1: "https://flagcdn.com/mx.svg", equipo2: "Ecuador", bandera2: "https://flagcdn.com/ec.svg" },
-  { fecha: "2026-06-26", fechaDisplay: "26 de Junio", hora: "13:00", equipo1: "México", bandera1: "https://flagcdn.com/mx.svg", equipo2: "Polonia", bandera2: "https://flagcdn.com/pl.svg" },
-  { fecha: "2026-07-02", fechaDisplay: "2 de Julio", hora: "20:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
+  { fecha: "2026-06-17", fechaDisplay: "17 de Junio", hora: "20:00", equipo1: "Uzbekistán", bandera1: "https://flagcdn.com/uz.svg", equipo2: "Colombia", bandera2: "https://flagcdn.com/co.svg" },
+  { fecha: "2026-06-24", fechaDisplay: "24 de Junio", hora: "19:00", equipo1: "Chequia", bandera1: "https://flagcdn.com/cz.svg", equipo2: "México", bandera2: "https://flagcdn.com/mx.svg" },
+  { fecha: "2026-06-30", fechaDisplay: "30 de Junio", hora: "19:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
+  { fecha: "2026-07-05", fechaDisplay: "5 de Julio", hora: "18:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
 ];
 
 const PARTIDOS_MTY: Partido[] = [
-  { fecha: "2026-06-12", fechaDisplay: "12 de Junio", hora: "13:00", equipo1: "Uruguay", bandera1: "https://flagcdn.com/uy.svg", equipo2: "Bolivia", bandera2: "https://flagcdn.com/bo.svg" },
-  { fecha: "2026-06-16", fechaDisplay: "16 de Junio", hora: "19:00", equipo1: "Holanda", bandera1: "https://flagcdn.com/nl.svg", equipo2: "Senegal", bandera2: "https://flagcdn.com/sn.svg" },
-  { fecha: "2026-06-20", fechaDisplay: "20 de Junio", hora: "16:00", equipo1: "Uruguay", bandera1: "https://flagcdn.com/uy.svg", equipo2: "Irak", bandera2: "https://flagcdn.com/iq.svg" },
-  { fecha: "2026-06-24", fechaDisplay: "24 de Junio", hora: "19:00", equipo1: "Holanda", bandera1: "https://flagcdn.com/nl.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
-  { fecha: "2026-07-01", fechaDisplay: "1 de Julio", hora: "20:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
+  { fecha: "2026-06-14", fechaDisplay: "14 de Junio", hora: "20:00", equipo1: "Suecia", bandera1: "https://flagcdn.com/se.svg", equipo2: "Túnez", bandera2: "https://flagcdn.com/tn.svg" },
+  { fecha: "2026-06-20", fechaDisplay: "20 de Junio", hora: "22:00", equipo1: "Túnez", bandera1: "https://flagcdn.com/tn.svg", equipo2: "Japón", bandera2: "https://flagcdn.com/jp.svg" },
+  { fecha: "2026-06-24", fechaDisplay: "24 de Junio", hora: "19:00", equipo1: "Sudáfrica", bandera1: "https://flagcdn.com/za.svg", equipo2: "Corea del Sur", bandera2: "https://flagcdn.com/kr.svg" },
+  { fecha: "2026-06-29", fechaDisplay: "29 de Junio", hora: "19:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
 ];
 
 const dates: DateInfo[] = [
