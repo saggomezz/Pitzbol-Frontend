@@ -8,7 +8,7 @@ export default function ClubsPage() {
     <CategoryPlacesPage
       categoryName="Clubs"
       categoriesToMatch={["Clubs", "Clubs / Bar", "Vida Nocturna", "Bar"]}
-      heroImage="https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484397/ideas-tema-fiesta_rq0r9b.jpg"
+      heroImage="https://res.cloudinary.com/dckbtxa4a/image/upload/v1777408875/469537367_122208595754073762_1280570453325883698_n_chbzu8.jpg"
       heroLabel="Vida nocturna"
       heroTitle="Clubs y Bares en GDL"
       heroDescription="Descubre los mejores clubs, bares y cantinas para vivir la noche de Guadalajara al máximo."
