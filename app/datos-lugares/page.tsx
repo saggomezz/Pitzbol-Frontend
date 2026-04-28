@@ -287,6 +287,34 @@ export default function DatosLugaresPage() {
         body: JSON.stringify({ horariosJson: JSON.stringify(horarioObj) }),
       });
 
+      // Calcular horaApertura, horaCierre y diasCerrado para el CSV de la IA
+      const diasCerrado: string[] = DIAS.filter(d => nuevoHorario[d].cerrado);
+      const diasAbiertos = DIAS.filter(d => !nuevoHorario[d].cerrado);
+      const horaApertura = diasAbiertos.length > 0 ? nuevoHorario[diasAbiertos[0]].apertura : '';
+      const horaCierre = diasAbiertos.length > 0
+        ? diasAbiertos.reduce((max, d) => {
+            const c = nuevoHorario[d].cierre;
+            // Comparar como horas; si el cierre es < apertura asume que es del día siguiente (mayor)
+            return c >= horaApertura ? (c > max ? c : max) : (max || c);
+          }, nuevoHorario[diasAbiertos[0]].cierre)
+        : '';
+
+      await fetch('/api/ia-place', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nombre,
+          categoria: nuevaCategoria,
+          latitud: nuevaLat,
+          longitud: nuevaLng,
+          horaApertura,
+          horaCierre,
+          diasCerrado,
+          imagen: fotosLimpias[0] || '',
+          tiempoEstancia: '60',
+        }),
+      }).catch(() => {});
+
       setMensajeNuevo("✓ Lugar creado correctamente");
       setNuevoNombre(""); setNuevaCategoria(""); setNuevasSubcategorias([]);
       setNuevaDescripcion(""); setNuevaLat(""); setNuevaLng("");
