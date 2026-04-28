@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import {
-  FiX, FiUpload, FiMapPin, FiClock, FiUsers, FiPlus, FiTrash2, FiCheck,
+  FiX, FiMapPin, FiClock, FiUsers, FiPlus, FiTrash2,
 } from "react-icons/fi";
 import { FaMapMarkedAlt } from "react-icons/fa";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
@@ -38,6 +38,7 @@ const QUE_INCLUYE = [
 ];
 
 const VEHICLE_TYPES = ["Auto / SUV", "Van", "Minibús", "Camión", "Otro"];
+const MAX_FOTOS = 3;
 
 interface FormData {
   titulo: string;
@@ -119,7 +120,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const fileRefs = useRef<(HTMLInputElement | null)[]>([null, null, null]);
+  const fileRefs = useRef<(HTMLInputElement | null)[]>(Array(MAX_FOTOS).fill(null));
 
   const set = (key: keyof FormData, value: any) => setForm(f => ({ ...f, [key]: value }));
 
@@ -164,11 +165,16 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.titulo.trim()) e.titulo = "El título es obligatorio";
-    if (!form.destino) e.destino = "Selecciona un destino";
-    if (form.destino === "Otro" && !form.destinoCalleNum.trim()) e.destinoCalleNum = "Indica la calle y número";
-    if (!form.duracion) e.duracion = "Selecciona la duración";
+    if (!form.titulo.trim()) e.titulo = "Escribe el nombre de la experiencia";
+    if (!form.destino) e.destino = "Selecciona la zona o destino principal";
+    if (form.destino === "Otro" && !form.destinoCalleNum.trim()) e.destinoCalleNum = "Indica la dirección o zona principal";
+    if (!form.descripcion.trim()) e.descripcion = "Describe qué vivirá el turista en esta experiencia";
+    if (!form.duracion) e.duracion = "Selecciona la duración aproximada";
     if (!form.precio.trim()) e.precio = "Indica el precio";
+    if (form.idiomas.length === 0) e.idiomas = "Selecciona al menos un idioma";
+    if (!form.disponibilidad.trim()) e.disponibilidad = "Indica tus días o forma de disponibilidad";
+    if (form.incluyeTransporte && form.tipoVehiculo.length === 0) e.tipoVehiculo = "Selecciona al menos un tipo de vehículo";
+    if (form.incluyeTransporte && !form.capacidad.trim()) e.capacidad = "Indica la capacidad disponible";
     if (!form.fotos.some(f => f !== null)) e.fotos = "Sube al menos una foto";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -225,17 +231,16 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[500] bg-black/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto py-6 px-4"
+        className="fixed inset-0 z-500 bg-black/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto py-6 px-4"
         onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       >
         <motion.div
           initial={{ opacity: 0, y: 32, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 32, scale: 0.97 }}
-          className="relative bg-white rounded-3xl shadow-2xl w-full max-w-xl"
+          className="relative bg-white rounded-3xl shadow-2xl w-full max-w-3xl"
         >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] rounded-t-3xl px-6 pt-6 pb-5 text-white">
+          <div className="bg-linear-to-r from-[#0D601E] to-[#1A4D2E] rounded-t-3xl px-6 pt-6 pb-5 text-white">
             <button onClick={onClose} className="absolute top-4 right-5 text-white/70 hover:text-white">
               <FiX size={22} />
             </button>
@@ -244,13 +249,13 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
                 <FaMapMarkedAlt className="text-white text-xl" />
               </div>
               <div>
-                <h2 className="font-black text-lg leading-tight">Publicar Experiencia</h2>
-                <p className="text-white/70 text-xs mt-0.5">{guiaNombre}</p>
+                <h2 className="font-black text-lg leading-tight">Nueva experiencia de tour</h2>
+                <p className="text-white/70 text-xs mt-0.5">Se publicará en el perfil del guía {guiaNombre}</p>
               </div>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+          <form onSubmit={handleSubmit} className="px-6 py-5 space-y-6">
 
             {submitError && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-4 py-3 rounded-xl leading-relaxed">
@@ -258,166 +263,201 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
               </div>
             )}
 
-            {/* Fotos */}
-            <div>
-              <label className={labelClass}>
-                Fotos de la experiencia <span className="text-red-500">*</span>
-                <span className="text-gray-400 font-normal ml-1">(hasta 3 — la primera es la principal)</span>
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[0, 1, 2].map(i => (
-                  <div key={i}>
-                    <input ref={el => { fileRefs.current[i] = el; }} type="file" accept="image/*" className="hidden" onChange={e => handlePhoto(i, e)} />
-                    {fotoPreviews[i] ? (
-                      <div className="relative rounded-2xl overflow-hidden aspect-square">
-                        <Image src={fotoPreviews[i]!} alt="" fill className="object-cover" />
-                        <button type="button" onClick={() => removePhoto(i)} className="absolute top-1.5 right-1.5 bg-black/50 text-white rounded-full p-1 hover:bg-black/70 transition-all">
-                          <FiTrash2 size={11} />
-                        </button>
-                        {i === 0 && <span className="absolute bottom-1.5 left-1.5 text-[9px] bg-[#0D601E] text-white px-1.5 py-0.5 rounded-full font-bold">Principal</span>}
+            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="space-y-6">
+                <section className="rounded-3xl border border-[#E3ECE4] bg-[#FBFDFB] p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-black text-[#1A4D2E]">Detalles de la experiencia</h3>
+                    <p className="text-xs text-[#6C8870] mt-1">Presenta la ruta, el valor del tour y qué hace especial a tu experiencia.</p>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Nombre de la experiencia <span className="text-red-500">*</span></label>
+                    <input className={inputClass + (errors.titulo ? " border-red-400" : "")} placeholder="Ej: Recorrido a pie por el Centro Histórico con leyendas locales" value={form.titulo} onChange={e => set("titulo", e.target.value)} />
+                    {errors.titulo && <p className={errClass}>{errors.titulo}</p>}
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <label className={labelClass}>Zona o destino principal <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <select className={inputClass + " appearance-none pr-8" + (errors.destino ? " border-red-400" : "")} value={form.destino} onChange={e => { set("destino", e.target.value); set("destinoCalleNum", ""); set("destinoCP", ""); }}>
+                          <option value="">Selecciona</option>
+                          {DESTINOS.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                        <FiMapPin className="absolute right-3 top-1/2 -translate-y-1/2 text-[#769C7B] pointer-events-none" size={14} />
                       </div>
-                    ) : (
-                      <button type="button" onClick={() => fileRefs.current[i]?.click()} className="w-full aspect-square rounded-2xl border-2 border-dashed border-[#C9D4CB] hover:border-[#1A4D2E] bg-[#F6F9F6] flex flex-col items-center justify-center gap-1 transition-all">
-                        <FiPlus className="text-[#769C7B] text-lg" />
-                        <span className="text-[10px] text-[#769C7B]">Foto {i + 1}</span>
-                      </button>
+                      {errors.destino && <p className={errClass}>{errors.destino}</p>}
+                    </div>
+                    <div>
+                      <label className={labelClass}>Duración estimada <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <select className={inputClass + " appearance-none pr-8" + (errors.duracion ? " border-red-400" : "")} value={form.duracion} onChange={e => set("duracion", e.target.value)}>
+                          <option value="">Selecciona</option>
+                          {DURACIONES.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                        <FiClock className="absolute right-3 top-1/2 -translate-y-1/2 text-[#769C7B] pointer-events-none" size={14} />
+                      </div>
+                      {errors.duracion && <p className={errClass}>{errors.duracion}</p>}
+                    </div>
+                  </div>
+
+                  {form.destino === "Otro" && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-3 rounded-2xl border border-[#D9E5DB] bg-white p-4">
+                      <div>
+                        <label className={labelClass}>Dirección o zona personalizada <span className="text-red-500">*</span></label>
+                        <input className={inputClass + (errors.destinoCalleNum ? " border-red-400" : "")} placeholder="Ej: Av. Hidalgo 123, Col. Centro" value={form.destinoCalleNum} onChange={e => set("destinoCalleNum", e.target.value)} />
+                        {errors.destinoCalleNum && <p className={errClass}>{errors.destinoCalleNum}</p>}
+                      </div>
+                      <div>
+                        <label className={labelClass}>Código postal</label>
+                        <input className={inputClass} placeholder="Ej: 44100" value={form.destinoCP} maxLength={5} onChange={e => set("destinoCP", e.target.value.replace(/\D/g, ""))} />
+                      </div>
+                    </motion.div>
+                  )}
+
+                  <div>
+                    <label className={labelClass}>¿Qué vivirá el turista? <span className="text-red-500">*</span></label>
+                    <textarea className={inputClass + " min-h-32 resize-y" + (errors.descripcion ? " border-red-400" : "")} rows={5} placeholder="Describe el recorrido, las paradas, el ritmo del tour, lo que aprenderán y por qué tu experiencia es distinta." value={form.descripcion} onChange={e => set("descripcion", e.target.value)} />
+                    {errors.descripcion && <p className={errClass}>{errors.descripcion}</p>}
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Precio de la experiencia <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#1A4D2E] font-bold text-sm pointer-events-none">$</span>
+                      <input type="text" inputMode="decimal" className={inputClass + " pl-8 pr-14" + (errors.precio ? " border-red-400" : "")} placeholder="0.00" value={form.precio} onChange={handlePrecioChange} />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#769C7B] text-xs font-medium pointer-events-none">MXN</span>
+                    </div>
+                    <p className="mt-1 text-[10px] text-[#6C8870]">Se guardará como el precio visible de la experiencia en tu perfil.</p>
+                    {errors.precio && <p className={errClass}>{errors.precio}</p>}
+                  </div>
+                </section>
+
+                <section className="rounded-3xl border border-[#E3ECE4] bg-[#FBFDFB] p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-black text-[#1A4D2E]">Operación y disponibilidad</h3>
+                    <p className="text-xs text-[#6C8870] mt-1">Define cómo te encontrarán, tus idiomas y si ofreces transporte.</p>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Idiomas del tour <span className="text-red-500">*</span></label>
+                    <Chips options={IDIOMAS} selected={form.idiomas} toggle={v => toggleArr("idiomas", v)} />
+                    {errors.idiomas && <p className={errClass}>{errors.idiomas}</p>}
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>¿Qué incluye la experiencia?</label>
+                    <Chips options={QUE_INCLUYE} selected={form.queIncluye} toggle={v => toggleArr("queIncluye", v)} />
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Punto de encuentro o recogida</label>
+                    <input className={inputClass + " mb-3"} placeholder="Ej: Plaza de la Liberación, frente a la Catedral" value={form.puntoRecogida} onChange={e => set("puntoRecogida", e.target.value)} />
+                    <div className="rounded-2xl overflow-hidden border border-[#C9D4CB]">
+                      <MinimapaLocationPicker latitud={form.recogidaLat} longitud={form.recogidaLng} onLocationChange={handleLocationChange} height="220px" />
+                    </div>
+                    {(form.recogidaLat && form.recogidaLng) && (
+                      <p className="text-[10px] text-[#4A7A5A] mt-1 ml-1">Ubicación marcada: {parseFloat(form.recogidaLat).toFixed(5)}, {parseFloat(form.recogidaLng).toFixed(5)}</p>
                     )}
                   </div>
-                ))}
+
+                  <div>
+                    <label className={labelClass}>Disponibilidad <span className="text-red-500">*</span></label>
+                    <input className={inputClass + (errors.disponibilidad ? " border-red-400" : "")} placeholder="Ej: Lunes a sábado de 9:00 a 18:00, con reserva previa" value={form.disponibilidad} onChange={e => set("disponibilidad", e.target.value)} />
+                    {errors.disponibilidad && <p className={errClass}>{errors.disponibilidad}</p>}
+                  </div>
+
+                  <div className="rounded-2xl border border-[#D9E5DB] bg-white p-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextValue = !form.incluyeTransporte;
+                        set("incluyeTransporte", nextValue);
+                        if (!nextValue) {
+                          set("capacidad", "");
+                          set("tipoVehiculo", []);
+                        }
+                      }}
+                      className="flex items-center justify-between w-full"
+                    >
+                      <div>
+                        <p className="text-sm font-bold text-[#1A4D2E] text-left">¿Incluyes transporte?</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">Actívalo si el guía traslada al grupo dentro de la experiencia.</p>
+                      </div>
+                      <div className={`w-10 h-6 rounded-full transition-all flex items-center px-1 ${form.incluyeTransporte ? "bg-[#0D601E]" : "bg-gray-200"}`}>
+                        <motion.div animate={{ x: form.incluyeTransporte ? 16 : 0 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} className="w-4 h-4 rounded-full bg-white shadow" />
+                      </div>
+                    </button>
+
+                    <AnimatePresence>
+                      {form.incluyeTransporte && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-4 space-y-4 overflow-hidden">
+                          <div>
+                            <label className={labelClass}>Tipo de vehículo <span className="text-red-500">*</span></label>
+                            <Chips options={VEHICLE_TYPES} selected={form.tipoVehiculo} toggle={v => toggleArr("tipoVehiculo", v)} />
+                            {errors.tipoVehiculo && <p className={errClass}>{errors.tipoVehiculo}</p>}
+                          </div>
+                          <div>
+                            <label className={labelClass}>Capacidad disponible <span className="text-red-500">*</span></label>
+                            <div className="relative">
+                              <input className={inputClass + (errors.capacidad ? " border-red-400" : "")} placeholder="Ej: 8 personas" value={form.capacidad} onChange={e => set("capacidad", e.target.value)} />
+                              <FiUsers className="absolute right-4 top-1/2 -translate-y-1/2 text-[#769C7B]" size={14} />
+                            </div>
+                            {errors.capacidad && <p className={errClass}>{errors.capacidad}</p>}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </section>
               </div>
-              {errors.fotos && <p className={errClass}>{errors.fotos}</p>}
-            </div>
 
-            {/* Título */}
-            <div>
-              <label className={labelClass}>Título de la experiencia <span className="text-red-500">*</span></label>
-              <input className={inputClass + (errors.titulo ? " border-red-400" : "")} placeholder="Ej: Recorrido a pie por el Centro Histórico" value={form.titulo} onChange={e => set("titulo", e.target.value)} />
-              {errors.titulo && <p className={errClass}>{errors.titulo}</p>}
-            </div>
+              <div className="space-y-6">
+                <section className="rounded-3xl border border-[#E3ECE4] bg-[#FBFDFB] p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-black text-[#1A4D2E]">Galería principal</h3>
+                    <p className="text-xs text-[#6C8870] mt-1">La primera imagen será la portada de la experiencia.</p>
+                  </div>
 
-            {/* Destino + Duración */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass}>Destino <span className="text-red-500">*</span></label>
-                <div className="relative">
-                  <select className={inputClass + " appearance-none pr-8" + (errors.destino ? " border-red-400" : "")} value={form.destino} onChange={e => { set("destino", e.target.value); set("destinoCalleNum", ""); set("destinoCP", ""); }}>
-                    <option value="">Selecciona</option>
-                    {DESTINOS.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                  <FiMapPin className="absolute right-3 top-1/2 -translate-y-1/2 text-[#769C7B] pointer-events-none" size={14} />
-                </div>
-                {errors.destino && <p className={errClass}>{errors.destino}</p>}
+                  <div className="grid grid-cols-2 gap-3">
+                    {Array.from({ length: MAX_FOTOS }, (_, i) => (
+                      <div key={i} className={i === 0 ? "col-span-2" : "col-span-1"}>
+                        <input ref={el => { fileRefs.current[i] = el; }} type="file" accept="image/*" className="hidden" onChange={e => handlePhoto(i, e)} />
+                        {fotoPreviews[i] ? (
+                          <div className={`relative overflow-hidden rounded-2xl ${i === 0 ? "aspect-[1.35/1]" : "aspect-square"}`}>
+                            <Image src={fotoPreviews[i]!} alt="Vista previa de la experiencia" fill className="object-cover" />
+                            <button type="button" onClick={() => removePhoto(i)} className="absolute top-2 right-2 bg-black/55 text-white rounded-full p-1.5 hover:bg-black/75 transition-all">
+                              <FiTrash2 size={12} />
+                            </button>
+                            {i === 0 && <span className="absolute bottom-2 left-2 rounded-full bg-[#0D601E] px-2 py-1 text-[10px] font-bold text-white">Portada</span>}
+                          </div>
+                        ) : (
+                          <button type="button" onClick={() => fileRefs.current[i]?.click()} className={`w-full rounded-2xl border-2 border-dashed border-[#C9D4CB] bg-white text-[#5D8066] transition-all hover:border-[#1A4D2E] hover:bg-[#F6F9F6] ${i === 0 ? "aspect-[1.35/1]" : "aspect-square"}`}>
+                            <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center">
+                              <FiPlus className="text-lg" />
+                              <span className="text-xs font-semibold">{i === 0 ? "Subir portada" : `Foto ${i + 1}`}</span>
+                            </div>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {errors.fotos && <p className={errClass}>{errors.fotos}</p>}
+                </section>
+
+                <section className="rounded-3xl border border-[#E3ECE4] bg-[#FBFDFB] p-5 space-y-3">
+                  <h3 className="text-sm font-black text-[#1A4D2E]">Checklist antes de publicar</h3>
+                  <ul className="space-y-2 text-xs text-[#5E7862]">
+                    <li>Describe claramente la experiencia, el tono y lo que incluye.</li>
+                    <li>Usa una portada limpia y fotos reales del recorrido.</li>
+                    <li>Indica disponibilidad y punto de encuentro para evitar dudas.</li>
+                  </ul>
+                </section>
               </div>
-              <div>
-                <label className={labelClass}>Duración <span className="text-red-500">*</span></label>
-                <div className="relative">
-                  <select className={inputClass + " appearance-none pr-8" + (errors.duracion ? " border-red-400" : "")} value={form.duracion} onChange={e => set("duracion", e.target.value)}>
-                    <option value="">Selecciona</option>
-                    {DURACIONES.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                  <FiClock className="absolute right-3 top-1/2 -translate-y-1/2 text-[#769C7B] pointer-events-none" size={14} />
-                </div>
-                {errors.duracion && <p className={errClass}>{errors.duracion}</p>}
-              </div>
             </div>
 
-            {/* Destino personalizado */}
-            {form.destino === "Otro" && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-3 bg-[#F6F9F6] rounded-2xl p-4 border border-[#C9D4CB]">
-                <p className="text-[11px] text-[#4A7A5A] font-semibold">Indica el destino personalizado:</p>
-                <div>
-                  <label className={labelClass}>Calle y número <span className="text-red-500">*</span></label>
-                  <input className={inputClass + (errors.destinoCalleNum ? " border-red-400" : "")} placeholder="Ej: Av. Hidalgo 123, Col. Centro" value={form.destinoCalleNum} onChange={e => set("destinoCalleNum", e.target.value)} />
-                  {errors.destinoCalleNum && <p className={errClass}>{errors.destinoCalleNum}</p>}
-                </div>
-                <div>
-                  <label className={labelClass}>Código postal</label>
-                  <input className={inputClass} placeholder="Ej: 44100" value={form.destinoCP} maxLength={5} onChange={e => set("destinoCP", e.target.value.replace(/\D/g, ""))} />
-                </div>
-              </motion.div>
-            )}
-
-            {/* Descripción */}
-            <div>
-              <label className={labelClass}>Descripción de la experiencia</label>
-              <textarea className={inputClass + " resize-none"} rows={3} placeholder="Describe el recorrido, puntos de interés, lo que los turistas vivirán..." value={form.descripcion} onChange={e => set("descripcion", e.target.value)} />
-            </div>
-
-            {/* Precio */}
-            <div>
-              <label className={labelClass}>Precio por persona <span className="text-red-500">*</span></label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#1A4D2E] font-bold text-sm pointer-events-none">$</span>
-                <input type="text" inputMode="decimal" className={inputClass + " pl-8 pr-14" + (errors.precio ? " border-red-400" : "")} placeholder="0.00" value={form.precio} onChange={handlePrecioChange} />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#769C7B] text-xs font-medium pointer-events-none">MXN</span>
-              </div>
-              {errors.precio && <p className={errClass}>{errors.precio}</p>}
-            </div>
-
-            {/* ¿Incluye transporte? */}
-            <div className="bg-[#F6F9F6] rounded-2xl p-4 border border-[#C9D4CB]">
-              <button
-                type="button"
-                onClick={() => { set("incluyeTransporte", !form.incluyeTransporte); if (form.incluyeTransporte) { set("capacidad", ""); set("tipoVehiculo", []); } }}
-                className="flex items-center justify-between w-full"
-              >
-                <div>
-                  <p className="text-sm font-bold text-[#1A4D2E] text-left">¿Tu experiencia incluye transporte propio?</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">Auto, van, camión u otro vehículo a cargo del guía</p>
-                </div>
-                <div className={`w-10 h-6 rounded-full transition-all flex items-center px-1 ${form.incluyeTransporte ? "bg-[#0D601E]" : "bg-gray-200"}`}>
-                  <motion.div animate={{ x: form.incluyeTransporte ? 16 : 0 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} className="w-4 h-4 rounded-full bg-white shadow" />
-                </div>
-              </button>
-
-              <AnimatePresence>
-                {form.incluyeTransporte && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-4 space-y-4 overflow-hidden">
-                    <div>
-                      <label className={labelClass}>Tipo de vehículo</label>
-                      <Chips options={VEHICLE_TYPES} selected={form.tipoVehiculo} toggle={v => toggleArr("tipoVehiculo", v)} />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Capacidad del grupo <FiUsers className="inline mb-0.5 ml-0.5" size={11} /></label>
-                      <input className={inputClass} placeholder="Ej: 8 personas" value={form.capacidad} onChange={e => set("capacidad", e.target.value)} />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Punto de recogida */}
-            <div>
-              <label className={labelClass}>Punto de encuentro / recogida <span className="text-gray-400 font-normal">(opcional)</span></label>
-              <input className={inputClass + " mb-3"} placeholder="Ej: Plaza de la Liberación, frente a la Catedral" value={form.puntoRecogida} onChange={e => set("puntoRecogida", e.target.value)} />
-              <div className="rounded-2xl overflow-hidden border border-[#C9D4CB]">
-                <MinimapaLocationPicker latitud={form.recogidaLat} longitud={form.recogidaLng} onLocationChange={handleLocationChange} height="200px" />
-              </div>
-              {(form.recogidaLat && form.recogidaLng) && (
-                <p className="text-[10px] text-[#4A7A5A] mt-1 ml-1">Ubicación marcada: {parseFloat(form.recogidaLat).toFixed(5)}, {parseFloat(form.recogidaLng).toFixed(5)}</p>
-              )}
-            </div>
-
-            {/* Idiomas */}
-            <div>
-              <label className={labelClass}>Idiomas del guía</label>
-              <Chips options={IDIOMAS} selected={form.idiomas} toggle={v => toggleArr("idiomas", v)} />
-            </div>
-
-            {/* ¿Qué incluye? */}
-            <div>
-              <label className={labelClass}>¿Qué incluye?</label>
-              <Chips options={QUE_INCLUYE} selected={form.queIncluye} toggle={v => toggleArr("queIncluye", v)} />
-            </div>
-
-            {/* Disponibilidad */}
-            <div>
-              <label className={labelClass}>Disponibilidad</label>
-              <input className={inputClass} placeholder="Ej: Lunes a Viernes, previa cita" value={form.disponibilidad} onChange={e => set("disponibilidad", e.target.value)} />
-            </div>
-
-            {/* Botones */}
-            <div className="flex gap-3 pt-2 pb-1">
+            <div className="flex gap-3 border-t border-[#EEF3EE] pt-2 pb-1">
               <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-[#C9D4CB] text-[#1A4D2E] text-sm font-semibold hover:bg-[#F6F9F6] transition-all">Cancelar</button>
               <button type="submit" disabled={submitting} className="flex-1 py-3 rounded-xl bg-[#1A4D2E] text-white text-sm font-bold hover:bg-[#0D601E] disabled:opacity-60 transition-all">
                 {submitting ? "Publicando..." : "Publicar Experiencia"}

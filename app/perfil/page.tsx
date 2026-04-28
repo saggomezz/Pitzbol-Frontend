@@ -318,16 +318,29 @@ export default function PerfilDetallado() {
           } catch {}
         }
 
-        // Cargar negocios/lugares publicados por el usuario
+        const resolvedGuideType = userLocal.guia_tipo || tipoGuia || "persona";
+
+        // Cargar experiencias del guía individual o solicitudes del flujo empresarial
         try {
           const token = localStorage.getItem("pitzbol_token");
-          const solRes = await fetch(`${API_BASE}/business/my-requests`, {
-            credentials: "include",
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-          if (solRes.ok) {
-            const solData = await solRes.json();
-            if (solData.success) setTours(solData.solicitudes || []);
+          if (rol === "guia" && resolvedGuideType !== "empresa") {
+            const toursRes = await fetch(`${API_BASE}/tours/guia/${userLocal.uid}`, {
+              credentials: "include",
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            if (toursRes.ok) {
+              const toursData = await toursRes.json();
+              if (toursData.success) setTours(toursData.tours || []);
+            }
+          } else {
+            const solRes = await fetch(`${API_BASE}/business/my-requests`, {
+              credentials: "include",
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            if (solRes.ok) {
+              const solData = await solRes.json();
+              if (solData.success) setTours(solData.solicitudes || []);
+            }
           }
         } catch {}
 
@@ -1766,7 +1779,7 @@ export default function PerfilDetallado() {
                 {esGuia && (
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
-                      {tours.filter((s: any) => s.estado === 'aprobado').length} {t('published')}
+                      {tipoGuia !== "empresa" ? tours.length : tours.filter((s: any) => s.estado === 'aprobado').length} {t('published')}
                     </span>
                   </div>
                 )}
@@ -1774,76 +1787,121 @@ export default function PerfilDetallado() {
 
               {/* Contenido condicional por ROL */}
               {esGuia ? (
-                <div className="space-y-4">
-                  {/* Botón Minimalista para crear tour */}
-                  <motion.button 
-                    whileHover={{ scale: 1.01, backgroundColor: "#f9fafb" }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => setShowTourModal(true)} 
-                    className="w-full py-4 border-2 border-dashed border-[#E0F2F1] rounded-lg flex items-center justify-center gap-2 text-[#81C784] hover:text-[#66BB6A] hover:border-[#A5D6A7] transition-all group"
-                  >
-                    <div className="w-7 h-7 bg-[#E8F5E9] group-hover:bg-[#3A5A40] group-hover:text-white rounded-full flex items-center justify-center transition-colors">
-                      <FiPlus size={16} />
-                    </div>
-                    <span className="text-sm font-medium tracking-tight">{t('createExperience')}</span>
-                  </motion.button>
+                tipoGuia !== "empresa" ? (
+                  <div className="space-y-4">
+                    <motion.button 
+                      whileHover={{ scale: 1.01, backgroundColor: "#f9fafb" }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => setShowTourModal(true)} 
+                      className="w-full py-4 border-2 border-dashed border-[#E0F2F1] rounded-lg flex items-center justify-center gap-2 text-[#81C784] hover:text-[#66BB6A] hover:border-[#A5D6A7] transition-all group"
+                    >
+                      <div className="w-7 h-7 bg-[#E8F5E9] group-hover:bg-[#3A5A40] group-hover:text-white rounded-full flex items-center justify-center transition-colors">
+                        <FiPlus size={16} />
+                      </div>
+                      <span className="text-sm font-medium tracking-tight">{t('createExperience')}</span>
+                    </motion.button>
 
-                  {/* Renderizado de negocios publicados */}
-                  {tours.length === 0 ? (
-                    <p className="text-center text-[11px] text-[#81C784] font-normal py-4">
-                      {t('noExperiencesYet')}
-                    </p>
-                  ) : (
-                    <div className="space-y-3 mt-1">
-                      {tours.map((sol: any, i: number) => {
-                        const nombre = sol.business?.name || sol.businessName || sol.nombre || "Negocio";
-                        const categoria = sol.business?.category || sol.categoria || "";
-                        const logo = sol.business?.logo || (sol.business?.images?.[0]) || null;
-                        const estado = sol.estado as string;
-                        const estadoColor: Record<string, string> = {
-                          aprobado: "bg-[#E8F5E9] text-[#2E7D32]",
-                          pendiente: "bg-amber-50 text-amber-700",
-                          rechazado: "bg-red-50 text-red-600",
-                          archivado: "bg-gray-100 text-gray-500",
-                        };
-                        const estadoLabel: Record<string, string> = {
-                          aprobado: "Publicado",
-                          pendiente: "En revisión",
-                          rechazado: "Rechazado",
-                          archivado: "Archivado",
-                        };
-                        const href = estado === "aprobado"
-                          ? `/informacion/${encodeURIComponent(nombre)}`
-                          : `/negocio/mis-solicitudes/${sol.id}`;
-                        return (
-                          <motion.a
-                            key={sol.id || i}
-                            href={href}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                            className="flex items-center gap-3 p-3 rounded-xl border border-[#E0F2F1] hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all group"
-                          >
-                            {logo ? (
-                              <img src={logo} alt={nombre} className="w-11 h-11 rounded-lg object-cover shrink-0 border border-[#E0F2F1]" />
-                            ) : (
-                              <div className="w-11 h-11 rounded-lg bg-[#E8F5E9] flex items-center justify-center shrink-0">
-                                <FiMap size={18} className="text-[#66BB6A]" />
+                    {tours.length === 0 ? (
+                      <p className="text-center text-[11px] text-[#81C784] font-normal py-4">
+                        {t('noExperiencesYet')}
+                      </p>
+                    ) : (
+                      <div className="space-y-3 mt-1">
+                        {tours.map((tour: any, i: number) => {
+                          const foto = tour.fotoPrincipal || tour.fotos?.[0] || null;
+                          const idiomasTour = Array.isArray(tour.idiomas) ? tour.idiomas.slice(0, 2).join(" · ") : "";
+                          return (
+                            <motion.a
+                              key={tour.id || i}
+                              href={`/tours/${tour.id}`}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.05 }}
+                              className="flex items-center gap-3 rounded-xl border border-[#E0F2F1] p-3 transition-all group hover:border-[#A5D6A7] hover:bg-[#F7FBF7]"
+                            >
+                              {foto ? (
+                                <img src={foto} alt={tour.titulo || "Experiencia"} className="h-14 w-14 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
+                              ) : (
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
+                                  <FiMap size={18} className="text-[#66BB6A]" />
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold text-[#1A4D2E] group-hover:text-[#0D601E]">{tour.titulo || "Experiencia"}</p>
+                                <p className="truncate text-[11px] text-gray-500">{tour.destino || "Destino por definir"}</p>
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
+                                  {tour.duracion && <span>{tour.duracion}</span>}
+                                  {tour.precio && <span>{tour.precio}</span>}
+                                  {idiomasTour && <span>{idiomasTour}</span>}
+                                </div>
                               </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-[#1A4D2E] truncate group-hover:text-[#0D601E]">{nombre}</p>
-                              {categoria && <p className="text-[11px] text-gray-400 truncate">{categoria}</p>}
-                            </div>
-                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${estadoColor[estado] || "bg-gray-100 text-gray-500"}`}>
-                              {estadoLabel[estado] || estado}
-                            </span>
-                          </motion.a>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                              <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
+                                Publicado
+                              </span>
+                            </motion.a>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {tours.length === 0 ? (
+                      <p className="text-center text-[11px] text-[#81C784] font-normal py-4">
+                        {t('noExperiencesYet')}
+                      </p>
+                    ) : (
+                      <div className="space-y-3 mt-1">
+                        {tours.map((sol: any, i: number) => {
+                          const nombre = sol.business?.name || sol.businessName || sol.nombre || "Negocio";
+                          const categoria = sol.business?.category || sol.categoria || "";
+                          const logo = sol.business?.logo || (sol.business?.images?.[0]) || null;
+                          const estado = sol.estado as string;
+                          const estadoColor: Record<string, string> = {
+                            aprobado: "bg-[#E8F5E9] text-[#2E7D32]",
+                            pendiente: "bg-amber-50 text-amber-700",
+                            rechazado: "bg-red-50 text-red-600",
+                            archivado: "bg-gray-100 text-gray-500",
+                          };
+                          const estadoLabel: Record<string, string> = {
+                            aprobado: "Publicado",
+                            pendiente: "En revisión",
+                            rechazado: "Rechazado",
+                            archivado: "Archivado",
+                          };
+                          const href = estado === "aprobado"
+                            ? `/informacion/${encodeURIComponent(nombre)}`
+                            : `/negocio/mis-solicitudes/${sol.id}`;
+                          return (
+                            <motion.a
+                              key={sol.id || i}
+                              href={href}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.05 }}
+                              className="flex items-center gap-3 p-3 rounded-xl border border-[#E0F2F1] hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all group"
+                            >
+                              {logo ? (
+                                <img src={logo} alt={nombre} className="w-11 h-11 rounded-lg object-cover shrink-0 border border-[#E0F2F1]" />
+                              ) : (
+                                <div className="w-11 h-11 rounded-lg bg-[#E8F5E9] flex items-center justify-center shrink-0">
+                                  <FiMap size={18} className="text-[#66BB6A]" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-[#1A4D2E] truncate group-hover:text-[#0D601E]">{nombre}</p>
+                                {categoria && <p className="text-[11px] text-gray-400 truncate">{categoria}</p>}
+                              </div>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${estadoColor[estado] || "bg-gray-100 text-gray-500"}`}>
+                                {estadoLabel[estado] || estado}
+                              </span>
+                            </motion.a>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
               ) : (
                 /* Vista para Turista */
                 <div className="relative group cursor-pointer" onClick={() => window.location.href = '/tours'}>
@@ -1911,7 +1969,7 @@ export default function PerfilDetallado() {
       <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
 
       {/* Modal crear experiencia */}
-      {showTourModal && esGuia && (
+      {showTourModal && esGuia && tipoGuia !== "empresa" && (
         <PersonaTourFormModal
           guiaId={perfil?.id || ""}
           guiaNombre={`${perfil?.nombre || ""} ${perfil?.apellido || ""}`.trim()}
