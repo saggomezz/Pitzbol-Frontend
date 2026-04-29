@@ -58,7 +58,7 @@ function getApprovedToastDismissedMap(): Record<string, true> {
 }
 
 const ESTADIO_SEDE_DESCRIPTIONS: Record<string, string> = {
-  "Estadio Akron":
+  "Estadio Akron, Guadalajara":
     "El Estadio Akron fue seleccionado por la FIFA como una de las sedes oficiales de la Copa del Mundo 2026, el torneo más grande en la historia del fútbol con 48 selecciones participantes. Inaugurado en 2010, el recinto tiene capacidad para más de 49,000 espectadores y es considerado uno de los estadios más modernos e icónicos de Latinoamérica. Para el Mundial, el estadio fue sometido a una profunda renovación en infraestructura, accesibilidad y tecnología, convirtiéndose en el punto de encuentro del mundo en Guadalajara. Albergará partidos de la fase de grupos y rondas eliminatorias, marcando un hito histórico para la Zona Metropolitana de Guadalajara y todo el estado de Jalisco.",
 };
 
