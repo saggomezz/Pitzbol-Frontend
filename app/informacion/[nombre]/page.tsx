@@ -224,6 +224,8 @@ export default function InformacionLugar() {
   const [editandoHorarios, setEditandoHorarios] = useState(false);
   const [guardandoHorarios, setGuardandoHorarios] = useState(false);
   const [mensajeHorarios, setMensajeHorarios] = useState('');
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   // Registrar vista del lugar
   const nombreRaw = params.nombre;
   const nombreLugar = typeof nombreRaw === "string" ? decodeURIComponent(nombreRaw) : null;
@@ -506,6 +508,21 @@ export default function InformacionLugar() {
       } else setMensajeHorarios('Error al guardar');
     } catch { setMensajeHorarios('Error de conexión'); }
     finally { setGuardandoHorarios(false); setTimeout(() => setMensajeHorarios(''), 3000); }
+  };
+
+  const eliminarLugar = async () => {
+    if (!nombreLugar) return;
+    setEliminando(true);
+    const token = localStorage.getItem('pitzbol_token');
+    try {
+      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}`, {
+        method: 'DELETE',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+      });
+      if (res.ok) router.back();
+    } catch { /* silencioso */ }
+    finally { setEliminando(false); setConfirmandoEliminar(false); }
   };
 
   const guardarInfo = async () => {
@@ -1071,6 +1088,37 @@ export default function InformacionLugar() {
                 <h2>Significado cultural</h2>
               </div>
               <p className={styles.infoText}>{CULTURA_DESCRIPTIONS[lugarSeguro.nombre]}</p>
+            </div>
+          )}
+
+          {/* Eliminar lugar (solo cua) */}
+          {esAdminLugares && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+              {confirmandoEliminar ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>¿Eliminar este lugar?</span>
+                  <button
+                    onClick={eliminarLugar}
+                    disabled={eliminando}
+                    style={{ background: '#dc2626', color: 'white', border: 'none', borderRadius: '0.5rem', padding: '0.35rem 0.9rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', opacity: eliminando ? 0.6 : 1 }}
+                  >
+                    {eliminando ? 'Eliminando...' : 'Sí, eliminar'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmandoEliminar(false)}
+                    style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '0.5rem', padding: '0.35rem 0.9rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmandoEliminar(true)}
+                  style={{ background: 'none', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '0.5rem', padding: '0.35rem 0.9rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  🗑 Eliminar lugar
+                </button>
+              )}
             </div>
           )}
 

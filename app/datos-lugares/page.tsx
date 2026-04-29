@@ -35,7 +35,7 @@ interface DiaHorario { cerrado: boolean; apertura: string; cierre: string; }
 const defaultHorario = (): Record<DiaSemana, DiaHorario> =>
   Object.fromEntries(DIAS.map(d => [d, { cerrado: false, apertura: '09:00', cierre: '20:00' }])) as Record<DiaSemana, DiaHorario>;
 
-interface Lugar { nombre: string; categoria: string; }
+interface Lugar { nombre: string; categoria: string; horaApertura?: string; }
 
 export default function DatosLugaresPage() {
   const router = useRouter();
@@ -84,11 +84,18 @@ export default function DatosLugaresPage() {
       .then(r => r.text())
       .then(text => {
         const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
-        setLugares(
-          (data as any[])
-            .map(row => ({ nombre: row["Nombre del Lugar"] || "", categoria: row["Categoría"] || "" }))
-            .filter(l => l.nombre)
-        );
+        const parsed = (data as any[])
+          .map(row => ({
+            nombre: row["Nombre del Lugar"] || "",
+            categoria: row["Categoría"] || "",
+            horaApertura: row["horaApertura"] || "",
+          }))
+          .filter(l => l.nombre);
+        setLugares(parsed);
+        // Pre-populate horarioMap desde CSV
+        const csvHorarioM: Record<string, boolean> = {};
+        parsed.forEach(l => { if (l.horaApertura) csvHorarioM[l.nombre] = true; });
+        setHorarioMap(csvHorarioM);
       });
 
     fetch(`/api/lugares`)
@@ -101,10 +108,13 @@ export default function DatosLugaresPage() {
           if (!l.nombre) return;
           if (l.fotos?.length) fotosM[l.nombre] = l.fotos;
           if (l.horariosJson) horarioM[l.nombre] = true;
+          // Firebase override: si tiene horariosJson, marca como con horario
+          // Si NO tiene horariosJson pero SÍ tenía en CSV, se preserva desde el pre-populate
           if (l.descripcion?.trim()) descripcionM[l.nombre] = true;
         });
         setFotosMap(fotosM);
-        setHorarioMap(horarioM);
+        // Merge: Firebase horario overrides but preserves CSV entries
+        setHorarioMap(prev => ({ ...prev, ...horarioM }));
         setDescripcionMap(descripcionM);
       })
       .catch(() => {});
