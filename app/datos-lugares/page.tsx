@@ -59,6 +59,7 @@ export default function DatosLugaresPage() {
   const [nuevaDescripcion, setNuevaDescripcion] = useState("");
   const [nuevaLat, setNuevaLat] = useState("");
   const [nuevaLng, setNuevaLng] = useState("");
+  const [nuevaDireccion, setNuevaDireccion] = useState("");
   const [nuevoHorario, setNuevoHorario] = useState<Record<DiaSemana, DiaHorario>>(defaultHorario);
   const [nuevoInputFotos, setNuevoInputFotos] = useState<string[]>(["", "", ""]);
   const [nuevoUploadProgress, setNuevoUploadProgress] = useState<(number | null)[]>([null, null, null]);
@@ -244,6 +245,7 @@ export default function DatosLugaresPage() {
         body: JSON.stringify({
           nombre: nuevoNombre.trim(),
           categoria: nuevaCategoria,
+          ubicacion: nuevaDireccion.trim(),
           latitud: nuevaLat,
           longitud: nuevaLng,
           descripcion: nuevaDescripcion.trim(),
@@ -317,7 +319,7 @@ export default function DatosLugaresPage() {
 
       setMensajeNuevo("✓ Lugar creado correctamente");
       setNuevoNombre(""); setNuevaCategoria(""); setNuevasSubcategorias([]);
-      setNuevaDescripcion(""); setNuevaLat(""); setNuevaLng("");
+      setNuevaDescripcion(""); setNuevaDireccion(""); setNuevaLat(""); setNuevaLng("");
       setNuevoHorario(defaultHorario()); setNuevoInputFotos(["", "", ""]);
       setTimeout(() => { setMostrarFormNuevo(false); setMensajeNuevo(""); }, 2000);
 
@@ -419,6 +421,20 @@ export default function DatosLugaresPage() {
                 onChange={e => setNuevaDescripcion(e.target.value)}
                 rows={3}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-black focus:outline-none focus:border-[#1A4D2E] resize-none"
+              />
+            </div>
+
+            {/* Dirección */}
+            <div>
+              <label className="text-xs font-medium text-gray-600 flex items-center gap-1 mb-1">
+                <FiMapPin size={11} /> Dirección
+              </label>
+              <input
+                type="text"
+                placeholder="Ej. Av. Chapultepec 123, Guadalajara"
+                value={nuevaDireccion}
+                onChange={e => setNuevaDireccion(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-black focus:outline-none focus:border-[#1A4D2E]"
               />
             </div>
 
