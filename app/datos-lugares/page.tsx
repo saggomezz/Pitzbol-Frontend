@@ -41,6 +41,9 @@ export default function DatosLugaresPage() {
   const router = useRouter();
   const [lugares, setLugares] = useState<Lugar[]>([]);
   const [fotosMap, setFotosMap] = useState<Record<string, string[]>>({});
+  const [horarioMap, setHorarioMap] = useState<Record<string, boolean>>({});
+  const [descripcionMap, setDescripcionMap] = useState<Record<string, boolean>>({});
+  const [filtros, setFiltros] = useState<Set<string>>(new Set());
   const [expandido, setExpandido] = useState<string | null>(null);
   const [inputFotos, setInputFotos] = useState<string[]>(["", "", ""]);
   const [guardando, setGuardando] = useState(false);
@@ -60,6 +63,8 @@ export default function DatosLugaresPage() {
   const [nuevaLat, setNuevaLat] = useState("");
   const [nuevaLng, setNuevaLng] = useState("");
   const [nuevaDireccion, setNuevaDireccion] = useState("");
+  const [nuevoCosto, setNuevoCosto] = useState("");
+  const [nuevoTiempo, setNuevoTiempo] = useState("60");
   const [nuevoHorario, setNuevoHorario] = useState<Record<DiaSemana, DiaHorario>>(defaultHorario);
   const [nuevoInputFotos, setNuevoInputFotos] = useState<string[]>(["", "", ""]);
   const [nuevoUploadProgress, setNuevoUploadProgress] = useState<(number | null)[]>([null, null, null]);
@@ -89,11 +94,18 @@ export default function DatosLugaresPage() {
     fetch(`/api/lugares`)
       .then(r => r.json())
       .then(data => {
-        const map: Record<string, string[]> = {};
+        const fotosM: Record<string, string[]> = {};
+        const horarioM: Record<string, boolean> = {};
+        const descripcionM: Record<string, boolean> = {};
         (data.lugares || []).forEach((l: any) => {
-          if (l.nombre && l.fotos?.length) map[l.nombre] = l.fotos;
+          if (!l.nombre) return;
+          if (l.fotos?.length) fotosM[l.nombre] = l.fotos;
+          if (l.horariosJson) horarioM[l.nombre] = true;
+          if (l.descripcion?.trim()) descripcionM[l.nombre] = true;
         });
-        setFotosMap(map);
+        setFotosMap(fotosM);
+        setHorarioMap(horarioM);
+        setDescripcionMap(descripcionM);
       })
       .catch(() => {});
   }, []);
@@ -249,6 +261,8 @@ export default function DatosLugaresPage() {
           latitud: nuevaLat,
           longitud: nuevaLng,
           descripcion: nuevaDescripcion.trim(),
+          costoEstimado: nuevoCosto.trim(),
+          tiempoEstancia: nuevoTiempo || '60',
           fotos: fotosLimpias,
         }),
       });
@@ -313,13 +327,20 @@ export default function DatosLugaresPage() {
           horaCierre,
           diasCerrado,
           imagen: fotosLimpias[0] || '',
-          tiempoEstancia: '60',
+          tiempoEstancia: nuevoTiempo || '60',
         }),
       }).catch(() => {});
 
       setMensajeNuevo("✓ Lugar creado correctamente");
+      // Añadir a la lista sin recargar
+      setLugares(prev => [...prev, { nombre, categoria: nuevaCategoria }]);
+      if (fotosLimpias.length) setFotosMap(prev => ({ ...prev, [nombre]: fotosLimpias }));
+      if (nuevaDescripcion.trim()) setDescripcionMap(prev => ({ ...prev, [nombre]: true }));
+      const tieneHorario = DIAS.some(d => !nuevoHorario[d].cerrado);
+      if (tieneHorario) setHorarioMap(prev => ({ ...prev, [nombre]: true }));
       setNuevoNombre(""); setNuevaCategoria(""); setNuevasSubcategorias([]);
       setNuevaDescripcion(""); setNuevaDireccion(""); setNuevaLat(""); setNuevaLng("");
+      setNuevoCosto(""); setNuevoTiempo("60");
       setNuevoHorario(defaultHorario()); setNuevoInputFotos(["", "", ""]);
       setTimeout(() => { setMostrarFormNuevo(false); setMensajeNuevo(""); }, 2000);
 
@@ -332,11 +353,22 @@ export default function DatosLugaresPage() {
 
   if (!autorizado) return null;
 
-  const lugaresFiltrados = lugares.filter(
-    l =>
-      l.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      l.categoria.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  const toggleFiltro = (key: string) => {
+    setFiltros(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const lugaresFiltrados = lugares.filter(l => {
+    const q = busqueda.toLowerCase();
+    if (q && !l.nombre.toLowerCase().includes(q) && !l.categoria.toLowerCase().includes(q)) return false;
+    if (filtros.has('sinImagen') && (fotosMap[l.nombre]?.length || 0) > 0) return false;
+    if (filtros.has('sinHorario') && horarioMap[l.nombre]) return false;
+    if (filtros.has('sinDescripcion') && descripcionMap[l.nombre]) return false;
+    return true;
+  });
 
   const conImagen = Object.keys(fotosMap).length;
 
@@ -436,6 +468,30 @@ export default function DatosLugaresPage() {
                 onChange={e => setNuevaDireccion(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-black focus:outline-none focus:border-[#1A4D2E]"
               />
+            </div>
+
+            {/* Costo y Tiempo */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-xs font-medium text-gray-600 block mb-1">Costo estimado</label>
+                <input
+                  type="text"
+                  placeholder="Ej. $150 MXN"
+                  value={nuevoCosto}
+                  onChange={e => setNuevoCosto(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-black focus:outline-none focus:border-[#1A4D2E]"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-medium text-gray-600 block mb-1">Tiempo estimado (min)</label>
+                <input
+                  type="number"
+                  placeholder="60"
+                  value={nuevoTiempo}
+                  onChange={e => setNuevoTiempo(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-black focus:outline-none focus:border-[#1A4D2E]"
+                />
+              </div>
             </div>
 
             {/* Coordenadas */}
@@ -587,8 +643,29 @@ export default function DatosLugaresPage() {
           placeholder="Buscar lugar o categoría..."
           value={busqueda}
           onChange={e => setBusqueda(e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-4 py-2 mb-4 text-sm text-black focus:outline-none focus:border-[#1A4D2E]"
+          className="w-full border border-gray-200 rounded-xl px-4 py-2 mb-2 text-sm text-black focus:outline-none focus:border-[#1A4D2E]"
         />
+
+        {/* Filtros */}
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {[
+            { key: 'sinImagen', label: 'Sin imagen' },
+            { key: 'sinHorario', label: 'Sin horario' },
+            { key: 'sinDescripcion', label: 'Sin descripción' },
+          ].map(f => (
+            <button
+              key={f.key}
+              onClick={() => toggleFiltro(f.key)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                filtros.has(f.key)
+                  ? 'bg-[#1A4D2E] text-white border-[#1A4D2E]'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-[#1A4D2E]'
+              }`}
+            >
+              {f.label} {filtros.has(f.key) ? `(${lugaresFiltrados.length})` : ''}
+            </button>
+          ))}
+        </div>
 
         <div className="space-y-2">
           {lugaresFiltrados.map(lugar => {
