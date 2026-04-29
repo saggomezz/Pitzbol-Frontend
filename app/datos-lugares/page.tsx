@@ -104,18 +104,26 @@ export default function DatosLugaresPage() {
         const fotosM: Record<string, string[]> = {};
         const horarioM: Record<string, boolean> = {};
         const descripcionM: Record<string, boolean> = {};
+        const firebaseSoloLugares: { nombre: string; categoria: string; horaApertura?: string }[] = [];
+
         (data.lugares || []).forEach((l: any) => {
           if (!l.nombre) return;
           if (l.fotos?.length) fotosM[l.nombre] = l.fotos;
           if (l.horariosJson) horarioM[l.nombre] = true;
-          // Firebase override: si tiene horariosJson, marca como con horario
-          // Si NO tiene horariosJson pero SÍ tenía en CSV, se preserva desde el pre-populate
           if (l.descripcion?.trim()) descripcionM[l.nombre] = true;
+          firebaseSoloLugares.push({ nombre: l.nombre, categoria: l.categoria || '' });
         });
+
         setFotosMap(fotosM);
-        // Merge: Firebase horario overrides but preserves CSV entries
         setHorarioMap(prev => ({ ...prev, ...horarioM }));
         setDescripcionMap(descripcionM);
+
+        // Agregar a la lista lugares de Firebase que no están en el CSV
+        setLugares(prev => {
+          const nombresExistentes = new Set(prev.map(l => l.nombre.toLowerCase()));
+          const nuevos = firebaseSoloLugares.filter(l => !nombresExistentes.has(l.nombre.toLowerCase()));
+          return nuevos.length > 0 ? [...prev, ...nuevos] : prev;
+        });
       })
       .catch(() => {});
   }, []);
