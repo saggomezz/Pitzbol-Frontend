@@ -57,6 +57,11 @@ function getApprovedToastDismissedMap(): Record<string, true> {
   }
 }
 
+const ESTADIO_SEDE_DESCRIPTIONS: Record<string, string> = {
+  "Estadio Akron":
+    "El Estadio Akron fue seleccionado por la FIFA como una de las sedes oficiales de la Copa del Mundo 2026, el torneo más grande en la historia del fútbol con 48 selecciones participantes. Inaugurado en 2010, el recinto tiene capacidad para más de 49,000 espectadores y es considerado uno de los estadios más modernos e icónicos de Latinoamérica. Para el Mundial, el estadio fue sometido a una profunda renovación en infraestructura, accesibilidad y tecnología, convirtiéndose en el punto de encuentro del mundo en Guadalajara. Albergará partidos de la fase de grupos y rondas eliminatorias, marcando un hito histórico para la Zona Metropolitana de Guadalajara y todo el estado de Jalisco.",
+};
+
 const CULTURA_DESCRIPTIONS: Record<string, string> = {
   "Instituto Cultural Cabañas, Guadalajara":
     "Declarado Patrimonio de la Humanidad por la UNESCO en 1997, el Hospicio Cabañas fue fundado en 1810 por el obispo Juan Cruz Ruiz de Cabañas como casa de beneficencia. Su capilla alberga los célebres murales de José Clemente Orozco pintados entre 1938 y 1939, considerados una de las obras cumbres del muralismo mexicano. La figura del Hombre de Fuego en la cúpula central es su imagen más emblemática.",
@@ -1079,6 +1084,17 @@ export default function InformacionLugar() {
               )}
             </aside>
           </div>
+
+          {/* Acerca del Estadio Sede */}
+          {ESTADIO_SEDE_DESCRIPTIONS[lugarSeguro.nombre] && (
+            <div className={styles.infoCard}>
+              <div className={styles.infoHeader}>
+                <FiInfo />
+                <h2>Acerca del Estadio Sede</h2>
+              </div>
+              <p className={styles.infoText}>{ESTADIO_SEDE_DESCRIPTIONS[lugarSeguro.nombre]}</p>
+            </div>
+          )}
 
           {/* Descripción cultural */}
           {CULTURA_DESCRIPTIONS[lugarSeguro.nombre] && (
