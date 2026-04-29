@@ -57,6 +57,21 @@ function getApprovedToastDismissedMap(): Record<string, true> {
   }
 }
 
+const DETALLES_DESCRIPTIONS: Record<string, string> = {
+  "FIFA Fan Festival Guadalajara 2026":
+    "El FIFA Fan Festival es el evento oficial de la FIFA para aficionados sin entrada al estadio. En Guadalajara 2026 se instala en el Parque Agua Azul con capacidad para miles de personas. Ofrece transmisiones en vivo de todos los partidos del Mundial en pantallas gigantes, zonas de juegos interactivos, experiencias de realidad aumentada con el trofeo FIFA, food trucks con gastronomía internacional y mexicana, conciertos y activaciones de patrocinadores. El acceso es gratuito previa registro en la plataforma oficial de FIFA. Abre todos los días del torneo desde la fase de grupos hasta la final.",
+  "Noche de Museos Guadalajara":
+    "Noche de Museos es una iniciativa cultural mensual que transforma el centro histórico de Guadalajara en un circuito nocturno de arte y cultura. Cada primer miércoles del mes más de 15 museos y galerías abren gratuitamente de 18:00 a 22:00 horas. El recorrido conecta el Museo Regional, el Instituto Cabañas, el MUSA, el Museo del Periodismo y varios espacios independientes. Durante junio y julio 2026 el evento incluye exposiciones temáticas del Mundial, proyecciones en fachadas históricas y guías turísticos especializados en inglés para los visitantes internacionales.",
+  "Mercado del Arte Tlaquepaque":
+    "El Mercado del Arte de Tlaquepaque es uno de los eventos culturales más auténticos de la Zona Metropolitana de Guadalajara. Cada fin de semana artistas y artesanos de Jalisco instalan sus puestos en el Jardín Hidalgo para exhibir pintura, fotografía, escultura, joyería y textiles. El ambiente está acompañado de mariachi en vivo, degustaciones de comida típica y talleres de arte para niños. Durante el verano 2026 se suman piezas temáticas del Mundial y artistas internacionales invitados. La entrada es libre y las piezas van desde $100 MXN hasta obras de colección.",
+  "Conciertos de Verano Parque Colomos":
+    "Los Conciertos de Verano del Bosque Colomos son una tradición tapatía organizada por el Ayuntamiento de Guadalajara. Cada fin de semana de junio y julio artistas de jazz, música regional mexicana, pop y rock se presentan en el foro al aire libre del parque, rodeados de arboledas y áreas verdes. El evento es completamente gratuito y familiar. Se recomienda llegar temprano para conseguir lugar en el pasto, llevar cobija y alimentos. El Bosque Colomos también ofrece rutas de senderismo, áreas de pic nic y el Jardín Japonés.",
+  "Feria de San Juan de Dios":
+    "La Feria de San Juan de Dios es una de las celebraciones populares más queridas de Guadalajara, organizada en junio en los alrededores del mercado cubierto más grande de América Latina. Durante varias semanas el área se transforma con puestos de artesanías, antojitos, dulces típicos, juegos mecánicos y entretenimiento en vivo. Es una experiencia auténticamente tapatía donde conviven locales y turistas. El mercado interior ofrece además electrónica, ropa, productos regionales y una zona de mariscos y comida muy popular entre los visitantes.",
+  "Exposición de Arte Contemporáneo Jalisco":
+    "La Exposición de Arte Contemporáneo Jalisco es la muestra de verano más importante del estado, celebrada en los espacios del Instituto Cultural Cabañas, Patrimonio de la Humanidad por la UNESCO. La edición 2026 reúne a más de 40 artistas jaliscienses con instalaciones, video arte, pintura y escultura que dialogan con el fútbol, la identidad cultural y el encuentro de naciones que representa el Mundial. Algunos espacios del Cabañas que normalmente están cerrados al público abren especialmente para esta muestra. Se ofrecen visitas guiadas en español e inglés.",
+};
+
 const ESTADIO_SEDE_DESCRIPTIONS: Record<string, string> = {
   "Estadio Akron, Guadalajara":
     "El Estadio Akron fue seleccionado por la FIFA como una de las sedes oficiales de la Copa del Mundo 2026, el torneo más grande en la historia del fútbol con 48 selecciones participantes. Inaugurado en 2010, el recinto tiene capacidad para más de 49,000 espectadores y es considerado uno de los estadios más modernos e icónicos de Latinoamérica. Para el Mundial, el estadio fue sometido a una profunda renovación en infraestructura, accesibilidad y tecnología, convirtiéndose en el punto de encuentro del mundo en Guadalajara. Albergará partidos de la fase de grupos y rondas eliminatorias, marcando un hito histórico para la Zona Metropolitana de Guadalajara y todo el estado de Jalisco.",
@@ -1084,6 +1099,17 @@ export default function InformacionLugar() {
               )}
             </aside>
           </div>
+
+          {/* Detalles del evento */}
+          {DETALLES_DESCRIPTIONS[lugarSeguro.nombre] && (
+            <div className={styles.infoCard}>
+              <div className={styles.infoHeader}>
+                <FiInfo />
+                <h2>Detalles</h2>
+              </div>
+              <p className={styles.infoText}>{DETALLES_DESCRIPTIONS[lugarSeguro.nombre]}</p>
+            </div>
+          )}
 
           {/* Acerca del Estadio Sede */}
           {ESTADIO_SEDE_DESCRIPTIONS[lugarSeguro.nombre] && (
