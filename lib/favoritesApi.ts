@@ -2,7 +2,8 @@
 import { useCallback, useMemo } from 'react';
 import { getApiBaseUrl } from './backendUrl';
 
-const API_URL = getApiBaseUrl();
+// Do not compute API URL at module import time because tests set env vars at runtime.
+const getApiUrl = () => getApiBaseUrl();
 
 /**
  * Obtener token de autenticación
@@ -27,7 +28,7 @@ export const obtenerFavoritosBackend = async (): Promise<string[]> => {
       return [];
     }
 
-    const response = await fetch(`${API_URL}/favorites`, {
+    const response = await fetch(`${getApiUrl()}/favorites`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -59,7 +60,7 @@ export const agregarFavoritoBackend = async (nombreLugar: string): Promise<strin
       throw new Error('AUTH_TOKEN_MISSING');
     }
 
-    const response = await fetch(`${API_URL}/favorites`, {
+    const response = await fetch(`${getApiUrl()}/favorites`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -93,7 +94,7 @@ export const eliminarFavoritoBackend = async (nombreLugar: string): Promise<stri
       throw new Error('AUTH_TOKEN_MISSING');
     }
 
-    const response = await fetch(`${API_URL}/favorites`, {
+    const response = await fetch(`${getApiUrl()}/favorites`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -128,7 +129,7 @@ export const sincronizarFavoritosBackend = async (favoritosLocales: string[]): P
       return favoritosLocales;
     }
 
-    const response = await fetch(`${API_URL}/favorites/sync`, {
+    const response = await fetch(`${getApiUrl()}/favorites/sync`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
