@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, MouseEvent } from "react";
 import { useTranslations } from 'next-intl';
 import {
@@ -45,6 +46,13 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [showHistorialModal, setShowHistorialModal] = useState(false);
     const [hasBusinessRequests, setHasBusinessRequests] = useState(false);
+    const [busqueda, setBusqueda] = useState("");
+    const [sugerencias, setSugerencias] = useState<{ nombre: string; categoria: string }[]>([]);
+    const [todosLugares, setTodosLugares] = useState<{ nombre: string; categoria: string }[]>([]);
+    const [mostrarDropdown, setMostrarDropdown] = useState(false);
+    const [idxSeleccionado, setIdxSeleccionado] = useState(-1);
+    const searchRef = useRef<HTMLDivElement | null>(null);
+    const router = useRouter();
     const menuRef = useRef<HTMLDivElement | null>(null);
     const businessTriggerRef = useRef<HTMLDivElement | null>(null);
     const businessCloseTimeoutRef = useRef<number | null>(null);
@@ -80,7 +88,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     };
 
     useEffect(() => {
-        // Prevenir scroll cuando el menú está abierto en móvil
+        // Prevenir scroll cuando el menÃº estÃ¡ abierto en mÃ³vil
         if (isMenuOpen) {
             document.body.style.overflow = 'hidden';
         } else {
@@ -203,7 +211,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             refreshFromStorage();
         };
         const handleGuideSubmission = (_e: Event) => {
-            console.log("🎯 Evento: guideSubmissionCompleted - Actualizando Navbar...");
+            console.log("ðŸŽ¯ Evento: guideSubmissionCompleted - Actualizando Navbar...");
             refreshFromStorage();
         };
         const handleBusinessRequestSubmitted = (_e: Event) => {
@@ -244,6 +252,38 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             window.removeEventListener("keydown", closeMenuOnEscape);
             document.removeEventListener("mousedown", closeMenu);
         };
+    }, []);
+
+    const normalizeStr = (s: string) =>
+        s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    useEffect(() => {
+        fetch("/api/lugares")
+            .then(r => r.json())
+            .then(data => {
+                const list = (data.lugares || data || []) as { nombre?: string; categoria?: string }[];
+                setTodosLugares(list.filter(l => l.nombre).map(l => ({ nombre: l.nombre!, categoria: l.categoria || "" })));
+            })
+            .catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        if (!busqueda.trim()) { setSugerencias([]); return; }
+        const q = normalizeStr(busqueda);
+        const filtered = todosLugares
+            .filter(l => normalizeStr(l.nombre).includes(q) || normalizeStr(l.categoria).includes(q))
+            .slice(0, 8);
+        setSugerencias(filtered);
+    }, [busqueda, todosLugares]);
+
+    useEffect(() => {
+        const handler = (e: globalThis.MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+                setMostrarDropdown(false);
+            }
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
     }, []);
 
     const role = user?.role || "visitor";
@@ -294,13 +334,42 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                 </div>
             </div>
             {/* BUSCADOR */}
-            <div className="hidden lg:flex flex-1 max-w-[600px] xl:max-w-[800px] mx-4 xl:mx-8 relative">
-                <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#769C7B]" size={18} />
+            <div ref={searchRef} className="hidden lg:flex flex-1 max-w-[600px] xl:max-w-[800px] mx-4 xl:mx-8 relative">
+                <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#769C7B] z-10" size={18} />
                 <input
                     type="text"
+                    value={busqueda}
+                    onChange={e => { setBusqueda(e.target.value); setMostrarDropdown(true); setIdxSeleccionado(-1); }}
+                    onFocus={() => { if (sugerencias.length > 0) setMostrarDropdown(true); }}
+                    onKeyDown={e => {
+                        if (e.key === "ArrowDown") { e.preventDefault(); setIdxSeleccionado(i => Math.min(i + 1, sugerencias.length - 1)); }
+                        else if (e.key === "ArrowUp") { e.preventDefault(); setIdxSeleccionado(i => Math.max(i - 1, -1)); }
+                        else if (e.key === "Enter") {
+                            const target = idxSeleccionado >= 0 ? sugerencias[idxSeleccionado] : sugerencias[0];
+                            if (target) { router.push("/informacion/" + encodeURIComponent(target.nombre)); setBusqueda(""); setMostrarDropdown(false); }
+                        } else if (e.key === "Escape") { setMostrarDropdown(false); setBusqueda(""); }
+                    }}
                     placeholder={t('searchPlaceholder')}
                     className="w-full pl-12 pr-4 py-2.5 bg-white/50 border border-[#1A4D2E]/10 rounded-full outline-none focus:bg-white focus:ring-2 focus:ring-[#0D601E]/10 transition-all text-sm"
+                    autoComplete="off"
                 />
+                {mostrarDropdown && sugerencias.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-[200]">
+                        {sugerencias.map((s, i) => (
+                            <button
+                                key={s.nombre}
+                                onMouseDown={() => { router.push("/informacion/" + encodeURIComponent(s.nombre)); setBusqueda(""); setMostrarDropdown(false); }}
+                                className={`flex items-center justify-between w-full px-4 py-3 text-left text-sm hover:bg-[#F6F0E6] transition-colors ${i === idxSeleccionado ? "bg-[#F6F0E6]" : ""}`}
+                            >
+                                <span className="flex items-center gap-2 text-[#1A4D2E] font-medium truncate">
+                                    <FiSearch size={14} className="text-[#769C7B] flex-shrink-0" />
+                                    {s.nombre}
+                                </span>
+                                <span className="text-[10px] font-bold uppercase tracking-wide text-white bg-[#1A4D2E] px-2 py-0.5 rounded-full flex-shrink-0 ml-2">{s.categoria}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
             {/* ICONOS DERECHA */}
             <div className="flex items-center gap-2 md:gap-3 lg:gap-5 relative">
@@ -312,11 +381,11 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
 <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 z-[110] hover:text-[#F00808] transition-colors relative">
                     {isMenuOpen ? <FiX size={22} className="md:w-[24px] md:h-[24px]" /> : <FiMenu size={22} className="md:w-[24px] md:h-[24px]" />}
                 </button>
-                {/* MENÚ DESPLEGABLE */}
+                {/* MENÃš DESPLEGABLE */}
                 <AnimatePresence>
                     {isMenuOpen && (
                         <>
-                            {/* Overlay para cerrar el menú al hacer clic fuera (solo móvil) */}
+                            {/* Overlay para cerrar el menÃº al hacer clic fuera (solo mÃ³vil) */}
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
@@ -402,7 +471,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                 </>
                             )}
                             <div className="h-[1px] bg-gray-100 my-3 mx-2" />
-                            {/* SECCIÓN DINÁMICA POR ROL */}
+                            {/* SECCIÃ“N DINÃMICA POR ROL */}
                             {role === "admin" ? (
                                 <>
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('administration')}</p>
@@ -579,7 +648,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                 </AnimatePresence>
             </div>
             
-            {/* Notificación Flotante de Nuevo Mensaje */}
+            {/* NotificaciÃ³n Flotante de Nuevo Mensaje */}
             <AnimatePresence>
                 {newMessageNotification && (
                     <motion.div
@@ -610,7 +679,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     onClick={clearNotification}
                                     className="text-xs text-[#0D601E] hover:underline mt-2 inline-block font-semibold"
                                 >
-                                    Ver mensaje →
+                                    Ver mensaje â†’
                                 </Link>
                             </div>
                         </div>
@@ -640,3 +709,5 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         </nav>
     );
 }
+
+
