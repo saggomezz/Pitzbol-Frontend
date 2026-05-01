@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,7 +11,7 @@ import { FaBus, FaMapMarkedAlt } from "react-icons/fa";
 import GuideCard from "../components/GuideCard";
 import styles from "./tours.module.css";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface Guide {
   uid: string;
@@ -40,16 +40,16 @@ interface Tour {
   tipoGuia?: string;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-const QUICK_FILTERS = ["Todos", "Tequila", "Tlaquepaque", "Tonalá", "Chapala", "Centro Histórico"];
+const QUICK_FILTERS = ["Todos", "Tequila", "Tlaquepaque", "TonalÃ¡", "Chapala", "Centro HistÃ³rico"];
 const TIPO_FILTERS = [
   { value: "todos", label: "Todos" },
-  { value: "persona", label: "Guía individual" },
+  { value: "persona", label: "GuÃ­a individual" },
   { value: "empresa", label: "Empresa" },
 ];
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function ToursPage() {
   const t = useTranslations('tours');
@@ -73,7 +73,7 @@ export default function ToursPage() {
   const [filterDestino, setFilterDestino] = useState("Todos");
   const [filterTipo, setFilterTipo] = useState("todos");
 
-  // ── Load both data sources in parallel ──────────────────────────────────────
+  // â”€â”€ Load both data sources in parallel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const fetchGuides = async () => {
       try {
@@ -116,13 +116,13 @@ export default function ToursPage() {
     };
   }, []);
 
-  // ── Tab change syncs URL ─────────────────────────────────────────────────────
+  // â”€â”€ Tab change syncs URL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleTabChange = (tab: "guias" | "paquetes") => {
     setActiveTab(tab);
     router.replace(`/tours?tab=${tab}`, { scroll: false });
   };
 
-  // ── Guide filters ────────────────────────────────────────────────────────────
+  // â”€â”€ Guide filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const availableLanguages = useMemo(() => {
     const s = new Set<string>();
     guides.forEach(g => g.idiomas?.forEach(l => s.add(l)));
@@ -147,7 +147,7 @@ export default function ToursPage() {
     return matchesSearch && matchesLang && matchesSpec;
   }), [guides, searchTerm, selectedLanguage, selectedSpecialty]);
 
-  // ── Tour filters ─────────────────────────────────────────────────────────────
+  // â”€â”€ Tour filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const filteredTours = useMemo(() => tours.filter(tour => {
     const q = query.toLowerCase();
     const matchesQuery = !q ||
@@ -160,11 +160,11 @@ export default function ToursPage() {
     return matchesQuery && matchesFilter && matchesTipo;
   }), [tours, query, filterDestino, filterTipo]);
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div className="min-h-screen bg-[#FAFAF7]">
 
-      {/* ── Hero con imagen (siempre visible) ── */}
+      {/* â”€â”€ Hero con imagen (siempre visible) â”€â”€ */}
       <div className="relative h-64 md:h-80 overflow-hidden">
         <Image
           src="https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484529/a2_go8rka.jpg"
@@ -176,17 +176,17 @@ export default function ToursPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-[#0D601E]/70 via-[#1A4D2E]/50 to-black/70" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
           <div className="flex items-center gap-2 text-white/70 text-xs mb-3">
-            <FiCompass size={12} /> Turismo • Guadalajara
+            <FiCompass size={12} /> Turismo â€¢ Guadalajara
           </div>
           <h1 className="text-white font-black text-3xl md:text-5xl leading-tight drop-shadow-lg"
               style={{ fontFamily: "'Jockey One', sans-serif" }}>
             Tours en Guadalajara
           </h1>
           <p className="text-white/80 text-sm md:text-base mt-2 max-w-md">
-            Descubre la ciudad con guías expertos o con tours organizados por empresas locales.
+            Descubre la ciudad con guÃ­as expertos o con tours organizados por empresas locales.
           </p>
 
-          {/* ── Switch de tabs ── */}
+          {/* â”€â”€ Switch de tabs â”€â”€ */}
           <div className="mt-6 flex items-center bg-white/15 backdrop-blur-sm rounded-full p-1 border border-white/25">
             <button
               onClick={() => handleTabChange("guias")}
@@ -196,7 +196,7 @@ export default function ToursPage() {
                   : "text-white hover:bg-white/20"
               }`}
             >
-              Guías
+              GuÃ­as
             </button>
             <button
               onClick={() => handleTabChange("paquetes")}
@@ -212,10 +212,10 @@ export default function ToursPage() {
         </div>
       </div>
 
-      {/* ── Contenido por tab ── */}
+      {/* â”€â”€ Contenido por tab â”€â”€ */}
       <AnimatePresence mode="wait">
 
-        {/* ════ TAB GUÍAS (interfaz de Mani) ════ */}
+        {/* ═══ TAB GUÍAS ═══ */}
         {activeTab === "guias" && (
           <motion.div
             key="guias"
@@ -224,86 +224,87 @@ export default function ToursPage() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25 }}
           >
-            {/* Search + filters */}
-            <section className={styles.searchSection}>
-              <div className={styles.searchContainer}>
-                <div className={styles.searchBox}>
-                  <FiSearch className={styles.searchIcon} />
-                  <input
-                    type="text"
-                    placeholder={t('searchPlaceholder')}
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className={styles.searchInput}
-                  />
-                </div>
-                <div className={styles.filters}>
-                  <div className={styles.filterGroup}>
-                    <FiFilter className={styles.filterIcon} />
-                    <select
-                      value={selectedLanguage}
-                      onChange={e => setSelectedLanguage(e.target.value)}
-                      className={styles.filterSelect}
-                    >
-                      <option value="all">{t('allLanguages')}</option>
-                      {availableLanguages.map(lang => (
-                        <option key={lang} value={lang}>{lang}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className={styles.filterGroup}>
-                    <FiFilter className={styles.filterIcon} />
-                    <select
-                      value={selectedSpecialty}
-                      onChange={e => setSelectedSpecialty(e.target.value)}
-                      className={styles.filterSelect}
-                    >
-                      <option value="all">{t('allSpecialties')}</option>
-                      {availableSpecialties.map(spec => (
-                        <option key={spec} value={spec}>{spec}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+            <div className="max-w-5xl mx-auto px-4 py-8">
+              {/* Buscador */}
+              <div className="relative mb-5">
+                <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  placeholder={t('searchPlaceholder')}
+                  className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-[#0D601E]/15 bg-white shadow-sm focus:outline-none focus:border-[#0D601E] text-sm text-gray-700 placeholder-gray-400 transition-all"
+                />
               </div>
+
+              {/* Filtros */}
+              <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
+                <select
+                  value={selectedLanguage}
+                  onChange={e => setSelectedLanguage(e.target.value)}
+                  className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold border bg-white text-[#1A4D2E] border-[#C9D4CB] hover:border-[#1A4D2E] transition-all outline-none cursor-pointer"
+                >
+                  <option value="all">{t('allLanguages')}</option>
+                  {availableLanguages.map(lang => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
+                <select
+                  value={selectedSpecialty}
+                  onChange={e => setSelectedSpecialty(e.target.value)}
+                  className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold border bg-white text-[#1A4D2E] border-[#C9D4CB] hover:border-[#1A4D2E] transition-all outline-none cursor-pointer"
+                >
+                  <option value="all">{t('allSpecialties')}</option>
+                  {availableSpecialties.map(spec => (
+                    <option key={spec} value={spec}>{spec}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Conteo */}
               {!guidesLoading && (
-                <p className={styles.resultsCount}>
+                <p className="text-xs text-gray-400 mb-4 ml-1">
                   {filteredGuides.length} {filteredGuides.length === 1 ? t('guideFound') : t('guidesFound')}
                 </p>
               )}
-            </section>
 
-            {/* Grid guías */}
-            <section className={styles.guidesSection}>
+              {/* Grid */}
               {guidesLoading ? (
-                <div className={styles.loadingContainer}>
-                  <div className={styles.spinner}></div>
-                  <p className={styles.loadingText}>{t('loading')}</p>
+                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                  <div className="w-10 h-10 border-4 border-[#0D601E]/20 border-t-[#0D601E] rounded-full animate-spin" />
+                  <p className="text-gray-400 text-sm">{t('loading')}</p>
                 </div>
               ) : filteredGuides.length === 0 ? (
-                <div className={styles.emptyState}>
-                  <div className={styles.emptyContent}>
-                    <h3 className={styles.emptyTitle}>{t('noGuides')}</h3>
-                    <p className={styles.emptyDescription}>{t('noGuidesDescription')}</p>
+                <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+                  <div className="bg-[#E8F5E9] p-6 rounded-full">
+                    <FiCompass className="text-[#1A4D2E] text-4xl" />
+                  </div>
+                  <div>
+                    <p className="text-gray-600 font-bold text-lg">{t('noGuides')}</p>
+                    <p className="text-gray-400 text-sm mt-1">{t('noGuidesDescription')}</p>
                   </div>
                 </div>
               ) : (
-                <div className={styles.guidesGrid}>
-                  {filteredGuides.map(guide => (
-                    <GuideCard key={guide.uid} guide={guide} />
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <AnimatePresence mode="popLayout">
+                    {filteredGuides.map((guide, i) => (
+                      <motion.div
+                        key={guide.uid}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ delay: i * 0.04 }}
+                        layout
+                      >
+                        <GuideCard guide={guide} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               )}
-            </section>
+            </div>
           </motion.div>
         )}
-
-        {/* ════ TAB PAQUETES (tu interfaz) ════ */}
-        {activeTab === "paquetes" && (
-          <motion.div
-            key="paquetes"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25 }}
           >
@@ -368,12 +369,12 @@ export default function ToursPage() {
                   <div>
                     <p className="text-gray-600 font-bold text-lg">
                       {tours.length === 0
-                        ? "Próximamente habrá tours disponibles"
+                        ? "PrÃ³ximamente habrÃ¡ tours disponibles"
                         : "No se encontraron tours con ese criterio"}
                     </p>
                     <p className="text-gray-400 text-sm mt-1">
                       {tours.length === 0
-                        ? "Las empresas verificadas publicarán sus experiencias aquí."
+                        ? "Las empresas verificadas publicarÃ¡n sus experiencias aquÃ­."
                         : "Intenta con otro destino o elimina los filtros."}
                     </p>
                   </div>
@@ -449,7 +450,7 @@ export default function ToursPage() {
                                     <span key={q} className="text-[10px] bg-[#FFF9E6] text-[#7A5000] px-2 py-0.5 rounded-full">{q}</span>
                                   ))}
                                   {tour.queIncluye.length > 3 && (
-                                    <span className="text-[10px] text-gray-400">+{tour.queIncluye.length - 3} más</span>
+                                    <span className="text-[10px] text-gray-400">+{tour.queIncluye.length - 3} mÃ¡s</span>
                                   )}
                                 </div>
                               )}
