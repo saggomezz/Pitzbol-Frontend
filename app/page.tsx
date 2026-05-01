@@ -533,7 +533,7 @@ function HomeContent() {
                           >
                             {getCategoryName(activeCategory.name)}
                           </h3>
-                          <p className="text-xs md:text-sm text-white/80 mt-2 font-medium">Descubre más � </p>
+                          <p className="text-xs md:text-sm text-white/80 mt-2 font-medium">Descubre m\u00e1s \u2192</p>
                         </div>
 
                         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-[#0D601E] shadow-md">
@@ -590,8 +590,24 @@ function HomeContent() {
 
   const RecommendationsComponent = ({ places, onRefresh }: { places: RecommendedPlace[]; onRefresh: () => void }) => {
     const [refreshing, setRefreshing] = useState(false);
+    const [offset, setOffset] = useState(0);
+    const VISIBLE = 6;
+
+    useEffect(() => {
+      if (places.length <= VISIBLE) return;
+      const t = setInterval(() => {
+        setOffset(prev => (prev + 3) % places.length);
+      }, 5000);
+      return () => clearInterval(t);
+    }, [places.length]);
+
+    const visiblePlaces = places.length === 0 ? [] : places.length <= VISIBLE
+      ? places
+      : Array.from({ length: VISIBLE }, (_, i) => places[(offset + i) % places.length]);
+
     const handleRefresh = async () => {
       setRefreshing(true);
+      setOffset(0);
       await onRefresh();
       setTimeout(() => setRefreshing(false), 600);
     };
@@ -608,9 +624,9 @@ function HomeContent() {
           </button>
         </div>
         <div className="flex overflow-x-auto scrollbar-hidden md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
-          {places.map((place) => (
+          {visiblePlaces.map((place, i) => (
             <PlaceCard2
-              key={place.name}
+              key={`${place.name}-${offset}-${i}`}
               place={place}
               photos={recommendedPhotos[place.name] || []}
               noImageText={tCommon('noImage')}
@@ -657,8 +673,9 @@ function HomeContent() {
       const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
       const allRows = data as any[];
 
+      const CAT_KEY = 'Categor\u00eda';
       const rowToPlace = (row: any): RecommendedPlace => {
-        const firstCat = ((row['Categor\u00c3\u00ada'] as string) || '').split(',')[0].trim();
+        const firstCat = ((row[CAT_KEY] as string) || '').split(',')[0].trim();
         const csvImg = (row['Imagen'] as string)?.trim() || null;
         return { name: row['Nombre del Lugar'] as string, img: csvImg || getPlaceImageByCategory(firstCat), categoria: firstCat };
       };
@@ -669,15 +686,15 @@ function HomeContent() {
       };
 
       const cargarPorDefecto = (): RecommendedPlace[] => {
-        const chivas = ['Tienda Oficial Chivas, Guadalajara', 'Museo Chivas, Guadalajara'];
+        const chivas = ['Museo Chivas, Guadalajara'];
         const pool = allRows.filter((row) => {
           const nombre = row['Nombre del Lugar'] as string;
-          const cats = (row['Categor\u00c3\u00ada'] as string) || '';
+          const cats = (row[CAT_KEY] as string) || '';
           if (!nombre) return false;
           if (chivas.includes(nombre)) return true;
-          return cats.includes('Gastronom\u00c3\u00ada') || cats.includes('Cultura');
+          return cats.includes('Gastronom\u00eda') || cats.includes('Cultura');
         });
-        return shuffleArr(pool).slice(0, 6).map(rowToPlace);
+        return shuffleArr(pool).slice(0, 18).map(rowToPlace);
       };
 
       const userLocal = localStorage.getItem('pitzbol_user');
@@ -694,9 +711,9 @@ function HomeContent() {
       if (targetCategories.size === 0) { const d = cargarPorDefecto(); if (d.length > 0) setRecommendedPlaces(d); return; }
 
       const scored = allRows
-        .filter((row) => row['Nombre del Lugar'] && row['Categor\u00c3\u00ada'])
+        .filter((row) => row['Nombre del Lugar'] && row[CAT_KEY])
         .map((row) => {
-          const placeCategories = (row['Categor\u00c3\u00ada'] as string).split(',').map((c: string) => c.trim());
+          const placeCategories = (row[CAT_KEY] as string).split(',').map((c: string) => c.trim());
           const matches = placeCategories.filter((c: string) => targetCategories.has(c)).length;
           return { row, matches };
         })
@@ -715,9 +732,9 @@ function HomeContent() {
         shuffledScored.push(...group);
       }
 
-      const top6: RecommendedPlace[] = shuffledScored.slice(0, 6).map(({ row }) => rowToPlace(row));
-      if (top6.length < 6) { const fill = cargarPorDefecto(); top6.push(...fill.slice(0, 6 - top6.length)); }
-      setRecommendedPlaces(top6);
+      const top18: RecommendedPlace[] = shuffledScored.slice(0, 18).map(({ row }) => rowToPlace(row));
+      if (top18.length < 6) { const fill = cargarPorDefecto(); top18.push(...fill.slice(0, 18 - top18.length)); }
+      setRecommendedPlaces(top18);
     } catch {
       // mantener estado actual en caso de error
     }
@@ -891,7 +908,7 @@ function HomeContent() {
                 className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span>Crear Itinerario</span>
-                <span>� </span>
+                <span>✨</span>
               </button>
             </div>
           </div>
