@@ -35,12 +35,7 @@ const INTERES_TO_CATEGORIES: Record<string, string[]> = {
   "Mercados Locales": ["Mercados Locales"],
 };
 
-const DEFAULT_RECOMMENDATIONS: RecommendedPlace[] = [
-  { name: "Centro de Guadalajara", urlNombre: "Plaza de Armas, Guadalajara", img: "https://www.liderempresarial.com/wp-content/uploads/2025/07/Asi-se-transformara-el-centro-de-Guadalajara-%C2%BFcuando-estara-listo.jpg" },
-  { name: "Tlaquepaque", urlNombre: "Centro Hist\u00f3rico de Tlaquepaque, Guadalajara", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
-  { name: "Hueso Restaurante", urlNombre: "Hueso Restaurante, Guadalajara", img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800", categoria: "Gastronom\u00eda" },
-  { name: "Mutante Restaurante", urlNombre: "Mutante Restaurante, Guadalajara", img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800", categoria: "Gastronom\u00eda" },
-  { name: "Cuerno Andares", img: "https://images.unsplash.com/photo-1484659619207-9165d119dafe?auto=format&fit=crop&q=80&w=800", categoria: "Gastronom\u00eda" },
+const DEFAULT_RECOMMENDATIONS: RecommendedPlace[] = [];
 ];
 
 const ALL_CATEGORIES: Category[] = [
@@ -351,7 +346,7 @@ function HomeContent() {
   const router = useRouter();
   const hasCheckedWelcome = useRef(false);
   const [isNewWelcome, setIsNewWelcome] = useState(false);
-  const [recommendedPlaces, setRecommendedPlaces] = useState<RecommendedPlace[]>(DEFAULT_RECOMMENDATIONS);
+  const [recommendedPlaces, setRecommendedPlaces] = useState<RecommendedPlace[]>([]);
   const [recommendedPhotos, setRecommendedPhotos] = useState<Record<string, string[]>>({});
 
   // Traducciones
@@ -658,62 +653,75 @@ function HomeContent() {
 
   const cargarRecomendaciones = async () => {
     try {
+      const res = await fetch('/datosLugares.csv');
+      const text = await res.text();
+      const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
+      const allRows = data as any[];
+
+      const rowToPlace = (row: any): RecommendedPlace => {
+        const firstCat = ((row['Categor\u00c3\u00ada'] as string) || '').split(',')[0].trim();
+        const csvImg = (row['Imagen'] as string)?.trim() || null;
+        return { name: row['Nombre del Lugar'] as string, img: csvImg || getPlaceImageByCategory(firstCat), categoria: firstCat };
+      };
+
+      const shuffleArr = <T>(arr: T[]): T[] => {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+        return a;
+      };
+
+      const cargarPorDefecto = (): RecommendedPlace[] => {
+        const chivas = ['Tienda Oficial Chivas, Guadalajara', 'Museo Chivas, Guadalajara'];
+        const pool = allRows.filter((row) => {
+          const nombre = row['Nombre del Lugar'] as string;
+          const cats = (row['Categor\u00c3\u00ada'] as string) || '';
+          if (!nombre) return false;
+          if (chivas.includes(nombre)) return true;
+          return cats.includes('Gastronom\u00c3\u00ada') || cats.includes('Cultura');
+        });
+        return shuffleArr(pool).slice(0, 6).map(rowToPlace);
+      };
+
       const userLocal = localStorage.getItem('pitzbol_user');
-      if (!userLocal) return;
+      if (!userLocal) { const d = cargarPorDefecto(); if (d.length > 0) setRecommendedPlaces(d); return; }
 
       const user = JSON.parse(userLocal);
-      const intereses: string[] = user["07_intereses"] || user.especialidades || user["07_especialidades"] || [];
-      if (!intereses.length) return;
+      const intereses: string[] = user['07_intereses'] || user.especialidades || user['07_especialidades'] || [];
+      if (!intereses.length) { const d = cargarPorDefecto(); if (d.length > 0) setRecommendedPlaces(d); return; }
 
       const targetCategories = new Set<string>();
       intereses.forEach((interes: string) => {
         (INTERES_TO_CATEGORIES[interes] || []).forEach((cat: string) => targetCategories.add(cat));
       });
-      if (targetCategories.size === 0) return;
+      if (targetCategories.size === 0) { const d = cargarPorDefecto(); if (d.length > 0) setRecommendedPlaces(d); return; }
 
-      const res = await fetch('/datosLugares.csv');
-      const text = await res.text();
-      const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
-
-      const scored = (data as any[])
-        .filter((row) => row['Nombre del Lugar'] && row['CategorÃ­a'])
+      const scored = allRows
+        .filter((row) => row['Nombre del Lugar'] && row['Categor\u00c3\u00ada'])
         .map((row) => {
-          const placeCategories = (row['CategorÃ­a'] as string).split(',').map((c: string) => c.trim());
+          const placeCategories = (row['Categor\u00c3\u00ada'] as string).split(',').map((c: string) => c.trim());
           const matches = placeCategories.filter((c: string) => targetCategories.has(c)).length;
           return { row, matches };
         })
         .filter(({ matches }) => matches > 0)
         .sort((a, b) => b.matches - a.matches);
 
-      if (scored.length === 0) return;
+      if (scored.length === 0) { const d = cargarPorDefecto(); if (d.length > 0) setRecommendedPlaces(d); return; }
 
-      // Mezclar dentro del mismo puntaje para variar resultados
-      const shuffled: typeof scored = [];
-      let i = 0;
-      while (i < scored.length) {
-        const score = scored[i].matches;
+      const shuffledScored: typeof scored = [];
+      let idx = 0;
+      while (idx < scored.length) {
+        const score = scored[idx].matches;
         const group: typeof scored = [];
-        while (i < scored.length && scored[i].matches === score) { group.push(scored[i]); i++; }
-        for (let j = group.length - 1; j > 0; j--) {
-          const k = Math.floor(Math.random() * (j + 1));
-          [group[j], group[k]] = [group[k], group[j]];
-        }
-        shuffled.push(...group);
+        while (idx < scored.length && scored[idx].matches === score) { group.push(scored[idx]); idx++; }
+        for (let j = group.length - 1; j > 0; j--) { const k = Math.floor(Math.random() * (j + 1)); [group[j], group[k]] = [group[k], group[j]]; }
+        shuffledScored.push(...group);
       }
 
-      const top6: RecommendedPlace[] = shuffled.slice(0, 6).map(({ row }) => {
-        const firstCat = (row['CategorÃ­a'] as string).split(',')[0].trim();
-        const csvImg = (row['Imagen'] as string)?.trim() || null;
-        return { name: row['Nombre del Lugar'] as string, img: csvImg || getPlaceImageByCategory(firstCat), categoria: firstCat };
-      });
-
-      if (top6.length < 6) {
-        top6.push(...DEFAULT_RECOMMENDATIONS.slice(0, 6 - top6.length));
-      }
-
+      const top6: RecommendedPlace[] = shuffledScored.slice(0, 6).map(({ row }) => rowToPlace(row));
+      if (top6.length < 6) { const fill = cargarPorDefecto(); top6.push(...fill.slice(0, 6 - top6.length)); }
       setRecommendedPlaces(top6);
     } catch {
-      // Mantener defaults en caso de error
+      // mantener estado actual en caso de error
     }
   };
 
