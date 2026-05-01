@@ -1,4 +1,4 @@
-﻿"use client";
+�"use client";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -88,7 +88,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     };
 
     useEffect(() => {
-        // Prevenir scroll cuando el menÃº estÃ¡ abierto en mÃ³vil
+        // Prevenir scroll cuando el menú está abierto en móvil
         if (isMenuOpen) {
             document.body.style.overflow = 'hidden';
         } else {
@@ -211,7 +211,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             refreshFromStorage();
         };
         const handleGuideSubmission = (_e: Event) => {
-            console.log("ðŸŽ¯ Evento: guideSubmissionCompleted - Actualizando Navbar...");
+            console.log("�x}� Evento: guideSubmissionCompleted - Actualizando Navbar...");
             refreshFromStorage();
         };
         const handleBusinessRequestSubmitted = (_e: Event) => {
@@ -381,11 +381,11 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
 <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 z-[110] hover:text-[#F00808] transition-colors relative">
                     {isMenuOpen ? <FiX size={22} className="md:w-[24px] md:h-[24px]" /> : <FiMenu size={22} className="md:w-[24px] md:h-[24px]" />}
                 </button>
-                {/* MENÃš DESPLEGABLE */}
+                {/* MEN�a DESPLEGABLE */}
                 <AnimatePresence>
                     {isMenuOpen && (
                         <>
-                            {/* Overlay para cerrar el menÃº al hacer clic fuera (solo mÃ³vil) */}
+                            {/* Overlay para cerrar el menú al hacer clic fuera (solo móvil) */}
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
@@ -471,7 +471,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                 </>
                             )}
                             <div className="h-[1px] bg-gray-100 my-3 mx-2" />
-                            {/* SECCIÃ“N DINÃMICA POR ROL */}
+                            {/* SECCI�N DINÁMICA POR ROL */}
                             {role === "admin" ? (
                                 <>
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('administration')}</p>
@@ -648,7 +648,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                 </AnimatePresence>
             </div>
             
-            {/* NotificaciÃ³n Flotante de Nuevo Mensaje */}
+            {/* Notificación Flotante de Nuevo Mensaje */}
             <AnimatePresence>
                 {newMessageNotification && (
                     <motion.div
@@ -679,7 +679,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     onClick={clearNotification}
                                     className="text-xs text-[#0D601E] hover:underline mt-2 inline-block font-semibold"
                                 >
-                                    Ver mensaje â†’
+                                    Ver mensaje � 
                                 </Link>
                             </div>
                         </div>

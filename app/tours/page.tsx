@@ -1,4 +1,4 @@
-﻿"use client";
+�"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,7 +11,7 @@ import { FaBus, FaMapMarkedAlt } from "react-icons/fa";
 import GuideCard from "../components/GuideCard";
 import styles from "./tours.module.css";
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Types ��������������������������������������������������������������������������������������������������������������������������������������
 
 interface Guide {
   uid: string;
@@ -40,16 +40,16 @@ interface Tour {
   tipoGuia?: string;
 }
 
-// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Constants ��������������������������������������������������������������������������������������������������������������������������������
 
-const QUICK_FILTERS = ["Todos", "Tequila", "Tlaquepaque", "TonalÃ¡", "Chapala", "Centro HistÃ³rico"];
+const QUICK_FILTERS = ["Todos", "Tequila", "Tlaquepaque", "Tonalá", "Chapala", "Centro Histórico"];
 const TIPO_FILTERS = [
   { value: "todos", label: "Todos" },
-  { value: "persona", label: "GuÃ­a individual" },
+  { value: "persona", label: "Guía individual" },
   { value: "empresa", label: "Empresa" },
 ];
 
-// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Component ��������������������������������������������������������������������������������������������������������������������������������
 
 export default function ToursPage() {
   const t = useTranslations('tours');
@@ -73,7 +73,7 @@ export default function ToursPage() {
   const [filterDestino, setFilterDestino] = useState("Todos");
   const [filterTipo, setFilterTipo] = useState("todos");
 
-  // â”€â”€ Load both data sources in parallel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ���� Load both data sources in parallel ����������������������������������������������������������������������������
   useEffect(() => {
     const fetchGuides = async () => {
       try {
@@ -116,13 +116,13 @@ export default function ToursPage() {
     };
   }, []);
 
-  // â”€â”€ Tab change syncs URL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ���� Tab change syncs URL ����������������������������������������������������������������������������������������������������������
   const handleTabChange = (tab: "guias" | "paquetes") => {
     setActiveTab(tab);
     router.replace(`/tours?tab=${tab}`, { scroll: false });
   };
 
-  // â”€â”€ Guide filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ���� Guide filters ������������������������������������������������������������������������������������������������������������������������
   const availableLanguages = useMemo(() => {
     const s = new Set<string>();
     guides.forEach(g => g.idiomas?.forEach(l => s.add(l)));
@@ -147,7 +147,7 @@ export default function ToursPage() {
     return matchesSearch && matchesLang && matchesSpec;
   }), [guides, searchTerm, selectedLanguage, selectedSpecialty]);
 
-  // â”€â”€ Tour filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ���� Tour filters ��������������������������������������������������������������������������������������������������������������������������
   const filteredTours = useMemo(() => tours.filter(tour => {
     const q = query.toLowerCase();
     const matchesQuery = !q ||
@@ -160,11 +160,11 @@ export default function ToursPage() {
     return matchesQuery && matchesFilter && matchesTipo;
   }), [tours, query, filterDestino, filterTipo]);
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ���� Render ��������������������������������������������������������������������������������������������������������������������������������������
   return (
     <div className="min-h-screen bg-[#FAFAF7]">
 
-      {/* â”€â”€ Hero con imagen (siempre visible) â”€â”€ */}
+      {/* ���� Hero con imagen (siempre visible) ���� */}
       <div className="relative h-64 md:h-80 overflow-hidden">
         <Image
           src="https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484529/a2_go8rka.jpg"
@@ -176,17 +176,17 @@ export default function ToursPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-[#0D601E]/70 via-[#1A4D2E]/50 to-black/70" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
           <div className="flex items-center gap-2 text-white/70 text-xs mb-3">
-            <FiCompass size={12} /> Turismo â€¢ Guadalajara
+            <FiCompass size={12} /> Turismo ⬢ Guadalajara
           </div>
           <h1 className="text-white font-black text-3xl md:text-5xl leading-tight drop-shadow-lg"
               style={{ fontFamily: "'Jockey One', sans-serif" }}>
             Tours en Guadalajara
           </h1>
           <p className="text-white/80 text-sm md:text-base mt-2 max-w-md">
-            Descubre la ciudad con guÃ­as expertos o con tours organizados por empresas locales.
+            Descubre la ciudad con guías expertos o con tours organizados por empresas locales.
           </p>
 
-          {/* â”€â”€ Switch de tabs â”€â”€ */}
+          {/* ���� Switch de tabs ���� */}
           <div className="mt-6 flex items-center bg-white/15 backdrop-blur-sm rounded-full p-1 border border-white/25">
             <button
               onClick={() => handleTabChange("guias")}
@@ -196,7 +196,7 @@ export default function ToursPage() {
                   : "text-white hover:bg-white/20"
               }`}
             >
-              GuÃ­as
+              Guías
             </button>
             <button
               onClick={() => handleTabChange("paquetes")}
@@ -212,10 +212,10 @@ export default function ToursPage() {
         </div>
       </div>
 
-      {/* â”€â”€ Contenido por tab â”€â”€ */}
+      {/* ���� Contenido por tab ���� */}
       <AnimatePresence mode="wait">
 
-        {/* ═══ TAB GUÍAS ═══ */}
+        {/* PPP TAB GU�AS PPP */}
         {activeTab === "guias" && (
           <motion.div
             key="guias"
@@ -306,7 +306,7 @@ export default function ToursPage() {
           </motion.div>
         )}
 
-        {/* ═══ TAB PAQUETES (tu interfaz) ═══ */}
+        {/* PPP TAB PAQUETES (tu interfaz) PPP */}
         {activeTab === "paquetes" && (
           <motion.div
             key="paquetes"
@@ -376,12 +376,12 @@ export default function ToursPage() {
                   <div>
                     <p className="text-gray-600 font-bold text-lg">
                       {tours.length === 0
-                        ? "PrÃ³ximamente habrÃ¡ tours disponibles"
+                        ? "Próximamente habrá tours disponibles"
                         : "No se encontraron tours con ese criterio"}
                     </p>
                     <p className="text-gray-400 text-sm mt-1">
                       {tours.length === 0
-                        ? "Las empresas verificadas publicarÃ¡n sus experiencias aquÃ­."
+                        ? "Las empresas verificadas publicarán sus experiencias aquí."
                         : "Intenta con otro destino o elimina los filtros."}
                     </p>
                   </div>
@@ -457,7 +457,7 @@ export default function ToursPage() {
                                     <span key={q} className="text-[10px] bg-[#FFF9E6] text-[#7A5000] px-2 py-0.5 rounded-full">{q}</span>
                                   ))}
                                   {tour.queIncluye.length > 3 && (
-                                    <span className="text-[10px] text-gray-400">+{tour.queIncluye.length - 3} mÃ¡s</span>
+                                    <span className="text-[10px] text-gray-400">+{tour.queIncluye.length - 3} más</span>
                                   )}
                                 </div>
                               )}
