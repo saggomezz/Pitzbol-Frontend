@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { generarItinerarioManual, Lugar } from '@/lib/pitzbol-engine';
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
@@ -15,45 +15,44 @@ import AuthModal from './components/AuthModal';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
-type RecommendedPlace = { name: string; img: string | null; categoria?: string; };
+type RecommendedPlace = { name: string; img: string | null; categoria?: string; urlNombre?: string; };
 
 const INTERES_TO_CATEGORIES: Record<string, string[]> = {
   "Arte e Historia": ["Arte e Historia"],
   "Arquitectura": ["Arquitectura"],
   "Cultura": ["Cultura"],
-  "Gastronomía": ["Gastronomía", "Gastronomía Mexicana"],
-  "Deporte Fútbol": ["Fútbol"],
-  "Música": ["Música"],
+  "GastronomÃ­a": ["GastronomÃ­a", "GastronomÃ­a Mexicana"],
+  "Deporte FÃºtbol": ["FÃºtbol"],
+  "MÃºsica": ["MÃºsica"],
   "Naturaleza": ["Naturaleza"],
-  "Fotografía": ["Fotografía"],
+  "FotografÃ­a": ["FotografÃ­a"],
   "Vida Nocturna": ["Vida Nocturna"],
   "Compras": ["Compras"],
   "Museos": ["Museos"],
   "Tours Guiados": ["Cultura", "Arte e Historia", "Museos"],
   "Aventura": ["Aventura"],
-  "Religión": ["Cultura"],
+  "ReligiÃ³n": ["Cultura"],
   "Mercados Locales": ["Mercados Locales"],
 };
 
 const DEFAULT_RECOMMENDATIONS: RecommendedPlace[] = [
-  { name: "Centro de Guadalajara", img: "https://www.liderempresarial.com/wp-content/uploads/2025/07/Asi-se-transformara-el-centro-de-Guadalajara-%C2%BFcuando-estara-listo.jpg" },
-  { name: "Tlaquepaque", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
-  { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
-  { name: "Hueso Restaurante", img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800", categoria: "Gastronomía" },
-  { name: "Mutante Restaurante", img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800", categoria: "Gastronomía" },
-  { name: "Cuerno Andares", img: "https://images.unsplash.com/photo-1484659619207-9165d119dafe?auto=format&fit=crop&q=80&w=800", categoria: "Gastronomía" },
+  { name: "Centro de Guadalajara", urlNombre: "Plaza de Armas, Guadalajara", img: "https://www.liderempresarial.com/wp-content/uploads/2025/07/Asi-se-transformara-el-centro-de-Guadalajara-%C2%BFcuando-estara-listo.jpg" },
+  { name: "Tlaquepaque", urlNombre: "Centro Hist\u00f3rico de Tlaquepaque, Guadalajara", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
+  { name: "Hueso Restaurante", urlNombre: "Hueso Restaurante, Guadalajara", img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800", categoria: "Gastronom\u00eda" },
+  { name: "Mutante Restaurante", urlNombre: "Mutante Restaurante, Guadalajara", img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800", categoria: "Gastronom\u00eda" },
+  { name: "Cuerno Andares", img: "https://images.unsplash.com/photo-1484659619207-9165d119dafe?auto=format&fit=crop&q=80&w=800", categoria: "Gastronom\u00eda" },
 ];
 
 const ALL_CATEGORIES: Category[] = [
-  { name: "Fútbol", img: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&q=80&w=2070" },
-  { name: "Gastronomía", img: "https://images.unsplash.com/photo-1711306722944-70b776bb4394?auto=format&fit=crop&q=80&w=1528" },
+  { name: "FÃºtbol", img: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&q=80&w=2070" },
+  { name: "GastronomÃ­a", img: "https://images.unsplash.com/photo-1711306722944-70b776bb4394?auto=format&fit=crop&q=80&w=1528" },
   { name: "Cultura", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Voladores_de_Papantla.png/1200px-Voladores_de_Papantla.png" },
   { name: "Eventos", img: "https://www.buenosviajes.co/wp-content/uploads/2024/03/Guadalajara2.jpg" },
   { name: "Clubs", img: "https://res.cloudinary.com/dckbtxa4a/image/upload/v1777408875/469537367_122208595754073762_1280570453325883698_n_chbzu8.jpg" },
   { name: "Tours", img: "https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484529/a2_go8rka.jpg" },
   { name: "Casas de Cambio", img: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1528" },
   { name: "Hospitales", img: "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=1700" },
-  { name: "Explora más lugares", img: "https://res.cloudinary.com/dckbtxa4a/image/upload/v1776398876/Guadalajara-Jalisco_wbm1m1.webp" },
+  { name: "Explora mÃ¡s lugares", img: "https://res.cloudinary.com/dckbtxa4a/image/upload/v1776398876/Guadalajara-Jalisco_wbm1m1.webp" },
 ];
 
 
@@ -61,23 +60,23 @@ type Partido = { fecha: string; fechaDisplay: string; hora: string; equipo1: str
 
 const PARTIDOS_GDL: Partido[] = [
   { fecha: "2026-06-11", fechaDisplay: "11 de Junio", hora: "20:00", equipo1: "Corea del Sur", bandera1: "https://flagcdn.com/kr.svg", equipo2: "Chequia", bandera2: "https://flagcdn.com/cz.svg" },
-  { fecha: "2026-06-18", fechaDisplay: "18 de Junio", hora: "19:00", equipo1: "México", bandera1: "https://flagcdn.com/mx.svg", equipo2: "Corea del Sur", bandera2: "https://flagcdn.com/kr.svg" },
+  { fecha: "2026-06-18", fechaDisplay: "18 de Junio", hora: "19:00", equipo1: "MÃ©xico", bandera1: "https://flagcdn.com/mx.svg", equipo2: "Corea del Sur", bandera2: "https://flagcdn.com/kr.svg" },
   { fecha: "2026-06-23", fechaDisplay: "23 de Junio", hora: "20:00", equipo1: "Colombia", bandera1: "https://flagcdn.com/co.svg", equipo2: "RD Congo", bandera2: "https://flagcdn.com/cd.svg" },
-  { fecha: "2026-06-26", fechaDisplay: "26 de Junio", hora: "18:00", equipo1: "Uruguay", bandera1: "https://flagcdn.com/uy.svg", equipo2: "España", bandera2: "https://flagcdn.com/es.svg" },
+  { fecha: "2026-06-26", fechaDisplay: "26 de Junio", hora: "18:00", equipo1: "Uruguay", bandera1: "https://flagcdn.com/uy.svg", equipo2: "EspaÃ±a", bandera2: "https://flagcdn.com/es.svg" },
 ];
 
 const PARTIDOS_CDMX: Partido[] = [
-  { fecha: "2026-06-11", fechaDisplay: "11 de Junio", hora: "13:00", equipo1: "México", bandera1: "https://flagcdn.com/mx.svg", equipo2: "Sudáfrica", bandera2: "https://flagcdn.com/za.svg" },
-  { fecha: "2026-06-17", fechaDisplay: "17 de Junio", hora: "20:00", equipo1: "Uzbekistán", bandera1: "https://flagcdn.com/uz.svg", equipo2: "Colombia", bandera2: "https://flagcdn.com/co.svg" },
-  { fecha: "2026-06-24", fechaDisplay: "24 de Junio", hora: "19:00", equipo1: "Chequia", bandera1: "https://flagcdn.com/cz.svg", equipo2: "México", bandera2: "https://flagcdn.com/mx.svg" },
+  { fecha: "2026-06-11", fechaDisplay: "11 de Junio", hora: "13:00", equipo1: "MÃ©xico", bandera1: "https://flagcdn.com/mx.svg", equipo2: "SudÃ¡frica", bandera2: "https://flagcdn.com/za.svg" },
+  { fecha: "2026-06-17", fechaDisplay: "17 de Junio", hora: "20:00", equipo1: "UzbekistÃ¡n", bandera1: "https://flagcdn.com/uz.svg", equipo2: "Colombia", bandera2: "https://flagcdn.com/co.svg" },
+  { fecha: "2026-06-24", fechaDisplay: "24 de Junio", hora: "19:00", equipo1: "Chequia", bandera1: "https://flagcdn.com/cz.svg", equipo2: "MÃ©xico", bandera2: "https://flagcdn.com/mx.svg" },
   { fecha: "2026-06-30", fechaDisplay: "30 de Junio", hora: "19:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
   { fecha: "2026-07-05", fechaDisplay: "5 de Julio", hora: "18:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
 ];
 
 const PARTIDOS_MTY: Partido[] = [
-  { fecha: "2026-06-14", fechaDisplay: "14 de Junio", hora: "20:00", equipo1: "Suecia", bandera1: "https://flagcdn.com/se.svg", equipo2: "Túnez", bandera2: "https://flagcdn.com/tn.svg" },
-  { fecha: "2026-06-20", fechaDisplay: "20 de Junio", hora: "22:00", equipo1: "Túnez", bandera1: "https://flagcdn.com/tn.svg", equipo2: "Japón", bandera2: "https://flagcdn.com/jp.svg" },
-  { fecha: "2026-06-24", fechaDisplay: "24 de Junio", hora: "19:00", equipo1: "Sudáfrica", bandera1: "https://flagcdn.com/za.svg", equipo2: "Corea del Sur", bandera2: "https://flagcdn.com/kr.svg" },
+  { fecha: "2026-06-14", fechaDisplay: "14 de Junio", hora: "20:00", equipo1: "Suecia", bandera1: "https://flagcdn.com/se.svg", equipo2: "TÃºnez", bandera2: "https://flagcdn.com/tn.svg" },
+  { fecha: "2026-06-20", fechaDisplay: "20 de Junio", hora: "22:00", equipo1: "TÃºnez", bandera1: "https://flagcdn.com/tn.svg", equipo2: "JapÃ³n", bandera2: "https://flagcdn.com/jp.svg" },
+  { fecha: "2026-06-24", fechaDisplay: "24 de Junio", hora: "19:00", equipo1: "SudÃ¡frica", bandera1: "https://flagcdn.com/za.svg", equipo2: "Corea del Sur", bandera2: "https://flagcdn.com/kr.svg" },
   { fecha: "2026-06-29", fechaDisplay: "29 de Junio", hora: "19:00", equipo1: "Por definir", bandera1: "https://flagcdn.com/un.svg", equipo2: "Por definir", bandera2: "https://flagcdn.com/un.svg" },
 ];
 
@@ -280,7 +279,7 @@ function PlaceCard2({ place, photos, noImageText }: {
   }, [isHovered, photos]);
 
   const displayImg = photos.length > 0 ? photos[photoIdx] : place.img;
-  const infoHref = `/informacion/${encodeURIComponent(place.name)}`;
+  const infoHref = `/informacion/${encodeURIComponent(place.urlNombre ?? place.name)}`;
   const handleCardNavigation = () => router.push(infoHref);
 
   return (
@@ -297,7 +296,7 @@ function PlaceCard2({ place, photos, noImageText }: {
       }}
       role="link"
       tabIndex={0}
-      aria-label={`Ver información de ${place.name}`}
+      aria-label={`Ver informaciÃ³n de ${place.name}`}
     >
       <div className="w-full relative overflow-hidden pb-[75%] sm:pb-[56.25%] md:pb-[100%]">
         {displayImg ? (
@@ -307,7 +306,7 @@ function PlaceCard2({ place, photos, noImageText }: {
         ) : (
           <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-500 text-sm">{noImageText}</div>
         )}
-        {/* Dots indicador (solo con múltiples fotos y hover) */}
+        {/* Dots indicador (solo con mÃºltiples fotos y hover) */}
         {isHovered && photos.length > 1 && (
           <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
             {photos.map((_, i) => (
@@ -315,7 +314,7 @@ function PlaceCard2({ place, photos, noImageText }: {
             ))}
           </div>
         )}
-        {/* Botón Ubicar */}
+        {/* BotÃ³n Ubicar */}
         <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 z-10">
           <Link
             href="/mapa"
@@ -364,15 +363,15 @@ function HomeContent() {
   // Componentes internos que usan las traducciones
   const CategoryCarousel = ({ categories }: { categories: Category[] }) => {
     const categoryRoutes: { [key: string]: string } = {
-      "Fútbol": "/futbol",
-      "Gastronomía": "/gastronomia",
+      "FÃºtbol": "/futbol",
+      "GastronomÃ­a": "/gastronomia",
       "Cultura": "/cultura",
       "Eventos": "/eventos",
       "Clubs": "/clubs",
       "Tours": "/tours",
       "Casas de Cambio": "/casas-cambio",
       "Hospitales": "/hospitales",
-      "Explora más lugares": "/explora"
+      "Explora mÃ¡s lugares": "/explora"
     };
 
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -384,8 +383,8 @@ function HomeContent() {
 
     const getCategoryName = (name: string) => {
       const categoryMap: { [key: string]: string } = {
-        "Fútbol": tCat('soccer'),
-        "Gastronomía": tCat('gastronomy'),
+        "FÃºtbol": tCat('soccer'),
+        "GastronomÃ­a": tCat('gastronomy'),
         "Arte": tCat('art'),
         "Cultura": tCat('culture'),
         "Eventos": tCat('events')
@@ -433,7 +432,7 @@ function HomeContent() {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="relative text-center mb-1 md:mb-2">
-            {/* Saludo animado inline — lado izquierdo */}
+            {/* Saludo animado inline â€” lado izquierdo */}
             <AnimatePresence>
               {showWelcome && (
                 <motion.div
@@ -451,24 +450,24 @@ function HomeContent() {
                     className="flex flex-col"
                   >
                     <span className="h-10 flex items-center text-[23px] md:text-[27px] font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-                      {isNewWelcome ? "¡Bienvenido," : "¡Hola,"}&nbsp;<span className="text-[#0D601E]">{welcomeMessage}!</span>
+                      {isNewWelcome ? "Â¡Bienvenido," : "Â¡Hola,"}&nbsp;<span className="text-[#0D601E]">{welcomeMessage}!</span>
                     </span>
                     <span className="h-10 flex items-center text-[23px] md:text-[27px] font-semibold text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
-                      ¿Listo para explorar?
+                      Â¿Listo para explorar?
                     </span>
                   </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>
             <h2 className="text-2xl md:text-4xl font-black text-[#1A4D2E] uppercase mb-2" style={{ fontFamily: "var(--font-jockey)" }}>
-              Categorías
+              CategorÃ­as
             </h2>
-            <p className="text-[#769C7B] text-xs md:text-base font-medium px-2">Explora nuestras categorías y descubre nuevas experiencias</p>
+            <p className="text-[#769C7B] text-xs md:text-base font-medium px-2">Explora nuestras categorÃ­as y descubre nuevas experiencias</p>
           </div>
 
           {/* Carrusel */}
           <div className="relative flex items-center justify-center">
-            {/* Botón Anterior */}
+            {/* BotÃ³n Anterior */}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -483,7 +482,7 @@ function HomeContent() {
               <FiChevronRight size={24} className="transform rotate-180" />
             </motion.button>
 
-            {/* Contenedor de Categorías */}
+            {/* Contenedor de CategorÃ­as */}
             <div className="w-full px-8 sm:px-12 md:px-16 pt-4" style={{ overflowX: 'hidden' }}>
               <div className="mx-auto w-full max-w-3xl relative" onMouseEnter={() => setIsAutoPlay(false)} onMouseLeave={resetAutoPlay}>
                 <div className="hidden lg:block pointer-events-none">
@@ -524,7 +523,7 @@ function HomeContent() {
                         <img
                           src={activeCategory.img}
                           alt={getCategoryName(activeCategory.name)}
-                          className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${activeCategory.name === "Fútbol" ? "[object-position:center_75%]" : activeCategory.name === "Arte" ? "[object-position:center_60%]" : activeCategory.name === "Tours" ? "scale-125 object-center" : "object-center"}`}
+                          className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${activeCategory.name === "FÃºtbol" ? "[object-position:center_75%]" : activeCategory.name === "Arte" ? "[object-position:center_60%]" : activeCategory.name === "Tours" ? "scale-125 object-center" : "object-center"}`}
                           loading="lazy"
                         />
 
@@ -540,7 +539,7 @@ function HomeContent() {
                           >
                             {getCategoryName(activeCategory.name)}
                           </h3>
-                          <p className="text-xs md:text-sm text-white/80 mt-2 font-medium">Descubre más →</p>
+                          <p className="text-xs md:text-sm text-white/80 mt-2 font-medium">Descubre mÃ¡s â†’</p>
                         </div>
 
                         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-[#0D601E] shadow-md">
@@ -553,7 +552,7 @@ function HomeContent() {
               </div>
             </div>
 
-            {/* Botón Siguiente */}
+            {/* BotÃ³n Siguiente */}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -632,7 +631,7 @@ function HomeContent() {
   const [itinerarioTxt, setItinerarioTxt] = useState("");
   const [loadingIA, setLoadingIA] = useState(true);
 
-  // Detectar si el usuario acaba de iniciar sesión
+  // Detectar si el usuario acaba de iniciar sesiÃ³n
   useEffect(() => {
     if (hasCheckedWelcome.current) return;
     hasCheckedWelcome.current = true;
@@ -677,9 +676,9 @@ function HomeContent() {
       const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
 
       const scored = (data as any[])
-        .filter((row) => row['Nombre del Lugar'] && row['Categoría'])
+        .filter((row) => row['Nombre del Lugar'] && row['CategorÃ­a'])
         .map((row) => {
-          const placeCategories = (row['Categoría'] as string).split(',').map((c: string) => c.trim());
+          const placeCategories = (row['CategorÃ­a'] as string).split(',').map((c: string) => c.trim());
           const matches = placeCategories.filter((c: string) => targetCategories.has(c)).length;
           return { row, matches };
         })
@@ -703,7 +702,7 @@ function HomeContent() {
       }
 
       const top6: RecommendedPlace[] = shuffled.slice(0, 6).map(({ row }) => {
-        const firstCat = (row['Categoría'] as string).split(',')[0].trim();
+        const firstCat = (row['CategorÃ­a'] as string).split(',')[0].trim();
         const csvImg = (row['Imagen'] as string)?.trim() || null;
         return { name: row['Nombre del Lugar'] as string, img: csvImg || getPlaceImageByCategory(firstCat), categoria: firstCat };
       });
@@ -721,7 +720,7 @@ function HomeContent() {
   const cargarItinerarioHome = async () => {
     setLoadingIA(true);
 
-    // Coordenadas por defecto (Centro de GDL) — la geolocalización se maneja en ia.pitzbol.me
+    // Coordenadas por defecto (Centro de GDL) â€” la geolocalizaciÃ³n se maneja en ia.pitzbol.me
     const ubicacionUsuario = { lat: 20.6767, lng: -103.3371 };
 
     try {
@@ -758,12 +757,12 @@ function HomeContent() {
       const shouldShowWelcome = localStorage.getItem("pitzbol_showWelcome");
       const welcomeName = localStorage.getItem("pitzbol_welcomeName");
       
-      console.log("🔍 Verificando bienvenida en home:", { shouldShowWelcome, welcomeName });
+      console.log("ðŸ” Verificando bienvenida en home:", { shouldShowWelcome, welcomeName });
       
       if (shouldShowWelcome === "true" && welcomeName) {
         hasCheckedWelcome.current = true;
         
-        console.log("✅ Mostrando mensaje de bienvenida");
+        console.log("âœ… Mostrando mensaje de bienvenida");
         
         // Mostrar inmediatamente
         setWelcomeMessage(welcomeName);
@@ -773,7 +772,7 @@ function HomeContent() {
         localStorage.removeItem("pitzbol_showWelcome");
         localStorage.removeItem("pitzbol_welcomeName");
         
-        // Ocultar después de 3.5 segundos
+        // Ocultar despuÃ©s de 3.5 segundos
         setTimeout(() => {
           setShowWelcome(false);
         }, 3800);
@@ -783,7 +782,7 @@ function HomeContent() {
     // Verificar inmediatamente
     checkWelcome();
 
-    // También verificar con un pequeño delay
+    // TambiÃ©n verificar con un pequeÃ±o delay
     const timer = setTimeout(checkWelcome, 100);
 
     // Re-sincronizar recomendaciones cuando el usuario actualiza sus intereses
@@ -854,7 +853,7 @@ function HomeContent() {
           <GdlMatchCarousel partidos={PARTIDOS_GDL} sede="GDL" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_CDMX} sede="CDMX" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_MTY} sede="MTY" tHome={tHome} />
-          {/* PITZBOT — IA de Itinerarios */}
+          {/* PITZBOT â€” IA de Itinerarios */}
           <div className="bg-white rounded-3xl p-4 shadow-lg border border-gray-100 relative overflow-hidden hover:shadow-xl transition-all duration-300">
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
@@ -886,7 +885,7 @@ function HomeContent() {
                 className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span>Crear Itinerario</span>
-                <span>→</span>
+                <span>â†’</span>
               </button>
             </div>
           </div>
@@ -901,7 +900,7 @@ function HomeContent() {
             isOpen={showAuthForIA}
             onClose={() => {
               setShowAuthForIA(false);
-              // Si tras cerrar ya está logeado, abrir la IA
+              // Si tras cerrar ya estÃ¡ logeado, abrir la IA
               const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'https://ia.pitzbol.me';
               try {
                 const raw = localStorage.getItem('pitzbol_user');
