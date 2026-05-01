@@ -305,6 +305,13 @@ export default function ToursPage() {
             </div>
           </motion.div>
         )}
+
+        {/* ═══ TAB PAQUETES (tu interfaz) ═══ */}
+        {activeTab === "paquetes" && (
+          <motion.div
+            key="paquetes"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25 }}
           >
