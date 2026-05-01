@@ -533,7 +533,7 @@ function HomeContent() {
                           >
                             {getCategoryName(activeCategory.name)}
                           </h3>
-                          <p className="text-xs md:text-sm text-white/80 mt-2 font-medium">Descubre m\u00e1s \u2192</p>
+                          <p className="text-xs md:text-sm text-white/80 mt-2 font-medium">Descubre m&aacute;s &rarr;</p>
                         </div>
 
                         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-[#0D601E] shadow-md">
