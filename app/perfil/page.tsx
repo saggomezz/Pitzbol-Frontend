@@ -226,17 +226,17 @@ export default function PerfilDetallado() {
       const rol = userLocal["03_rol"] || userLocal.role || "turista";
       const guideStatus = userLocal["16_status"] || userLocal.guide_status || "ninguno";
       
-      console.log("�x� Estado del usuario:");
+      console.log("👤 Estado del usuario:");
       console.log("   - Rol:", rol);
       console.log("   - Guide Status:", guideStatus);
       console.log("   - UID:", userLocal.uid);
       
       if (rol === "guia" || guideStatus === "aprobado") {
-        console.log("�S& Usuario es guía VERIFICADO - Aparecerá en /tours");
+        console.log("✅ Usuario es guía VERIFICADO - Aparecerá en /tours");
       } else if (guideStatus === "en_revision" || guideStatus === "pendiente") {
-        console.log("⏳ Usuario es guía EN REVISI�N - NO aparecerá en /tours hasta ser aprobado");
+        console.log("⏳ Usuario es guía EN REVISIÓN - NO aparecerá en /tours hasta ser aprobado");
       } else {
-        console.log("��️ Usuario es turista - NO aparecerá en /tours");
+        console.log("ℹ️ Usuario es turista - NO aparecerá en /tours");
       }
       
       setPerfil({
@@ -307,7 +307,7 @@ export default function PerfilDetallado() {
           }
         }
 
-        // Cargar tipo de guía (empresa/persona) � solo si no está guardado localmente
+        // Cargar tipo de guía (empresa/persona) — solo si no está guardado localmente
         if (rol === "guia" && !userLocal.guia_tipo) {
           try {
             const guideRes = await fetch(`${API_BASE}/guides/profile/${userLocal.uid}`);
@@ -529,7 +529,7 @@ export default function PerfilDetallado() {
         throw new Error(t('noSession'));
       }
 
-      console.log("�x� Enviando actualización de nombre:", {
+      console.log("📤 Enviando actualización de nombre:", {
         nombre: nombreTemp.trim(),
         apellido: apellidoTemp.trim(),
         url: `${backendUrl}/api/perfil/update-profile`
@@ -549,7 +549,7 @@ export default function PerfilDetallado() {
       });
 
       const data = await response.json();
-      console.log("�x� Respuesta del servidor:", data);
+      console.log("📥 Respuesta del servidor:", data);
 
       if (!response.ok) {
         throw new Error(data.msg || "Error al actualizar nombre");
@@ -570,7 +570,7 @@ export default function PerfilDetallado() {
       localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
 
       // Emitir evento para actualizar otros componentes
-      console.log('�x� Emitiendo eventos: authStateChanged y guideProfileUpdated');
+      console.log('📤 Emitiendo eventos: authStateChanged y guideProfileUpdated');
       window.dispatchEvent(new Event('authStateChanged'));
       window.dispatchEvent(new Event('guideProfileUpdated'));
 
@@ -612,7 +612,7 @@ export default function PerfilDetallado() {
         throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
       }
 
-      console.log("�x� Enviando descripción al backend:", { descripcion: descripcionTemp });
+      console.log("📝 Enviando descripción al backend:", { descripcion: descripcionTemp });
 
       const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
         method: "PATCH",
@@ -628,7 +628,7 @@ export default function PerfilDetallado() {
 
       const data = await response.json();
 
-      console.log("�x� Respuesta del servidor:", { status: response.status, data });
+      console.log("📥 Respuesta del servidor:", { status: response.status, data });
 
       if (!response.ok) {
         throw new Error(data.msg || `${t('errorServer')}: ${response.statusText}`);
@@ -642,7 +642,7 @@ export default function PerfilDetallado() {
       localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
 
       // Emitir evento para actualizar lista de guías
-      console.log('�x� Emitiendo evento: guideProfileUpdated (descripción)');
+      console.log('📤 Emitiendo evento: guideProfileUpdated (descripción)');
       window.dispatchEvent(new Event('guideProfileUpdated'));
 
       setExito(t('descriptionUpdated'));
@@ -651,7 +651,7 @@ export default function PerfilDetallado() {
       setTimeout(() => setExito(""), 3000);
 
     } catch (err: any) {
-      console.error("�R Error al guardar descripción:", err);
+      console.error("❌ Error al guardar descripción:", err);
       setErrorDescripcion(err.message || "Error al guardar la descripción");
     } finally {
       setGuardando(false);
@@ -712,7 +712,7 @@ export default function PerfilDetallado() {
         window.dispatchEvent(new Event("storage"));
         
         // Emitir evento para actualizar lista de guías
-        console.log('�x� Emitiendo evento: guideProfileUpdated (especialidades)');
+        console.log('📤 Emitiendo evento: guideProfileUpdated (especialidades)');
         window.dispatchEvent(new Event('guideProfileUpdated'));
         
         setExito(t('changesSaved'));
@@ -736,8 +736,8 @@ export default function PerfilDetallado() {
     setErrorIdiomas("");
     const idiomaCapitalizado = idioma.charAt(0).toUpperCase() + idioma.slice(1).toLowerCase().trim();
     
-    console.log("�~" Agregando idioma:", idiomaCapitalizado);
-    console.log("�x9 Idiomas actuales en temp:", idiomasTemp);
+    console.log("➕ Agregando idioma:", idiomaCapitalizado);
+    console.log("📋 Idiomas actuales en temp:", idiomasTemp);
     
     if (idiomasTemp.includes(idiomaCapitalizado)) {
       setErrorIdiomas(t('languageAlreadyAdded'));
@@ -749,7 +749,7 @@ export default function PerfilDetallado() {
     }
     setIdiomasTemp((prev: string[]) => {
       const nuevosIdiomas = [...prev, idiomaCapitalizado];
-      console.log("�S& Nuevos idiomas en temp:", nuevosIdiomas);
+      console.log("✅ Nuevos idiomas en temp:", nuevosIdiomas);
       return nuevosIdiomas;
     });
     setNuevoIdioma("");
@@ -773,9 +773,9 @@ export default function PerfilDetallado() {
         throw new Error(t('noSession'));
       }
 
-      console.log("�x� Guardando idiomas:", idiomasTemp);
-      console.log("�x Token presente:", !!token);
-      console.log("�xR� Backend URL:", backendUrl);
+      console.log("📤 Guardando idiomas:", idiomasTemp);
+      console.log("🔑 Token presente:", !!token);
+      console.log("🌐 Backend URL:", backendUrl);
 
       const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
         method: 'PATCH',
@@ -790,7 +790,7 @@ export default function PerfilDetallado() {
       });
 
       const data = await response.json();
-      console.log("�x� Respuesta del servidor:", data);
+      console.log("📥 Respuesta del servidor:", data);
 
       if (!response.ok) {
         throw new Error(data.error || data.msg || "Error al actualizar idiomas");
@@ -812,12 +812,12 @@ export default function PerfilDetallado() {
         idiomas: nuevosIdiomas 
       }));
       
-      console.log("�S& Idiomas guardados exitosamente");
-      console.log("�x` Estado actualizado - idiomas:", nuevosIdiomas);
-      console.log("�x` Estado idiomas actual:", idiomas);
+      console.log("✅ Idiomas guardados exitosamente");
+      console.log("📊 Estado actualizado - idiomas:", nuevosIdiomas);
+      console.log("📊 Estado idiomas actual:", idiomas);
       
       // Emitir evento para actualizar lista de guías
-      console.log('�x� Emitiendo evento: guideProfileUpdated (idiomas)');
+      console.log('📤 Emitiendo evento: guideProfileUpdated (idiomas)');
       window.dispatchEvent(new Event('guideProfileUpdated'));
       
       setExito(t('languagesUpdated'));
@@ -827,7 +827,7 @@ export default function PerfilDetallado() {
       setEditandoIdiomas(false);
       
     } catch (error: any) {
-      console.error("�R Error al guardar idiomas:", error);
+      console.error("❌ Error al guardar idiomas:", error);
       setErrorIdiomas(error.message || t('errorSavingLanguages'));
     } finally {
       setGuardando(false);
@@ -882,8 +882,8 @@ export default function PerfilDetallado() {
     const token = localStorage.getItem("pitzbol_token");
     
     if (!token || !userLocal?.uid) {
-      console.error('�R No hay sesión activa');
-      setError(`�R ${t('sessionExpired')}`);
+      console.error('❌ No hay sesión activa');
+      setError(`❌ ${t('sessionExpired')}`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -893,7 +893,7 @@ export default function PerfilDetallado() {
     formData.append('foto', file);
 
     try {
-      console.log('�x� Enviando foto al servidor...');
+      console.log('📤 Enviando foto al servidor...');
       const apiBase = API_BASE;
       const jwt = localStorage.getItem('pitzbol_token');
       
@@ -904,8 +904,6 @@ export default function PerfilDetallado() {
         body: formData
       });
 
-
-      // Parsear respuesta
       let data: any = null;
       const contentType = response.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
@@ -929,13 +927,13 @@ export default function PerfilDetallado() {
           else if (response.status === 500) errorMessage = "Error interno del servidor. Intenta m\u00e1s tarde.";
           else errorMessage = `Error ${response.status} al subir foto.`;
         }
-        setError(`\u274c ${errorMessage}`);
-        setTimeout(() => setError(""), 6000);
+        setError(`\u274C ${errorMessage}`);
+        setTimeout(() => setError(""), 5000);
       }
     } catch (err: any) {
-      const msg = err?.message?.includes("fetch") ? "Sin conexi\u00f3n al servidor. Verifica tu red." : (err?.message || "Error al procesar la imagen.");
-      setError(`\u274c ${msg}`);
-      setTimeout(() => setError(""), 6000);
+      console.error("❌ Error al subir foto:", err);
+      setError('❌ Error de conexión al subir foto. Verifica que el servidor esté activo.');
+      setTimeout(() => setError(""), 5000);
     }
 
     // Limpiar input para poder seleccionar la misma imagen nuevamente
@@ -944,7 +942,7 @@ export default function PerfilDetallado() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F6F0E6] via-[#FDFCF9] to-white pb-20">
-      {/* Notificación de �0xito */}
+      {/* Notificación de Éxito */}
       <AnimatePresence>
         {exito && (
           <motion.div
@@ -954,7 +952,7 @@ export default function PerfilDetallado() {
             className="fixed top-6 left-6 z-50 max-w-sm"
           >
             <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-[20px] shadow-xl p-4 border-l-4 border-green-300 flex items-center gap-3">
-              <div className="text-xl">�S&</div>
+              <div className="text-xl">✅</div>
               <p className="text-sm font-semibold">{exito}</p>
             </div>
           </motion.div>
@@ -971,7 +969,7 @@ export default function PerfilDetallado() {
             className="fixed top-6 left-6 z-50 max-w-sm"
           >
             <div className="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-[20px] shadow-xl p-4 border-l-4 border-red-300 flex items-center gap-3">
-              <div className="text-xl">�R</div>
+              <div className="text-xl">❌</div>
               <p className="text-sm font-semibold">{error}</p>
             </div>
           </motion.div>
@@ -1299,7 +1297,7 @@ export default function PerfilDetallado() {
                       )}
                     </motion.div>
 
-                    {/* Card de Tarifa por Tour � solo para guías */}
+                    {/* Card de Tarifa por Tour — solo para guías */}
                     {esGuia && (
                       <motion.div
                         whileHover={{ y: -1 }}
@@ -1940,7 +1938,7 @@ export default function PerfilDetallado() {
                   </motion.div>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-black mb-2">¡Felicidades! �x}0</h3>
+                  <h3 className="text-xl font-black mb-2">¡Felicidades! 🎉</h3>
                   <p className="text-white/90 text-sm font-medium leading-relaxed">
                     Tu solicitud ha sido aprobada. Ahora eres un <span className="font-bold">Guía Oficial Pitzbol</span>. 
                     Puedes comenzar a crear experiencias increíbles.
