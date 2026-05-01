@@ -777,7 +777,6 @@ export default function PerfilDetallado() {
       console.log("✅ Nuevos idiomas en temp:", nuevosIdiomas);
       return nuevosIdiomas;
     });
-    setNuevoIdioma("");
   };
 
   const eliminarIdioma = (idioma: string) => {
