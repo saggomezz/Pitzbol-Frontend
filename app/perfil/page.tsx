@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
@@ -18,35 +18,35 @@ import PersonaTourFormModal from "@/app/components/PersonaTourFormModal";
 
 const API_BASE = "/api";
 
-// Función auxiliar para capitalizar texto
+// FunciÃ³n auxiliar para capitalizar texto
 const capitalizarPrimera = (texto: string): string => {
   if (!texto || texto.length === 0) return texto;
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 };
 
 const NACIONALIDADES = [
-  "Mexicana", "Argentina", "Brasileña", "Chilena", "Colombiana", "Peruana", "Uruguaya", "Venezolana",
-  "Estadounidense", "Canadiense", "Española", "Francesa", "Alemana", "Italiana", "Inglesa", "Portuguesa",
+  "Mexicana", "Argentina", "BrasileÃ±a", "Chilena", "Colombiana", "Peruana", "Uruguaya", "Venezolana",
+  "Estadounidense", "Canadiense", "EspaÃ±ola", "Francesa", "Alemana", "Italiana", "Inglesa", "Portuguesa",
   "Japonesa", "China", "Coreana", "India", "Australiana", "Rusa", "Otra"
 ];
 
 const LADAS = [
-  { code: "+1", country: "USA/Canadá" },
-  { code: "+52", country: "México" },
+  { code: "+1", country: "USA/CanadÃ¡" },
+  { code: "+52", country: "MÃ©xico" },
   { code: "+54", country: "Argentina" },
   { code: "+55", country: "Brasil" },
   { code: "+56", country: "Chile" },
   { code: "+57", country: "Colombia" },
-  { code: "+51", country: "Perú" },
+  { code: "+51", country: "PerÃº" },
   { code: "+58", country: "Venezuela" },
   { code: "+598", country: "Uruguay" },
-  { code: "+34", country: "España" },
+  { code: "+34", country: "EspaÃ±a" },
   { code: "+33", country: "Francia" },
   { code: "+49", country: "Alemania" },
   { code: "+39", country: "Italia" },
   { code: "+44", country: "Reino Unido" },
   { code: "+351", country: "Portugal" },
-  { code: "+81", country: "Japón" },
+  { code: "+81", country: "JapÃ³n" },
   { code: "+86", country: "China" },
   { code: "+82", country: "Corea del Sur" },
   { code: "+91", country: "India" },
@@ -58,17 +58,17 @@ const INTERESES_DISPONIBLES = [
   { nombre: "Arte e Historia", icono: FaPalette, color: "from-purple-500 to-pink-500" },
   { nombre: "Arquitectura", icono: FaBuilding, color: "from-gray-600 to-gray-800" },
   { nombre: "Cultura", icono: FaLandmark, color: "from-blue-500 to-indigo-600" },
-  { nombre: "Gastronomía", icono: FaUtensils, color: "from-orange-500 to-red-500" },
-  { nombre: "Deporte Fútbol", icono: FaFutbol, color: "from-green-600 to-green-800" },
-  { nombre: "Música", icono: FaMusic, color: "from-purple-600 to-pink-600" },
+  { nombre: "GastronomÃ­a", icono: FaUtensils, color: "from-orange-500 to-red-500" },
+  { nombre: "Deporte FÃºtbol", icono: FaFutbol, color: "from-green-600 to-green-800" },
+  { nombre: "MÃºsica", icono: FaMusic, color: "from-purple-600 to-pink-600" },
   { nombre: "Naturaleza", icono: FaTree, color: "from-green-500 to-emerald-600" },
-  { nombre: "Fotografía", icono: FaCamera, color: "from-cyan-500 to-blue-500" },
+  { nombre: "FotografÃ­a", icono: FaCamera, color: "from-cyan-500 to-blue-500" },
   { nombre: "Vida Nocturna", icono: FaMoon, color: "from-indigo-600 to-purple-700" },
   { nombre: "Compras", icono: FaShoppingBag, color: "from-pink-500 to-rose-500" },
   { nombre: "Museos", icono: FaLandmark, color: "from-amber-600 to-yellow-700" },
   { nombre: "Tours Guiados", icono: FaMapMarkedAlt, color: "from-teal-500 to-cyan-600" },
   { nombre: "Aventura", icono: FaMountain, color: "from-orange-600 to-red-600" },
-  { nombre: "Religión", icono: FaChurch, color: "from-slate-600 to-gray-700" },
+  { nombre: "ReligiÃ³n", icono: FaChurch, color: "from-slate-600 to-gray-700" },
   { nombre: "Mercados Locales", icono: FaStore, color: "from-yellow-600 to-orange-600" }
 ];
 
@@ -99,7 +99,7 @@ export default function PerfilDetallado() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
 
-  // Función para refrescar los datos del perfil desde localStorage
+  // FunciÃ³n para refrescar los datos del perfil desde localStorage
   const refrescarEspecialidades = () => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
     const intereses = userLocal["07_intereses"] || userLocal.especialidades || userLocal["07_especialidades"] || [];
@@ -155,7 +155,7 @@ export default function PerfilDetallado() {
   const guardarTarifa = async () => {
     const valor = parseFloat(tarifaTemp);
     if (isNaN(valor) || valor <= 0) {
-      setErrorTarifa("Ingresa una tarifa válida mayor a 0");
+      setErrorTarifa("Ingresa una tarifa vÃ¡lida mayor a 0");
       return;
     }
     setGuardando(true);
@@ -163,7 +163,7 @@ export default function PerfilDetallado() {
     try {
       const token = localStorage.getItem("pitzbol_token");
       const backendUrl = getBackendOrigin();
-      if (!token) throw new Error("No hay sesión activa");
+      if (!token) throw new Error("No hay sesiÃ³n activa");
       const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
         method: "PATCH",
         credentials: "include",
@@ -226,17 +226,17 @@ export default function PerfilDetallado() {
       const rol = userLocal["03_rol"] || userLocal.role || "turista";
       const guideStatus = userLocal["16_status"] || userLocal.guide_status || "ninguno";
       
-      console.log("👤 Estado del usuario:");
+      console.log("ðŸ‘¤ Estado del usuario:");
       console.log("   - Rol:", rol);
       console.log("   - Guide Status:", guideStatus);
       console.log("   - UID:", userLocal.uid);
       
       if (rol === "guia" || guideStatus === "aprobado") {
-        console.log("✅ Usuario es guía VERIFICADO - Aparecerá en /tours");
+        console.log("âœ… Usuario es guÃ­a VERIFICADO - AparecerÃ¡ en /tours");
       } else if (guideStatus === "en_revision" || guideStatus === "pendiente") {
-        console.log("⏳ Usuario es guía EN REVISIÓN - NO aparecerá en /tours hasta ser aprobado");
+        console.log("â³ Usuario es guÃ­a EN REVISIÃ“N - NO aparecerÃ¡ en /tours hasta ser aprobado");
       } else {
-        console.log("ℹ️ Usuario es turista - NO aparecerá en /tours");
+        console.log("â„¹ï¸ Usuario es turista - NO aparecerÃ¡ en /tours");
       }
       
       setPerfil({
@@ -271,12 +271,12 @@ export default function PerfilDetallado() {
         if (estadoResponse.ok) {
           const estadoData = await estadoResponse.json();
           
-          // Actualizar el rol y guide_status si cambió
+          // Actualizar el rol y guide_status si cambiÃ³
           if (estadoData.success) {
             const nuevoRol = estadoData.rol;
             const nuevoGuideStatus = estadoData.guide_status;
             
-            // Si cambió el rol o el estado, actualizar localStorage
+            // Si cambiÃ³ el rol o el estado, actualizar localStorage
             if (nuevoRol !== userLocal.role || nuevoGuideStatus !== userLocal.guide_status) {
               const updatedUser = {
                 ...userLocal,
@@ -296,10 +296,10 @@ export default function PerfilDetallado() {
                 guide_status: nuevoGuideStatus
               }));
 
-              // Si fue aprobado como guía, mostrar notificación y enviar a storage
+              // Si fue aprobado como guÃ­a, mostrar notificaciÃ³n y enviar a storage
               if (nuevoRol === "guia" && nuevoGuideStatus === "aprobado" && userLocal.role !== "guia") {
                 notificarAprobacionGuia(userLocal.uid);
-                registrarAccionSolicitud("aceptada", userLocal.nombre || userLocal["01_nombre"] || "Usuario", "Solicitud aceptada. El usuario ahora es guía.");
+                registrarAccionSolicitud("aceptada", userLocal.nombre || userLocal["01_nombre"] || "Usuario", "Solicitud aceptada. El usuario ahora es guÃ­a.");
                 setMostrarNotificacionAprobado(true);
                 setTimeout(() => setMostrarNotificacionAprobado(false), 8000);
               }
@@ -307,7 +307,7 @@ export default function PerfilDetallado() {
           }
         }
 
-        // Cargar tipo de guía (empresa/persona) — solo si no está guardado localmente
+        // Cargar tipo de guÃ­a (empresa/persona) â€” solo si no estÃ¡ guardado localmente
         if (rol === "guia" && !userLocal.guia_tipo) {
           try {
             const guideRes = await fetch(`${API_BASE}/guides/profile/${userLocal.uid}`);
@@ -320,7 +320,7 @@ export default function PerfilDetallado() {
 
         const resolvedGuideType = userLocal.guia_tipo || tipoGuia || "persona";
 
-        // Cargar experiencias del guía individual o solicitudes del flujo empresarial
+        // Cargar experiencias del guÃ­a individual o solicitudes del flujo empresarial
         try {
           const token = localStorage.getItem("pitzbol_token");
           if (rol === "guia" && resolvedGuideType !== "empresa") {
@@ -362,7 +362,7 @@ export default function PerfilDetallado() {
           console.error('Error al cargar foto de perfil:', error);
         }
       } catch (error) {
-        console.error("Error de sincronización con Pitzbol Server:", error);
+        console.error("Error de sincronizaciÃ³n con Pitzbol Server:", error);
       }
       setLoading(false);
     };
@@ -406,7 +406,7 @@ export default function PerfilDetallado() {
     // Escuchar cambios del localStorage
     window.addEventListener("storage", handleStorageChange);
     
-    // También escuchar un evento personalizado para cambios en la misma pestaña
+    // TambiÃ©n escuchar un evento personalizado para cambios en la misma pestaÃ±a
     window.addEventListener("especialidadesActualizadas", handleStorageChange);
 
     return () => {
@@ -529,7 +529,7 @@ export default function PerfilDetallado() {
         throw new Error(t('noSession'));
       }
 
-      console.log("📤 Enviando actualización de nombre:", {
+      console.log("ðŸ“¤ Enviando actualizaciÃ³n de nombre:", {
         nombre: nombreTemp.trim(),
         apellido: apellidoTemp.trim(),
         url: `${backendUrl}/api/perfil/update-profile`
@@ -549,7 +549,7 @@ export default function PerfilDetallado() {
       });
 
       const data = await response.json();
-      console.log("📥 Respuesta del servidor:", data);
+      console.log("ðŸ“¥ Respuesta del servidor:", data);
 
       if (!response.ok) {
         throw new Error(data.msg || "Error al actualizar nombre");
@@ -570,7 +570,7 @@ export default function PerfilDetallado() {
       localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
 
       // Emitir evento para actualizar otros componentes
-      console.log('📤 Emitiendo eventos: authStateChanged y guideProfileUpdated');
+      console.log('ðŸ“¤ Emitiendo eventos: authStateChanged y guideProfileUpdated');
       window.dispatchEvent(new Event('authStateChanged'));
       window.dispatchEvent(new Event('guideProfileUpdated'));
 
@@ -609,10 +609,10 @@ export default function PerfilDetallado() {
       const backendUrl = getBackendOrigin();
 
       if (!token) {
-        throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
+        throw new Error("No hay sesiÃ³n activa. Por favor, inicia sesiÃ³n nuevamente.");
       }
 
-      console.log("📝 Enviando descripción al backend:", { descripcion: descripcionTemp });
+      console.log("ðŸ“ Enviando descripciÃ³n al backend:", { descripcion: descripcionTemp });
 
       const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
         method: "PATCH",
@@ -628,7 +628,7 @@ export default function PerfilDetallado() {
 
       const data = await response.json();
 
-      console.log("📥 Respuesta del servidor:", { status: response.status, data });
+      console.log("ðŸ“¥ Respuesta del servidor:", { status: response.status, data });
 
       if (!response.ok) {
         throw new Error(data.msg || `${t('errorServer')}: ${response.statusText}`);
@@ -641,8 +641,8 @@ export default function PerfilDetallado() {
       userLocal.descripcion = descripcionTemp;
       localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
 
-      // Emitir evento para actualizar lista de guías
-      console.log('📤 Emitiendo evento: guideProfileUpdated (descripción)');
+      // Emitir evento para actualizar lista de guÃ­as
+      console.log('ðŸ“¤ Emitiendo evento: guideProfileUpdated (descripciÃ³n)');
       window.dispatchEvent(new Event('guideProfileUpdated'));
 
       setExito(t('descriptionUpdated'));
@@ -651,8 +651,8 @@ export default function PerfilDetallado() {
       setTimeout(() => setExito(""), 3000);
 
     } catch (err: any) {
-      console.error("❌ Error al guardar descripción:", err);
-      setErrorDescripcion(err.message || "Error al guardar la descripción");
+      console.error("âŒ Error al guardar descripciÃ³n:", err);
+      setErrorDescripcion(err.message || "Error al guardar la descripciÃ³n");
     } finally {
       setGuardando(false);
     }
@@ -711,8 +711,8 @@ export default function PerfilDetallado() {
         localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
         window.dispatchEvent(new Event("storage"));
         
-        // Emitir evento para actualizar lista de guías
-        console.log('📤 Emitiendo evento: guideProfileUpdated (especialidades)');
+        // Emitir evento para actualizar lista de guÃ­as
+        console.log('ðŸ“¤ Emitiendo evento: guideProfileUpdated (especialidades)');
         window.dispatchEvent(new Event('guideProfileUpdated'));
         
         setExito(t('changesSaved'));
@@ -736,8 +736,8 @@ export default function PerfilDetallado() {
     setErrorIdiomas("");
     const idiomaCapitalizado = idioma.charAt(0).toUpperCase() + idioma.slice(1).toLowerCase().trim();
     
-    console.log("➕ Agregando idioma:", idiomaCapitalizado);
-    console.log("📋 Idiomas actuales en temp:", idiomasTemp);
+    console.log("âž• Agregando idioma:", idiomaCapitalizado);
+    console.log("ðŸ“‹ Idiomas actuales en temp:", idiomasTemp);
     
     if (idiomasTemp.includes(idiomaCapitalizado)) {
       setErrorIdiomas(t('languageAlreadyAdded'));
@@ -749,7 +749,7 @@ export default function PerfilDetallado() {
     }
     setIdiomasTemp((prev: string[]) => {
       const nuevosIdiomas = [...prev, idiomaCapitalizado];
-      console.log("✅ Nuevos idiomas en temp:", nuevosIdiomas);
+      console.log("âœ… Nuevos idiomas en temp:", nuevosIdiomas);
       return nuevosIdiomas;
     });
     setNuevoIdioma("");
@@ -773,9 +773,9 @@ export default function PerfilDetallado() {
         throw new Error(t('noSession'));
       }
 
-      console.log("📤 Guardando idiomas:", idiomasTemp);
-      console.log("🔑 Token presente:", !!token);
-      console.log("🌐 Backend URL:", backendUrl);
+      console.log("ðŸ“¤ Guardando idiomas:", idiomasTemp);
+      console.log("ðŸ”‘ Token presente:", !!token);
+      console.log("ðŸŒ Backend URL:", backendUrl);
 
       const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
         method: 'PATCH',
@@ -790,7 +790,7 @@ export default function PerfilDetallado() {
       });
 
       const data = await response.json();
-      console.log("📥 Respuesta del servidor:", data);
+      console.log("ðŸ“¥ Respuesta del servidor:", data);
 
       if (!response.ok) {
         throw new Error(data.error || data.msg || "Error al actualizar idiomas");
@@ -812,22 +812,22 @@ export default function PerfilDetallado() {
         idiomas: nuevosIdiomas 
       }));
       
-      console.log("✅ Idiomas guardados exitosamente");
-      console.log("📊 Estado actualizado - idiomas:", nuevosIdiomas);
-      console.log("📊 Estado idiomas actual:", idiomas);
+      console.log("âœ… Idiomas guardados exitosamente");
+      console.log("ðŸ“Š Estado actualizado - idiomas:", nuevosIdiomas);
+      console.log("ðŸ“Š Estado idiomas actual:", idiomas);
       
-      // Emitir evento para actualizar lista de guías
-      console.log('📤 Emitiendo evento: guideProfileUpdated (idiomas)');
+      // Emitir evento para actualizar lista de guÃ­as
+      console.log('ðŸ“¤ Emitiendo evento: guideProfileUpdated (idiomas)');
       window.dispatchEvent(new Event('guideProfileUpdated'));
       
       setExito(t('languagesUpdated'));
       setTimeout(() => setExito(""), 3000);
       
-      // Cerrar modo edición
+      // Cerrar modo ediciÃ³n
       setEditandoIdiomas(false);
       
     } catch (error: any) {
-      console.error("❌ Error al guardar idiomas:", error);
+      console.error("âŒ Error al guardar idiomas:", error);
       setErrorIdiomas(error.message || t('errorSavingLanguages'));
     } finally {
       setGuardando(false);
@@ -841,7 +841,7 @@ export default function PerfilDetallado() {
     setErrorIdiomas("");
   };
 
-  // El rol ya viene normalizado del backend (turista si está pendiente, guia si está aprobado)
+  // El rol ya viene normalizado del backend (turista si estÃ¡ pendiente, guia si estÃ¡ aprobado)
   const esGuia = perfil?.rol === "guia";
   const esAdmin = perfil?.rol === "admin";
 
@@ -859,7 +859,7 @@ export default function PerfilDetallado() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validar tamaño (5MB)
+    // Validar tamaÃ±o (5MB)
     const MAX_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       setError(`${t('fileTooLarge', { size: (file.size / 1024 / 1024).toFixed(2) })}`);
@@ -882,8 +882,8 @@ export default function PerfilDetallado() {
     const token = localStorage.getItem("pitzbol_token");
     
     if (!token || !userLocal?.uid) {
-      console.error('❌ No hay sesión activa');
-      setError(`❌ ${t('sessionExpired')}`);
+      console.error('âŒ No hay sesiÃ³n activa');
+      setError(`âŒ ${t('sessionExpired')}`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -893,56 +893,49 @@ export default function PerfilDetallado() {
     formData.append('foto', file);
 
     try {
-      console.log('📤 Enviando foto al servidor...');
+      console.log('ðŸ“¤ Enviando foto al servidor...');
       const apiBase = API_BASE;
       const jwt = localStorage.getItem('pitzbol_token');
       
-      const response = await fetch(`${apiBase}/api/perfil/foto-perfil`, {
+      const response = await fetch(`${apiBase}/perfil/foto-perfil`, {
         method: 'POST',
         credentials: 'include',
         headers: jwt ? { 'Authorization': `Bearer ${jwt}` } : undefined,
         body: formData
       });
 
-      // Intentar parsear JSON; si falla, leer texto
+
+      // Parsear respuesta
       let data: any = null;
-      try {
-        data = await response.json();
-      } catch (parseErr) {
-        const text = await response.text();
-        data = { error: text || 'Respuesta no válida del servidor' };
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        try { data = await response.json(); } catch { data = null; }
       }
 
-      if (response.ok) {
-        console.log('✅ Foto subida exitosamente:', data.fotoPerfil);
+      if (response.ok && data?.fotoPerfil) {
         setFotoPerfil(data.fotoPerfil);
         setExito(t('photoUpdated'));
-        
-        // Actualizar localStorage
         const updated = { ...userLocal, fotoPerfil: data.fotoPerfil };
         localStorage.setItem("pitzbol_user", JSON.stringify(updated));
-        
-        // Disparar evento para actualizar Navbar
-        console.log("📸 Disparando evento fotoPerfilActualizada desde page.tsx...");
-        window.dispatchEvent(new CustomEvent('fotoPerfilActualizada', { 
-          detail: { fotoPerfil: data.fotoPerfil, usuario: updated }
-        }));
-        
-        // Disparar evento para actualizar lista de guías
-        console.log('📤 Emitiendo evento: guideProfileUpdated (foto perfil)');
+        window.dispatchEvent(new CustomEvent('fotoPerfilActualizada', { detail: { fotoPerfil: data.fotoPerfil, usuario: updated } }));
         window.dispatchEvent(new Event('guideProfileUpdated'));
-
         setTimeout(() => setExito(""), 4000);
       } else {
-        const errorMessage = data?.error || 'Error al subir foto de perfil';
-        console.error('❌ Error del servidor:', errorMessage);
-        setError(`❌ ${errorMessage}`);
-        setTimeout(() => setError(""), 5000);
+        let errorMessage = data?.error || "";
+        if (!errorMessage) {
+          if (response.status === 401) errorMessage = "Sesi\u00f3n expirada. Inicia sesi\u00f3n nuevamente.";
+          else if (response.status === 404) errorMessage = "Servicio no disponible. Intenta m\u00e1s tarde.";
+          else if (response.status === 413) errorMessage = "Archivo demasiado grande. M\u00e1ximo 5MB.";
+          else if (response.status === 500) errorMessage = "Error interno del servidor. Intenta m\u00e1s tarde.";
+          else errorMessage = `Error ${response.status} al subir foto.`;
+        }
+        setError(`\u274c ${errorMessage}`);
+        setTimeout(() => setError(""), 6000);
       }
     } catch (err: any) {
-      console.error("❌ Error al subir foto:", err);
-      setError('❌ Error de conexión al subir foto. Verifica que el servidor esté activo.');
-      setTimeout(() => setError(""), 5000);
+      const msg = err?.message?.includes("fetch") ? "Sin conexi\u00f3n al servidor. Verifica tu red." : (err?.message || "Error al procesar la imagen.");
+      setError(`\u274c ${msg}`);
+      setTimeout(() => setError(""), 6000);
     }
 
     // Limpiar input para poder seleccionar la misma imagen nuevamente
@@ -951,7 +944,7 @@ export default function PerfilDetallado() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F6F0E6] via-[#FDFCF9] to-white pb-20">
-      {/* Notificación de Éxito */}
+      {/* NotificaciÃ³n de Ã‰xito */}
       <AnimatePresence>
         {exito && (
           <motion.div
@@ -961,14 +954,14 @@ export default function PerfilDetallado() {
             className="fixed top-6 left-6 z-50 max-w-sm"
           >
             <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-[20px] shadow-xl p-4 border-l-4 border-green-300 flex items-center gap-3">
-              <div className="text-xl">✅</div>
+              <div className="text-xl">âœ…</div>
               <p className="text-sm font-semibold">{exito}</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Notificación de Error */}
+      {/* NotificaciÃ³n de Error */}
       <AnimatePresence>
         {error && (
           <motion.div
@@ -978,7 +971,7 @@ export default function PerfilDetallado() {
             className="fixed top-6 left-6 z-50 max-w-sm"
           >
             <div className="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-[20px] shadow-xl p-4 border-l-4 border-red-300 flex items-center gap-3">
-              <div className="text-xl">❌</div>
+              <div className="text-xl">âŒ</div>
               <p className="text-sm font-semibold">{error}</p>
             </div>
           </motion.div>
@@ -1058,7 +1051,7 @@ export default function PerfilDetallado() {
 
                 {/* Foto de perfil */}
                 <div className="relative mb-8 mt-4 group">
-                  {/* Botón de cámara - Solo si no hay foto */}
+                  {/* BotÃ³n de cÃ¡mara - Solo si no hay foto */}
                   {!fotoPerfil && (
                     <motion.button
                       whileHover={{ scale: 1.08 }}
@@ -1072,7 +1065,7 @@ export default function PerfilDetallado() {
                     </motion.button>
                   )}
                   
-                  {/* Área de foto */}
+                  {/* Ãrea de foto */}
                   <div className="relative w-40 h-40 md:w-48 md:h-48">
                     <div className="absolute inset-0 bg-gradient-to-br from-[#0D601E] to-[#F00808] rounded-full opacity-20 blur-xl" />
                     <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-white shadow-xl bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center">
@@ -1084,7 +1077,7 @@ export default function PerfilDetallado() {
                     </div>
                   </div>
                   
-                  {/* Botón de cámara - Si hay foto */}
+                  {/* BotÃ³n de cÃ¡mara - Si hay foto */}
                   {fotoPerfil && (
                     <motion.button
                       whileHover={{ scale: 1.08 }}
@@ -1122,7 +1115,7 @@ export default function PerfilDetallado() {
                   )}
                 </div>
 
-                {/* Info básica */}
+                {/* Info bÃ¡sica */}
                 {editandoNombre ? (
                   <div className="w-full mt-2 space-y-3">
                     <div>
@@ -1168,7 +1161,7 @@ export default function PerfilDetallado() {
                     <h2 className="text-2xl md:text-3xl font-semibold text-[#1A4D2E] text-center mb-1">
                       {perfil.nombre} {perfil.apellido}
                     </h2>
-                    {/* Solo permitir editar nombre si NO es turista ni guía */}
+                    {/* Solo permitir editar nombre si NO es turista ni guÃ­a */}
                     {perfil.rol !== "turista" && perfil.rol !== "guia" && (
                       <button
                         onClick={() => {
@@ -1203,10 +1196,10 @@ export default function PerfilDetallado() {
                   </span>
                 </div>
 
-                {/* Stats Cards - Solo visibles para Guías y Turistas */}
+                {/* Stats Cards - Solo visibles para GuÃ­as y Turistas */}
                 {!esAdmin && (
                   <div className="w-full space-y-4 mb-6">
-                    {/* Card de Descripción */}
+                    {/* Card de DescripciÃ³n */}
                     <motion.div 
                       whileHover={{ y: -1 }}
                       className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
@@ -1253,7 +1246,7 @@ export default function PerfilDetallado() {
                       )}
                     </motion.div>
 
-                    {/* Card de Teléfono */}
+                    {/* Card de TelÃ©fono */}
                     <motion.div 
                       whileHover={{ y: -1 }}
                       className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
@@ -1306,7 +1299,7 @@ export default function PerfilDetallado() {
                       )}
                     </motion.div>
 
-                    {/* Card de Tarifa por Tour — solo para guías */}
+                    {/* Card de Tarifa por Tour â€” solo para guÃ­as */}
                     {esGuia && (
                       <motion.div
                         whileHover={{ y: -1 }}
@@ -1379,7 +1372,7 @@ export default function PerfilDetallado() {
                   </div>
                 )}
 
-                {/* Estadística  */}
+                {/* EstadÃ­stica  */}
                 <div className="w-full bg-gradient-to-r from-[#E8F5E9] to-white rounded-xl p-4 border border-[#E0F2F1]">
                   <div className="flex justify-between items-center">
                     <div className="text-center flex-1">
@@ -1402,7 +1395,7 @@ export default function PerfilDetallado() {
           {/* Contenido Principal */}
           <div className="lg:col-span-2 space-y-8">
             
-            {/* Sección de Interesess */}
+            {/* SecciÃ³n de Interesess */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1526,7 +1519,7 @@ export default function PerfilDetallado() {
                     </div>
                   )}
 
-                  {/* Botones de acción */}
+                  {/* Botones de acciÃ³n */}
                   <div className="flex gap-2.5 pt-4 border-t border-[#E0F2F1]">
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -1588,7 +1581,7 @@ export default function PerfilDetallado() {
               )}
             </motion.div>
 
-            {/* Sección de Idiomas */}
+            {/* SecciÃ³n de Idiomas */}
             {esGuia && (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -1698,7 +1691,7 @@ export default function PerfilDetallado() {
                       </div>
                     )}
 
-                    {/* Botones de acción */}
+                    {/* Botones de acciÃ³n */}
                     <div className="flex gap-2.5 pt-4 border-t border-[#E0F2F1]">
                       <motion.button
                         whileHover={{ scale: 1.02 }}
@@ -1759,14 +1752,14 @@ export default function PerfilDetallado() {
               </motion.div>
             )}
 
-            {/* Sección de los Tours */}
+            {/* SecciÃ³n de los Tours */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
             >
-              {/* Encabezado de la sección */}
+              {/* Encabezado de la secciÃ³n */}
               <div className="mb-6 flex justify-between items-end">
                 <div>
                   <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">
@@ -1809,7 +1802,7 @@ export default function PerfilDetallado() {
                       <div className="space-y-3 mt-1">
                         {tours.map((tour: any, i: number) => {
                           const foto = tour.fotoPrincipal || tour.fotos?.[0] || null;
-                          const idiomasTour = Array.isArray(tour.idiomas) ? tour.idiomas.slice(0, 2).join(" · ") : "";
+                          const idiomasTour = Array.isArray(tour.idiomas) ? tour.idiomas.slice(0, 2).join(" Â· ") : "";
                           return (
                             <motion.a
                               key={tour.id || i}
@@ -1865,7 +1858,7 @@ export default function PerfilDetallado() {
                           };
                           const estadoLabel: Record<string, string> = {
                             aprobado: "Publicado",
-                            pendiente: "En revisión",
+                            pendiente: "En revisiÃ³n",
                             rechazado: "Rechazado",
                             archivado: "Archivado",
                           };
@@ -1925,7 +1918,7 @@ export default function PerfilDetallado() {
         </div>
       </div>
 
-      {/* Notificación de Aprobación como Guía */}
+      {/* NotificaciÃ³n de AprobaciÃ³n como GuÃ­a */}
       <AnimatePresence>
         {mostrarNotificacionAprobado && (
           <motion.div
@@ -1947,10 +1940,10 @@ export default function PerfilDetallado() {
                   </motion.div>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-black mb-2">¡Felicidades! 🎉</h3>
+                  <h3 className="text-xl font-black mb-2">Â¡Felicidades! ðŸŽ‰</h3>
                   <p className="text-white/90 text-sm font-medium leading-relaxed">
-                    Tu solicitud ha sido aprobada. Ahora eres un <span className="font-bold">Guía Oficial Pitzbol</span>. 
-                    Puedes comenzar a crear experiencias increíbles.
+                    Tu solicitud ha sido aprobada. Ahora eres un <span className="font-bold">GuÃ­a Oficial Pitzbol</span>. 
+                    Puedes comenzar a crear experiencias increÃ­bles.
                   </p>
                 </div>
                 <button
