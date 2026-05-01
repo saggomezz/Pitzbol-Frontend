@@ -860,7 +860,6 @@ export default function PerfilDetallado() {
 
   const cancelarIdiomas = () => {
     setIdiomasTemp([...idiomas]);
-    setNuevoIdioma("");
     setEditandoIdiomas(false);
     setErrorIdiomas("");
   };
