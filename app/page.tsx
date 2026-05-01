@@ -36,7 +36,6 @@ const INTERES_TO_CATEGORIES: Record<string, string[]> = {
 };
 
 const DEFAULT_RECOMMENDATIONS: RecommendedPlace[] = [];
-];
 
 const ALL_CATEGORIES: Category[] = [
   { name: "FÃºtbol", img: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&q=80&w=2070" },
