@@ -597,7 +597,7 @@ function HomeContent() {
       if (places.length <= VISIBLE) return;
       const t = setInterval(() => {
         setOffset(prev => (prev + 3) % places.length);
-      }, 5000);
+      }, 8000);
       return () => clearInterval(t);
     }, [places.length]);
 
