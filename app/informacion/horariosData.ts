@@ -38,6 +38,7 @@ function norm(s: string): string {
 }
 
 const RAW: [string, Horario][] = [
+  ['Alo\u00f3 Caf\u00e9',                                  todos('14:00','21:00',['sabado','domingo'])],
   ['Estadio Akron',                              todos('09:00','22:00')],
   ['Museo Chivas',                               todos('10:30','16:30')],
   ['El Gallo Cantina',                           todos('12:00','00:00')],

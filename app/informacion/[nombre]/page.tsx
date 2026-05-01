@@ -550,9 +550,24 @@ export default function InformacionLugar() {
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         credentials: 'include',
       });
-      if (res.ok) router.back();
-    } catch { /* silencioso */ }
-    finally { setEliminando(false); setConfirmandoEliminar(false); }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setMensajeInfo(`Error al eliminar: ${body.message || res.status}`);
+        return;
+      }
+      // Also remove from CSV
+      await fetch('/api/admin/delete-lugar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: nombreLugar, token }),
+      }).catch(() => {});
+      router.replace('/datos-lugares');
+    } catch (e: any) {
+      setMensajeInfo(`Error de conexi\u00f3n: ${e.message}`);
+    } finally {
+      setEliminando(false);
+      setConfirmandoEliminar(false);
+    }
   };
 
   const guardarInfo = async () => {

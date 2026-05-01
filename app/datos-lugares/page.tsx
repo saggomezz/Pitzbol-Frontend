@@ -175,18 +175,34 @@ export default function DatosLugaresPage() {
 
   const eliminarLugar = async (nombre: string) => {
     const token = localStorage.getItem("pitzbol_token");
+    setMensaje("Eliminando...");
     try {
       const res = await fetch(`/api/lugares/${encodeURIComponent(nombre)}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         credentials: "include",
       });
-      if (res.ok) {
-        setFotosMap(prev => { const n = { ...prev }; delete n[nombre]; return n; });
-        setExpandido(null);
-        setConfirmDelete(null);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setMensaje(`Error al eliminar: ${body.message || res.status}`);
+        return;
       }
-    } catch { /* silencioso */ }
+      // Remove from CSV via admin route
+      await fetch("/api/admin/delete-lugar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, token }),
+      }).catch(() => {});
+      // Update local state
+      setLugares(prev => prev.filter(l => l.nombre !== nombre));
+      setFotosMap(prev => { const n = { ...prev }; delete n[nombre]; return n; });
+      setExpandido(null);
+      setConfirmDelete(null);
+      setMensaje("✓ Lugar eliminado");
+      setTimeout(() => setMensaje(""), 3000);
+    } catch (e: any) {
+      setMensaje(`Error de conexión: ${e.message}`);
+    }
   };
 
   const guardarFotos = async (nombre: string) => {
