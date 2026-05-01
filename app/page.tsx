@@ -1,4 +1,4 @@
-�"use client";
+"use client";
 import { generarItinerarioManual, Lugar } from '@/lib/pitzbol-engine';
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";

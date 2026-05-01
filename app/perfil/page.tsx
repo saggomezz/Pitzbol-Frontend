@@ -1,4 +1,4 @@
-�"use client";
+"use client";
 import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
