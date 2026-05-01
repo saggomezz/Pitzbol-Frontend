@@ -523,12 +523,12 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     <div
                                         ref={businessTriggerRef}
                                         className="relative"
-                                        onMouseEnter={openBusinessSubmenuDesktop}
-                                        onMouseLeave={scheduleBusinessSubmenuClose}
+                                        onMouseEnter={shouldShowBusinessManager ? openBusinessSubmenuDesktop : undefined}
+                                        onMouseLeave={shouldShowBusinessManager ? scheduleBusinessSubmenuClose : undefined}
                                     >
                                         <button
                                             onClick={() => {
-                                                if (typeof window !== "undefined" && window.innerWidth < 768) {
+                                                if (shouldShowBusinessManager && typeof window !== "undefined" && window.innerWidth < 768) {
                                                     setIsBusinessSubmenuOpen((prev) => !prev);
                                                     return;
                                                 }
@@ -541,18 +541,20 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                                 <FiBriefcase className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
                                                 <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('publishBusiness')}</span>
                                             </span>
-                                            <motion.span
-                                                animate={{ rotate: isBusinessSubmenuOpen ? 180 : 0, x: isBusinessSubmenuOpen ? -2 : 0 }}
-                                                transition={{ duration: 0.2, ease: "easeInOut" }}
-                                                className="text-[#0D601E] group-hover:text-[#F00808]"
-                                            >
-                                                <FiChevronLeft className="hidden md:block" />
-                                                <FiChevronDown className="md:hidden" />
-                                            </motion.span>
+                                            {shouldShowBusinessManager && (
+                                                <motion.span
+                                                    animate={{ rotate: isBusinessSubmenuOpen ? 180 : 0, x: isBusinessSubmenuOpen ? -2 : 0 }}
+                                                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                                                    className="text-[#0D601E] group-hover:text-[#F00808]"
+                                                >
+                                                    <FiChevronLeft className="hidden md:block" />
+                                                    <FiChevronDown className="md:hidden" />
+                                                </motion.span>
+                                            )}
                                         </button>
 
                                         <AnimatePresence>
-                                            {isBusinessSubmenuOpen && (
+                                            {isBusinessSubmenuOpen && shouldShowBusinessManager && (
                                                 <>
                                                     <motion.div
                                                         initial={{ opacity: 0, x: -12 }}
