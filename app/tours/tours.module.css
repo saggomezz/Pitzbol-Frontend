@@ -1,4 +1,4 @@
-/* Container principal */
+﻿/* Container principal */
 .container {
   min-height: 100vh;
   background: linear-gradient(135deg, #FDFCF9 0%, #F6F0E6 100%);
@@ -154,15 +154,15 @@
 
 /* Guides Section */
 .guidesSection {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 20px 80px;
+  padding: 20px 20px 60px;
 }
 
 .guidesGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 32px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
   animation: fadeIn 0.5s ease-in;
 }
 
@@ -261,9 +261,11 @@
   }
 
   .guidesGrid {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+  animation: fadeIn 0.5s ease-in;
+}
 
   .hero {
     padding: 60px 20px 40px;
@@ -291,3 +293,4 @@
     font-size: 22px;
   }
 }
+
