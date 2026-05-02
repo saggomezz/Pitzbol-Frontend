@@ -57,6 +57,36 @@ function getApprovedToastDismissedMap(): Record<string, true> {
   }
 }
 
+const DETALLES_DESCRIPTIONS: Record<string, string> = {
+  "Julieta Venegas - Teatro Diana":
+    "Julieta Venegas regresa a Guadalajara con dos fechas en el histórico Teatro Diana. La noche del 20 de junio está completamente agotada (sold out); para la segunda función del 21 de junio aún hay boletos disponibles en Ticketmaster. La artista tijuanense presentará un show íntimo con su catálogo completo: Eres para Mí, Me Voy, Lento, Limón y Sal y sus más recientes producciones. El Teatro Diana, inaugurado en 1939, tiene capacidad para 1,200 personas y es uno de los recintos más emblemáticos de la vida cultural tapatía.",
+  "Sebastián Yatra - Auditorio Telmex":
+    "Sebastián Yatra lleva su 'Entre tanta gente Tour' al Auditorio Telmex de Guadalajara el sábado 20 de junio, en plena apertura de la temporada mundialista. El artista colombiano presentará su más reciente material discográfico junto a sus grandes éxitos: Tacones Rojos, Pareja del Año, Un Año y Robarte un Beso. El Auditorio Telmex tiene capacidad para 10,000 personas y es el principal recinto de espectáculos de la Zona Metropolitana. Boletos disponibles en Ticketmaster y taquilla del auditorio.",
+  "Conciertos en el Fan Fest 2026":
+    "El Gobierno de Jalisco acordó con la FIFA una programación especial de conciertos gratuitos durante los 39 días del Mundial (11 jun – 19 jul 2026). El cartel confirma presentaciones de Maná, la banda de rock más importante de habla hispana originaria de Guadalajara; Carlos Santana, leyenda del rock latinoamericano; Alejandro Fernández 'El Potrillo', máximo referente de la música ranchera y pop; y el Mariachi Vargas de Tecalitlán, agrupación con más de 125 años de historia. También se analiza la realización de un palomazo especial en la icónica Glorieta de la Minerva. Todos los eventos son de acceso gratuito.",
+  "Programa LATE 2026":
+    "Guadalajara LATE 2026 es el programa cultural más ambicioso en la historia de la ciudad, diseñado para acompañar la celebración del Mundial con más de 75 actividades artísticas y recreativas distribuidas en museos, barrios históricos y espacios públicos. A lo largo del año incluye exposiciones temporales, intervenciones de arte urbano, conciertos en plazas, festivales gastronómicos, recorridos nocturnos por el Centro Histórico, talleres creativos y performances en colonias como Americana, Chapalita y Tlaquepaque. El capítulo especial del Mundial concentra actividades durante junio y julio para recibir a los aficionados internacionales con la cultura y el arte jalisciense.",
+  "Orquesta Filarmónica de Jalisco - Teatro Degollado":
+    "La Orquesta Filarmónica de Jalisco presenta tres eventos imperdibles en el Teatro Degollado durante el verano 2026. En junio llega el Ballet Giselle con coreografía de Irina Marcano y dirección de José Luis Castillo, uno de los ballets más emotivos del repertorio clásico. El 5 de julio se realiza el 'Concierto de Campeones', programa mundialista con obras de Brahms, Villa-Lobos, Offenbach, Elgar y el icónico Huapango de Moncayo. El 12 de julio cierra con el Programa 5 de la Segunda Temporada, transmitido por UdeG TV. Boletos en taquilla del Teatro Degollado con 30% de descuento para estudiantes, maestros y adultos mayores.",
+  "FIFA Fan Festival Guadalajara 2026":
+    "El FIFA Fan Festival es el evento oficial de la FIFA para aficionados sin entrada al estadio. En Guadalajara 2026 se instala en el Parque Agua Azul con capacidad para miles de personas. Ofrece transmisiones en vivo de todos los partidos del Mundial en pantallas gigantes, zonas de juegos interactivos, experiencias de realidad aumentada con el trofeo FIFA, food trucks con gastronomía internacional y mexicana, conciertos y activaciones de patrocinadores. El acceso es gratuito previa registro en la plataforma oficial de FIFA. Abre todos los días del torneo desde la fase de grupos hasta la final.",
+  "Noche de Museos Guadalajara":
+    "Noche de Museos es una iniciativa cultural mensual que transforma el centro histórico de Guadalajara en un circuito nocturno de arte y cultura. Cada primer miércoles del mes más de 15 museos y galerías abren gratuitamente de 18:00 a 22:00 horas. El recorrido conecta el Museo Regional, el Instituto Cabañas, el MUSA, el Museo del Periodismo y varios espacios independientes. Durante junio y julio 2026 el evento incluye exposiciones temáticas del Mundial, proyecciones en fachadas históricas y guías turísticos especializados en inglés para los visitantes internacionales.",
+  "Mercado del Arte Tlaquepaque":
+    "El Mercado del Arte de Tlaquepaque es uno de los eventos culturales más auténticos de la Zona Metropolitana de Guadalajara. Cada fin de semana artistas y artesanos de Jalisco instalan sus puestos en el Jardín Hidalgo para exhibir pintura, fotografía, escultura, joyería y textiles. El ambiente está acompañado de mariachi en vivo, degustaciones de comida típica y talleres de arte para niños. Durante el verano 2026 se suman piezas temáticas del Mundial y artistas internacionales invitados. La entrada es libre y las piezas van desde $100 MXN hasta obras de colección.",
+  "Conciertos de Verano Parque Colomos":
+    "Los Conciertos de Verano del Bosque Colomos son una tradición tapatía organizada por el Ayuntamiento de Guadalajara. Cada fin de semana de junio y julio artistas de jazz, música regional mexicana, pop y rock se presentan en el foro al aire libre del parque, rodeados de arboledas y áreas verdes. El evento es completamente gratuito y familiar. Se recomienda llegar temprano para conseguir lugar en el pasto, llevar cobija y alimentos. El Bosque Colomos también ofrece rutas de senderismo, áreas de pic nic y el Jardín Japonés.",
+  "Feria de San Juan de Dios":
+    "La Feria de San Juan de Dios es una de las celebraciones populares más queridas de Guadalajara, organizada en junio en los alrededores del mercado cubierto más grande de América Latina. Durante varias semanas el área se transforma con puestos de artesanías, antojitos, dulces típicos, juegos mecánicos y entretenimiento en vivo. Es una experiencia auténticamente tapatía donde conviven locales y turistas. El mercado interior ofrece además electrónica, ropa, productos regionales y una zona de mariscos y comida muy popular entre los visitantes.",
+  "Exposición de Arte Contemporáneo Jalisco":
+    "La Exposición de Arte Contemporáneo Jalisco es la muestra de verano más importante del estado, celebrada en los espacios del Instituto Cultural Cabañas, Patrimonio de la Humanidad por la UNESCO. La edición 2026 reúne a más de 40 artistas jaliscienses con instalaciones, video arte, pintura y escultura que dialogan con el fútbol, la identidad cultural y el encuentro de naciones que representa el Mundial. Algunos espacios del Cabañas que normalmente están cerrados al público abren especialmente para esta muestra. Se ofrecen visitas guiadas en español e inglés.",
+};
+
+const ESTADIO_SEDE_DESCRIPTIONS: Record<string, string> = {
+  "Estadio Akron, Guadalajara":
+    "El Estadio Akron fue seleccionado por la FIFA como una de las sedes oficiales de la Copa del Mundo 2026, el torneo más grande en la historia del fútbol con 48 selecciones participantes. Inaugurado en 2010, el recinto tiene capacidad para más de 49,000 espectadores y es considerado uno de los estadios más modernos e icónicos de Latinoamérica. Para el Mundial, el estadio fue sometido a una profunda renovación en infraestructura, accesibilidad y tecnología, convirtiéndose en el punto de encuentro del mundo en Guadalajara. Albergará partidos de la fase de grupos y rondas eliminatorias, marcando un hito histórico para la Zona Metropolitana de Guadalajara y todo el estado de Jalisco.",
+};
+
 const CULTURA_DESCRIPTIONS: Record<string, string> = {
   "Instituto Cultural Cabañas, Guadalajara":
     "Declarado Patrimonio de la Humanidad por la UNESCO en 1997, el Hospicio Cabañas fue fundado en 1810 por el obispo Juan Cruz Ruiz de Cabañas como casa de beneficencia. Su capilla alberga los célebres murales de José Clemente Orozco pintados entre 1938 y 1939, considerados una de las obras cumbres del muralismo mexicano. La figura del Hombre de Fuego en la cúpula central es su imagen más emblemática.",
@@ -224,6 +254,8 @@ export default function InformacionLugar() {
   const [editandoHorarios, setEditandoHorarios] = useState(false);
   const [guardandoHorarios, setGuardandoHorarios] = useState(false);
   const [mensajeHorarios, setMensajeHorarios] = useState('');
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   // Registrar vista del lugar
   const nombreRaw = params.nombre;
   const nombreLugar = typeof nombreRaw === "string" ? decodeURIComponent(nombreRaw) : null;
@@ -506,6 +538,36 @@ export default function InformacionLugar() {
       } else setMensajeHorarios('Error al guardar');
     } catch { setMensajeHorarios('Error de conexión'); }
     finally { setGuardandoHorarios(false); setTimeout(() => setMensajeHorarios(''), 3000); }
+  };
+
+  const eliminarLugar = async () => {
+    if (!nombreLugar) return;
+    setEliminando(true);
+    const token = localStorage.getItem('pitzbol_token');
+    try {
+      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}`, {
+        method: 'DELETE',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setMensajeInfo(`Error al eliminar: ${body.message || res.status}`);
+        return;
+      }
+      // Also remove from CSV
+      await fetch('/api/admin/delete-lugar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: nombreLugar, token }),
+      }).catch(() => {});
+      router.replace('/datos-lugares');
+    } catch (e: any) {
+      setMensajeInfo(`Error de conexi\u00f3n: ${e.message}`);
+    } finally {
+      setEliminando(false);
+      setConfirmandoEliminar(false);
+    }
   };
 
   const guardarInfo = async () => {
@@ -1063,6 +1125,28 @@ export default function InformacionLugar() {
             </aside>
           </div>
 
+          {/* Detalles del evento */}
+          {DETALLES_DESCRIPTIONS[lugarSeguro.nombre] && (
+            <div className={styles.infoCard}>
+              <div className={styles.infoHeader}>
+                <FiInfo />
+                <h2>Detalles</h2>
+              </div>
+              <p className={styles.infoText}>{DETALLES_DESCRIPTIONS[lugarSeguro.nombre]}</p>
+            </div>
+          )}
+
+          {/* Acerca del Estadio Sede */}
+          {ESTADIO_SEDE_DESCRIPTIONS[lugarSeguro.nombre] && (
+            <div className={styles.infoCard}>
+              <div className={styles.infoHeader}>
+                <FiInfo />
+                <h2>Acerca del Estadio Sede</h2>
+              </div>
+              <p className={styles.infoText}>{ESTADIO_SEDE_DESCRIPTIONS[lugarSeguro.nombre]}</p>
+            </div>
+          )}
+
           {/* Descripción cultural */}
           {CULTURA_DESCRIPTIONS[lugarSeguro.nombre] && (
             <div className={styles.infoCard}>
@@ -1071,6 +1155,37 @@ export default function InformacionLugar() {
                 <h2>Significado cultural</h2>
               </div>
               <p className={styles.infoText}>{CULTURA_DESCRIPTIONS[lugarSeguro.nombre]}</p>
+            </div>
+          )}
+
+          {/* Eliminar lugar (solo cua) */}
+          {esAdminLugares && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+              {confirmandoEliminar ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>¿Eliminar este lugar?</span>
+                  <button
+                    onClick={eliminarLugar}
+                    disabled={eliminando}
+                    style={{ background: '#dc2626', color: 'white', border: 'none', borderRadius: '0.5rem', padding: '0.35rem 0.9rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', opacity: eliminando ? 0.6 : 1 }}
+                  >
+                    {eliminando ? 'Eliminando...' : 'Sí, eliminar'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmandoEliminar(false)}
+                    style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '0.5rem', padding: '0.35rem 0.9rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmandoEliminar(true)}
+                  style={{ background: 'none', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '0.5rem', padding: '0.35rem 0.9rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  🗑 Eliminar lugar
+                </button>
+              )}
             </div>
           )}
 

@@ -15,7 +15,7 @@ import AuthModal from './components/AuthModal';
 
 type Category = { name: string; img: string; };
 type DateInfo = { day: string; weekday: string; fullDate: string; isGdlMatch: boolean; isActive: boolean; };
-type RecommendedPlace = { name: string; img: string | null; categoria?: string; };
+type RecommendedPlace = { name: string; img: string | null; categoria?: string; urlNombre?: string; };
 
 const INTERES_TO_CATEGORIES: Record<string, string[]> = {
   "Arte e Historia": ["Arte e Historia"],
@@ -35,26 +35,20 @@ const INTERES_TO_CATEGORIES: Record<string, string[]> = {
   "Mercados Locales": ["Mercados Locales"],
 };
 
-const DEFAULT_RECOMMENDATIONS: RecommendedPlace[] = [
-  { name: "Centro de Guadalajara", img: "https://www.liderempresarial.com/wp-content/uploads/2025/07/Asi-se-transformara-el-centro-de-Guadalajara-%C2%BFcuando-estara-listo.jpg" },
-  { name: "Tlaquepaque", img: "https://image-tc.galaxy.tf/wijpeg-5ifzorsfl8d2dm64kutj586du/tlaquepaque.jpg" },
-  { name: "Tequila, Jalisco", img: "https://visitmexico.com/media/usercontent/67fd7d33baf74-Tequila-2_gmxdot_jpeg" },
-  { name: "Hueso Restaurante", img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800", categoria: "Gastronomía" },
-  { name: "Mutante Restaurante", img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800", categoria: "Gastronomía" },
-  { name: "Cuerno Andares", img: "https://images.unsplash.com/photo-1484659619207-9165d119dafe?auto=format&fit=crop&q=80&w=800", categoria: "Gastronomía" },
-];
+const DEFAULT_RECOMMENDATIONS: RecommendedPlace[] = [];
 
 const ALL_CATEGORIES: Category[] = [
   { name: "Fútbol", img: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&q=80&w=2070" },
   { name: "Gastronomía", img: "https://images.unsplash.com/photo-1711306722944-70b776bb4394?auto=format&fit=crop&q=80&w=1528" },
   { name: "Cultura", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Voladores_de_Papantla.png/1200px-Voladores_de_Papantla.png" },
   { name: "Eventos", img: "https://www.buenosviajes.co/wp-content/uploads/2024/03/Guadalajara2.jpg" },
-  { name: "Clubs", img: "https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484397/ideas-tema-fiesta_rq0r9b.jpg" },
+  { name: "Clubs", img: "https://res.cloudinary.com/dckbtxa4a/image/upload/v1777408875/469537367_122208595754073762_1280570453325883698_n_chbzu8.jpg" },
   { name: "Tours", img: "https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484529/a2_go8rka.jpg" },
   { name: "Casas de Cambio", img: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1528" },
   { name: "Hospitales", img: "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=1700" },
   { name: "Explora más lugares", img: "https://res.cloudinary.com/dckbtxa4a/image/upload/v1776398876/Guadalajara-Jalisco_wbm1m1.webp" },
 ];
+
 
 type Partido = { fecha: string; fechaDisplay: string; hora: string; equipo1: string; bandera1: string; equipo2: string; bandera2: string; sede?: string; };
 
@@ -279,7 +273,7 @@ function PlaceCard2({ place, photos, noImageText }: {
   }, [isHovered, photos]);
 
   const displayImg = photos.length > 0 ? photos[photoIdx] : place.img;
-  const infoHref = `/informacion/${encodeURIComponent(place.name)}`;
+  const infoHref = `/informacion/${encodeURIComponent(place.urlNombre ?? place.name)}`;
   const handleCardNavigation = () => router.push(infoHref);
 
   return (
@@ -351,7 +345,7 @@ function HomeContent() {
   const router = useRouter();
   const hasCheckedWelcome = useRef(false);
   const [isNewWelcome, setIsNewWelcome] = useState(false);
-  const [recommendedPlaces, setRecommendedPlaces] = useState<RecommendedPlace[]>(DEFAULT_RECOMMENDATIONS);
+  const [recommendedPlaces, setRecommendedPlaces] = useState<RecommendedPlace[]>([]);
   const [recommendedPhotos, setRecommendedPhotos] = useState<Record<string, string[]>>({});
 
   // Traducciones
@@ -432,7 +426,7 @@ function HomeContent() {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="relative text-center mb-1 md:mb-2">
-            {/* Saludo animado inline — lado izquierdo */}
+            {/* Saludo animado inline � lado izquierdo */}
             <AnimatePresence>
               {showWelcome && (
                 <motion.div
@@ -539,7 +533,7 @@ function HomeContent() {
                           >
                             {getCategoryName(activeCategory.name)}
                           </h3>
-                          <p className="text-xs md:text-sm text-white/80 mt-2 font-medium">Descubre más →</p>
+                          <p className="text-xs md:text-sm text-white/80 mt-2 font-medium">Descubre m&aacute;s &rarr;</p>
                         </div>
 
                         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-[#0D601E] shadow-md">
@@ -596,8 +590,24 @@ function HomeContent() {
 
   const RecommendationsComponent = ({ places, onRefresh }: { places: RecommendedPlace[]; onRefresh: () => void }) => {
     const [refreshing, setRefreshing] = useState(false);
+    const [offset, setOffset] = useState(0);
+    const VISIBLE = 6;
+
+    useEffect(() => {
+      if (places.length <= VISIBLE) return;
+      const t = setInterval(() => {
+        setOffset(prev => (prev + 3) % places.length);
+      }, 8000);
+      return () => clearInterval(t);
+    }, [places.length]);
+
+    const visiblePlaces = places.length === 0 ? [] : places.length <= VISIBLE
+      ? places
+      : Array.from({ length: VISIBLE }, (_, i) => places[(offset + i) % places.length]);
+
     const handleRefresh = async () => {
       setRefreshing(true);
+      setOffset(0);
       await onRefresh();
       setTimeout(() => setRefreshing(false), 600);
     };
@@ -614,9 +624,9 @@ function HomeContent() {
           </button>
         </div>
         <div className="flex overflow-x-auto scrollbar-hidden md:overflow-visible md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2 px-1">
-          {places.map((place) => (
+          {visiblePlaces.map((place, i) => (
             <PlaceCard2
-              key={place.name}
+              key={`${place.name}-${offset}-${i}`}
               place={place}
               photos={recommendedPhotos[place.name] || []}
               noImageText={tCommon('noImage')}
@@ -658,69 +668,82 @@ function HomeContent() {
 
   const cargarRecomendaciones = async () => {
     try {
+      const res = await fetch('/datosLugares.csv');
+      const text = await res.text();
+      const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
+      const allRows = data as any[];
+
+      const CAT_KEY = 'Categor\u00eda';
+      const rowToPlace = (row: any): RecommendedPlace => {
+        const firstCat = ((row[CAT_KEY] as string) || '').split(',')[0].trim();
+        const csvImg = (row['Imagen'] as string)?.trim() || null;
+        return { name: row['Nombre del Lugar'] as string, img: csvImg || getPlaceImageByCategory(firstCat), categoria: firstCat };
+      };
+      const shuffleArr = (arr: any[]): any[] => {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+        return a;
+      };
+
+      const cargarPorDefecto = (): RecommendedPlace[] => {
+        const chivas = ['Museo Chivas, Guadalajara'];
+        const pool = allRows.filter((row) => {
+          const nombre = row['Nombre del Lugar'] as string;
+          const cats = (row[CAT_KEY] as string) || '';
+          if (!nombre) return false;
+          if (chivas.includes(nombre)) return true;
+          return cats.includes('Gastronom\u00eda') || cats.includes('Cultura');
+        });
+        return shuffleArr(pool).slice(0, 18).map(rowToPlace);
+      };
+
       const userLocal = localStorage.getItem('pitzbol_user');
-      if (!userLocal) return;
+      if (!userLocal) { const d = cargarPorDefecto(); if (d.length > 0) setRecommendedPlaces(d); return; }
 
       const user = JSON.parse(userLocal);
-      const intereses: string[] = user["07_intereses"] || user.especialidades || user["07_especialidades"] || [];
-      if (!intereses.length) return;
+      const intereses: string[] = user['07_intereses'] || user.especialidades || user['07_especialidades'] || [];
+      if (!intereses.length) { const d = cargarPorDefecto(); if (d.length > 0) setRecommendedPlaces(d); return; }
 
       const targetCategories = new Set<string>();
       intereses.forEach((interes: string) => {
         (INTERES_TO_CATEGORIES[interes] || []).forEach((cat: string) => targetCategories.add(cat));
       });
-      if (targetCategories.size === 0) return;
+      if (targetCategories.size === 0) { const d = cargarPorDefecto(); if (d.length > 0) setRecommendedPlaces(d); return; }
 
-      const res = await fetch('/datosLugares.csv');
-      const text = await res.text();
-      const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
-
-      const scored = (data as any[])
-        .filter((row) => row['Nombre del Lugar'] && row['Categoría'])
+      const scored = allRows
+        .filter((row) => row['Nombre del Lugar'] && row[CAT_KEY])
         .map((row) => {
-          const placeCategories = (row['Categoría'] as string).split(',').map((c: string) => c.trim());
+          const placeCategories = (row[CAT_KEY] as string).split(',').map((c: string) => c.trim());
           const matches = placeCategories.filter((c: string) => targetCategories.has(c)).length;
           return { row, matches };
         })
         .filter(({ matches }) => matches > 0)
         .sort((a, b) => b.matches - a.matches);
 
-      if (scored.length === 0) return;
+      if (scored.length === 0) { const d = cargarPorDefecto(); if (d.length > 0) setRecommendedPlaces(d); return; }
 
-      // Mezclar dentro del mismo puntaje para variar resultados
-      const shuffled: typeof scored = [];
-      let i = 0;
-      while (i < scored.length) {
-        const score = scored[i].matches;
+      const shuffledScored: typeof scored = [];
+      let idx = 0;
+      while (idx < scored.length) {
+        const score = scored[idx].matches;
         const group: typeof scored = [];
-        while (i < scored.length && scored[i].matches === score) { group.push(scored[i]); i++; }
-        for (let j = group.length - 1; j > 0; j--) {
-          const k = Math.floor(Math.random() * (j + 1));
-          [group[j], group[k]] = [group[k], group[j]];
-        }
-        shuffled.push(...group);
+        while (idx < scored.length && scored[idx].matches === score) { group.push(scored[idx]); idx++; }
+        for (let j = group.length - 1; j > 0; j--) { const k = Math.floor(Math.random() * (j + 1)); [group[j], group[k]] = [group[k], group[j]]; }
+        shuffledScored.push(...group);
       }
 
-      const top6: RecommendedPlace[] = shuffled.slice(0, 6).map(({ row }) => {
-        const firstCat = (row['Categoría'] as string).split(',')[0].trim();
-        const csvImg = (row['Imagen'] as string)?.trim() || null;
-        return { name: row['Nombre del Lugar'] as string, img: csvImg || getPlaceImageByCategory(firstCat), categoria: firstCat };
-      });
-
-      if (top6.length < 6) {
-        top6.push(...DEFAULT_RECOMMENDATIONS.slice(0, 6 - top6.length));
-      }
-
-      setRecommendedPlaces(top6);
+      const top18: RecommendedPlace[] = shuffledScored.slice(0, 18).map(({ row }) => rowToPlace(row));
+      if (top18.length < 6) { const fill = cargarPorDefecto(); top18.push(...fill.slice(0, 18 - top18.length)); }
+      setRecommendedPlaces(top18);
     } catch {
-      // Mantener defaults en caso de error
+      // mantener estado actual en caso de error
     }
   };
 
   const cargarItinerarioHome = async () => {
     setLoadingIA(true);
 
-    // Coordenadas por defecto (Centro de GDL) — la geolocalización se maneja en ia.pitzbol.me
+    // Coordenadas por defecto (Centro de GDL) � la geolocalización se maneja en ia.pitzbol.me
     const ubicacionUsuario = { lat: 20.6767, lng: -103.3371 };
 
     try {
@@ -757,12 +780,12 @@ function HomeContent() {
       const shouldShowWelcome = localStorage.getItem("pitzbol_showWelcome");
       const welcomeName = localStorage.getItem("pitzbol_welcomeName");
       
-      console.log("🔍 Verificando bienvenida en home:", { shouldShowWelcome, welcomeName });
+      console.log("�x� Verificando bienvenida en home:", { shouldShowWelcome, welcomeName });
       
       if (shouldShowWelcome === "true" && welcomeName) {
         hasCheckedWelcome.current = true;
         
-        console.log("✅ Mostrando mensaje de bienvenida");
+        console.log("�S& Mostrando mensaje de bienvenida");
         
         // Mostrar inmediatamente
         setWelcomeMessage(welcomeName);
@@ -853,7 +876,7 @@ function HomeContent() {
           <GdlMatchCarousel partidos={PARTIDOS_GDL} sede="GDL" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_CDMX} sede="CDMX" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_MTY} sede="MTY" tHome={tHome} />
-          {/* PITZBOT — IA de Itinerarios */}
+          {/* PITZBOT � IA de Itinerarios */}
           <div className="bg-white rounded-3xl p-4 shadow-lg border border-gray-100 relative overflow-hidden hover:shadow-xl transition-all duration-300">
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
@@ -885,7 +908,6 @@ function HomeContent() {
                 className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span>Crear Itinerario</span>
-                <span>→</span>
               </button>
             </div>
           </div>

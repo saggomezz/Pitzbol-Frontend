@@ -31,8 +31,26 @@ const NACIONALIDADES = [
   "Japonesa", "China", "Coreana", "India", "Australiana", "Rusa", "Otra"
 ];
 
+const IDIOMAS_DISPONIBLES = [
+  "Espa\u00f1ol", "Ingl\u00e9s", "Portugu\u00e9s", "Franc\u00e9s", "Alem\u00e1n", "Italiano",
+  "Japon\u00e9s", "Chino Mandar\u00edn", "\u00c1rabe", "Ruso", "Coreano", "Hindi",
+  "Turco", "Holand\u00e9s", "Polaco", "Sueco", "Noruego", "Dan\u00e9s",
+  "Griego", "Hebreo", "Tailand\u00e9s", "Indonesio", "Vietnamita",
+  "Catal\u00e1n", "Rumano", "H\u00fangaro", "Checo", "Ucraniano",
+];
+
+const NACIONALIDAD_A_IDIOMA: Record<string, string> = {
+  "Mexicana": "Espa\u00f1ol", "Argentina": "Espa\u00f1ol", "Brasile\u00f1a": "Portugu\u00e9s",
+  "Chilena": "Espa\u00f1ol", "Colombiana": "Espa\u00f1ol", "Peruana": "Espa\u00f1ol",
+  "Uruguaya": "Espa\u00f1ol", "Venezolana": "Espa\u00f1ol", "Espa\u00f1ola": "Espa\u00f1ol",
+  "Francesa": "Franc\u00e9s", "Alemana": "Alem\u00e1n", "Italiana": "Italiano",
+  "Inglesa": "Ingl\u00e9s", "Portuguesa": "Portugu\u00e9s", "Japonesa": "Japon\u00e9s",
+  "China": "Chino Mandar\u00edn", "Coreana": "Coreano", "Estadounidense": "Ingl\u00e9s",
+  "Canadiense": "Ingl\u00e9s", "India": "Hindi", "Australiana": "Ingl\u00e9s", "Rusa": "Ruso",
+};
+
 const LADAS = [
-  { code: "+1", country: "USA/Canadá" },
+  { code: "+1", country: "USA/Canad\u00e1" },
   { code: "+52", country: "México" },
   { code: "+54", country: "Argentina" },
   { code: "+55", country: "Brasil" },
@@ -143,9 +161,16 @@ export default function PerfilDetallado() {
   
   const [editandoIdiomas, setEditandoIdiomas] = useState(false);
   const [idiomasTemp, setIdiomasTemp] = useState<string[]>([]);
-  const [nuevoIdioma, setNuevoIdioma] = useState("");
   const [errorIdiomas, setErrorIdiomas] = useState("");
   const [idiomas, setIdiomas] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!editandoIdiomas || idiomasTemp.length > 0) return;
+    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    const nac: string = userLocal["05_nacionalidad"] || userLocal.nacionalidad || "";
+    const defaultIdioma = NACIONALIDAD_A_IDIOMA[nac];
+    if (defaultIdioma) setIdiomasTemp([defaultIdioma]);
+  }, [editandoIdiomas]);
   
   const [guardando, setGuardando] = useState(false);
   const [exito, setExito] = useState("");
@@ -753,7 +778,6 @@ export default function PerfilDetallado() {
       console.log("✅ Nuevos idiomas en temp:", nuevosIdiomas);
       return nuevosIdiomas;
     });
-    setNuevoIdioma("");
   };
 
   const eliminarIdioma = (idioma: string) => {
@@ -837,7 +861,6 @@ export default function PerfilDetallado() {
 
   const cancelarIdiomas = () => {
     setIdiomasTemp([...idiomas]);
-    setNuevoIdioma("");
     setEditandoIdiomas(false);
     setErrorIdiomas("");
   };
@@ -909,30 +932,25 @@ export default function PerfilDetallado() {
         }
       }
 
-      if (response.ok) {
-        console.log('✅ Foto subida exitosamente:', data.fotoPerfil);
+      if (response.ok && data?.fotoPerfil) {
         setFotoPerfil(data.fotoPerfil);
         setExito(t('photoUpdated'));
-        
-        // Actualizar localStorage
         const updated = { ...userLocal, fotoPerfil: data.fotoPerfil };
         localStorage.setItem("pitzbol_user", JSON.stringify(updated));
-        
-        // Disparar evento para actualizar Navbar
-        console.log("📸 Disparando evento fotoPerfilActualizada desde page.tsx...");
-        window.dispatchEvent(new CustomEvent('fotoPerfilActualizada', { 
-          detail: { fotoPerfil: data.fotoPerfil, usuario: updated }
-        }));
-        
-        // Disparar evento para actualizar lista de guías
-        console.log('📤 Emitiendo evento: guideProfileUpdated (foto perfil)');
+        window.dispatchEvent(new CustomEvent('fotoPerfilActualizada', { detail: { fotoPerfil: data.fotoPerfil, usuario: updated } }));
         window.dispatchEvent(new Event('guideProfileUpdated'));
-
         setTimeout(() => setExito(""), 4000);
       } else {
         const errorMessage = data?.details && data?.error === 'Error al procesar la imagen'
           ? data.details
-          : data?.error || data?.msg || data?.details || 'Error al subir foto de perfil';
+          : data?.error
+            || data?.msg
+            || data?.details
+            || (response.status === 401 ? 'Sesión expirada. Inicia sesión nuevamente.' : '')
+            || (response.status === 404 ? 'Servicio no disponible. Intenta más tarde.' : '')
+            || (response.status === 413 ? 'Archivo demasiado grande. Máximo 5MB.' : '')
+            || (response.status === 500 ? 'Error interno del servidor. Intenta más tarde.' : '')
+            || `Error ${response.status} al subir foto.`;
         console.error('❌ Error del servidor:', errorMessage);
         setError(`❌ ${errorMessage}`);
         setTimeout(() => setError(""), 5000);
@@ -1615,32 +1633,25 @@ export default function PerfilDetallado() {
                 
                 {editandoIdiomas ? (
                   <div className="space-y-6">
-                    {/* Input para agregar idioma */}
+                    {/* Selector de idioma */}
                     <div>
-                      <p className="text-sm font-medium text-[#81C784] mb-4 tracking-wide">{t('addLanguage')}</p>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={nuevoIdioma}
-                          onChange={(e) => setNuevoIdioma(e.target.value)}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter' && nuevoIdioma.trim()) {
-                              agregarIdioma(nuevoIdioma);
-                            }
-                          }}
-                          placeholder={t('languagePlaceholder')}
-                          className="flex-1 px-4 py-2 border border-[#E0F2F1] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-[#1A4D2E]"
-                        />
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => nuevoIdioma.trim() && agregarIdioma(nuevoIdioma)}
-                          disabled={guardando || !nuevoIdioma.trim()}
-                          className="px-4 py-2 bg-[#3A5A40] text-white rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <FiPlus size={18} />
-                        </motion.button>
-                      </div>
+                      <p className="text-sm font-medium text-[#81C784] mb-3 tracking-wide">{t('addLanguage')}</p>
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (!val || idiomasTemp.includes(val) || idiomasTemp.length >= 10) return;
+                          setIdiomasTemp(prev => [...prev, val]);
+                          setErrorIdiomas("");
+                        }}
+                        disabled={guardando || idiomasTemp.length >= 10}
+                        className="w-full px-4 py-2.5 border border-[#E0F2F1] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-[#1A4D2E] bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">-- Selecciona un idioma --</option>
+                        {IDIOMAS_DISPONIBLES.filter(id => !idiomasTemp.includes(id)).map(id => (
+                          <option key={id} value={id}>{id}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <AnimatePresence>
