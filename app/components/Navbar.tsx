@@ -398,7 +398,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                className="fixed md:absolute top-16 md:top-[120%] right-2 md:right-0 w-[calc(100vw-1rem)] max-w-[340px] md:w-72 bg-white rounded-[24px] md:rounded-[32px] shadow-2xl border border-gray-100 p-4 md:p-5 flex flex-col gap-1 z-[120] max-h-[calc(100vh-5rem)] md:max-h-[85vh] overflow-y-auto scrollbar-hidden hover:text-[#F00808] transition-colors"
+                                className="fixed md:absolute top-16 md:top-[120%] right-2 md:right-0 w-[calc(100vw-1rem)] max-w-[340px] md:w-72 bg-white rounded-[24px] md:rounded-[32px] shadow-2xl border border-gray-100 p-4 md:p-5 flex flex-col gap-1 z-[120] max-h-[calc(100vh-5rem)] md:max-h-[85vh] overflow-y-auto scrollbar-hidden"
                             >
                             <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('myAccount')}</p>
                             {user ? (
