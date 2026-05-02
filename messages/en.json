@@ -767,6 +767,9 @@
     "viewProfile": "View Profile",
     "bookTour": "Book Tour",
     "noBio": "This guide hasn't added a biography yet.",
+    "guideLayout": "Guide view",
+    "cardView": "Cards",
+    "listView": "List",
     "guidesFound": "guides found",
     "guideFound": "guide found"
   }

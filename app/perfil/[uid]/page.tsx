@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { 
   FiMapPin, FiGlobe, FiAward, FiStar, FiMessageSquare, 
-  FiCalendar, FiCheckCircle, FiClock, FiDollarSign, FiUser, FiMail, FiPhone, FiShield, FiDatabase, FiShoppingBag
+  FiCalendar, FiCheckCircle, FiClock, FiDollarSign, FiUser, FiMail, FiPhone, FiShield, FiDatabase, FiShoppingBag, FiMap
 } from "react-icons/fi";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
 import ChatModal from "@/app/components/ChatModal";
@@ -167,6 +168,7 @@ export default function GuidePublicProfilePage() {
   const [adminDetail, setAdminDetail] = useState<AdminUserDetail | null>(null);
   const [loadingAdminDetail, setLoadingAdminDetail] = useState(false);
   const [negocios, setNegocios] = useState<any[]>([]);
+  const [guideTours, setGuideTours] = useState<any[]>([]);
   const isAdminViewer = user?.role === "admin";
 
   useEffect(() => {
@@ -206,17 +208,24 @@ export default function GuidePublicProfilePage() {
           }
         }
 
-        // Cargar negocios del usuario
+        // Cargar negocios y tours del usuario
         const uid = fetchedProfile?.uid || profileUid;
         if (uid) {
           try {
-            const negociosRes = await fetch(`/api/perfil/negocios/${encodeURIComponent(uid)}`);
+            const [negociosRes, toursRes] = await Promise.all([
+              fetch(`/api/perfil/negocios/${encodeURIComponent(uid)}`),
+              fetch(`/api/tours/guia/${encodeURIComponent(uid)}`),
+            ]);
             if (negociosRes.ok) {
               const negociosData = await negociosRes.json();
               setNegocios(negociosData.negocios || []);
             }
+            if (toursRes.ok) {
+              const toursData = await toursRes.json();
+              setGuideTours(toursData.tours || []);
+            }
           } catch (err) {
-            console.error("Error cargando negocios:", err);
+            console.error("Error cargando datos del guía:", err);
           }
         }
       } catch (error) {
@@ -691,7 +700,7 @@ export default function GuidePublicProfilePage() {
               </motion.div>
             )}
 
-            {/* Experiencias */}
+            {/* Experiencias / Tours publicados */}
             {isGuide && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -703,26 +712,49 @@ export default function GuidePublicProfilePage() {
                   <div className="bg-[#1A4D2E]/10 p-3 rounded-2xl">
                     <FiAward size={28} className="text-[#1A4D2E]" />
                   </div>
-                  Experiencias ({guideExperiences.length})
+                  Experiencias ({guideTours.length})
                 </h3>
 
-                {guideExperiences.length > 0 ? (
+                {guideTours.length > 0 ? (
                   <div className="space-y-4">
-                    {guideExperiences.map((experience, idx: number) => {
+                    {guideTours.map((tour: any, idx: number) => {
+                      const foto = tour.fotoPrincipal || tour.fotos?.[0] || null;
+                      const idiomasTour = Array.isArray(tour.idiomas) ? tour.idiomas.slice(0, 2).join(" · ") : "";
                       return (
                         <motion.div
-                          key={idx}
+                          key={tour.id || idx}
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.3 + idx * 0.05 }}
-                          className="p-5 rounded-2xl border-2 border-[#1A4D2E]/15 bg-gradient-to-r from-white to-[#FDFCF9] hover:from-[#F6F0E6] hover:to-white transition-all hover:shadow-md hover:border-[#1A4D2E]/30"
                         >
-                          <div className="flex items-start gap-3">
-                            <span className="text-xs font-bold px-3 py-1.5 rounded-full border bg-[#1A4D2E]/10 text-[#1A4D2E] border-[#1A4D2E]/25 whitespace-nowrap mt-0.5">
-                              #{idx + 1}
+                          <Link
+                            href={`/tours/${tour.id}`}
+                            className="flex items-center gap-4 p-4 rounded-2xl border-2 border-[#1A4D2E]/15 bg-gradient-to-r from-white to-[#FDFCF9] hover:from-[#F6F0E6] hover:to-white transition-all hover:shadow-md hover:border-[#1A4D2E]/40 group"
+                          >
+                            {foto ? (
+                              <img
+                                src={foto}
+                                alt={tour.titulo || "Experiencia"}
+                                className="h-16 w-16 rounded-xl object-cover flex-shrink-0 border border-[#1A4D2E]/20"
+                              />
+                            ) : (
+                              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9] border border-[#1A4D2E]/10">
+                                <FiMap size={24} className="text-[#0D601E]" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-[#1A4D2E] group-hover:text-[#0D601E] truncate">{tour.titulo || "Experiencia"}</p>
+                              <p className="text-sm text-gray-500 truncate">{tour.destino || ""}</p>
+                              <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[#6C8870]">
+                                {tour.duracion && <span>{tour.duracion}</span>}
+                                {tour.precio && <span className="font-semibold text-[#0D601E]">{tour.precio}</span>}
+                                {idiomasTour && <span>{idiomasTour}</span>}
+                              </div>
+                            </div>
+                            <span className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-[#E8F5E9] text-[#2E7D32] border border-[#A5D6A7]">
+                              Ver detalles
                             </span>
-                            <p className="font-semibold text-[#1A4D2E] leading-relaxed">{experience}</p>
-                          </div>
+                          </Link>
                         </motion.div>
                       );
                     })}
@@ -730,7 +762,7 @@ export default function GuidePublicProfilePage() {
                 ) : (
                   <div className="text-center py-8 text-[#1A4D2E]/60">
                     <p className="text-lg">Este guía aún no ha publicado experiencias</p>
-                    <p className="text-sm mt-2">Las experiencias que comparta aparecerán aquí</p>
+                    <p className="text-sm mt-2">Los tours que publique aparecerán aquí</p>
                   </div>
                 )}
               </motion.div>

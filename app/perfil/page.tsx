@@ -11,6 +11,7 @@ import { FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
 import { useFavoritesSync } from "@/lib/favoritesApi";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { getBackendOrigin } from "@/lib/backendUrl";
 
 import WalletModal from "@/app/components/WalletModal";
@@ -878,10 +879,7 @@ export default function PerfilDetallado() {
     const stored = localStorage.getItem("pitzbol_user");
     const userLocal = stored ? JSON.parse(stored) : null;
 
-    // Obtener el token JWT del localStorage (no de Firebase)
-    const token = localStorage.getItem("pitzbol_token");
-    
-    if (!token || !userLocal?.uid) {
+    if (!userLocal?.uid) {
       console.error('❌ No hay sesión activa');
       setError(`❌ ${t('sessionExpired')}`);
       setTimeout(() => setError(""), 5000);
@@ -895,22 +893,20 @@ export default function PerfilDetallado() {
     try {
       console.log('📤 Enviando foto al servidor...');
       const apiBase = API_BASE;
-      const jwt = localStorage.getItem('pitzbol_token');
-      
-      const response = await fetch(`${apiBase}/api/perfil/foto-perfil`, {
+      const response = await fetchWithAuth(`${apiBase}/perfil/foto-perfil`, {
         method: 'POST',
-        credentials: 'include',
-        headers: jwt ? { 'Authorization': `Bearer ${jwt}` } : undefined,
         body: formData
       });
 
-      // Intentar parsear JSON; si falla, leer texto
+      const rawResponse = await response.text();
       let data: any = null;
-      try {
-        data = await response.json();
-      } catch (parseErr) {
-        const text = await response.text();
-        data = { error: text || 'Respuesta no válida del servidor' };
+
+      if (rawResponse) {
+        try {
+          data = JSON.parse(rawResponse);
+        } catch {
+          data = { error: rawResponse };
+        }
       }
 
       if (response.ok) {
@@ -934,7 +930,9 @@ export default function PerfilDetallado() {
 
         setTimeout(() => setExito(""), 4000);
       } else {
-        const errorMessage = data?.error || 'Error al subir foto de perfil';
+        const errorMessage = data?.details && data?.error === 'Error al procesar la imagen'
+          ? data.details
+          : data?.error || data?.msg || data?.details || 'Error al subir foto de perfil';
         console.error('❌ Error del servidor:', errorMessage);
         setError(`❌ ${errorMessage}`);
         setTimeout(() => setError(""), 5000);

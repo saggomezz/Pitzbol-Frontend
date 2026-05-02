@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { FiSearch, FiFilter, FiCompass, FiClock, FiDollarSign, FiMapPin } from "react-icons/fi";
+import { FiSearch, FiFilter, FiCompass, FiClock, FiDollarSign, FiMapPin, FiGrid, FiList } from "react-icons/fi";
 import { FaBus, FaMapMarkedAlt } from "react-icons/fa";
 import GuideCard from "../components/GuideCard";
 import styles from "./tours.module.css";
@@ -65,6 +65,7 @@ export default function ToursPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("all");
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");
+  const [guideViewMode, setGuideViewMode] = useState<"grid" | "list">("grid");
 
   // Tours state
   const [tours, setTours] = useState<Tour[]>([]);
@@ -237,32 +238,55 @@ export default function ToursPage() {
                     className={styles.searchInput}
                   />
                 </div>
-                <div className={styles.filters}>
-                  <div className={styles.filterGroup}>
-                    <FiFilter className={styles.filterIcon} />
-                    <select
-                      value={selectedLanguage}
-                      onChange={e => setSelectedLanguage(e.target.value)}
-                      className={styles.filterSelect}
-                    >
-                      <option value="all">{t('allLanguages')}</option>
-                      {availableLanguages.map(lang => (
-                        <option key={lang} value={lang}>{lang}</option>
-                      ))}
-                    </select>
+                <div className={styles.filtersToolbar}>
+                  <div className={styles.filters}>
+                    <div className={styles.filterGroup}>
+                      <FiFilter className={styles.filterIcon} />
+                      <select
+                        value={selectedLanguage}
+                        onChange={e => setSelectedLanguage(e.target.value)}
+                        className={styles.filterSelect}
+                      >
+                        <option value="all">{t('allLanguages')}</option>
+                        {availableLanguages.map(lang => (
+                          <option key={lang} value={lang}>{lang}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className={styles.filterGroup}>
+                      <FiFilter className={styles.filterIcon} />
+                      <select
+                        value={selectedSpecialty}
+                        onChange={e => setSelectedSpecialty(e.target.value)}
+                        className={styles.filterSelect}
+                      >
+                        <option value="all">{t('allSpecialties')}</option>
+                        {availableSpecialties.map(spec => (
+                          <option key={spec} value={spec}>{spec}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className={styles.filterGroup}>
-                    <FiFilter className={styles.filterIcon} />
-                    <select
-                      value={selectedSpecialty}
-                      onChange={e => setSelectedSpecialty(e.target.value)}
-                      className={styles.filterSelect}
+
+                  <div className={styles.viewToggle} aria-label={t('guideLayout')}>
+                    <button
+                      type="button"
+                      onClick={() => setGuideViewMode("grid")}
+                      aria-pressed={guideViewMode === "grid"}
+                      className={`${styles.viewButton} ${guideViewMode === "grid" ? styles.viewButtonActive : ""}`}
                     >
-                      <option value="all">{t('allSpecialties')}</option>
-                      {availableSpecialties.map(spec => (
-                        <option key={spec} value={spec}>{spec}</option>
-                      ))}
-                    </select>
+                      <FiGrid size={16} />
+                      <span>{t('cardView')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGuideViewMode("list")}
+                      aria-pressed={guideViewMode === "list"}
+                      className={`${styles.viewButton} ${guideViewMode === "list" ? styles.viewButtonActive : ""}`}
+                    >
+                      <FiList size={16} />
+                      <span>{t('listView')}</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -288,9 +312,9 @@ export default function ToursPage() {
                   </div>
                 </div>
               ) : (
-                <div className={styles.guidesGrid}>
+                <div className={guideViewMode === "list" ? styles.guidesList : styles.guidesGrid}>
                   {filteredGuides.map(guide => (
-                    <GuideCard key={guide.uid} guide={guide} />
+                    <GuideCard key={guide.uid} guide={guide} viewMode={guideViewMode} />
                   ))}
                 </div>
               )}

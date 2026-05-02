@@ -765,6 +765,9 @@
     "viewProfile": "Ver Perfil",
     "bookTour": "Reservar Tour",
     "noBio": "Este guía aún no ha agregado una biografía.",
+    "guideLayout": "Vista de guías",
+    "cardView": "Tarjetas",
+    "listView": "Lista",
     "guidesFound": "guías encontrados",
     "guideFound": "guía encontrado"
   }
