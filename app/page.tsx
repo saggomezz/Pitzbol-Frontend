@@ -908,7 +908,6 @@ function HomeContent() {
                 className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[#1A4D2E] hover:bg-[#0D601E] transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span>Crear Itinerario</span>
-                <span>✨</span>
               </button>
             </div>
           </div>
