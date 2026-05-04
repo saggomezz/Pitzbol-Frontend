@@ -1,15 +1,16 @@
-Nombre del Lugar,Categoría,Dirección,Latitud,Longitud,Tiempo de Estancia,Costo Estimado,Imagen,Subcategoría
+Nombre del Lugar,Categoría,Dirección,Latitud,Longitud,Tiempo de Estancia,Costo Estimado,Imagen,Subcategoría,Nota para IA
 "Estadio Akron, Guadalajara",Fútbol,Cto. J.V.C. 2800,"20,6817764","-103,4626455",180,,,
 "Glorieta de la Minerva, Guadalajara",Fútbol,Av. Ignacio L Vallarta,"20,6743943","-103,3874128",45,Gratis,,
 "Museo Chivas, Guadalajara",Arquitectura,Cto. J.V.C. 2800,"20,6819467","-103,4626455",90,$150,,
-"La Gran Plaza Fashion Mall, Guadalajara","Eventos, Compras",La Gran Plaza Fashion Mall,"20,6737855","-103,4047841",90,$100,,
+"La Gran Plaza Fashion Mall, Guadalajara",Compras,La Gran Plaza Fashion Mall,"20,6737855","-103,4047841",90,$100,,
 "Tortas Ahogadas ""El Güerito"", Guadalajara",Gastronomía Mexicana,Calle Francisco I. Madero 13,"20,6730994","-103,3436262",60,$100 - $200,,Callejero
 "Centro Histórico de Tlaquepaque, Guadalajara","Cultura, Eventos, Postre, Mercados Locales, Museos, Aventura, Compras, Vida Nocturna, Fotografía, Música, Arquitectura, Arte e Historia",Calle Independencia,"20,6393535","-103,3149955",60,Gratis,,
 "Santo Coyote Real, Guadalajara","Gastronomía Mexicana, Gastronomía",Av. del Servidor Público 3600,"20,7331289","-103,4307459",150,$500 - $600,,Gourmet
 "Santo Coyote, Guadalajara","Gastronomía, Gastronomía Mexicana",C. Miguel Lerdo de Tejada 2379,"20,670492","-103,377027",150,$500 - $600,,Gourmet
 "La Bodega de León, Guadalajara","Gastronomía, Gastronomía Mexicana",C. Miguel de Cervantes Saavedra 144,"20,6725991","-103,3749047",150,$500 - $600,,Gourmet
 "Mutante Restaurante, Guadalajara","Gastronomía Mexicana, Gastronomía, Vida Nocturna, Música",Lopez Cotilla 1937 Colonia Americana Laffayette S.J,"20,6731631","-103,376819",150,$500 - $600,,Gourmet
-"Plaza de Armas, Guadalajara","Eventos, Cultura",Plaza de Armas,"20,6763238","-103,3469332",60,Gratis,,
+"Plaza de Armas, Guadalajara",Cultura,Plaza de Armas,"20,6763238","-103,3469332",60,Gratis,,
+"Casa Museo López Portillo, Guadalajara","Eventos, Museos, Arte e Historia, Cultura","Calle Liceo 177, Centro Histórico","20,6757","-103,3462",60,Gratis,,Museo histórico,"Residencia neoclásica del siglo XIX en el corazón del Centro Histórico. Alberga exposiciones permanentes de arte, historia y cultura jalisciense en una elegante arquitectura colonial. Un recorrido por la vida aristocrática del Guadalajara histórico."
 "Karne Garibaldi (Santa Tere), Guadalajara",Gastronomía Mexicana,Calle Garibaldi,"20,6813489","-103,3669478",90,$250 - $400,,Tradicional
 "Karne Garibaldi Sucursal Tlaquepaque, Guadalajara",Gastronomía Mexicana,Blvd. Gral. Marcelino García Barragán 1627,"20,652878","-103,3250386",90,$250 - $400,,Tradicional
 "Karne Garibaldi Sucursal Plaza Del Sol, Guadalajara",Gastronomía Mexicana,Av. Mariano Otero 3019,"20,6477173","-103,4309",90,$250 - $400,,Tradicional
