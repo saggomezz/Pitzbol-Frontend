@@ -243,7 +243,16 @@ export default function GuidePublicProfilePage() {
     };
 
     if (profileUid) {
-      fetchPublicProfile();
+      fetchPublicProfile().then(() => {
+        // Scroll al paquete específico si viene con hash en la URL
+        const hash = window.location.hash;
+        if (hash) {
+          setTimeout(() => {
+            const el = document.querySelector(hash);
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 400);
+        }
+      });
     }
   }, [profileUid, isAdminViewer]);
 
@@ -625,6 +634,7 @@ export default function GuidePublicProfilePage() {
             {/* Paquetes del guía */}
             {isGuide && guidePaquetes.length > 0 && (
               <motion.div
+                id="paquetes"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.22 }}
@@ -645,6 +655,7 @@ export default function GuidePublicProfilePage() {
                   {guidePaquetes.map((paq: any, idx: number) => (
                     <motion.div
                       key={paq.id || idx}
+                      id={`paquete-${paq.id}`}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.25 + idx * 0.05 }}

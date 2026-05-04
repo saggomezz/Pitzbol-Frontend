@@ -167,7 +167,7 @@ export default function PaquetesPage() {
                     layout
                   >
                     <Link
-                      href={`/perfil/${paq.guiaId}`}
+                      href={`/perfil/${paq.guiaId}#paquete-${paq.id}`}
                       className="group block rounded-3xl overflow-hidden bg-white shadow-md hover:shadow-xl transition-all duration-300 border border-transparent hover:border-[#1A4D2E]/20"
                     >
                       <div className="relative h-48 overflow-hidden bg-[#E8F5E9]">

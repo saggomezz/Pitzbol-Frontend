@@ -65,23 +65,22 @@ export default function GuideCard({ guide, viewMode = "grid" }: GuideCardProps) 
           }`}
         >
           {isListView ? (
-            /* Vista lista: foto cuadrada con object-cover, sin marco */
-            <div className="relative lg:w-[260px] flex-shrink-0 overflow-hidden">
+            /* Vista lista: foto cuadrada fija con object-cover, sin marco */
+            <div className="relative w-[200px] h-[200px] flex-shrink-0 overflow-hidden">
               {guide.fotoPerfil && !imageError ? (
                 <img
                   src={guide.fotoPerfil}
                   alt={guide.nombre}
                   className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-                  style={{ minHeight: 200 }}
                   onError={() => setImageError(true)}
                 />
               ) : (
-                <div className="w-full h-full min-h-[200px] flex items-center justify-center bg-[#E8F5E9]">
+                <div className="w-full h-full flex items-center justify-center bg-[#E8F5E9]">
                   <FiUser className="text-[#1A4D2E]/30" size={80} />
                 </div>
               )}
-              <div className="absolute top-4 right-4 px-3 py-1 text-xs bg-green-500 text-white rounded-full font-bold flex items-center gap-1 shadow-lg">
-                <FiCheckCircle size={14} />
+              <div className="absolute top-3 right-3 px-2 py-0.5 text-xs bg-green-500 text-white rounded-full font-bold flex items-center gap-1 shadow-lg">
+                <FiCheckCircle size={12} />
                 {t('verified')}
               </div>
             </div>
