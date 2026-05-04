@@ -60,13 +60,13 @@ export default function GuideCard({ guide, viewMode = "grid" }: GuideCardProps) 
           transition={{ duration: 0.3 }}
           className={`bg-white rounded-3xl overflow-hidden transition-all duration-300 group border ${
             isListView
-              ? "shadow-lg border-gray-100 hover:shadow-2xl flex flex-col lg:flex-row"
+              ? "shadow-lg border-gray-100 hover:shadow-2xl flex flex-row h-[260px]"
               : "shadow-md border-transparent hover:border-[#1A4D2E]/20 hover:shadow-xl"
           }`}
         >
           {isListView ? (
             /* Vista lista: foto cuadrada fija con object-cover, sin marco */
-            <div className="relative w-[200px] h-[200px] flex-shrink-0 overflow-hidden">
+            <div className="relative w-[260px] h-full flex-shrink-0 overflow-hidden">
               {guide.fotoPerfil && !imageError ? (
                 <img
                   src={guide.fotoPerfil}
