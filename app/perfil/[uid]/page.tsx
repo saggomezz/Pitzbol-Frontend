@@ -169,6 +169,7 @@ export default function GuidePublicProfilePage() {
   const [loadingAdminDetail, setLoadingAdminDetail] = useState(false);
   const [negocios, setNegocios] = useState<any[]>([]);
   const [guideTours, setGuideTours] = useState<any[]>([]);
+  const [guidePaquetes, setGuidePaquetes] = useState<any[]>([]);
   const isAdminViewer = user?.role === "admin";
 
   useEffect(() => {
@@ -212,9 +213,10 @@ export default function GuidePublicProfilePage() {
         const uid = fetchedProfile?.uid || profileUid;
         if (uid) {
           try {
-            const [negociosRes, toursRes] = await Promise.all([
+            const [negociosRes, toursRes, paquetesRes] = await Promise.all([
               fetch(`/api/perfil/negocios/${encodeURIComponent(uid)}`),
               fetch(`/api/tours/guia/${encodeURIComponent(uid)}`),
+              fetch(`/api/paquetes/guia/${encodeURIComponent(uid)}`),
             ]);
             if (negociosRes.ok) {
               const negociosData = await negociosRes.json();
@@ -223,6 +225,10 @@ export default function GuidePublicProfilePage() {
             if (toursRes.ok) {
               const toursData = await toursRes.json();
               setGuideTours(toursData.tours || []);
+            }
+            if (paquetesRes.ok) {
+              const paqData = await paquetesRes.json();
+              setGuidePaquetes(paqData.paquetes || []);
             }
           } catch (err) {
             console.error("Error cargando datos del guía:", err);
@@ -563,7 +569,7 @@ export default function GuidePublicProfilePage() {
                 <div className="mb-6 flex justify-between items-end">
                   <div>
                     <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Experiencias</h3>
-                    <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">Tours publicados</p>
+                    <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">Tours completados</p>
                   </div>
                   <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
                     {guideTours.length} publicados
@@ -613,6 +619,66 @@ export default function GuidePublicProfilePage() {
                     <p className="text-sm mt-2">Los tours que publique aparecerán aquí</p>
                   </div>
                 )}
+              </motion.div>
+            )}
+
+            {/* Paquetes del guía */}
+            {isGuide && guidePaquetes.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.22 }}
+                className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]"
+              >
+                <div className="mb-6 flex justify-between items-end">
+                  <div>
+                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Paquetes</h3>
+                    <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
+                      Paquetes disponibles
+                    </p>
+                  </div>
+                  <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
+                    {guidePaquetes.length} disponibles
+                  </span>
+                </div>
+                <div className="space-y-4">
+                  {guidePaquetes.map((paq: any, idx: number) => (
+                    <motion.div
+                      key={paq.id || idx}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.25 + idx * 0.05 }}
+                      className="flex items-center gap-4 p-4 rounded-2xl border-2 border-[#1A4D2E]/15 bg-gradient-to-r from-white to-[#FDFCF9] hover:from-[#F6F0E6] hover:to-white transition-all hover:shadow-md hover:border-[#1A4D2E]/40"
+                    >
+                      {paq.fotoPrincipal ? (
+                        <img src={paq.fotoPrincipal} alt={paq.titulo} className="h-16 w-16 rounded-xl object-cover flex-shrink-0 border border-[#1A4D2E]/20" />
+                      ) : (
+                        <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9] border border-[#1A4D2E]/10">
+                          <FiMap size={24} className="text-[#0D601E]" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-[#1A4D2E] truncate">{paq.titulo}</p>
+                        <p className="text-sm text-gray-500 truncate">{paq.destino}</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[#6C8870]">
+                          {paq.duracion && <span>{paq.duracion}</span>}
+                          {paq.precio && <span className="font-semibold text-[#0D601E]">{paq.precio}</span>}
+                          {Array.isArray(paq.idiomas) && paq.idiomas.length > 0 && (
+                            <span>{paq.idiomas.slice(0, 2).join(" · ")}</span>
+                          )}
+                        </div>
+                      </div>
+                      {isGuide && (
+                        <button
+                          onClick={handleBookTour}
+                          className="flex-shrink-0 text-xs font-bold px-3 py-2 rounded-full bg-[#0D601E] text-white hover:bg-[#094d18] transition-colors"
+                        >
+                          Reservar
+                        </button>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
               </motion.div>
             )}
 

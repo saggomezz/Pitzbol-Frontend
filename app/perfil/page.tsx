@@ -16,6 +16,7 @@ import { getBackendOrigin } from "@/lib/backendUrl";
 
 import WalletModal from "@/app/components/WalletModal";
 import PersonaTourFormModal from "@/app/components/PersonaTourFormModal";
+import PaqueteFormModal from "@/app/components/PaqueteFormModal";
 
 const API_BASE = "/api";
 
@@ -103,6 +104,8 @@ export default function PerfilDetallado() {
   const [perfil, setPerfil] = useState<any>(null);
   const [tours, setTours] = useState<any[]>([]);
   const [showTourModal, setShowTourModal] = useState(false);
+  const [paquetes, setPaquetes] = useState<any[]>([]);
+  const [showPaqueteModal, setShowPaqueteModal] = useState(false);
   const [tipoGuia, setTipoGuia] = useState<string>(() => {
     if (typeof window !== "undefined") {
       const u = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
@@ -369,6 +372,17 @@ export default function PerfilDetallado() {
             }
           }
         } catch {}
+
+        // Cargar paquetes del guía
+        if (rol === "guia") {
+          try {
+            const paqRes = await fetch(`${API_BASE}/paquetes/guia/${userLocal.uid}`);
+            if (paqRes.ok) {
+              const paqData = await paqRes.json();
+              if (paqData.success) setPaquetes(paqData.paquetes || []);
+            }
+          } catch {}
+        }
 
         // Cargar foto de perfil desde el endpoint correcto (JWT del backend)
         try {
@@ -1845,7 +1859,7 @@ export default function PerfilDetallado() {
                                 </div>
                               </div>
                               <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
-                                Publicado
+                                Completado
                               </span>
                             </motion.a>
                           );
@@ -1930,6 +1944,79 @@ export default function PerfilDetallado() {
                 </div>
               )}
             </motion.div>
+
+            {/* ── Sección de Paquetes ── */}
+            {esGuia && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
+              >
+                <div className="mb-6 flex justify-between items-end">
+                  <div>
+                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Paquetes</h3>
+                    <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
+                      Paquetes que ofreces a turistas
+                    </p>
+                  </div>
+                  <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
+                    {paquetes.length} publicados
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  <motion.button
+                    whileHover={{ scale: 1.01, backgroundColor: "#f9fafb" }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => setShowPaqueteModal(true)}
+                    className="w-full py-4 border-2 border-dashed border-[#E0F2F1] rounded-lg flex items-center justify-center gap-2 text-[#81C784] hover:text-[#66BB6A] hover:border-[#A5D6A7] transition-all group"
+                  >
+                    <div className="w-7 h-7 bg-[#E8F5E9] group-hover:bg-[#3A5A40] group-hover:text-white rounded-full flex items-center justify-center transition-colors">
+                      <FiPlus size={16} />
+                    </div>
+                    <span className="text-sm font-medium tracking-tight">Crear paquete</span>
+                  </motion.button>
+
+                  {paquetes.length === 0 ? (
+                    <p className="text-center text-[11px] text-[#81C784] font-normal py-4">
+                      Aún no tienes paquetes. Crea uno para que los turistas puedan reservarlo.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {paquetes.map((paq: any, i: number) => (
+                        <motion.div
+                          key={paq.id || i}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className="flex items-center gap-3 rounded-xl border border-[#E0F2F1] p-3 hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
+                        >
+                          {paq.fotoPrincipal ? (
+                            <img src={paq.fotoPrincipal} alt={paq.titulo} className="h-14 w-14 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
+                          ) : (
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
+                              <FiMap size={18} className="text-[#66BB6A]" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-[#1A4D2E]">{paq.titulo}</p>
+                            <p className="truncate text-[11px] text-gray-500">{paq.destino}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
+                              {paq.duracion && <span>{paq.duracion}</span>}
+                              {paq.precio && <span>{paq.precio}</span>}
+                            </div>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
+                            Activo
+                          </span>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>
@@ -1986,6 +2073,19 @@ export default function PerfilDetallado() {
           onSuccess={(tour: any) => {
             setTours((prev: any[]) => [tour, ...prev]);
             setShowTourModal(false);
+          }}
+        />
+      )}
+
+      {/* Modal crear paquete */}
+      {showPaqueteModal && esGuia && (
+        <PaqueteFormModal
+          isOpen={showPaqueteModal}
+          guiaId={perfil?.id || ""}
+          onClose={() => setShowPaqueteModal(false)}
+          onCreated={(paquete: any) => {
+            setPaquetes((prev: any[]) => [paquete, ...prev]);
+            setShowPaqueteModal(false);
           }}
         />
       )}
