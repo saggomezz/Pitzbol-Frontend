@@ -28,11 +28,19 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const jockey = Jockey_One({ variable: "--font-jockey", subsets: ["latin"], weight: "400" });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], weight: ["300"] });
 
+function getRoleFromStorage(): string {
+  try {
+    const u = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    return u.role || u.rol || u["03_rol"] || "";
+  } catch { return ""; }
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isBusinessOpen, setIsBusinessOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState<"turista" | "guia" | "negocio">("turista");
+  const [roleConflict, setRoleConflict] = useState<"guia" | "negocio" | null>(null);
   const [locale, setLocale] = useState('es');
   const [messages, setMessages] = useState<any>(null);
 
@@ -127,12 +135,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${geistSans.variable} ${geistMono.variable} ${jockey.variable} ${jetbrains.variable} ${roboto.variable} antialiased bg-[#FDFCF9]`}>
         {messages ? (
           <NextIntlClientProvider locale={locale} messages={messages}>
-            <Navbar 
-              onOpenAuth={() => { setPendingRole("turista"); setIsAuthOpen(true); }} 
+            <Navbar
+              onOpenAuth={() => { setPendingRole("turista"); setIsAuthOpen(true); }}
               onOpenAuthAsGuide={() => { setPendingRole("guia"); setIsAuthOpen(true); }}
-              onOpenGuide={() => setIsGuideOpen(true)}
+              onOpenGuide={() => {
+                const role = getRoleFromStorage();
+                if (role === "negocio" || role === "negociante") { setRoleConflict("guia"); return; }
+                setIsGuideOpen(true);
+              }}
               onOpenAuthAsBusiness={() => { setPendingRole("negocio"); setIsAuthOpen(true); }}
-              onOpenBusiness={() => setIsBusinessOpen(true)} 
+              onOpenBusiness={() => {
+                const role = getRoleFromStorage();
+                if (role === "guia") { setRoleConflict("negocio"); return; }
+                setIsBusinessOpen(true);
+              }}
             />
 
             <main className="relative z-10 min-h-screen">
@@ -142,6 +158,29 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Footer />
 
             <InstallPWAPrompt />
+
+            {/* Modal de conflicto de roles */}
+            {roleConflict && (
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center">
+                  <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl">⚠️</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-[#1A4D2E] mb-3">Cuenta con rol existente</h3>
+                  <p className="text-sm text-gray-600 mb-6">
+                    {roleConflict === "guia"
+                      ? "Tu cuenta actual es de negocio. Si deseas ser guía, se recomienda crear una cuenta nueva con un correo diferente."
+                      : "Tu cuenta actual es de guía. Si deseas publicar un negocio, se recomienda crear una cuenta nueva con un correo diferente."}
+                  </p>
+                  <button
+                    onClick={() => setRoleConflict(null)}
+                    className="w-full bg-[#0D601E] hover:bg-[#094d18] text-white py-3 rounded-full font-bold text-sm transition-all"
+                  >
+                    Aceptar
+                  </button>
+                </div>
+              </div>
+            )}
 
             <AnimatePresence>
               {isAuthOpen && (
