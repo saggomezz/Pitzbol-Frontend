@@ -1,6 +1,6 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { FiX, FiPlus, FiTrash2, FiUpload, FiPackage } from "react-icons/fi";
 import { getBackendOrigin } from "@/lib/backendUrl";
 
@@ -23,27 +23,38 @@ export default function PaqueteFormModal({ isOpen, onClose, onCreated, guiaId }:
   const [capacidad, setCapacidad] = useState("");
   const [idiomas, setIdiomas] = useState<string[]>([]);
   const [incluye, setIncluye] = useState<string[]>([""]);
-  const [foto, setFoto] = useState<File | null>(null);
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [fotos, setFotos] = useState<File[]>([]);
+  const [fotoPreviews, setFotoPreviews] = useState<string[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
     setTitulo(""); setDescripcion(""); setDestino(""); setDuracion("");
     setPrecio(""); setPuntoSalida(""); setCapacidad("");
-    setIdiomas([]); setIncluye([""]); setFoto(null); setFotoPreview(null);
+    setIdiomas([]); setIncluye([""]); setFotos([]); setFotoPreviews([]);
     setError("");
   };
 
   const handleClose = () => { reset(); onClose(); };
 
-  const handleFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFoto(file);
-    const reader = new FileReader();
-    reader.onload = () => setFotoPreview(reader.result as string);
-    reader.readAsDataURL(file);
+  const handleFotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const remaining = 3 - fotos.length;
+    const toAdd = files.slice(0, remaining);
+    setFotos(prev => [...prev, ...toAdd]);
+    toAdd.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => setFotoPreviews(prev => [...prev, reader.result as string]);
+      reader.readAsDataURL(file);
+    });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeFoto = (i: number) => {
+    setFotos(prev => prev.filter((_, j) => j !== i));
+    setFotoPreviews(prev => prev.filter((_, j) => j !== i));
   };
 
   const toggleIdioma = (idioma: string) => {
@@ -67,7 +78,7 @@ export default function PaqueteFormModal({ isOpen, onClose, onCreated, guiaId }:
       fd.append("capacidad", capacidad);
       fd.append("idiomas", JSON.stringify(idiomas));
       fd.append("queIncluye", JSON.stringify(incluye.filter(Boolean)));
-      if (foto) fd.append("foto", foto);
+      fotos.forEach(f => fd.append("fotos", f));
 
       const res = await fetch(`${backendUrl}/api/paquetes`, {
         method: "POST",
@@ -121,22 +132,41 @@ export default function PaqueteFormModal({ isOpen, onClose, onCreated, guiaId }:
           </div>
 
           <div className="p-6 space-y-5">
-            {/* Foto */}
+            {/* Fotos — hasta 3 */}
             <div>
-              <label className="text-xs font-bold text-[#81C784] uppercase tracking-wide mb-2 block">Foto del paquete</label>
-              <label className="cursor-pointer block">
-                <div className={`border-2 border-dashed rounded-2xl h-36 flex flex-col items-center justify-center transition-all ${fotoPreview ? "border-[#1A4D2E]" : "border-[#E0F2F1] hover:border-[#A5D6A7]"}`}>
-                  {fotoPreview ? (
-                    <img src={fotoPreview} alt="preview" className="w-full h-full object-cover rounded-2xl" />
-                  ) : (
-                    <>
-                      <FiUpload size={28} className="text-[#81C784] mb-2" />
-                      <span className="text-xs text-[#81C784] font-medium">Subir imagen</span>
-                    </>
-                  )}
-                </div>
-                <input type="file" accept="image/*" className="hidden" onChange={handleFoto} />
+              <label className="text-xs font-bold text-[#81C784] uppercase tracking-wide mb-2 block">
+                Fotos del paquete <span className="text-[#B0BEC5] font-normal normal-case">(máx. 3)</span>
               </label>
+              <div className="grid grid-cols-3 gap-3">
+                {fotoPreviews.map((src, i) => (
+                  <div key={i} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-[#1A4D2E]/20 group">
+                    <img src={src} alt={`foto ${i + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeFoto(i)}
+                      className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <FiX size={12} />
+                    </button>
+                    {i === 0 && (
+                      <span className="absolute bottom-1.5 left-1.5 text-[10px] bg-[#1A4D2E] text-white px-2 py-0.5 rounded-full font-semibold">
+                        Principal
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {fotos.length < 3 && (
+                  <label className="cursor-pointer aspect-square">
+                    <div className="h-full border-2 border-dashed border-[#E0F2F1] rounded-2xl flex flex-col items-center justify-center hover:border-[#A5D6A7] transition-colors">
+                      <FiUpload size={22} className="text-[#81C784] mb-1" />
+                      <span className="text-[10px] text-[#81C784] font-medium text-center px-1">
+                        {fotos.length === 0 ? "Subir fotos" : "Agregar"}
+                      </span>
+                    </div>
+                    <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFotos} />
+                  </label>
+                )}
+              </div>
             </div>
 
             {/* Título y Destino */}

@@ -328,7 +328,15 @@ export default function ToursPage() {
                           className="group block rounded-3xl overflow-hidden bg-white shadow-md hover:shadow-xl transition-all duration-300 border border-transparent hover:border-[#1A4D2E]/20"
                         >
                           <div className="relative h-48 overflow-hidden bg-[#E8F5E9]">
-                            {paq.fotoPrincipal ? (
+                            {paq.fotos?.length > 1 ? (
+                              <div className="flex gap-0.5 h-full">
+                                {paq.fotos.slice(0, 3).map((src: string, fi: number) => (
+                                  <div key={fi} className={`relative overflow-hidden ${fi === 0 ? "flex-[2]" : "flex-1"}`}>
+                                    <Image src={src} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-400" />
+                                  </div>
+                                ))}
+                              </div>
+                            ) : paq.fotoPrincipal ? (
                               <Image src={paq.fotoPrincipal} alt={paq.titulo} fill className="object-cover group-hover:scale-105 transition-transform duration-400" />
                             ) : (
                               <div className="flex items-center justify-center h-full">

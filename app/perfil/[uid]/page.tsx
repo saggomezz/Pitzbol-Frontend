@@ -216,7 +216,7 @@ export default function GuidePublicProfilePage() {
             const [negociosRes, toursRes, paquetesRes] = await Promise.all([
               fetch(`/api/perfil/negocios/${encodeURIComponent(uid)}`),
               fetch(`/api/tours/guia/${encodeURIComponent(uid)}`),
-              fetch(`/api/paquetes/guia/${encodeURIComponent(uid)}`),
+              fetch(`${BACKEND_URL}/api/paquetes/guia/${encodeURIComponent(uid)}`),
             ]);
             if (negociosRes.ok) {
               const negociosData = await negociosRes.json();
@@ -648,34 +648,44 @@ export default function GuidePublicProfilePage() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.25 + idx * 0.05 }}
-                      className="flex items-center gap-4 p-4 rounded-2xl border-2 border-[#1A4D2E]/15 bg-gradient-to-r from-white to-[#FDFCF9] hover:from-[#F6F0E6] hover:to-white transition-all hover:shadow-md hover:border-[#1A4D2E]/40"
+                      className="rounded-2xl border-2 border-[#1A4D2E]/15 bg-gradient-to-r from-white to-[#FDFCF9] hover:from-[#F6F0E6] hover:to-white transition-all hover:shadow-md hover:border-[#1A4D2E]/40 overflow-hidden"
                     >
-                      {paq.fotoPrincipal ? (
-                        <img src={paq.fotoPrincipal} alt={paq.titulo} className="h-16 w-16 rounded-xl object-cover flex-shrink-0 border border-[#1A4D2E]/20" />
-                      ) : (
-                        <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9] border border-[#1A4D2E]/10">
-                          <FiMap size={24} className="text-[#0D601E]" />
+                      {/* Photo strip */}
+                      {(paq.fotos?.length > 0 || paq.fotoPrincipal) && (
+                        <div className="flex gap-0.5 h-28 overflow-hidden">
+                          {(paq.fotos?.length > 0 ? paq.fotos : [paq.fotoPrincipal]).slice(0, 3).map((src: string, fi: number) => (
+                            <div key={fi} className="relative overflow-hidden flex-1">
+                              <img src={src} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          ))}
                         </div>
                       )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-[#1A4D2E] truncate">{paq.titulo}</p>
-                        <p className="text-sm text-gray-500 truncate">{paq.destino}</p>
-                        <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[#6C8870]">
-                          {paq.duracion && <span>{paq.duracion}</span>}
-                          {paq.precio && <span className="font-semibold text-[#0D601E]">{paq.precio}</span>}
-                          {Array.isArray(paq.idiomas) && paq.idiomas.length > 0 && (
-                            <span>{paq.idiomas.slice(0, 2).join(" · ")}</span>
-                          )}
+                      <div className="flex items-center gap-4 p-4">
+                        {!paq.fotoPrincipal && !paq.fotos?.length && (
+                          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9] border border-[#1A4D2E]/10">
+                            <FiMap size={24} className="text-[#0D601E]" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-[#1A4D2E] truncate">{paq.titulo}</p>
+                          <p className="text-sm text-gray-500 truncate">{paq.destino}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[#6C8870]">
+                            {paq.duracion && <span>{paq.duracion}</span>}
+                            {paq.precio && <span className="font-semibold text-[#0D601E]">{paq.precio}</span>}
+                            {Array.isArray(paq.idiomas) && paq.idiomas.length > 0 && (
+                              <span>{paq.idiomas.slice(0, 2).join(" · ")}</span>
+                            )}
+                          </div>
                         </div>
+                        {isGuide && (
+                          <button
+                            onClick={handleBookTour}
+                            className="flex-shrink-0 text-xs font-bold px-3 py-2 rounded-full bg-[#0D601E] text-white hover:bg-[#094d18] transition-colors"
+                          >
+                            Reservar
+                          </button>
+                        )}
                       </div>
-                      {isGuide && (
-                        <button
-                          onClick={handleBookTour}
-                          className="flex-shrink-0 text-xs font-bold px-3 py-2 rounded-full bg-[#0D601E] text-white hover:bg-[#094d18] transition-colors"
-                        >
-                          Reservar
-                        </button>
-                      )}
                     </motion.div>
                   ))}
                 </div>

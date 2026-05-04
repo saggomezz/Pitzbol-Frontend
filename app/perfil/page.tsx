@@ -376,7 +376,8 @@ export default function PerfilDetallado() {
         // Cargar paquetes del guía
         if (rol === "guia") {
           try {
-            const paqRes = await fetch(`${API_BASE}/paquetes/guia/${userLocal.uid}`);
+            const backendUrlPaq = getBackendOrigin();
+            const paqRes = await fetch(`${backendUrlPaq}/api/paquetes/guia/${userLocal.uid}`);
             if (paqRes.ok) {
               const paqData = await paqRes.json();
               if (paqData.success) setPaquetes(paqData.paquetes || []);
@@ -1990,26 +1991,39 @@ export default function PerfilDetallado() {
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.05 }}
-                          className="flex items-center gap-3 rounded-xl border border-[#E0F2F1] p-3 hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
+                          className="rounded-xl border border-[#E0F2F1] overflow-hidden hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
                         >
-                          {paq.fotoPrincipal ? (
-                            <img src={paq.fotoPrincipal} alt={paq.titulo} className="h-14 w-14 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
-                          ) : (
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
-                              <FiMap size={18} className="text-[#66BB6A]" />
+                          {/* Photo strip */}
+                          {(paq.fotos?.length > 0 || paq.fotoPrincipal) && (
+                            <div className="flex gap-0.5 h-24 overflow-hidden">
+                              {(paq.fotos?.length > 0 ? paq.fotos : [paq.fotoPrincipal]).slice(0, 3).map((src: string, fi: number) => (
+                                <div
+                                  key={fi}
+                                  className={`relative overflow-hidden flex-1 ${fi === 0 && (paq.fotos?.length || 1) === 1 ? "rounded-none" : ""}`}
+                                >
+                                  <img src={src} alt="" className="w-full h-full object-cover" />
+                                </div>
+                              ))}
                             </div>
                           )}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-[#1A4D2E]">{paq.titulo}</p>
-                            <p className="truncate text-[11px] text-gray-500">{paq.destino}</p>
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
-                              {paq.duracion && <span>{paq.duracion}</span>}
-                              {paq.precio && <span>{paq.precio}</span>}
+                          <div className="flex items-center gap-3 p-3">
+                            {!paq.fotoPrincipal && !paq.fotos?.length && (
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
+                                <FiMap size={16} className="text-[#66BB6A]" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-[#1A4D2E]">{paq.titulo}</p>
+                              <p className="truncate text-[11px] text-gray-500">{paq.destino}</p>
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
+                                {paq.duracion && <span>{paq.duracion}</span>}
+                                {paq.precio && <span className="font-semibold text-[#0D601E]">{paq.precio}</span>}
+                              </div>
                             </div>
+                            <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
+                              Activo
+                            </span>
                           </div>
-                          <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
-                            Activo
-                          </span>
                         </motion.div>
                       ))}
                     </div>
