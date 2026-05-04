@@ -4,6 +4,25 @@ import { useState, useRef } from "react";
 import { FiX, FiPlus, FiTrash2, FiUpload, FiPackage } from "react-icons/fi";
 import { getBackendOrigin } from "@/lib/backendUrl";
 
+async function compressImage(file: File, maxWidth = 1200, quality = 0.82): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => {
+        resolve(new File([blob!], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
+      }, "image/jpeg", quality);
+    };
+    img.src = url;
+  });
+}
+
 interface PaqueteFormModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -78,7 +97,9 @@ export default function PaqueteFormModal({ isOpen, onClose, onCreated, guiaId }:
       fd.append("capacidad", capacidad);
       fd.append("idiomas", JSON.stringify(idiomas));
       fd.append("queIncluye", JSON.stringify(incluye.filter(Boolean)));
-      fotos.forEach(f => fd.append("fotos", f));
+      for (const f of fotos) {
+        fd.append("fotos", await compressImage(f));
+      }
 
       const res = await fetch(`${backendUrl}/api/paquetes`, {
         method: "POST",
@@ -163,7 +184,7 @@ export default function PaqueteFormModal({ isOpen, onClose, onCreated, guiaId }:
                         {fotos.length === 0 ? "Subir fotos" : "Agregar"}
                       </span>
                     </div>
-                    <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFotos} />
+                    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/*" multiple className="hidden" onChange={handleFotos} />
                   </label>
                 )}
               </div>
