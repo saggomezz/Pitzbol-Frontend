@@ -107,7 +107,8 @@ export default function PaqueteFormModal({ isOpen, onClose, onCreated, guiaId }:
         body: fd,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Error al crear paquete");
+      if (!res.ok) throw new Error(data.message || data.msg || `Error ${res.status} al crear paquete`);
+      if (!data.paquete) throw new Error("El servidor no devolvió el paquete creado");
       onCreated(data.paquete);
       handleClose();
     } catch (e: any) {
