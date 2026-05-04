@@ -299,422 +299,276 @@ export default function GuidePublicProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FDFCF9] via-[#F6F0E6] to-[#FDFCF9]">
-      {/* Hero Section */}
-      <div className="relative bg-gradient-to-br from-[#1A4D2E] via-[#0D601E] to-[#0A4014] pt-20 pb-32 overflow-hidden">
-        <div className="absolute inset-0 opacity-5 bg-[url('/pastoVerde.png')] bg-repeat-x bg-bottom pointer-events-none" />
-        
-        <div className="max-w-6xl mx-auto px-4 relative z-10">
-          <motion.div
+    <div className="min-h-screen bg-gradient-to-br from-[#F6F0E6] via-[#FDFCF9] to-white pb-20">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#6C9D1C] to-[#3A5A40] border-b border-[#4CAF50]">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 py-8">
+          <motion.h1
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-center mb-8"
+            className="text-3xl md:text-4xl font-medium text-white mb-1"
+            style={{ fontFamily: "'Jockey One', sans-serif" }}
           >
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-3 drop-shadow-lg" style={{ fontFamily: "var(--font-jockey)" }}>
-              {profileName || "Usuario"}
-            </h1>
-            <p className="text-xl text-white/90 drop-shadow">
-              {isGuide ? "🎯 Guía Turístico Verificado" : `✓ ${profile.role || "usuario"} registrado`}
-            </p>
-          </motion.div>
+            Perfil del Guía
+          </motion.h1>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 -mt-24 mb-12 relative z-20">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-[32px] shadow-2xl overflow-hidden border border-[#1A4D2E]/10 backdrop-blur"
-        >
-          <div className="relative h-80 bg-gradient-to-br from-[#1A4D2E] to-[#0D601E]">
-            {profile.fotoPerfil && !imageError ? (
-              <img
-                src={profile.fotoPerfil}
-                alt={profileName || "Usuario"}
-                className="w-full h-full object-cover"
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <FiUser className="text-white/30" size={120} />
-              </div>
-            )}
-            
-            <div className="absolute top-6 right-6 bg-[#0D601E] text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 shadow-lg capitalize">
-              <FiCheckCircle size={20} />
-              {isGuide ? "Guía Verificado" : `${profile.role || "usuario"} registrado`}
-            </div>
+      <div className="max-w-7xl mx-auto px-6 md:px-12 -mt-16 pt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            {isAdminViewer && (
-              <div className="absolute top-6 left-6 bg-[#1A4D2E]/85 text-white px-4 py-2 rounded-full font-semibold flex items-center gap-2 border border-white/20">
-                <FiShield size={16} /> Vista de administrador
-              </div>
-            )}
-          </div>
+          {/* ── Columna izquierda ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="lg:col-span-1"
+          >
+            <div className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]">
+              <div className="flex flex-col items-center">
 
-          <div className="p-8 md:p-10">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-              <div className="flex-1">
-                <h1 className="text-4xl font-bold text-[#1A4D2E] mb-4">{profileName || "Usuario"}</h1>
-                
-                {profile.ubicacion && (
-                  <div className="flex items-center gap-2 text-gray-600 mb-4">
-                    <FiMapPin size={20} />
-                    <span className="text-lg">{profile.ubicacion}</span>
+                {/* Foto de perfil */}
+                <div className="relative mb-6 mt-2">
+                  <div className="relative w-40 h-40 md:w-48 md:h-48">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#0D601E] to-[#F00808] rounded-full opacity-20 blur-xl" />
+                    <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-white shadow-xl bg-gradient-to-br from-[#1A4D2E] to-[#0D601E] flex items-center justify-center">
+                      {profile.fotoPerfil && !imageError ? (
+                        <img
+                          src={profile.fotoPerfil}
+                          alt={profileName || "Guía"}
+                          className="w-full h-full object-cover"
+                          onError={() => setImageError(true)}
+                        />
+                      ) : (
+                        <FiUser size={64} className="text-white/40" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Nombre */}
+                <h2 className="text-2xl md:text-3xl font-semibold text-[#1A4D2E] text-center mb-1">
+                  {profileName || "Usuario"}
+                </h2>
+
+                {/* Nacionalidad */}
+                {profile.nacionalidad && (
+                  <div className="flex items-center justify-center gap-1 text-[#81C784] text-xs mb-1">
+                    <FiGlobe size={13} />
+                    <span className="font-normal">{profile.nacionalidad}</span>
                   </div>
                 )}
 
+                {/* Ubicación */}
+                {profile.ubicacion && (
+                  <div className="flex items-center justify-center gap-1 text-[#81C784] text-xs mb-2">
+                    <FiMapPin size={13} />
+                    <span className="font-normal">{profile.ubicacion}</span>
+                  </div>
+                )}
+
+                {/* Badge de rol */}
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#F1F8F6] text-[#0D601E] rounded-full border border-[#0D601E]/10 mb-6">
+                  <FiShield size={12} className="opacity-70" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.15em]">
+                    {isGuide ? "Guía Verificado" : profile.role || "Usuario"}
+                  </span>
+                  {isAdminViewer && (
+                    <span className="ml-1 text-[9px] font-bold text-[#F00808] uppercase">(Admin)</span>
+                  )}
+                </div>
+
+                {/* Calificación */}
                 {profile.calificacion && (
-                  <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center gap-2 mb-4">
                     <div className="flex items-center gap-1 text-yellow-500">
-                      <FiStar size={20} fill="currentColor" />
-                      <span className="text-xl font-bold text-gray-800">
-                        {profile.calificacion.toFixed(1)}
-                      </span>
+                      <FiStar size={18} fill="currentColor" />
+                      <span className="text-lg font-bold text-gray-800">{profile.calificacion.toFixed(1)}</span>
                     </div>
                     {profile.resenas && (
-                      <span className="text-gray-600">
-                        ({profile.resenas} reseñas)
-                      </span>
+                      <span className="text-sm text-gray-500">({profile.resenas} reseñas)</span>
                     )}
                   </div>
                 )}
 
-                {typeof profile.experiencia === "string" && profile.experiencia.trim() && (
-                  <div className="flex items-center gap-2 text-gray-700 mb-4">
-                    <FiAward size={20} />
-                    <span>{profile.experiencia} de experiencia</span>
+                <div className="w-full space-y-4 mb-6">
+                  {/* Descripción */}
+                  {(profile.descripcion || profile.biografia) && (
+                    <div className="bg-white p-4 rounded-xl border border-[#E0F2F1]">
+                      <h3 className="text-xs font-medium text-[#81C784] tracking-wide mb-2">Descripción</h3>
+                      <p className="text-sm font-normal text-[#1A4D2E] whitespace-pre-wrap">
+                        {profile.descripcion || profile.biografia}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Teléfono */}
+                  {showPublicPhone && (
+                    <div className="bg-white p-4 rounded-xl border border-[#E0F2F1]">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="p-2 bg-[#F1F8F6] rounded-lg">
+                          <FiPhone size={16} className="text-[#66BB6A]" />
+                        </div>
+                        <h3 className="text-xs font-medium text-[#81C784] tracking-wide">Teléfono</h3>
+                      </div>
+                      <p className="text-sm font-medium text-[#1A4D2E] pl-10">{profile.telefono}</p>
+                    </div>
+                  )}
+
+                  {/* Tarifa */}
+                  {isGuide && profile.tarifa != null && Number(profile.tarifa) > 0 && (
+                    <div className="bg-white p-4 rounded-xl border border-[#E0F2F1]">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="p-2 bg-[#F1F8F6] rounded-lg">
+                          <FiDollarSign size={16} className="text-[#66BB6A]" />
+                        </div>
+                        <h3 className="text-xs font-medium text-[#81C784] tracking-wide">Cobro por Tour</h3>
+                      </div>
+                      <p className="text-sm font-medium text-[#1A4D2E] pl-10">
+                        ${Number(profile.tarifa).toLocaleString("es-MX")} MXN / hora
+                      </p>
+                      {profile.tarifaCompleta && (
+                        <p className="text-xs text-[#81C784] pl-10 mt-1">
+                          Día completo: ${Number(profile.tarifaCompleta).toLocaleString("es-MX")} MXN
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Botones de acción */}
+                {isGuide && (
+                  <div className="w-full space-y-3">
+                    <button
+                      onClick={handleBookTour}
+                      className="w-full bg-[#0D601E] hover:bg-[#094d18] text-white py-3 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                    >
+                      <FiCalendar size={16} />
+                      Reservar Tour
+                    </button>
+                    <button
+                      onClick={handleContactGuide}
+                      className="w-full bg-white border-2 border-[#1A4D2E] hover:bg-[#F6F0E6] text-[#1A4D2E] py-3 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition-all"
+                    >
+                      <FiMessageSquare size={16} />
+                      Contactar Guía
+                    </button>
+                  </div>
+                )}
+
+                {/* Stats */}
+                {isGuide && (
+                  <div className="w-full mt-6 bg-gradient-to-r from-[#E8F5E9] to-white rounded-xl p-4 border border-[#E0F2F1]">
+                    <div className="flex justify-between items-center">
+                      <div className="text-center flex-1">
+                        <p className="text-xl font-semibold text-[#66BB6A]">{guideTours.length}</p>
+                        <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wide">Tours</p>
+                      </div>
+                      {profile.resenas && (
+                        <>
+                          <div className="w-px h-8 bg-[#E0F2F1]" />
+                          <div className="text-center flex-1">
+                            <p className="text-xl font-semibold text-[#66BB6A]">{profile.resenas}</p>
+                            <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wide">Reseñas</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-
-              {isGuide && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3 }}
-                className="bg-gradient-to-br from-[#F6F0E6] to-white p-8 rounded-3xl border-2 border-[#1A4D2E] min-w-[280px] shadow-xl"
-              >
-                <div className="flex items-center gap-2 text-[#1A4D2E]/70 mb-3">
-                  <FiDollarSign size={24} className="text-[#0D601E]" />
-                  <span className="text-sm font-bold uppercase tracking-wider">Tarifa</span>
-                </div>
-                <p className="text-5xl font-bold text-[#1A4D2E]">
-                  ${profile.tarifa?.toLocaleString('es-MX') || "N/A"}
-                </p>
-                <p className="text-sm text-[#1A4D2E]/60 mt-2 font-semibold">por hora</p>
-                
-                {profile.tarifaCompleta && (
-                  <div className="mt-6 pt-6 border-t-2 border-[#1A4D2E]/20">
-                    <p className="text-sm text-[#1A4D2E]/70 mb-2">Tour día completo</p>
-                    <p className="text-3xl font-bold text-[#0D601E]">
-                      ${profile.tarifaCompleta.toLocaleString('es-MX')}
-                    </p>
-                  </div>
-                )}
-              </motion.div>
-            )}
             </div>
+          </motion.div>
 
-            {isGuide && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="flex flex-col sm:flex-row gap-4 mt-10"
-              >
-                <button
-                  onClick={handleBookTour}
-                  className="flex-1 bg-gradient-to-r from-[#0D601E] via-[#1A4D2E] to-[#0D601E] hover:shadow-2xl text-white py-5 px-8 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:scale-105 border border-[#1A4D2E]/30"
-                >
-                  <FiCalendar size={24} />
-                  Reservar Tour
-                </button>
-                
-                <button
-                  onClick={handleContactGuide}
-                  className="flex-1 bg-white hover:bg-[#F6F0E6] text-[#1A4D2E] border-2 border-[#1A4D2E] py-5 px-8 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all duration-300 hover:shadow-lg hover:scale-105"
-                >
-                  <FiMessageSquare size={24} />
-                  Contactar Guía
-                </button>
-              </motion.div>
-            )}
-          </div>
-        </motion.div>
-      </div>
+          {/* ── Columna derecha ── */}
+          <div className="lg:col-span-2 space-y-8">
 
-      <div className="max-w-6xl mx-auto px-4 my-12">
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 space-y-8">
-            {profile.biografia && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-gradient-to-br from-white to-[#FDFCF9] rounded-3xl border-2 border-[#1A4D2E]/20 shadow-xl p-8 hover:shadow-2xl transition-all"
-              >
-                <h2 className="text-3xl font-bold text-[#1A4D2E] mb-5 flex items-center gap-3">
-                  <div className="bg-[#1A4D2E]/10 p-3 rounded-2xl">
-                    <FiUser size={28} className="text-[#1A4D2E]" />
-                  </div>
-                  Sobre mí
-                </h2>
-                <p className="text-gray-700 leading-relaxed whitespace-pre-line text-lg">
-                  {profile.biografia}
-                </p>
-              </motion.div>
-            )}
-
+            {/* Especialidades */}
             {profile.especialidades && profile.especialidades.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-gradient-to-br from-[#F6F0E6] to-white rounded-3xl border-2 border-[#1A4D2E]/20 shadow-xl p-8 hover:shadow-2xl transition-all"
-              >
-                <h2 className="text-3xl font-bold text-[#1A4D2E] mb-6 flex items-center gap-3">
-                  <div className="bg-[#1A4D2E]/10 p-3 rounded-2xl">
-                    <FiAward size={28} className="text-[#1A4D2E]" />
-                  </div>
-                  {isGuide ? "Especialidades" : "Intereses"}
-                </h2>
-                <div className="flex flex-wrap gap-3">
-                  {profile.especialidades.map((especialidad, idx) => (
-                    <motion.span
-                      key={idx}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.25 + idx * 0.05 }}
-                      className="bg-[#1A4D2E] text-white px-4 py-2 rounded-full font-medium"
-                    >
-                      {especialidad}
-                    </motion.span>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {profile.certificaciones && profile.certificaciones.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-gradient-to-br from-white to-[#FDFCF9] rounded-3xl border-2 border-[#1A4D2E]/20 shadow-xl p-8 hover:shadow-2xl transition-all"
-              >
-                <h2 className="text-3xl font-bold text-[#1A4D2E] mb-6 flex items-center gap-3">
-                  <div className="bg-[#1A4D2E]/10 p-3 rounded-2xl">
-                    <FiCheckCircle size={28} className="text-[#1A4D2E]" />
-                  </div>
-                  Certificaciones
-                </h2>
-                <ul className="space-y-3">
-                  {profile.certificaciones.map((cert, idx) => (
-                    <motion.li
-                      key={idx}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.35 + idx * 0.05 }}
-                      className="flex items-start gap-3 text-gray-700 hover:text-[#1A4D2E] transition-colors"
-                    >
-                      <FiCheckCircle className="text-green-500 mt-1 flex-shrink-0 text-xl" size={20} />
-                      <span className="text-lg">{cert}</span>
-                    </motion.li>
-                  ))}
-                </ul>
-              </motion.div>
-            )}
-
-            {isAdminViewer && adminDetail && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
-                className="bg-white rounded-3xl border border-[#1A4D2E]/10 shadow-lg p-7"
-              >
-                <h2 className="text-2xl font-bold text-[#1A4D2E] mb-3 flex items-center gap-2">
-                  <FiDatabase size={24} />
-                  Información completa (Admin)
-                </h2>
-                <p className="text-sm text-[#1A4D2E]/75 mb-5">
-                  Ruta: <strong>{adminDetail.path}</strong> · Doc: <strong>{adminDetail.docId || "N/A"}</strong> · UID: <strong>{adminDetail.uid}</strong>
-                </p>
-
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {Object.entries(adminDetail.data || {}).map(([key, value]) => (
-                    <div key={key} className="rounded-2xl border border-[#1A4D2E]/10 bg-[#FDFCF9] p-3">
-                      <p className="text-xs font-bold text-[#1A4D2E]/75 mb-1">{toReadableLabel(key)}</p>
-                      <pre className="text-sm text-[#1A4D2E] whitespace-pre-wrap break-words font-sans">
-                        {formatRawValue(value)}
-                      </pre>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </div>
-
-          <div className="space-y-8">
-            {profile.idiomas && profile.idiomas.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-gradient-to-br from-white to-[#FDFCF9] rounded-3xl border-2 border-[#1A4D2E]/20 shadow-xl p-6 hover:shadow-2xl transition-all"
+                className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]"
               >
-                <h3 className="text-2xl font-bold text-[#1A4D2E] mb-5 flex items-center gap-3">
-                  <div className="bg-[#1A4D2E]/10 p-2 rounded-xl">
-                    <FiGlobe size={24} className="text-[#1A4D2E]" />
-                  </div>
-                  Idiomas
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  {profile.idiomas.map((idioma, idx) => (
-                    <motion.span
-                      key={idx}
+                <div className="mb-6">
+                  <h3 className="text-xl font-semibold text-[#1A4D2E] mb-1">
+                    {isGuide ? "Especialidades" : "Intereses"}
+                  </h3>
+                  <p className="text-xs text-[#81C784] font-normal">
+                    {profile.especialidades.length} {profile.especialidades.length === 1 ? "seleccionada" : "seleccionadas"}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {profile.especialidades.map((esp, i) => (
+                    <motion.div
+                      key={i}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.15 + idx * 0.05 }}
-                      className="bg-gradient-to-r from-[#F6F0E6] to-[#FDFCF9] text-[#1A4D2E] px-4 py-2 rounded-full font-semibold border border-[#1A4D2E]/30 hover:border-[#1A4D2E]/60 transition-all"
+                      transition={{ delay: i * 0.05 }}
+                      whileHover={{ y: -2, scale: 1.02 }}
+                      className="bg-gradient-to-br from-[#F1F8F6] to-white rounded-xl p-5 border border-[#E0F2F1] hover:border-[#A5D6A7] transition-all shadow-sm hover:shadow-md flex flex-col items-center gap-3"
                     >
-                      {idioma}
-                    </motion.span>
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#1A4D2E] to-[#0D601E] flex items-center justify-center text-white shadow-lg">
+                        <FiAward size={28} />
+                      </div>
+                      <span className="text-sm font-medium text-[#1A4D2E] text-center leading-tight">{esp}</span>
+                    </motion.div>
                   ))}
                 </div>
               </motion.div>
             )}
 
-            {(profile.email || showPublicPhone || profile.nacionalidad || profile.descripcion) && (
+            {/* Idiomas */}
+            {isGuide && profile.idiomas && profile.idiomas.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="bg-gradient-to-br from-white to-[#FDFCF9] rounded-3xl border-2 border-[#1A4D2E]/20 shadow-xl p-6 hover:shadow-2xl transition-all"
+                className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
               >
-                <h3 className="text-2xl font-bold text-[#1A4D2E] mb-5 flex items-center gap-3">
-                  <div className="bg-[#1A4D2E]/10 p-2 rounded-xl">
-                    <FiUser size={24} className="text-[#1A4D2E]" />
-                  </div>
-                  Información
-                </h3>
-
-                <div className="space-y-4 text-gray-700">
-                  {profile.email && (
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-[#FDFCF9] hover:bg-[#F6F0E6] transition-colors"
-                    >
-                      <FiMail size={20} className="text-[#1A4D2E] flex-shrink-0" />
-                      <span className="text-sm font-medium break-all">{profile.email}</span>
-                    </motion.div>
-                  )}
-
-                  {showPublicPhone && (
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.25 }}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-[#FDFCF9] hover:bg-[#F6F0E6] transition-colors"
-                    >
-                      <FiPhone size={20} className="text-[#1A4D2E] flex-shrink-0" />
-                      <span className="text-sm font-medium">{profile.telefono}</span>
-                    </motion.div>
-                  )}
-
-                  {profile.nacionalidad && (
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-[#FDFCF9] hover:bg-[#F6F0E6] transition-colors"
-                    >
-                      <FiGlobe size={20} className="text-[#1A4D2E] flex-shrink-0" />
-                      <span className="text-sm font-medium">{profile.nacionalidad}</span>
-                    </motion.div>
-                  )}
-
-                  {profile.descripcion && (
-                    <motion.p
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.35 }}
-                      className="pt-4 border-t-2 border-[#1A4D2E]/20 whitespace-pre-line text-sm text-gray-700 italic"
-                    >
-                      {profile.descripcion}
-                    </motion.p>
-                  )}
+                <div className="mb-6">
+                  <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Idiomas</h3>
+                  <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
+                    Idiomas que habla
+                  </p>
                 </div>
-              </motion.div>
-            )}
-
-            {/* Disponibilidad */}
-            {isGuide && profile.disponibilidad && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-gradient-to-br from-white to-[#FDFCF9] rounded-3xl border-2 border-[#1A4D2E]/20 shadow-xl p-6 hover:shadow-2xl transition-all"
-              >
-                <h3 className="text-2xl font-bold text-[#1A4D2E] mb-5 flex items-center gap-3">
-                  <div className="bg-[#1A4D2E]/10 p-2 rounded-xl">
-                    <FiClock size={24} className="text-[#1A4D2E]" />
-                  </div>
-                  Disponibilidad
-                </h3>
-                <div className="space-y-3">
-                  {Object.entries(profile.disponibilidad).map(([dia, disponible], idx) => (
+                <div className="flex flex-wrap gap-2">
+                  {profile.idiomas.map((idioma, i) => (
                     <motion.div
-                      key={dia}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.25 + idx * 0.05 }}
-                      className="flex items-center justify-between p-3 rounded-xl bg-[#FDFCF9] hover:bg-[#F6F0E6] transition-colors"
+                      key={i}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.05 }}
+                      whileHover={{ y: -2, scale: 1.05 }}
+                      className="bg-gradient-to-br from-[#F1F8F6] to-white rounded-lg px-4 py-2 border border-[#E0F2F1] hover:border-[#A5D6A7] transition-all shadow-sm hover:shadow-md"
                     >
-                      <span className="text-gray-700 capitalize font-semibold">{dia}</span>
-                      {disponible ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-semibold">Disponible</span>
-                          <FiCheckCircle className="text-green-500" size={20} />
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 font-semibold">No disponible</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <FiGlobe size={16} className="text-[#3A5A40]" />
+                        <span className="text-sm font-medium text-[#1A4D2E]">{idioma}</span>
+                      </div>
                     </motion.div>
                   ))}
                 </div>
-                {profile.toursPorDia && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="mt-6 pt-6 border-t-2 border-[#1A4D2E]/20 bg-[#1A4D2E]/5 rounded-2xl p-4"
-                  >
-                    <p className="text-sm text-[#1A4D2E]/70 mb-1">Límite de tours por día</p>
-                    <p className="text-2xl font-bold text-[#1A4D2E]">{profile.toursPorDia} tours</p>
-                  </motion.div>
-                )}
               </motion.div>
             )}
 
-            {/* Experiencias / Tours publicados */}
+            {/* Experiencias / Tours */}
             {isGuide && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-                className="bg-gradient-to-br from-white to-[#FDFCF9] rounded-3xl border-2 border-[#1A4D2E]/20 shadow-xl p-8 hover:shadow-2xl transition-all"
+                transition={{ delay: 0.2 }}
+                className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
               >
-                <h3 className="text-3xl font-bold text-[#1A4D2E] mb-6 flex items-center gap-3">
-                  <div className="bg-[#1A4D2E]/10 p-3 rounded-2xl">
-                    <FiAward size={28} className="text-[#1A4D2E]" />
+                <div className="mb-6 flex justify-between items-end">
+                  <div>
+                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Experiencias</h3>
+                    <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">Tours publicados</p>
                   </div>
-                  Experiencias ({guideTours.length})
-                </h3>
-
+                  <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
+                    {guideTours.length} publicados
+                  </span>
+                </div>
                 {guideTours.length > 0 ? (
                   <div className="space-y-4">
                     {guideTours.map((tour: any, idx: number) => {
@@ -725,18 +579,14 @@ export default function GuidePublicProfilePage() {
                           key={tour.id || idx}
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.3 + idx * 0.05 }}
+                          transition={{ delay: 0.25 + idx * 0.05 }}
                         >
                           <Link
                             href={`/tours/${tour.id}`}
                             className="flex items-center gap-4 p-4 rounded-2xl border-2 border-[#1A4D2E]/15 bg-gradient-to-r from-white to-[#FDFCF9] hover:from-[#F6F0E6] hover:to-white transition-all hover:shadow-md hover:border-[#1A4D2E]/40 group"
                           >
                             {foto ? (
-                              <img
-                                src={foto}
-                                alt={tour.titulo || "Experiencia"}
-                                className="h-16 w-16 rounded-xl object-cover flex-shrink-0 border border-[#1A4D2E]/20"
-                              />
+                              <img src={foto} alt={tour.titulo || "Experiencia"} className="h-16 w-16 rounded-xl object-cover flex-shrink-0 border border-[#1A4D2E]/20" />
                             ) : (
                               <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9] border border-[#1A4D2E]/10">
                                 <FiMap size={24} className="text-[#0D601E]" />
@@ -751,9 +601,7 @@ export default function GuidePublicProfilePage() {
                                 {idiomasTour && <span>{idiomasTour}</span>}
                               </div>
                             </div>
-                            <span className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-[#E8F5E9] text-[#2E7D32] border border-[#A5D6A7]">
-                              Ver detalles
-                            </span>
+                            <span className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-[#E8F5E9] text-[#2E7D32] border border-[#A5D6A7]">Ver detalles</span>
                           </Link>
                         </motion.div>
                       );
@@ -768,21 +616,70 @@ export default function GuidePublicProfilePage() {
               </motion.div>
             )}
 
+            {/* Certificaciones */}
+            {profile.certificaciones && profile.certificaciones.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]"
+              >
+                <h3 className="text-xl font-semibold text-[#1A4D2E] mb-5">Certificaciones</h3>
+                <ul className="space-y-3">
+                  {profile.certificaciones.map((cert, idx) => (
+                    <li key={idx} className="flex items-start gap-3 text-gray-700">
+                      <FiCheckCircle className="text-green-500 mt-1 flex-shrink-0" size={18} />
+                      <span>{cert}</span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            )}
+
+            {/* Disponibilidad */}
+            {isGuide && profile.disponibilidad && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]"
+              >
+                <h3 className="text-xl font-semibold text-[#1A4D2E] mb-5 flex items-center gap-2">
+                  <FiClock size={20} className="text-[#1A4D2E]" /> Disponibilidad
+                </h3>
+                <div className="space-y-3">
+                  {Object.entries(profile.disponibilidad).map(([dia, disponible], idx) => (
+                    <div key={dia} className="flex items-center justify-between p-3 rounded-xl bg-[#FDFCF9] hover:bg-[#F6F0E6] transition-colors">
+                      <span className="text-gray-700 capitalize font-semibold">{dia}</span>
+                      {disponible ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-semibold">Disponible</span>
+                          <FiCheckCircle className="text-green-500" size={18} />
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 font-semibold text-sm">No disponible</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {profile.toursPorDia && (
+                  <div className="mt-5 pt-5 border-t border-[#E0F2F1] bg-[#1A4D2E]/5 rounded-2xl p-4">
+                    <p className="text-sm text-[#1A4D2E]/70 mb-1">Límite de tours por día</p>
+                    <p className="text-2xl font-bold text-[#1A4D2E]">{profile.toursPorDia} tours</p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
             {/* Negocios */}
             {profile.role === "dueno_negocio" && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="bg-gradient-to-br from-white to-[#FDFCF9] rounded-3xl border-2 border-[#1A4D2E]/20 shadow-xl p-8 hover:shadow-2xl transition-all"
+                className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]"
               >
-                <h3 className="text-3xl font-bold text-[#1A4D2E] mb-6 flex items-center gap-3">
-                  <div className="bg-[#1A4D2E]/10 p-3 rounded-2xl">
-                    <FiShoppingBag size={28} className="text-[#1A4D2E]" />
-                  </div>
-                  Mis Negocios ({negocios.length})
-                </h3>
-
+                <h3 className="text-xl font-semibold text-[#1A4D2E] mb-5">Negocios ({negocios.length})</h3>
                 {negocios.length > 0 ? (
                   <div className="space-y-4">
                     {negocios.map((negocio: any, idx: number) => {
@@ -793,54 +690,59 @@ export default function GuidePublicProfilePage() {
                       };
                       const estadoKey = negocio.estado?.toUpperCase() || "PENDING";
                       const statusColor = statusColors[estadoKey as keyof typeof statusColors] || "bg-gray-100 text-gray-800";
-
                       return (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.35 + idx * 0.05 }}
-                          className="p-5 rounded-2xl border-2 border-[#1A4D2E]/15 bg-gradient-to-r from-white to-[#FDFCF9] hover:from-[#F6F0E6] hover:to-white transition-all hover:shadow-md hover:border-[#1A4D2E]/30"
-                        >
+                        <div key={idx} className="p-5 rounded-2xl border-2 border-[#1A4D2E]/15 bg-gradient-to-r from-white to-[#FDFCF9] hover:from-[#F6F0E6] transition-all hover:shadow-md">
                           <div className="flex items-start gap-4">
-                            {negocio.logo && (
-                              <img
-                                src={negocio.logo}
-                                alt={negocio.nombre}
-                                className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border-2 border-[#1A4D2E]/20"
-                              />
-                            )}
+                            {negocio.logo && <img src={negocio.logo} alt={negocio.nombre} className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border-2 border-[#1A4D2E]/20" />}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-3 mb-2">
                                 <p className="font-bold text-lg text-[#1A4D2E] truncate">{negocio.nombre}</p>
-                                <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${statusColor} whitespace-nowrap`}>
-                                  {negocio.estado || "PENDING"}
-                                </span>
+                                <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${statusColor} whitespace-nowrap`}>{negocio.estado || "PENDING"}</span>
                               </div>
-                              {negocio.categoria && (
-                                <p className="text-sm text-[#1A4D2E]/70 font-semibold">🏷️ {negocio.categoria}</p>
-                              )}
+                              {negocio.categoria && <p className="text-sm text-[#1A4D2E]/70 font-semibold">🏷️ {negocio.categoria}</p>}
                             </div>
                           </div>
-                        </motion.div>
+                        </div>
                       );
                     })}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-[#1A4D2E]/60">
-                    <p className="text-lg">No hay negocios registrados</p>
-                    <p className="text-sm mt-2">Los negocios aparecerán aquí cuando los registres</p>
+                    <p>No hay negocios registrados</p>
                   </div>
                 )}
               </motion.div>
             )}
 
-            {isAdminViewer && !adminDetail && !loadingAdminDetail && (
-              <div className="bg-white rounded-3xl border border-[#1A4D2E]/10 shadow-lg p-6">
-                <h3 className="text-lg font-bold text-[#1A4D2E] mb-2">Detalle admin no disponible</h3>
-                <p className="text-sm text-[#1A4D2E]/70">
-                  No fue posible recuperar la información completa desde la ruta de administración.
+            {/* Admin detail */}
+            {isAdminViewer && adminDetail && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+                className="bg-white rounded-2xl border border-[#1A4D2E]/10 shadow-md p-7"
+              >
+                <h3 className="text-xl font-bold text-[#1A4D2E] mb-3 flex items-center gap-2">
+                  <FiDatabase size={22} /> Información completa (Admin)
+                </h3>
+                <p className="text-sm text-[#1A4D2E]/75 mb-5">
+                  Ruta: <strong>{adminDetail.path}</strong> · Doc: <strong>{adminDetail.docId || "N/A"}</strong> · UID: <strong>{adminDetail.uid}</strong>
                 </p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {Object.entries(adminDetail.data || {}).map(([key, value]) => (
+                    <div key={key} className="rounded-2xl border border-[#1A4D2E]/10 bg-[#FDFCF9] p-3">
+                      <p className="text-xs font-bold text-[#1A4D2E]/75 mb-1">{toReadableLabel(key)}</p>
+                      <pre className="text-sm text-[#1A4D2E] whitespace-pre-wrap break-words font-sans">{formatRawValue(value)}</pre>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {isAdminViewer && !adminDetail && !loadingAdminDetail && (
+              <div className="bg-white rounded-2xl border border-[#1A4D2E]/10 shadow-md p-6">
+                <h3 className="text-lg font-bold text-[#1A4D2E] mb-2">Detalle admin no disponible</h3>
+                <p className="text-sm text-[#1A4D2E]/70">No fue posible recuperar la información completa desde la ruta de administración.</p>
               </div>
             )}
           </div>
