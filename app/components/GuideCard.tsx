@@ -64,45 +64,60 @@ export default function GuideCard({ guide, viewMode = "grid" }: GuideCardProps) 
               : "shadow-md border-transparent hover:border-[#1A4D2E]/20 hover:shadow-xl"
           }`}
         >
-          <div className={`relative overflow-hidden bg-gradient-to-br from-[#1A4D2E] via-[#2A6A44] to-[#0D601E] ${
-            isListView ? "lg:w-[300px] p-6 flex items-center justify-center" : "h-56 p-4 flex items-center justify-center"
-          }`}>
-            <div className={`absolute inset-0 opacity-80 ${isListView ? "bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.18),_transparent_42%),radial-gradient(circle_at_bottom_right,_rgba(246,240,230,0.18),_transparent_38%)]" : "bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.22),_transparent_38%),radial-gradient(circle_at_bottom,_rgba(246,240,230,0.14),_transparent_36%)]"}`} />
-            <div className={`relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/10 shadow-[0_22px_45px_rgba(0,0,0,0.24)] backdrop-blur-[2px] ${
-              isListView ? "w-full max-w-[220px] aspect-square" : "h-full w-full max-w-[240px]"
-            }`}>
+          {isListView ? (
+            /* Vista lista: foto cuadrada con object-cover, sin marco */
+            <div className="relative lg:w-[260px] flex-shrink-0 overflow-hidden">
               {guide.fotoPerfil && !imageError ? (
                 <img
                   src={guide.fotoPerfil}
                   alt={guide.nombre}
-                  className={`w-full h-full object-contain bg-white/5 transition-transform duration-300 ${
-                    isListView ? "group-hover:scale-[1.02]" : "group-hover:scale-[1.03]"
-                  }`}
+                  className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                  style={{ minHeight: 200 }}
                   onError={() => setImageError(true)}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-white/10">
-                  <FiUser className={`${isListView ? "text-white/40" : "text-white/30"}`} size={isListView ? 80 : 56} />
+                <div className="w-full h-full min-h-[200px] flex items-center justify-center bg-[#E8F5E9]">
+                  <FiUser className="text-[#1A4D2E]/30" size={80} />
                 </div>
               )}
-              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/30 via-black/5 to-transparent" />
-            </div>
-
-            {!isListView && <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />}
-
-            <div className={`absolute ${isListView ? "top-4 right-4 px-3 py-1 text-xs" : "top-3 right-3 px-2 py-0.5 text-[10px]"} bg-green-500 text-white rounded-full font-bold flex items-center gap-1 shadow-lg`}>
-              <FiCheckCircle size={isListView ? 14 : 10} />
-              {t('verified')}
-            </div>
-
-            {!isListView && guide.tarifa != null && Number(guide.tarifa) > 0 && (
-              <div className="absolute bottom-3 left-3">
-                <span className="bg-white/20 backdrop-blur-sm text-white text-[11px] px-2.5 py-1 rounded-full font-semibold">
-                  ${Number(guide.tarifa).toLocaleString("es-MX")} MXN/hr
-                </span>
+              <div className="absolute top-4 right-4 px-3 py-1 text-xs bg-green-500 text-white rounded-full font-bold flex items-center gap-1 shadow-lg">
+                <FiCheckCircle size={14} />
+                {t('verified')}
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            /* Vista tarjeta: fondo verde con marco redondeado (evita distorsión) */
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#1A4D2E] via-[#2A6A44] to-[#0D601E] h-56 p-4 flex items-center justify-center">
+              <div className="absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.22),_transparent_38%),radial-gradient(circle_at_bottom,_rgba(246,240,230,0.14),_transparent_36%)]" />
+              <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/10 shadow-[0_22px_45px_rgba(0,0,0,0.24)] backdrop-blur-[2px] h-full w-full max-w-[240px]">
+                {guide.fotoPerfil && !imageError ? (
+                  <img
+                    src={guide.fotoPerfil}
+                    alt={guide.nombre}
+                    className="w-full h-full object-contain bg-white/5 transition-transform duration-300 group-hover:scale-[1.03]"
+                    onError={() => setImageError(true)}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-white/10">
+                    <FiUser className="text-white/30" size={56} />
+                  </div>
+                )}
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/30 via-black/5 to-transparent" />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              <div className="absolute top-3 right-3 px-2 py-0.5 text-[10px] bg-green-500 text-white rounded-full font-bold flex items-center gap-1 shadow-lg">
+                <FiCheckCircle size={10} />
+                {t('verified')}
+              </div>
+              {guide.tarifa != null && Number(guide.tarifa) > 0 && (
+                <div className="absolute bottom-3 left-3">
+                  <span className="bg-white/20 backdrop-blur-sm text-white text-[11px] px-2.5 py-1 rounded-full font-semibold">
+                    ${Number(guide.tarifa).toLocaleString("es-MX")} MXN/hr
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className={`flex-1 ${isListView ? "p-6 lg:p-7 flex flex-col justify-between" : "p-4"}`}>
             <div>
