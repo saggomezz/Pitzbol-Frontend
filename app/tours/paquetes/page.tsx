@@ -28,6 +28,7 @@ interface Paquete {
   titulo: string;
   destino: string;
   fotoPrincipal: string;
+  fotos?: string[];
   duracion: string;
   precio: string;
   queIncluye: string[];
