@@ -7,7 +7,7 @@ import {
   FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
 } from "react-icons/fa";
 import { FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
-  FiPlus, FiShield, FiUser, FiX, FiCreditCard, FiDollarSign
+  FiPlus, FiShield, FiUser, FiX, FiCreditCard, FiDollarSign, FiTrash2
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
 import { useFavoritesSync } from "@/lib/favoritesApi";
@@ -716,6 +716,31 @@ export default function PerfilDetallado() {
       return;
     }
     setEspecialidadesTemp((prev: string[]) => [...prev, interes]);
+  };
+
+  const handleDeleteTour = async (tourId: string) => {
+    if (!window.confirm("¿Eliminar esta experiencia? Esta acción no se puede deshacer.")) return;
+    const token = localStorage.getItem("pitzbol_token");
+    try {
+      const res = await fetch(`${API_BASE}/tours/${tourId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setTours(prev => prev.filter(t => t.id !== tourId));
+    } catch {}
+  };
+
+  const handleDeletePaquete = async (paqId: string) => {
+    if (!window.confirm("¿Eliminar este paquete? Esta acción no se puede deshacer.")) return;
+    const token = localStorage.getItem("pitzbol_token");
+    const backendUrl = getBackendOrigin();
+    try {
+      const res = await fetch(`${backendUrl}/api/paquetes/${paqId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setPaquetes(prev => prev.filter(p => p.id !== paqId));
+    } catch {}
   };
 
   const eliminarEspecialidad = (especialidad: string) => {
@@ -1835,34 +1860,42 @@ export default function PerfilDetallado() {
                           const foto = tour.fotoPrincipal || tour.fotos?.[0] || null;
                           const idiomasTour = Array.isArray(tour.idiomas) ? tour.idiomas.slice(0, 2).join(" · ") : "";
                           return (
-                            <motion.a
+                            <motion.div
                               key={tour.id || i}
-                              href={`/tours/${tour.id}`}
                               initial={{ opacity: 0, y: 8 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: i * 0.05 }}
-                              className="flex items-center gap-3 rounded-xl border border-[#E0F2F1] p-3 transition-all group hover:border-[#A5D6A7] hover:bg-[#F7FBF7]"
+                              className="relative flex items-center gap-3 rounded-xl border border-[#E0F2F1] p-3 transition-all group hover:border-[#A5D6A7] hover:bg-[#F7FBF7]"
                             >
-                              {foto ? (
-                                <img src={foto} alt={tour.titulo || "Experiencia"} className="h-14 w-14 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
-                              ) : (
-                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
-                                  <FiMap size={18} className="text-[#66BB6A]" />
+                              <a href={`/tours/${tour.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                                {foto ? (
+                                  <img src={foto} alt={tour.titulo || "Experiencia"} className="h-14 w-14 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
+                                ) : (
+                                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
+                                    <FiMap size={18} className="text-[#66BB6A]" />
+                                  </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-semibold text-[#1A4D2E] group-hover:text-[#0D601E]">{tour.titulo || "Experiencia"}</p>
+                                  <p className="truncate text-[11px] text-gray-500">{tour.destino || "Destino por definir"}</p>
+                                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
+                                    {tour.duracion && <span>{tour.duracion}</span>}
+                                    {tour.precio && <span>{tour.precio}</span>}
+                                    {idiomasTour && <span>{idiomasTour}</span>}
+                                  </div>
                                 </div>
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-semibold text-[#1A4D2E] group-hover:text-[#0D601E]">{tour.titulo || "Experiencia"}</p>
-                                <p className="truncate text-[11px] text-gray-500">{tour.destino || "Destino por definir"}</p>
-                                <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
-                                  {tour.duracion && <span>{tour.duracion}</span>}
-                                  {tour.precio && <span>{tour.precio}</span>}
-                                  {idiomasTour && <span>{idiomasTour}</span>}
-                                </div>
-                              </div>
+                              </a>
                               <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
                                 Completado
                               </span>
-                            </motion.a>
+                              <button
+                                onClick={() => handleDeleteTour(tour.id)}
+                                className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                title="Eliminar experiencia"
+                              >
+                                <FiTrash2 size={14} />
+                              </button>
+                            </motion.div>
                           );
                         })}
                       </div>
@@ -1991,16 +2024,13 @@ export default function PerfilDetallado() {
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.05 }}
-                          className="rounded-xl border border-[#E0F2F1] overflow-hidden hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
+                          className="rounded-xl border border-[#E0F2F1] overflow-hidden hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all group"
                         >
                           {/* Photo strip */}
                           {(paq.fotos?.length > 0 || paq.fotoPrincipal) && (
                             <div className="flex gap-0.5 h-24 overflow-hidden">
                               {(paq.fotos?.length > 0 ? paq.fotos : [paq.fotoPrincipal]).slice(0, 3).map((src: string, fi: number) => (
-                                <div
-                                  key={fi}
-                                  className={`relative overflow-hidden flex-1 ${fi === 0 && (paq.fotos?.length || 1) === 1 ? "rounded-none" : ""}`}
-                                >
+                                <div key={fi} className="relative overflow-hidden flex-1">
                                   <img src={src} alt="" className="w-full h-full object-cover" />
                                 </div>
                               ))}
@@ -2023,6 +2053,13 @@ export default function PerfilDetallado() {
                             <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
                               Activo
                             </span>
+                            <button
+                              onClick={() => handleDeletePaquete(paq.id)}
+                              className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              title="Eliminar paquete"
+                            >
+                              <FiTrash2 size={14} />
+                            </button>
                           </div>
                         </motion.div>
                       ))}
