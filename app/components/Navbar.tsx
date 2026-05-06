@@ -312,7 +312,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         <nav className="flex justify-between items-center bg-[#F6F0E6] px-3 md:px-8 h-16 md:h-20 lg:h-24 sticky top-0 z-[100] shadow-sm text-[#1A4D2E]">
             {/* LOGO Y NOMBRE */}
             <div className="flex items-center h-full gap-1">
-                <motion.div whileHover={{ rotate: 190 }} transition={{ duration: 2.0, ease: "easeInOut" }} className="relative h-16 w-16 md:h-20 md:w-20 lg:h-28 lg:w-28 flex-shrink-0 cursor-pointer">
+                <motion.div whileHover={{ rotate: 190 }} transition={{ duration: 2.0, ease: "easeInOut" }} className="relative h-[72px] w-[72px] md:h-20 md:w-20 lg:h-28 lg:w-28 flex-shrink-0 cursor-pointer">
                     <Link href="/" className="relative block h-full w-full">
                         <Image
                             src={imglogo}
@@ -325,7 +325,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                     </Link>
                 </motion.div>
                 <div className="relative flex items-center h-full pointer-events-none">
-                    <div className="absolute inset-y-0 -left-1 md:-left-5 top-6 md:top-5 lg:top-7 z-0 flex items-center w-[115%] md:w-[105%] min-w-[130px] md:min-w-[125px] lg:min-w-[220px]">
+                    <div className="absolute inset-y-0 -left-1 md:-left-5 top-4 md:top-5 lg:top-7 z-0 flex items-center w-[115%] md:w-[105%] min-w-[130px] md:min-w-[125px] lg:min-w-[220px]">
                         <Image src={imgPasto} alt="pasto" className="object-contain origin-left" loading="eager" priority />
                     </div>
                     <h1 className="relative z-10 ml-1 md:ml-2 text-[26px] md:text-[28px] lg:text-[42px] leading-none drop-shadow-[2px_4px_4px_rgba(0,0,0,0.5)] text-white" style={{ fontFamily: "'Jockey One', sans-serif" }}>
