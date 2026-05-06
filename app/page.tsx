@@ -116,7 +116,7 @@ return (
     <>
       <div className="bg-white md:bg-transparent py-2 md:py-1 w-full overflow-hidden">
         <div className="flex justify-center md:justify-start items-center w-full max-w-[1600px] mx-auto px-3 md:px-8 lg:px-22">
-          <Link href="/calendario" className="flex gap-0 w-full md:w-auto">
+          <Link href="/calendario" className="flex gap-0 w-full">
           {dynamicDates.map((date, index) => {
             let bgColor = index === 0 ? "bg-[#0D601E]" : index === 1 ? "bg-white border-y border-gray-100 shadow-sm" : "bg-[#B90808]";
             let textColor = index === 1 ? "text-[#6F4545]" : "text-white";
@@ -126,7 +126,7 @@ return (
                 key={date.fullDate}
                 className={`
                   relative flex flex-col items-center justify-center cursor-pointer transition-all
-                  h-14 md:h-12 flex-1 md:flex-none md:min-w-[70px]
+                  h-14 md:h-14 flex-1
                   ${index === 0 ? "rounded-l-[12px] md:rounded-l-[20px]" : ""}
                   ${index === 2 ? "rounded-r-[12px] md:rounded-r-[20px]" : ""}
                   ${bgColor}
