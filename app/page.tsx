@@ -115,7 +115,8 @@ const DateSlider = () => {
 return (
     <>
       <div className="bg-white md:bg-transparent py-2 md:py-1 w-full overflow-hidden">
-        <div className="flex gap-2 md:gap-0 px-3 md:px-0 justify-center items-center w-full max-w-7xl mx-auto">
+        <div className="flex justify-center items-center w-full max-w-7xl mx-auto px-3 md:px-0">
+          <Link href="/calendario" className="flex gap-0 md:gap-0">
           {dynamicDates.map((date, index) => {
             let bgColor = index === 0 ? "bg-[#0D601E]" : index === 1 ? "bg-white border-y border-gray-100 shadow-sm" : "bg-[#B90808]";
             let textColor = index === 1 ? "text-[#6F4545]" : "text-white";
@@ -124,20 +125,20 @@ return (
               <div
                 key={date.fullDate}
                 className={`
-                  relative flex-1 flex flex-col items-center justify-center cursor-pointer transition-all
+                  relative flex flex-col items-center justify-center cursor-pointer transition-all
                   h-14 md:h-12 min-w-[70px]
                   ${index === 0 ? "rounded-l-[12px] md:rounded-l-[20px]" : ""}
                   ${index === 2 ? "rounded-r-[12px] md:rounded-r-[20px]" : ""}
                   ${bgColor}
                 `}
               >
-                <div 
+                <div
                   className={`text-xl md:text-2xl font-normal leading-tight ${textColor}`}
                   style={{ fontFamily: "var(--font-jetbrains)" }}
                 >
                   {date.day}
                 </div>
-                <div 
+                <div
                   className={`text-[10px] md:text-xs font-normal uppercase ${textColor}`}
                   style={{ fontFamily: "var(--font-jockey)" }}
                 >
@@ -152,11 +153,6 @@ return (
               </div>
             );
           })}
-
-          <Link href="/calendario">
-            <button className="ml-0 md:ml-2 p-2 md:p-3 text-black hover:scale-110 transition-transform flex-shrink-0">
-              <FiChevronRight size={28} className="md:w-[35px] md:h-[35px]" />
-            </button>
           </Link>
         </div>
       </div>
