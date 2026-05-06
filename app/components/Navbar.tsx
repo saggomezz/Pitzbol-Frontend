@@ -325,7 +325,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                     </Link>
                 </motion.div>
                 <div className="relative flex items-center h-full pointer-events-none">
-                    <div className="absolute inset-y-0 -left-3 md:-left-5 top-6 md:top-5 lg:top-7 z-0 flex items-center w-[95%] md:w-[105%] min-w-[110px] md:min-w-[125px] lg:min-w-[220px]">
+                    <div className="absolute inset-y-0 left-2 md:-left-5 top-6 md:top-5 lg:top-7 z-0 flex items-center w-[130%] md:w-[105%] min-w-[145px] md:min-w-[125px] lg:min-w-[220px]">
                         <Image src={imgPasto} alt="pasto" className="object-contain origin-left" loading="eager" priority />
                     </div>
                     <h1 className="relative z-10 ml-1 md:ml-2 text-[26px] md:text-[28px] lg:text-[42px] leading-none drop-shadow-[2px_4px_4px_rgba(0,0,0,0.5)] text-white" style={{ fontFamily: "'Jockey One', sans-serif" }}>
