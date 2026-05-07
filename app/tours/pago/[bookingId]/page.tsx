@@ -57,11 +57,19 @@ interface SavedCard {
   isDefault: boolean;
 }
 
-/* ─── Inline Add Card Form ─── */
-function InlineAddCardForm({
+type InlineCardFormMode = "save" | "pay";
+
+/* ─── Inline Card Form ─── */
+function InlineCardForm({
+  mode,
+  booking,
+  userId,
   onSuccess,
   onCancel,
 }: {
+  mode: InlineCardFormMode;
+  booking?: BookingData | null;
+  userId?: string | null;
   onSuccess: () => void;
   onCancel: () => void;
 }) {
@@ -78,6 +86,78 @@ function InlineAddCardForm({
     setCardError(null);
 
     try {
+      const cardElement = elements.getElement(CardElement);
+
+      if (!cardElement) {
+        throw new Error("No se pudo inicializar el formulario de tarjeta");
+      }
+
+      if (mode === "pay") {
+        if (!booking || !userId) {
+          throw new Error("No se pudo identificar la reserva o el usuario");
+        }
+
+        const paymentResponse = await fetchWithAuth(
+          `${BACKEND_URL}/api/payments/create-payment-intent`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              bookingId: booking.id,
+              userId,
+              amount: booking.total,
+              currency: "mxn",
+            }),
+          }
+        );
+
+        const paymentData = await paymentResponse.json().catch(() => null);
+
+        if (!paymentResponse.ok || !paymentData?.success || !paymentData.clientSecret) {
+          throw new Error(paymentData?.message || "Error al preparar el pago");
+        }
+
+        const result = await stripe.confirmCardPayment(paymentData.clientSecret, {
+          payment_method: {
+            card: cardElement,
+          },
+        });
+
+        if (result.error) {
+          setCardError(result.error.message || "Error al procesar el pago");
+          return;
+        }
+
+        const paymentIntentId = result.paymentIntent?.id || paymentData.paymentIntentId;
+
+        if (result.paymentIntent?.status !== "succeeded" || !paymentIntentId) {
+          throw new Error("Stripe no confirmó el pago");
+        }
+
+        const finalizeResponse = await fetchWithAuth(
+          `${BACKEND_URL}/api/payments/finalize-payment-intent`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              paymentIntentId,
+              userId,
+            }),
+          }
+        );
+
+        const finalizeData = await finalizeResponse.json().catch(() => null);
+
+        if (!finalizeResponse.ok || !finalizeData?.success) {
+          throw new Error(
+            finalizeData?.message || "Error al finalizar el pago"
+          );
+        }
+
+        onSuccess();
+        return;
+      }
+
       const setupRes = await fetchWithAuth(`${BACKEND_URL}/api/perfil/setup-intent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -94,7 +174,7 @@ function InlineAddCardForm({
       const { clientSecret } = await setupRes.json();
 
       const result = await stripe.confirmCardSetup(clientSecret, {
-        payment_method: { card: elements.getElement(CardElement)! },
+        payment_method: { card: cardElement },
       });
 
       if (result.error) {
@@ -181,7 +261,13 @@ function InlineAddCardForm({
           ) : (
             <FiCreditCard size={16} />
           )}
-          {loading ? "Guardando..." : "Guardar tarjeta"}
+          {loading
+            ? mode === "pay"
+              ? "Procesando..."
+              : "Guardando..."
+            : mode === "pay"
+              ? "Pagar ahora"
+              : "Guardar tarjeta"}
         </button>
       </div>
     </form>
@@ -204,6 +290,11 @@ export default function TourPaymentPage() {
   const [success, setSuccess] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
 
+  const handlePaymentSuccess = () => {
+    setSuccess(true);
+    setTimeout(() => router.push(`/tours/confirmacion/${bookingId}`), 2000);
+  };
+
   const fetchCards = async () => {
     if (!user) return;
     try {
@@ -216,6 +307,9 @@ export default function TourPaymentPage() {
           setSavedCards(cardsData.cards);
           const defaultCard = cardsData.cards.find((c: SavedCard) => c.isDefault);
           if (!selectedCard) setSelectedCard((defaultCard || cardsData.cards[0]).stripePaymentMethodId);
+        } else {
+          setSavedCards([]);
+          setSelectedCard(null);
         }
       }
     } catch {
@@ -312,8 +406,7 @@ export default function TourPaymentPage() {
         throw new Error(confirmData.message || "Error al confirmar el pago");
       }
 
-      setSuccess(true);
-      setTimeout(() => router.push(`/tours/confirmacion/${bookingId}`), 2000);
+      handlePaymentSuccess();
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Error al procesar el pago";
@@ -487,7 +580,8 @@ export default function TourPaymentPage() {
               >
                 {stripePromise ? (
                   <Elements stripe={stripePromise}>
-                    <InlineAddCardForm
+                    <InlineCardForm
+                      mode="save"
                       onSuccess={() => {
                         setShowAddCard(false);
                         fetchCards();
@@ -564,20 +658,29 @@ export default function TourPaymentPage() {
                       No tienes tarjetas guardadas
                     </p>
                     <p className="text-xs text-yellow-700">
-                      Agrega una tarjeta para completar tu pago.
+                      Ingresa una tarjeta para completar tu pago. No necesitas guardarla primero.
                     </p>
                   </div>
                 </div>
 
-                <Elements stripe={stripePromise}>
-                  <InlineAddCardForm
-                    onSuccess={() => {
-                      setShowAddCard(false);
-                      fetchCards();
-                    }}
-                    onCancel={() => router.push("/perfil")}
-                  />
-                </Elements>
+                {stripePromise ? (
+                  <Elements stripe={stripePromise}>
+                    <InlineCardForm
+                      mode="pay"
+                      booking={booking}
+                      userId={user?.uid}
+                      onSuccess={handlePaymentSuccess}
+                      onCancel={() =>
+                        router.push(`/tours/reservar/${booking.guideId}`)
+                      }
+                    />
+                  </Elements>
+                ) : (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    Falta configurar la clave pública de Stripe
+                    (NEXT_PUBLIC_STRIPE_PUBLIC_KEY o NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -595,32 +698,34 @@ export default function TourPaymentPage() {
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-3">
-          <button
-            onClick={() => router.push(`/tours/reservar/${booking.guideId}`)}
-            className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 py-4 px-6 rounded-xl font-semibold text-sm transition-all"
-            disabled={processing}
-          >
-            Atrás
-          </button>
-          <button
-            onClick={handlePayment}
-            disabled={processing || !selectedCard || savedCards.length === 0}
-            className="flex-1 bg-[#1A4D2E] hover:bg-[#0D601E] text-white py-4 px-6 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {processing ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                Procesando...
-              </>
-            ) : (
-              <>
-                <FiCheckCircle size={18} />
-                Pagar ${booking.total.toLocaleString("es-MX")} MXN
-              </>
-            )}
-          </button>
-        </div>
+        {savedCards.length > 0 && (
+          <div className="flex gap-3">
+            <button
+              onClick={() => router.push(`/tours/reservar/${booking.guideId}`)}
+              className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 py-4 px-6 rounded-xl font-semibold text-sm transition-all"
+              disabled={processing}
+            >
+              Atrás
+            </button>
+            <button
+              onClick={handlePayment}
+              disabled={processing || !selectedCard}
+              className="flex-1 bg-[#1A4D2E] hover:bg-[#0D601E] text-white py-4 px-6 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {processing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <FiCheckCircle size={18} />
+                  Pagar ${booking.total.toLocaleString("es-MX")} MXN
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );

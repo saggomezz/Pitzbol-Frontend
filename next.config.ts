@@ -1,6 +1,32 @@
 import withPWA from '@ducanh2912/next-pwa';
 import type { NextConfig } from 'next';
 
+const connectSrc = [
+  "'self'",
+  'https://api.pitzbol.me:8443',
+  'https://ia.pitzbol.me:8443',
+  'wss://api.pitzbol.me:8443',
+  'https://res.cloudinary.com',
+  'https://firebaseinstallations.googleapis.com',
+  'https://identitytoolkit.googleapis.com',
+  'https://securetoken.googleapis.com',
+  'https://firebasestorage.googleapis.com',
+  'https://www.googleapis.com',
+  'https://js.stripe.com',
+  'https://www.openstreetmap.org',
+  'https://tile.openstreetmap.org',
+  'https://*.tile.openstreetmap.org',
+  'https://nominatim.openstreetmap.org',
+  ...(process.env.NODE_ENV === 'development'
+    ? [
+        'http://localhost:3001',
+        'http://127.0.0.1:3001',
+        'ws://localhost:3001',
+        'ws://127.0.0.1:3001',
+      ]
+    : []),
+].join(' ');
+
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
@@ -33,14 +59,13 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob: https:",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://api.pitzbol.me:8443 https://ia.pitzbol.me:8443 wss://api.pitzbol.me:8443 https://res.cloudinary.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.googleapis.com https://js.stripe.com https://www.openstreetmap.org https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://nominatim.openstreetmap.org",
+              `connect-src ${connectSrc}`,
               "frame-src 'self' https://js.stripe.com https://www.openstreetmap.org",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
               "object-src 'none'",
-               "connect-src 'self' http://localhost:3001 http://127.0.0.1:3001 ws://localhost:3001 ws://127.0.0.1:3001 https://api.pitzbol.me:8443 https://ia.pitzbol.me:8443 wss://api.pitzbol.me:8443 https://res.cloudinary.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.googleapis.com https://js.stripe.com https://www.openstreetmap.org https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://nominatim.openstreetmap.org",
-               "upgrade-insecure-requests",
+              "upgrade-insecure-requests",
             ].join('; '),
           },
         ],
