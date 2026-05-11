@@ -193,6 +193,12 @@ export default function DatosLugaresPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre, token }),
       }).catch(() => {});
+      // Registrar en IA para que no reaparezca desde el CSV
+      await fetch(`${process.env.NEXT_PUBLIC_IA_URL || "http://69.30.204.56:3003"}/api/places`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre }),
+      }).catch(() => {});
       // Update local state
       setLugares(prev => prev.filter(l => l.nombre !== nombre));
       setFotosMap(prev => { const n = { ...prev }; delete n[nombre]; return n; });
