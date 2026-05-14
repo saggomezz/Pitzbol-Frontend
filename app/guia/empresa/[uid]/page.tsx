@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -57,12 +57,9 @@ export default function EmpresaGuiaPage() {
   const [editingTour, setEditingTour] = useState<Tour | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!uid) return;
-    loadData();
-  }, [uid]);
 
-  const loadData = async () => {
     setLoading(true);
     try {
       const [guideRes, toursRes] = await Promise.all([
@@ -78,7 +75,11 @@ export default function EmpresaGuiaPage() {
       setIsOwner(userLocal.uid === uid);
     } catch {}
     setLoading(false);
-  };
+  }, [uid]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleDeleteTour = async (tourId: string) => {
     if (!confirm("¿Eliminar este tour?")) return;
@@ -108,47 +109,47 @@ export default function EmpresaGuiaPage() {
   const displayLogo = guide.empresaLogo || guide.fotoPerfil;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F6F0E6] via-[#FEFAF5] to-[#E8F5E9] pb-16">
+    <div className="min-h-screen bg-linear-to-br from-[#F6F0E6] via-[#FEFAF5] to-[#E8F5E9] pb-16">
 
       {/* Header */}
-      <div className="relative bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white">
+      <div className="relative bg-linear-to-r from-[#0D601E] to-[#1A4D2E] text-white">
         {displayLogo && (
           <div className="absolute inset-0 overflow-hidden opacity-10">
             <Image src={displayLogo} alt="" fill className="object-cover" />
           </div>
         )}
-        <div className="relative max-w-4xl mx-auto px-4 py-8">
+        <div className="relative max-w-4xl mx-auto px-4 py-6 sm:py-8">
           <button
             onClick={() => router.push("/perfil")}
-            className="flex items-center gap-2 text-white/80 hover:text-white text-sm mb-6 transition-colors"
+            className="flex items-center gap-2 text-white/80 hover:text-white text-sm mb-4 transition-colors sm:mb-6"
           >
             <FiArrowLeft /> Mi perfil
           </button>
 
-          <div className="flex items-center gap-5">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5">
             {displayLogo ? (
-              <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/30 shadow-xl flex-shrink-0">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border-2 border-white/30 shadow-xl sm:h-20 sm:w-20">
                 <Image src={displayLogo} alt={displayName} fill className="object-cover" />
               </div>
             ) : (
-              <div className="w-20 h-20 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/20 sm:h-20 sm:w-20">
                 <FaBus className="text-white text-3xl" />
               </div>
             )}
-            <div>
-              <div className="flex items-center gap-2 mb-1">
+            <div className="min-w-0">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
                 <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-medium">Guía Empresarial</span>
                 <span className="flex items-center gap-1 text-xs text-emerald-300">
                   <FiCheckCircle size={12} /> Verificado
                 </span>
               </div>
-              <h1 className="text-2xl md:text-3xl font-black leading-tight">{displayName}</h1>
+              <h1 className="text-2xl font-black leading-tight sm:text-3xl">{displayName}</h1>
               {guide.empresaPagina && (
                 <a
                   href={guide.empresaPagina}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-white/70 text-sm mt-1 flex items-center gap-1 hover:text-white transition-colors"
+                  className="mt-1 flex items-center gap-1 break-all text-sm text-white/70 transition-colors hover:text-white sm:break-normal"
                 >
                   <FiGlobe size={12} /> {guide.empresaPagina}
                 </a>
@@ -164,16 +165,16 @@ export default function EmpresaGuiaPage() {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-[#0D601E]/10"
+          className="bg-white rounded-2xl border border-[#0D601E]/10 p-4 shadow-sm sm:p-6"
         >
-          <div className="flex items-center justify-between mb-5">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-sm font-bold text-[#1A4D2E]">
               Tours publicados <span className="text-gray-400 font-normal">({tours.length})</span>
             </h2>
             {isOwner && (
               <button
                 onClick={() => setShowNewTourModal(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#1A4D2E] text-white text-xs font-bold rounded-full hover:bg-[#0D601E] transition-all shadow"
+                className="flex w-full items-center justify-center gap-1.5 rounded-full bg-[#1A4D2E] px-4 py-2 text-xs font-bold text-white shadow transition-all hover:bg-[#0D601E] sm:w-auto"
               >
                 <FiPlus size={13} /> Agregar Tour
               </button>
@@ -181,7 +182,7 @@ export default function EmpresaGuiaPage() {
           </div>
 
           {tours.length === 0 ? (
-            <div className="text-center py-10 bg-[#F6F9F6] rounded-2xl border border-dashed border-[#C9D4CB]">
+            <div className="rounded-2xl border border-dashed border-[#C9D4CB] bg-[#F6F9F6] px-4 py-8 text-center sm:py-10">
               <FaBus className="text-[#C9D4CB] text-4xl mx-auto mb-2" />
               <p className="text-gray-400 text-sm font-medium">Aún no hay tours publicados</p>
               {isOwner && (
@@ -211,7 +212,7 @@ export default function EmpresaGuiaPage() {
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-300"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent" />
                         <span className="absolute bottom-2 left-3 text-white text-xs font-bold flex items-center gap-1 drop-shadow">
                           <FiMapPin size={10} /> {tour.destino}
                         </span>
@@ -225,7 +226,7 @@ export default function EmpresaGuiaPage() {
 
                   <div className="p-3">
                     <p className="font-bold text-[#1A4D2E] text-sm line-clamp-1">{tour.titulo}</p>
-                    <div className="flex items-center gap-3 mt-1.5 text-gray-500">
+                    <div className="mt-1.5 flex flex-wrap items-center gap-3 text-gray-500">
                       {tour.duracion && (
                         <span className="text-[11px] flex items-center gap-1">
                           <FiClock size={10} /> {tour.duracion}
@@ -239,7 +240,7 @@ export default function EmpresaGuiaPage() {
                     </div>
 
                     {isOwner && (
-                      <div className="flex gap-2 mt-3 pt-2 border-t border-gray-100">
+                      <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-2 sm:flex-row">
                         <button
                           onClick={() => setEditingTour(tour)}
                           className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-[#1A4D2E] bg-[#E8F5E9] rounded-lg hover:bg-[#C8E6C9] transition-all"
@@ -249,7 +250,7 @@ export default function EmpresaGuiaPage() {
                         <button
                           onClick={() => handleDeleteTour(tour.id)}
                           disabled={deletingId === tour.id}
-                          className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all disabled:opacity-50"
+                          className="flex items-center justify-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition-all hover:bg-red-100 disabled:opacity-50 sm:px-3"
                         >
                           <FiTrash2 size={11} /> {deletingId === tour.id ? "..." : "Eliminar"}
                         </button>

@@ -192,21 +192,21 @@ export default function EditTourModal({ tour, guiaId, onClose, onSuccess }: Prop
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[500] bg-black/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto py-6 px-4"
+        className="fixed inset-0 z-500 bg-black/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto px-3 py-4 sm:px-4 sm:py-6"
         onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       >
         <motion.div
           initial={{ opacity: 0, y: 32, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 32, scale: 0.97 }}
-          className="relative bg-white rounded-3xl shadow-2xl w-full max-w-xl"
+          className="relative w-full max-w-xl overflow-hidden rounded-[28px] bg-white shadow-2xl sm:rounded-3xl"
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#1A4D2E] to-[#0D601E] rounded-t-3xl px-6 pt-6 pb-5 text-white">
-            <button onClick={onClose} className="absolute top-4 right-5 text-white/70 hover:text-white">
+          <div className="bg-linear-to-r from-[#1A4D2E] to-[#0D601E] px-4 pb-4 pt-5 text-white sm:px-6 sm:pb-5 sm:pt-6">
+            <button onClick={onClose} className="absolute right-4 top-4 text-white/70 hover:text-white sm:right-5">
               <FiX size={22} />
             </button>
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3 pr-8">
               <div className="bg-white/15 p-2.5 rounded-xl">
                 <FaMapMarkedAlt className="text-white text-xl" />
               </div>
@@ -217,7 +217,7 @@ export default function EditTourModal({ tour, guiaId, onClose, onSuccess }: Prop
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5 px-4 py-4 sm:px-6 sm:py-5">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-4 py-3 rounded-xl">
                 {error}
@@ -229,7 +229,7 @@ export default function EditTourModal({ tour, guiaId, onClose, onSuccess }: Prop
               <label className={labelClass}>
                 Fotos <span className="text-gray-400 font-normal">(reemplaza las actuales si subes nuevas)</span>
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {[0, 1, 2].map(i => (
                   <div key={i}>
                     <input ref={el => { fileRefs.current[i] = el; }} type="file" accept="image/*" className="hidden" onChange={e => handlePhoto(i, e)} />
@@ -259,7 +259,7 @@ export default function EditTourModal({ tour, guiaId, onClose, onSuccess }: Prop
             </div>
 
             {/* Destino + Duración */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Destino</label>
                 <div className="relative">
@@ -306,7 +306,7 @@ export default function EditTourModal({ tour, guiaId, onClose, onSuccess }: Prop
             {/* ¿Incluye transporte? */}
             <div className="bg-[#F6F9F6] rounded-2xl p-4 border border-[#C9D4CB]">
               <button type="button" onClick={() => { setIncluyeTransporte(!incluyeTransporte); if (incluyeTransporte) { setCapacidad(""); setTipoVehiculo([]); } }}
-                className="flex items-center justify-between w-full"
+                className="flex w-full items-start justify-between gap-4"
               >
                 <p className="text-sm font-bold text-[#1A4D2E]">¿Incluye transporte propio?</p>
                 <div className={`w-10 h-6 rounded-full transition-all flex items-center px-1 ${incluyeTransporte ? "bg-[#0D601E]" : "bg-gray-200"}`}>
@@ -357,7 +357,7 @@ export default function EditTourModal({ tour, guiaId, onClose, onSuccess }: Prop
             </div>
 
             {/* Botones */}
-            <div className="flex gap-3 pt-2 pb-1">
+            <div className="flex flex-col-reverse gap-3 pt-2 pb-1 sm:flex-row">
               <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-[#C9D4CB] text-[#1A4D2E] text-sm font-semibold hover:bg-[#F6F9F6] transition-all">Cancelar</button>
               <button type="submit" disabled={submitting} className="flex-1 py-3 rounded-xl bg-[#1A4D2E] text-white text-sm font-bold hover:bg-[#0D601E] disabled:opacity-60 transition-all">
                 {submitting ? "Guardando..." : "Guardar cambios"}

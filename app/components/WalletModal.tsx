@@ -181,18 +181,18 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 backdrop-blur-sm sm:items-center sm:p-4"
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] bg-white shadow-2xl sm:max-h-[90vh] sm:rounded-[40px]"
         >
           {/* Header Mejorado */}
-          <div className="sticky top-0 bg-gradient-to-r from-[#0D601E] via-[#1A4D2E] to-[#0D601E] text-white p-8 rounded-t-[40px] z-10">
-            <div className="flex items-center justify-between mb-4">
+          <div className="sticky top-0 z-10 rounded-t-[28px] bg-linear-to-r from-[#0D601E] via-[#1A4D2E] to-[#0D601E] p-5 text-white sm:rounded-t-[40px] sm:p-8">
+            <div className="mb-4 flex items-start gap-3 sm:items-center sm:justify-between">
               {step === 1 && (
                 <motion.button
                   whileHover={{ scale: 1.1 }}
@@ -203,12 +203,12 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
                   <FiChevronLeft size={24} />
                 </motion.button>
               )}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <motion.h2 
                   key={step}
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-4xl font-black" 
+                  className="text-2xl font-black sm:text-4xl" 
                   style={{ fontFamily: "'Jockey One', sans-serif" }}
                 >
                   {step === 0 ? "MI BILLETERA" : "NUEVA TARJETA"}
@@ -229,7 +229,7 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
           </div>
 
           {/* Contenido */}
-          <div className="p-8 space-y-6">
+          <div className="space-y-6 p-5 sm:p-8">
             {/* Mensajes mejorados */}
             <AnimatePresence>
               {message && (
@@ -237,7 +237,7 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
                   initial={{ opacity: 0, y: -20, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -20, scale: 0.9 }}
-                  className={`p-4 rounded-2xl flex items-center gap-3 border-2 ${
+                  className={`flex items-start gap-3 rounded-2xl border-2 p-4 sm:items-center ${
                     messageType === "success"
                       ? "bg-green-50 border-green-200"
                       : "bg-red-50 border-red-200"
@@ -275,7 +275,7 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="text-center py-12 bg-gradient-to-br from-[#F6F0E6] to-white rounded-3xl border-2 border-dashed border-[#0D601E]/20"
+                    className="rounded-3xl border-2 border-dashed border-[#0D601E]/20 bg-linear-to-br from-[#F6F0E6] to-white py-12 text-center"
                   >
                     <div className="w-20 h-20 bg-[#0D601E]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                       <FiCreditCard size={40} className="text-[#0D601E]" />
@@ -295,12 +295,12 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
                         transition={{ delay: index * 0.1 }}
                         className={`relative p-6 rounded-3xl border-2 transition-all backdrop-blur-sm ${
                           card.isDefault
-                            ? "bg-gradient-to-br from-[#0D601E]/15 to-[#1A4D2E]/10 border-[#0D601E] shadow-lg shadow-[#0D601E]/20"
+                            ? "bg-linear-to-br from-[#0D601E]/15 to-[#1A4D2E]/10 border-[#0D601E] shadow-lg shadow-[#0D601E]/20"
                             : "bg-white border-gray-200 hover:border-[#0D601E] hover:shadow-lg"
                         }`}
                       >
                         {/* Tarjeta visual */}
-                        <div className="mb-4 p-4 rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 text-white flex items-center justify-between">
+                        <div className="mb-4 flex flex-col gap-4 rounded-2xl bg-linear-to-br from-gray-900 to-gray-800 p-4 text-white sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <p className="text-xs text-gray-400 mb-2">Número de tarjeta</p>
                             <p className="text-xl font-mono font-bold tracking-widest">•••• •••• •••• {card.last4}</p>
@@ -311,7 +311,7 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
                         </div>
 
                         {/* Info */}
-                        <div className="flex items-start justify-between">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-3">
                               <span className="font-black text-[#1A4D2E] capitalize text-sm">
@@ -321,7 +321,7 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
                                 <motion.span
                                   animate={{ scale: [1, 1.1, 1] }}
                                   transition={{ duration: 2, repeat: Infinity }}
-                                  className="text-xs bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white px-3 py-1 rounded-full font-bold flex items-center gap-1"
+                                  className="flex items-center gap-1 rounded-full bg-linear-to-r from-[#0D601E] to-[#1A4D2E] px-3 py-1 text-xs font-bold text-white"
                                 >
                                   <FiStar size={12} fill="currentColor" />
                                   Predeterminada
@@ -362,7 +362,7 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
                   whileHover={{ scale: 1.02, y: -4 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setStep(1)}
-                  className="w-full py-4 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] hover:from-[#094d18] hover:to-[#153623] text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-[#0D601E] to-[#1A4D2E] py-4 font-bold text-white shadow-lg transition-all hover:from-[#094d18] hover:to-[#153623] hover:shadow-xl"
                 >
                   <motion.div
                     whileHover={{ rotate: 90 }}
@@ -574,7 +574,7 @@ const AddCardForm = ({ onSuccess }: { onSuccess: () => void }) => {
         </label>
         <motion.div 
           whileFocus={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 focus-within:border-[#0D601E] focus-within:from-[#F6F0E6] focus-within:to-white rounded-2xl p-5 transition-all shadow-sm focus-within:shadow-lg"
+          className="rounded-2xl border-2 border-gray-200 bg-linear-to-br from-white to-gray-50 p-5 shadow-sm transition-all focus-within:border-[#0D601E] focus-within:from-[#F6F0E6] focus-within:to-white focus-within:shadow-lg"
         >
           <CardElement
             options={{
@@ -598,7 +598,7 @@ const AddCardForm = ({ onSuccess }: { onSuccess: () => void }) => {
       {/* Info de seguridad mejorada */}
       <motion.div 
         whileHover={{ scale: 1.02 }}
-        className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200"
+        className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-linear-to-r from-blue-50 to-indigo-50 p-4 sm:items-center"
       >
         <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
           <FiLock size={18} />
@@ -616,7 +616,7 @@ const AddCardForm = ({ onSuccess }: { onSuccess: () => void }) => {
           whileTap={{ scale: 0.98 }}
           type="submit"
           disabled={!stripe || loading}
-          className="flex-1 py-4 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] hover:from-[#094d18] hover:to-[#153623] text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-[#0D601E] to-[#1A4D2E] py-4 font-bold text-white shadow-lg transition-all hover:from-[#094d18] hover:to-[#153623] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? (
             <>
