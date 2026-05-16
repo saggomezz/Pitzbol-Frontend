@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -59,7 +59,7 @@ export default function GuideSolicitudesPage() {
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [showWalletModal, setShowWalletModal] = useState(false);
 
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -99,7 +99,7 @@ export default function GuideSolicitudesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -110,7 +110,7 @@ export default function GuideSolicitudesPage() {
     }
 
     fetchBookings();
-  }, [user, router]);
+  }, [fetchBookings, router, user]);
 
   const handleAction = async (bookingId: string, action: "confirmar" | "rechazar") => {
     if (!user) return;
@@ -219,7 +219,7 @@ export default function GuideSolicitudesPage() {
     <div className="min-h-screen bg-[#FDFCF9]">
       {/* Header */}
       <header className="border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 py-5 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 py-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold text-gray-800">
               Solicitudes de Tour
@@ -228,10 +228,10 @@ export default function GuideSolicitudesPage() {
               {bookings.length} solicitudes · {statusCounts.pendiente} pendientes
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <button
               onClick={() => setShowWalletModal(true)}
-              className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all"
+              className="flex w-full items-center justify-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all sm:w-auto"
             >
               <FiCreditCard size={16} />
               Billetera
@@ -239,7 +239,7 @@ export default function GuideSolicitudesPage() {
             <button
               onClick={fetchBookings}
               disabled={loading}
-              className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all"
+              className="flex w-full items-center justify-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all sm:w-auto"
             >
               <FiRefreshCw size={16} className={loading ? "animate-spin" : ""} />
               Actualizar
@@ -248,7 +248,7 @@ export default function GuideSolicitudesPage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="bg-white rounded-2xl border border-gray-100 p-4">
@@ -315,7 +315,7 @@ export default function GuideSolicitudesPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-white rounded-3xl border border-gray-100 p-16 text-center"
+            className="bg-white rounded-3xl border border-gray-100 p-8 text-center sm:p-16"
           >
             <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <FiFileText className="text-gray-300" size={32} />
@@ -362,7 +362,7 @@ export default function GuideSolicitudesPage() {
                     </div>
 
                     {/* Details grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div className="grid grid-cols-1 gap-3 mb-4 sm:grid-cols-2 lg:grid-cols-4">
                       <div className="bg-gray-50 rounded-xl p-3">
                         <div className="flex items-center gap-1.5 text-gray-400 mb-1">
                           <FiCalendar size={13} />
@@ -414,7 +414,7 @@ export default function GuideSolicitudesPage() {
 
                     {/* Action buttons */}
                     {booking.status === "pendiente" && (
-                      <div className="flex gap-3 pt-3 border-t border-gray-100">
+                      <div className="flex flex-col gap-3 pt-3 border-t border-gray-100 sm:flex-row">
                         <button
                           onClick={() => handleAction(booking.id, "rechazar")}
                           disabled={processingId === booking.id}

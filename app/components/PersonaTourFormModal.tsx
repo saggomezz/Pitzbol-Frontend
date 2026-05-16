@@ -231,20 +231,20 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-500 bg-black/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto py-6 px-4"
+        className="fixed inset-0 z-500 bg-black/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto px-3 py-4 sm:px-4 sm:py-6"
         onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       >
         <motion.div
           initial={{ opacity: 0, y: 32, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 32, scale: 0.97 }}
-          className="relative bg-white rounded-3xl shadow-2xl w-full max-w-3xl"
+          className="relative w-full max-w-3xl overflow-hidden rounded-[28px] bg-white shadow-2xl sm:rounded-3xl"
         >
-          <div className="bg-linear-to-r from-[#0D601E] to-[#1A4D2E] rounded-t-3xl px-6 pt-6 pb-5 text-white">
-            <button onClick={onClose} className="absolute top-4 right-5 text-white/70 hover:text-white">
+          <div className="bg-linear-to-r from-[#0D601E] to-[#1A4D2E] px-4 pb-4 pt-5 text-white sm:px-6 sm:pb-5 sm:pt-6">
+            <button onClick={onClose} className="absolute right-4 top-4 text-white/70 hover:text-white sm:right-5">
               <FiX size={22} />
             </button>
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3 pr-8">
               <div className="bg-white/15 p-2.5 rounded-xl">
                 <FaMapMarkedAlt className="text-white text-xl" />
               </div>
@@ -255,7 +255,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="px-6 py-5 space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6 px-4 py-4 sm:px-6 sm:py-5">
 
             {submitError && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-4 py-3 rounded-xl leading-relaxed">
@@ -265,7 +265,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
 
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="space-y-6">
-                <section className="rounded-3xl border border-[#E3ECE4] bg-[#FBFDFB] p-5 space-y-4">
+                <section className="rounded-3xl border border-[#E3ECE4] bg-[#FBFDFB] p-4 space-y-4 sm:p-5">
                   <div>
                     <h3 className="text-sm font-black text-[#1A4D2E]">Detalles de la experiencia</h3>
                     <p className="text-xs text-[#6C8870] mt-1">Presenta la ruta, el valor del tour y qué hace especial a tu experiencia.</p>
@@ -334,7 +334,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
                   </div>
                 </section>
 
-                <section className="rounded-3xl border border-[#E3ECE4] bg-[#FBFDFB] p-5 space-y-4">
+                <section className="rounded-3xl border border-[#E3ECE4] bg-[#FBFDFB] p-4 space-y-4 sm:p-5">
                   <div>
                     <h3 className="text-sm font-black text-[#1A4D2E]">Operación y disponibilidad</h3>
                     <p className="text-xs text-[#6C8870] mt-1">Define cómo te encontrarán, tus idiomas y si ofreces transporte.</p>
@@ -379,7 +379,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
                           set("tipoVehiculo", []);
                         }
                       }}
-                      className="flex items-center justify-between w-full"
+                      className="flex w-full items-start justify-between gap-4"
                     >
                       <div>
                         <p className="text-sm font-bold text-[#1A4D2E] text-left">¿Incluyes transporte?</p>
@@ -414,15 +414,15 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
               </div>
 
               <div className="space-y-6">
-                <section className="rounded-3xl border border-[#E3ECE4] bg-[#FBFDFB] p-5 space-y-4">
+                <section className="rounded-3xl border border-[#E3ECE4] bg-[#FBFDFB] p-4 space-y-4 sm:p-5">
                   <div>
                     <h3 className="text-sm font-black text-[#1A4D2E]">Galería principal</h3>
                     <p className="text-xs text-[#6C8870] mt-1">La primera imagen será la portada de la experiencia.</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {Array.from({ length: MAX_FOTOS }, (_, i) => (
-                      <div key={i} className={i === 0 ? "col-span-2" : "col-span-1"}>
+                      <div key={i} className={i === 0 ? "sm:col-span-2" : ""}>
                         <input ref={el => { fileRefs.current[i] = el; }} type="file" accept="image/*" className="hidden" onChange={e => handlePhoto(i, e)} />
                         {fotoPreviews[i] ? (
                           <div className={`relative overflow-hidden rounded-2xl ${i === 0 ? "aspect-[1.35/1]" : "aspect-square"}`}>
@@ -446,7 +446,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
                   {errors.fotos && <p className={errClass}>{errors.fotos}</p>}
                 </section>
 
-                <section className="rounded-3xl border border-[#E3ECE4] bg-[#FBFDFB] p-5 space-y-3">
+                <section className="rounded-3xl border border-[#E3ECE4] bg-[#FBFDFB] p-4 space-y-3 sm:p-5">
                   <h3 className="text-sm font-black text-[#1A4D2E]">Checklist antes de publicar</h3>
                   <ul className="space-y-2 text-xs text-[#5E7862]">
                     <li>Describe claramente la experiencia, el tono y lo que incluye.</li>
@@ -457,7 +457,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
               </div>
             </div>
 
-            <div className="flex gap-3 border-t border-[#EEF3EE] pt-2 pb-1">
+            <div className="flex flex-col-reverse gap-3 border-t border-[#EEF3EE] pb-1 pt-2 sm:flex-row">
               <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-[#C9D4CB] text-[#1A4D2E] text-sm font-semibold hover:bg-[#F6F9F6] transition-all">Cancelar</button>
               <button type="submit" disabled={submitting} className="flex-1 py-3 rounded-xl bg-[#1A4D2E] text-white text-sm font-bold hover:bg-[#0D601E] disabled:opacity-60 transition-all">
                 {submitting ? "Publicando..." : "Publicar Experiencia"}
