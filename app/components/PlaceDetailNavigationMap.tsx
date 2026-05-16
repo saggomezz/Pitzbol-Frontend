@@ -42,16 +42,28 @@ type OriginChangeMeta = {
   manual: boolean;
 };
 
+type TrafficLevel = 'free' | 'moderate' | 'heavy';
+type MapTrafficSegment = {
+  coordinates: [number, number][];
+  level: TrafficLevel;
+};
+type MapRoute = {
+  polyline: string;
+  trafficSegments?: MapTrafficSegment[];
+};
+type NavigationAlert = { type: 'info' | 'warning' | 'success'; message: string };
+
 interface PlaceDetailNavigationMapProps {
   destination: GeoPoint;
   destinationName: string;
   origin: GeoPoint | null;
   onOriginChange?: (point: GeoPoint, meta: OriginChangeMeta) => void;
   isNavigationMode?: boolean;
-  routes?: { polyline: string }[];
+  routes?: MapRoute[];
   selectedRouteIndex?: number;
   /** Live GPS position + bearing during navigation. null = not navigating. */
   liveNavPosition?: { lat: number; lng: number; bearing: number | null } | null;
+  navigationAlert?: NavigationAlert | null;
 }
 
 function isValidPoint(point: GeoPoint | null | undefined): point is GeoPoint {
@@ -83,6 +95,8 @@ function MapNavigationController({
   onDisengage: () => void;
 }) {
   const map = useMap();
+  const NAV_ZOOM = 17;
+  const NAV_SCALE = 1.16;
   const prevBearingRef = useRef<number>(0);
   /** EMA-smoothed bearing to prevent wild CSS jumps from noisy GPS readings */
   const smoothBearingRef = useRef<number>(0);
@@ -147,16 +161,15 @@ function MapNavigationController({
     const bearingRad = toRad(bearing);
 
     // ── Zoom + scale must be computed first (used by look-ahead) ─────────────
-    // Zoom 17 on first (or re-centred) GPS fix; respect manual zoom after that.
-    const zoom = navZoomSetRef.current ? map.getZoom() : 17;
+    // Clamp live-navigation zoom to prevent accidental jumps from map internals.
+    const zoom = navZoomSetRef.current ? Math.max(16, Math.min(18, map.getZoom())) : NAV_ZOOM;
     navZoomSetRef.current = true;
 
-    // Scale to cover all corners: s >= max((|c|W+|s|H)/W, (|c|H+|s|W)/H) * margin
+    // Keep visual scale constant. Bearing-dependent scaling looked like random
+    // zoom in/out on mobile while the user was simply advancing.
     const W = container.offsetWidth  || 400;
     const H = container.offsetHeight || 600;
-    const ac = Math.abs(Math.cos(bearingRad));
-    const as = Math.abs(Math.sin(bearingRad));
-    const scale = Math.max((ac * W + as * H) / W, (ac * H + as * W) / H, 1) * 1.08;
+    const scale = NAV_SCALE;
 
     // Adaptive look-ahead: keeps the arrow at ~72% from the top of the
     // visible area regardless of zoom level or container size.
@@ -284,6 +297,7 @@ function PlaceDetailNavigationMapComponent({
   routes = [],
   selectedRouteIndex = 0,
   liveNavPosition,
+  navigationAlert,
 }: PlaceDetailNavigationMapProps) {
   /**
    * follow — map rotates + auto-pans (Android Auto).  default during navigation.
@@ -321,6 +335,11 @@ function PlaceDetailNavigationMapComponent({
     : { lat: 20.6597, lng: -103.3496 };
 
   const ROUTE_COLORS = ['#2563eb', '#d97706', '#7c3aed', '#dc2626'];
+  const TRAFFIC_COLORS: Record<TrafficLevel, string> = {
+    free: '#16a34a',
+    moderate: '#f59e0b',
+    heavy: '#dc2626',
+  };
 
   // ── Navigation arrow DivIcon (created fresh on bearing change) ─────────────
   // The map container is rotated by -bearing so heading = screen-top.
@@ -373,6 +392,10 @@ function PlaceDetailNavigationMapComponent({
     } catch {
       return [];
     }
+  }
+
+  function parseTrafficSegmentPositions(segment: MapTrafficSegment): [number, number][] {
+    return segment.coordinates.map(([lng, lat]) => [lat, lng]);
   }
 
   const handleMapPick = (lat: number, lng: number) => {
@@ -457,17 +480,34 @@ function PlaceDetailNavigationMapComponent({
           const positions = parsePolylinePositions(r.polyline);
           if (!positions.length) return null;
           const isSelected = idx === selectedRouteIndex;
+          const trafficSegments = (r.trafficSegments ?? [])
+            .map(segment => ({ segment, positions: parseTrafficSegmentPositions(segment) }))
+            .filter(({ positions }) => positions.length > 1);
           return isSelected ? (
-            // Selected route: white casing beneath + vivid blue on top (Google Maps style)
+            // Selected route: white casing beneath + estimated traffic colors on top.
             <React.Fragment key={`sel-${idx}`}>
               <Polyline
                 positions={positions}
                 pathOptions={{ color: 'white', weight: 10, opacity: 0.85 }}
               />
-              <Polyline
-                positions={positions}
-                pathOptions={{ color: '#1a73e8', weight: 6, opacity: 1 }}
-              />
+              {trafficSegments.length > 0 ? (
+                trafficSegments.map(({ segment, positions }, segmentIdx) => (
+                  <Polyline
+                    key={`traffic-${idx}-${segmentIdx}`}
+                    positions={positions}
+                    pathOptions={{
+                      color: TRAFFIC_COLORS[segment.level] ?? '#1a73e8',
+                      weight: 6,
+                      opacity: 1,
+                    }}
+                  />
+                ))
+              ) : (
+                <Polyline
+                  positions={positions}
+                  pathOptions={{ color: '#1a73e8', weight: 6, opacity: 1 }}
+                />
+              )}
             </React.Fragment>
           ) : (
             <Polyline
@@ -484,6 +524,73 @@ function PlaceDetailNavigationMapComponent({
       </MapContainer>
 
       {/* ── Navigation HUD (only while in follow mode) ─────────────────────── */}
+      {liveNavPosition && navigationAlert && (
+        <div
+          role="status"
+          style={{
+            position: 'absolute',
+            top: 14,
+            left: 'clamp(56px, 8vw, 82px)',
+            right: 'clamp(56px, 8vw, 82px)',
+            zIndex: 1100,
+            display: 'flex',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{
+            width: 'min(620px, 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            borderRadius: 18,
+            padding: '12px 14px',
+            color: '#fff',
+            background: navigationAlert.type === 'warning'
+              ? 'linear-gradient(135deg, #8A4D00 0%, #C77605 45%, #0B4D1E 100%)'
+              : navigationAlert.type === 'success'
+              ? 'linear-gradient(135deg, #064E1F 0%, #0E7A36 55%, #2CA44F 100%)'
+              : 'linear-gradient(135deg, #064E1F 0%, #0F6A2B 52%, #1A8A43 100%)',
+            boxShadow: '0 18px 45px rgba(6, 78, 24, 0.32)',
+            border: '1px solid rgba(255,255,255,0.22)',
+            backdropFilter: 'blur(14px)',
+            animation: 'pitzbolNavToast 360ms cubic-bezier(0.22, 1, 0.36, 1)',
+          }}>
+            <span style={{
+              width: 34,
+              height: 34,
+              borderRadius: 12,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flex: '0 0 auto',
+              background: 'rgba(255,255,255,0.16)',
+              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.16)',
+              fontSize: 20,
+              fontWeight: 900,
+            }}>
+              {navigationAlert.type === 'warning' ? '!' : navigationAlert.type === 'success' ? '✓' : '↑'}
+            </span>
+            <span style={{
+              minWidth: 0,
+              flex: 1,
+              fontSize: 'clamp(13px, 1.25vw, 16px)',
+              lineHeight: 1.25,
+              fontWeight: 800,
+              overflowWrap: 'anywhere',
+            }}>
+              {navigationAlert.message}
+            </span>
+          </div>
+          <style>{`
+            @keyframes pitzbolNavToast {
+              from { opacity: 0; transform: translateY(-12px) scale(0.97); }
+              to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+          `}</style>
+        </div>
+      )}
+
       {liveNavPosition && followMode === 'follow' && (
         <>
           {/* Compass rose — rotates to always point north */}
@@ -567,6 +674,22 @@ function PlaceDetailNavigationMapComponent({
           )}
         </div>
       )}
+
+      {routes[selectedRouteIndex]?.trafficSegments?.length ? (
+        <div style={{
+          position: 'absolute', left: 12, bottom: liveNavPosition ? 12 : 44,
+          zIndex: 1000, display: 'flex', gap: 8, alignItems: 'center',
+          padding: '7px 10px', borderRadius: 12,
+          background: 'rgba(255,255,255,0.94)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+          fontSize: 11, fontWeight: 700, color: '#1f2937',
+          pointerEvents: 'none',
+        }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><i style={{ width: 10, height: 10, borderRadius: 99, background: TRAFFIC_COLORS.free }} /> Libre</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><i style={{ width: 10, height: 10, borderRadius: 99, background: TRAFFIC_COLORS.moderate }} /> Lento</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><i style={{ width: 10, height: 10, borderRadius: 99, background: TRAFFIC_COLORS.heavy }} /> Tráfico</span>
+        </div>
+      ) : null}
 
       {/* Non-navigation hint label */}
       {isNavigationMode && !liveNavPosition && (

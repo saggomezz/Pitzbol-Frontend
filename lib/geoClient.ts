@@ -29,6 +29,22 @@ export interface RouteStep {
   location?: [number, number]; // [lng, lat] — where this maneuver occurs
 }
 
+export type TrafficLevel = 'free' | 'moderate' | 'heavy';
+
+export interface TrafficSegment {
+  coordinates: [number, number][]; // [lng, lat]
+  level: TrafficLevel;
+  speedKmh: number;
+  delayMinutes: number;
+}
+
+export interface TrafficSummary {
+  level: TrafficLevel;
+  label: string;
+  delayMinutes: number;
+  source: 'estimated';
+}
+
 export interface RouteOption {
   geometry: any; // GeoJSON LineString
   distance: number; // km
@@ -36,6 +52,8 @@ export interface RouteOption {
   durationWithTraffic?: number;
   steps: RouteStep[];
   polyline?: string; // JSON.stringify([[lng, lat], ...])
+  trafficSegments?: TrafficSegment[];
+  trafficSummary?: TrafficSummary;
 }
 
 export interface RouteResponse {
@@ -169,6 +187,53 @@ function calculateRouteETA(distanceKm: number, mode: TransportMode, hour?: numbe
   return Math.ceil((distanceKm / speed) * 60);
 }
 
+function trafficLevelForSegment(distanceKm: number, durationMinutes: number, mode: TransportMode, hour?: number): TrafficLevel {
+  if (mode === 'walking' || mode === 'cycling') return 'free';
+  const speedKmh = durationMinutes > 0 ? distanceKm / (durationMinutes / 60) : 0;
+  const rushFactor = hour !== undefined && isValidHour(hour) ? getTrafficFactor(hour) : 1;
+  if (rushFactor >= 1.8 || speedKmh < 12) return 'heavy';
+  if (rushFactor >= 1.3 || speedKmh < 24) return 'moderate';
+  return 'free';
+}
+
+function buildTrafficSegments(osrmRoute: any, mode: TransportMode, departureHour?: number): TrafficSegment[] {
+  const segments: TrafficSegment[] = [];
+  for (const leg of osrmRoute.legs || []) {
+    for (const step of leg.steps || []) {
+      const coords = step.geometry?.coordinates;
+      if (!Array.isArray(coords) || coords.length < 2) continue;
+      const distanceKm = (step.distance || 0) / 1000;
+      const durationMinutes = Math.max((step.duration || 0) / 60, 1 / 60);
+      const speedKmh = distanceKm / (durationMinutes / 60);
+      const level = trafficLevelForSegment(distanceKm, durationMinutes, mode, departureHour);
+      const rushFactor = departureHour !== undefined && isValidHour(departureHour) ? getTrafficFactor(departureHour) : 1;
+      const delayMinutes = mode === 'driving' || mode === 'rideshare-like'
+        ? Math.max(0, durationMinutes * (rushFactor - 1))
+        : 0;
+      segments.push({
+        coordinates: coords,
+        level,
+        speedKmh: Math.round(speedKmh),
+        delayMinutes: Math.round(delayMinutes),
+      });
+    }
+  }
+  return segments;
+}
+
+function summarizeTraffic(segments: TrafficSegment[]): TrafficSummary {
+  const delayMinutes = segments.reduce((sum, segment) => sum + segment.delayMinutes, 0);
+  const heavyCount = segments.filter(segment => segment.level === 'heavy').length;
+  const moderateCount = segments.filter(segment => segment.level === 'moderate').length;
+  const level: TrafficLevel = heavyCount > 0 ? 'heavy' : moderateCount > 0 ? 'moderate' : 'free';
+  const label = level === 'heavy'
+    ? 'Tráfico alto estimado'
+    : level === 'moderate'
+    ? 'Tráfico moderado estimado'
+    : 'Flujo libre estimado';
+  return { level, label, delayMinutes: Math.round(delayMinutes), source: 'estimated' };
+}
+
 function parseOSRMInstruction(step: any): string {
   const maneuver = step.maneuver?.type;
   const modifier = step.maneuver?.modifier;
@@ -194,6 +259,7 @@ function mapOSRMRoute(osrmRoute: any, mode: TransportMode, departureHour?: numbe
   const distanceKm = osrmRoute.distance / 1000;
   const durationMinutes = Math.ceil(osrmRoute.duration / 60);
   const steps: RouteStep[] = [];
+  const trafficSegments = buildTrafficSegments(osrmRoute, mode, departureHour);
 
   for (const leg of osrmRoute.legs || []) {
     for (const step of leg.steps || []) {
@@ -215,6 +281,8 @@ function mapOSRMRoute(osrmRoute: any, mode: TransportMode, departureHour?: numbe
     durationWithTraffic: calculateRouteETA(distanceKm, mode, departureHour) || durationMinutes,
     steps,
     polyline: JSON.stringify(osrmRoute.geometry?.coordinates || []),
+    trafficSegments,
+    trafficSummary: summarizeTraffic(trafficSegments),
   };
 }
 
@@ -229,8 +297,9 @@ async function getRouteFromOSRM(request: RouteRequest): Promise<RouteResponse> {
     ? [request.origin, ...request.waypoints, request.destination]
     : [request.origin, request.destination];
   const coords = points.map(point => `${point.lng},${point.lat}`).join(';');
+  const radiuses = points.map(() => '120').join(';');
   const profile = getOSRMProfile(mode);
-  const url = `${OSRM_BASE_URL}/${profile}/${coords}?geometries=geojson&steps=true&alternatives=3`;
+  const url = `${OSRM_BASE_URL}/${profile}/${coords}?geometries=geojson&overview=full&steps=true&alternatives=3&continue_straight=false&radiuses=${radiuses}`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), OSRM_TIMEOUT_MS);
@@ -261,7 +330,10 @@ async function getRouteFromOSRM(request: RouteRequest): Promise<RouteResponse> {
     return { success: false, error: data.message || 'No se encontró ruta', fallback: true };
   }
 
-  const routes = data.routes.map((route: any) => mapOSRMRoute(route, mode, request.departureHour));
+  const routes = data.routes
+    .map((route: any) => mapOSRMRoute(route, mode, request.departureHour))
+    .sort((a: RouteOption, b: RouteOption) => (a.durationWithTraffic ?? a.duration) - (b.durationWithTraffic ?? b.duration))
+    .slice(0, 3);
   return { success: true, route: routes[0], routes };
 }
 

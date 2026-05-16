@@ -137,5 +137,10 @@ const nextConfig: NextConfig = {
 export default withPWA({
   dest: 'public',
   register: true,
+  workboxOptions: {
+    skipWaiting: true,
+    clientsClaim: true,
+    cleanupOutdatedCaches: true,
+  } as any,
   disable: process.env.NODE_ENV === 'development',
 })(nextConfig);

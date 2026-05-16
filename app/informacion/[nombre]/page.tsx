@@ -9,7 +9,7 @@ import styles from "../informacion.module.css";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import DeletedBusinessModal from "@/app/components/DeletedBusinessModal";
 import PlaceRating from "@/app/components/PlaceRating";
-import { NavigationPanel, type MapOriginEvent, type OriginMarkerMeta } from "../../components/NavigationPanel";
+import { NavigationPanel, type MapOriginEvent, type NavigationMapAlert, type OriginMarkerMeta } from "../../components/NavigationPanel";
 import PlaceDetailNavigationMap, { type OriginChangeMeta } from "@/app/components/PlaceDetailNavigationMap";
 import { usePlaceView } from "@/lib/usePlaceView";
 import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
@@ -260,11 +260,16 @@ export default function InformacionLugar() {
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
+  const [isDrivingMode, setIsDrivingMode] = useState(false);
   const [originMarkerPoint, setOriginMarkerPoint] = useState<GeoPoint | null>(null);
   const [mapOriginEvent, setMapOriginEvent] = useState<MapOriginEvent | null>(null);
-  const [mapRoutes, setMapRoutes] = useState<{ polyline: string }[]>([]);
+  const [mapRoutes, setMapRoutes] = useState<{
+    polyline: string;
+    trafficSegments?: { coordinates: [number, number][]; level: 'free' | 'moderate' | 'heavy' }[];
+  }[]>([]);
   const [mapSelectedRouteIdx, setMapSelectedRouteIdx] = useState(0);
   const [liveNavPos, setLiveNavPos] = useState<{ lat: number; lng: number; bearing: number | null } | null>(null);
+  const [navigationMapAlert, setNavigationMapAlert] = useState<NavigationMapAlert | null>(null);
   // Registrar vista del lugar
   const nombreRaw = params.nombre;
   const nombreLugar = typeof nombreRaw === "string" ? decodeURIComponent(nombreRaw) : null;
@@ -1203,9 +1208,9 @@ export default function InformacionLugar() {
           )}
 
           {/* Mapa + Sidebar de ubicacion */}
-          <section className={styles.mapSection}>
+          <section className={`${styles.mapSection} ${isDrivingMode ? styles.mapSectionDriving : ''}`}>
             <h2 className={styles.mapTitle}>Mapa</h2>
-            <div className={`${styles.mapAndSidebar} ${isNavigationExpanded ? styles.mapAndSidebarExpanded : ''}`}>
+            <div className={`${styles.mapAndSidebar} ${isNavigationExpanded ? styles.mapAndSidebarExpanded : ''} ${isDrivingMode ? styles.mapAndSidebarDriving : ''}`}>
               <div className={styles.mapColumn}>
                 <div className={styles.mapContainer}>
                   <PlaceDetailNavigationMap
@@ -1217,6 +1222,7 @@ export default function InformacionLugar() {
                     routes={mapRoutes}
                     selectedRouteIndex={mapSelectedRouteIdx}
                     liveNavPosition={liveNavPos}
+                    navigationAlert={navigationMapAlert}
                   />
                 </div>
               </div>
@@ -1244,10 +1250,15 @@ export default function InformacionLugar() {
                     onOriginMarkerChange={handlePanelOriginMarkerChange}
                     mapOriginEvent={mapOriginEvent}
                     onRouteChange={(routes, idx) => {
-                      setMapRoutes(routes.map(r => ({ polyline: r.polyline ?? '' })));
+                      setMapRoutes(routes.map(r => ({
+                        polyline: r.polyline ?? '',
+                        trafficSegments: r.trafficSegments,
+                      })));
                       setMapSelectedRouteIdx(idx);
                     }}
                     onLivePosition={setLiveNavPos}
+                    onDrivingModeChange={setIsDrivingMode}
+                    onMapAlertChange={setNavigationMapAlert}
                     onNavigationStart={() => {
                       console.log(`Starting navigation to ${lugarSeguro.nombre}`);
                     }}
