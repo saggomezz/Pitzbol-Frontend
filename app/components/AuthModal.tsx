@@ -39,7 +39,7 @@ const ErrorMsg = ({ text }: { text: string }) => (
   </motion.p>
 );
 
-const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: boolean; onClose: () => void; intendedRole?: "turista" | "guia" | "negocio" }) => {
+const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo }: { isOpen: boolean; onClose: () => void; intendedRole?: "turista" | "guia" | "negocio"; redirectTo?: string }) => {
   const t = useTranslations('auth');
   const tCommon = useTranslations('common');
   
@@ -185,7 +185,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
       } else {
         sessionStorage.setItem("justRegistered", "true");
         onClose();
-        window.location.href = "/";
+        window.location.href = redirectTo || "/";
       }
     } catch (error: any) {
       console.error("Register error:", error);
@@ -276,7 +276,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista" }: { isOpen: bool
           if (userRole === "admin" || userRole === "admins") {
             window.location.href = "/admin";
           } else {
-            window.location.href = "/";
+            window.location.href = redirectTo || "/";
           }
         }
 

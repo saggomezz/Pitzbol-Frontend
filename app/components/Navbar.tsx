@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, MouseEvent } from "react";
 import { useTranslations } from 'next-intl';
 import {
     FiBriefcase, FiCalendar, FiClock, FiCreditCard, FiHeart, FiHome, FiInfo,
-    FiLogOut, FiMapPin, FiMenu, FiMessageSquare, FiPlusCircle, FiSearch, FiShield, FiUser,
+    FiLogOut, FiMap, FiMapPin, FiMenu, FiMessageSquare, FiPlusCircle, FiSearch, FiShield, FiUser,
     FiX, FiAward, FiCompass, FiShoppingBag, FiImage, FiChevronLeft, FiChevronDown
 } from "react-icons/fi";
 import imglogo from "./logoPitzbol.png";
@@ -438,6 +438,9 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             </Link>
                             <Link href="/calendario" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium transition-all text-left hover:text-[#F00808]">
                                 <FiCalendar /> {t('calendar')}
+                            </Link>
+                            <Link href="/itinerarios" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium transition-all text-left hover:text-[#F00808]">
+                                <FiMap /> Itinerarios
                             </Link>
                             {user && (
                                 <Link

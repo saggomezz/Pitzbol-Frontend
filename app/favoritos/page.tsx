@@ -229,12 +229,6 @@ export default function FavoritosPage() {
           <h1 className="text-5xl font-black text-[#1A4D2E] uppercase mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
             Mis Favoritos
           </h1>
-          <Link
-            href="/itinerario/manual"
-            className="inline-flex items-center gap-2 bg-[#1A4D2E] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0D601E] transition-colors mb-2"
-          >
-            <FiCalendar size={15} /> Crear itinerario con mis favoritos
-          </Link>
           <p className="text-[#769C7B] text-lg">
             {favoritePlaces.length} {favoritePlaces.length === 1 ? 'lugar guardado' : 'lugares guardados'}
           </p>
