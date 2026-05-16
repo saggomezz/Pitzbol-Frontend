@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 type TransportMode = 'driving' | 'walking' | 'cycling' | 'transit-like' | 'rideshare-like';
 interface GeoPoint { lat: number; lng: number; }
