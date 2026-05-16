@@ -2402,61 +2402,94 @@ export default function AdminViewBusinessPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-            onClick={() => !procesandoAccion && setModalEliminar(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm"
+            onClick={() => {
+              if (!procesandoAccion) {
+                setModalEliminar(false);
+                setMotivoEliminar("");
+              }
+            }}
           >
             <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
+              initial={{ scale: 0.94, y: 18, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.94, y: 18, opacity: 0 }}
+              transition={{ type: "spring", damping: 24, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full"
+              className="relative w-full max-w-lg overflow-hidden rounded-[32px] border border-[#F2A5A5]/60 bg-white shadow-[0_24px_80px_rgba(26,77,46,0.22)]"
             >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-red-100 p-3 rounded-full">
-                  <FiTrash2 className="text-[#8B0000]" size={24} />
-                </div>
-                <h3 className="text-2xl font-black text-[#8B0000]">Eliminar permanentemente</h3>
-              </div>
-              <p className="text-gray-700 mb-4">
-                ¿Estás seguro de que deseas eliminar permanentemente este negocio? 
-              </p>
-              <div className="bg-red-50 border-l-4 border-[#8B0000] p-4 mb-6 rounded">
-                <p className="text-sm text-[#8B0000] font-semibold">
-                  ?? Esta acción borrará todos los elementos de la base de datos y de Cloudinary. No se podrá deshacer.
-                </p>
-              </div>
-              <label className="block text-sm font-bold text-gray-700 mb-2" htmlFor="motivo-eliminacion">
-                Motivo de la eliminación definitiva (opcional)
-              </label>
-              <textarea
-                id="motivo-eliminacion"
-                value={motivoEliminar}
-                onChange={(e) => setMotivoEliminar(e.target.value)}
-                placeholder="Describe el motivo por el que eliminas definitivamente este negocio (opcional)..."
-                className="w-full border border-gray-300 rounded-xl p-3 mb-6 min-h-[120px] text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-300"
+              <button
+                type="button"
+                onClick={() => {
+                  if (!procesandoAccion) {
+                    setModalEliminar(false);
+                    setMotivoEliminar("");
+                  }
+                }}
+                className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E7DED0] bg-white text-[#6A746D] transition-colors hover:bg-[#F7F3EC] hover:text-[#1A4D2E] disabled:opacity-50"
+                aria-label="Cerrar modal de eliminación"
                 disabled={procesandoAccion}
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={handleEliminarPermanentemente}
-                  disabled={procesandoAccion}
-                  className="flex-1 bg-[#8B0000] hover:bg-[#6B0000] text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {procesandoAccion ? "Eliminando..." : "Sí, eliminar"}
-                </button>
-                <button
-                  onClick={() => {
-                    if (!procesandoAccion) {
-                      setModalEliminar(false);
-                      setMotivoEliminar("");
-                    }
-                  }}
-                  disabled={procesandoAccion}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
-                >
-                  Cancelar
-                </button>
+              >
+                <FiX size={18} />
+              </button>
+
+              <div className="bg-gradient-to-br from-[#FDEAEA] via-white to-[#F6F0E6] px-8 pb-6 pt-8">
+                <div className="mb-5 flex items-center justify-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#F2A5A5] bg-white shadow-sm">
+                    <FiTrash2 className="text-[#8B0000]" size={28} />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#8B0000]">Acción irreversible</p>
+                  <h3 className="mt-2 text-3xl font-black text-[#1A4D2E]" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                    Eliminar permanentemente
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-[#4F6757]">
+                    Esta acción borrará el negocio de la base de datos y de Cloudinary. No se podrá deshacer.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 px-8 pb-8">
+                <div className="rounded-2xl border border-[#F2A5A5] bg-[#FDEAEA] px-4 py-3 text-sm text-[#8B0000]">
+                  Revisa el motivo antes de confirmar. Si solo quieres ocultarlo temporalmente, usa la opción de archivar.
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-[#8B0000]" htmlFor="motivo-eliminacion">
+                    Motivo de la eliminación definitiva (opcional)
+                  </label>
+                  <textarea
+                    id="motivo-eliminacion"
+                    value={motivoEliminar}
+                    onChange={(e) => setMotivoEliminar(e.target.value)}
+                    placeholder="Describe por qué eliminas definitivamente este negocio..."
+                    className="min-h-[124px] w-full rounded-2xl border border-[#E7D7D7] bg-[#FCFBF8] p-4 text-sm text-[#1A4D2E] placeholder:text-[#7A8B81] outline-none transition focus:border-[#8B0000] focus:ring-4 focus:ring-[#8B0000]/10 disabled:opacity-60"
+                    disabled={procesandoAccion}
+                  />
+                </div>
+
+                <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                  <button
+                    onClick={() => {
+                      if (!procesandoAccion) {
+                        setModalEliminar(false);
+                        setMotivoEliminar("");
+                      }
+                    }}
+                    disabled={procesandoAccion}
+                    className="flex-1 rounded-full border border-[#D8E1DA] bg-white px-5 py-3 text-sm font-black text-[#1A4D2E] transition-colors hover:bg-[#F7F8F6] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleEliminarPermanentemente}
+                    disabled={procesandoAccion}
+                    className="flex-1 rounded-full bg-[#8B0000] px-5 py-3 text-sm font-black text-white shadow-[0_10px_24px_rgba(139,0,0,0.18)] transition-colors hover:bg-[#6B0000] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {procesandoAccion ? "Eliminando..." : "Sí, eliminar definitivamente"}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>

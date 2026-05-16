@@ -11,6 +11,7 @@ import Footer from "./components/Footer";
 import AuthModal from "./components/AuthModal";
 import BecomeGuideFlow from "./components/BecomeGuideFlow";
 import InstallPWAPrompt from "./components/InstallPWAPrompt";
+import LocationPermissionModal from "./components/LocationPermissionModal";
 const PublishBusinessFlow = dynamic(() => import("./components/PublishBusinessFlow"), { ssr: false });
 
 declare global {
@@ -205,6 +206,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 />
               )}
             </AnimatePresence>
+            <LocationPermissionModal />
           </NextIntlClientProvider>
         ) : (
           <div className="flex items-center justify-center min-h-screen">

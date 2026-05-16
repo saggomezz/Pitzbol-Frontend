@@ -9,8 +9,11 @@ import styles from "../informacion.module.css";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import DeletedBusinessModal from "@/app/components/DeletedBusinessModal";
 import PlaceRating from "@/app/components/PlaceRating";
+import { NavigationPanel, type MapOriginEvent, type OriginMarkerMeta } from "../../components/NavigationPanel";
+import PlaceDetailNavigationMap, { type OriginChangeMeta } from "@/app/components/PlaceDetailNavigationMap";
 import { usePlaceView } from "@/lib/usePlaceView";
 import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
+import type { GeoPoint } from "@/lib/geoClient";
 
 const APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY = "pitzbol_approved_business_toast_dismissed_by_business_v2";
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
@@ -256,6 +259,12 @@ export default function InformacionLugar() {
   const [mensajeHorarios, setMensajeHorarios] = useState('');
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
   const [eliminando, setEliminando] = useState(false);
+  const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
+  const [originMarkerPoint, setOriginMarkerPoint] = useState<GeoPoint | null>(null);
+  const [mapOriginEvent, setMapOriginEvent] = useState<MapOriginEvent | null>(null);
+  const [mapRoutes, setMapRoutes] = useState<{ polyline: string }[]>([]);
+  const [mapSelectedRouteIdx, setMapSelectedRouteIdx] = useState(0);
+  const [liveNavPos, setLiveNavPos] = useState<{ lat: number; lng: number; bearing: number | null } | null>(null);
   // Registrar vista del lugar
   const nombreRaw = params.nombre;
   const nombreLugar = typeof nombreRaw === "string" ? decodeURIComponent(nombreRaw) : null;
@@ -401,17 +410,6 @@ export default function InformacionLugar() {
     setShowDeletedBusinessModal(false);
   }, [nombreLugar, lugar]);
 
-  const abrirEnMaps = () => {
-    if (lugar) {
-      const hasCoordinates = lugar.latitud !== 0 && lugar.longitud !== 0;
-      const query = encodeURIComponent(lugar.direccion || lugar.nombre);
-      const url = hasCoordinates
-        ? `https://www.openstreetmap.org/?mlat=${lugar.latitud}&mlon=${lugar.longitud}#map=17/${lugar.latitud}/${lugar.longitud}`
-        : `https://www.openstreetmap.org/search?query=${query}`;
-      window.open(url, "_blank");
-    }
-  };
-
   const toggleFavorite = async () => {
     if (!nombreLugar) return;
     
@@ -462,6 +460,21 @@ export default function InformacionLugar() {
         ? lugar.website
         : `https://${lugar.website}`)
     : null;
+
+  const handlePanelOriginMarkerChange = (point: GeoPoint | null, _meta: OriginMarkerMeta) => {
+    setOriginMarkerPoint(point);
+  };
+
+  const handleMapOriginChange = (point: GeoPoint, meta: OriginChangeMeta) => {
+    setOriginMarkerPoint(point);
+    if (!meta.manual) return;
+
+    setMapOriginEvent({
+      point,
+      manual: true,
+      eventId: Date.now() + Math.random(),
+    });
+  };
 
   const guardarCategorias = async () => {
     if (!nombreLugar || etiquetasEdit.length === 0) return;
@@ -1192,36 +1205,53 @@ export default function InformacionLugar() {
           {/* Mapa + Sidebar de ubicacion */}
           <section className={styles.mapSection}>
             <h2 className={styles.mapTitle}>Mapa</h2>
-            <div className={styles.mapAndSidebar}>
+            <div className={`${styles.mapAndSidebar} ${isNavigationExpanded ? styles.mapAndSidebarExpanded : ''}`}>
               <div className={styles.mapColumn}>
                 <div className={styles.mapContainer}>
-                  <iframe
-                    src={getMapEmbedSrc(lugarSeguro)}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title={`Mapa de ${lugarSeguro.nombre}`}
+                  <PlaceDetailNavigationMap
+                    destination={{ lat: lugarSeguro.latitud, lng: lugarSeguro.longitud }}
+                    destinationName={lugarSeguro.nombre}
+                    origin={originMarkerPoint}
+                    onOriginChange={handleMapOriginChange}
+                    isNavigationMode={isNavigationExpanded}
+                    routes={mapRoutes}
+                    selectedRouteIndex={mapSelectedRouteIdx}
+                    liveNavPosition={liveNavPos}
                   />
                 </div>
               </div>
 
               <aside className={styles.sidebarColumn}>
-                <div className={styles.locationCard}>
-                  <div className={styles.locationHeader}>
-                    <FiMapPin />
-                    <h2>Ubicación</h2>
+                {!isNavigationExpanded && (
+                  <div className={styles.locationCard}>
+                    <div className={styles.locationHeader}>
+                      <FiMapPin />
+                      <h2>Ubicación</h2>
+                    </div>
+                    <p className={styles.locationAddress}>{lugarSeguro.direccion}</p>
+                    {lugarSeguro.codigoPostal && (
+                      <p className={styles.locationMeta}>CP: {lugarSeguro.codigoPostal}</p>
+                    )}
                   </div>
-                  <p className={styles.locationAddress}>{lugarSeguro.direccion}</p>
-                  {lugarSeguro.codigoPostal && (
-                    <p className={styles.locationMeta}>CP: {lugarSeguro.codigoPostal}</p>
-                  )}
-                  <button onClick={abrirEnMaps} className={styles.directionsBtn}>
-                    <FiNavigation /> Cómo llegar
-                  </button>
-                </div>
+                )}
+                <NavigationPanel
+                    placeName={lugarSeguro.nombre}
+                    placeAddress={lugarSeguro.direccion}
+                    destination={{ lat: lugarSeguro.latitud, lng: lugarSeguro.longitud }}
+                    placeCost={lugarSeguro.costoEstimado}
+                    placeCategory={lugarSeguro.categoria}
+                    onExpandedChange={setIsNavigationExpanded}
+                    onOriginMarkerChange={handlePanelOriginMarkerChange}
+                    mapOriginEvent={mapOriginEvent}
+                    onRouteChange={(routes, idx) => {
+                      setMapRoutes(routes.map(r => ({ polyline: r.polyline ?? '' })));
+                      setMapSelectedRouteIdx(idx);
+                    }}
+                    onLivePosition={setLiveNavPos}
+                    onNavigationStart={() => {
+                      console.log(`Starting navigation to ${lugarSeguro.nombre}`);
+                    }}
+                  />
               </aside>
             </div>
           </section>
