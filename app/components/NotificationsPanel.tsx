@@ -7,7 +7,7 @@ import { io, Socket } from "socket.io-client";
 import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase, FiMapPin } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 import { ensureValidAuthToken, fetchWithAuth } from "@/lib/fetchWithAuth";
-import { getSocketBackendOrigin } from "@/lib/backendUrl";
+import { getApiBaseUrl, getSocketBackendOrigin } from "@/lib/backendUrl";
 import DeletedBusinessModal from "./DeletedBusinessModal";
 
 interface Notification {
@@ -31,7 +31,8 @@ interface NotificationsPanelProps {
 }
 
 const BACKEND_URL = getSocketBackendOrigin();
-const API_BASE = "/api";
+const API_BASE = getApiBaseUrl();
+const DIRECT_API_BASE = BACKEND_URL ? `${BACKEND_URL}/api` : API_BASE;
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
 
@@ -468,54 +469,73 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     const bucketId = getNotificationBucketId();
     if (!bucketId) return;
     setCargando(true);
-    const key = `pitzbol_notifications_${bucketId}`;
-    const notificacionesLocal: Notification[] = JSON.parse(localStorage.getItem(key) || '[]');
+
+    const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 25000) => {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        return await fetchWithAuth(url, {
+          ...options,
+          signal: controller.signal,
+          cache: "no-store",
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    };
+
+    const fetchFromEndpoints = async (endpoints: string[], options: RequestInit, maxRetries = 3) => {
+      let response: Response | null = null;
+      let lastError: Error | null = null;
+
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        for (const endpoint of endpoints) {
+          try {
+            response = await fetchWithTimeout(endpoint, options);
+
+            if (response.ok || response.status === 401 || response.status === 403) {
+              return response;
+            }
+
+            const isRetryableStatus = response.status === 404 || response.status >= 500;
+            if (isRetryableStatus && endpoint !== endpoints[endpoints.length - 1]) {
+              console.warn(`⚠ Endpoint ${endpoint} respondió ${response.status}; probando fallback...`);
+              response = null;
+              continue;
+            }
+
+            return response;
+          } catch (err: any) {
+            lastError = err;
+            console.warn(`⚠ Intento ${attempt + 1}/${maxRetries} falló en ${endpoint}:`, err?.message || String(err));
+            response = null;
+          }
+        }
+
+        if (attempt < maxRetries - 1) {
+          const delay = Math.pow(2, attempt) * 1000;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+
+      if (lastError) {
+        throw new Error(`Failed to fetch notifications after ${maxRetries} attempts: ${lastError.message}`);
+      }
+
+      return response;
+    };
 
     try {
       setCargando(true);
-      const token = localStorage.getItem('pitzbol_token');
-      if (!token) {
-        cargarNotificacionesLocal();
-        return;
-      }
       const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
-      
-      // Obtener notificaciones del usuario (siempre) con reintentos exponenciales
-      let response: Response | null = null;
-      const maxRetries = 3;
-      let lastError: Error | null = null;
-      
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 segundos
-          
-          response = await fetch(`${API_BASE}/admin/notificaciones/${bucketId}`, {
-            method: 'GET',
-            credentials: 'include',
-            signal: controller.signal,
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            }
-          });
-          clearTimeout(timeoutId);
-          console.log(`✓ Notificaciones cargadas en intento ${attempt + 1}/${maxRetries}`);
-          break; // Éxito, salir del loop
-        } catch (err: any) {
-          lastError = err;
-          console.warn(`⚠ Intento ${attempt + 1}/${maxRetries} falló:`, err.message);
-          if (attempt < maxRetries - 1) {
-            // Backoff exponencial: 1s, 2s, 4s
-            const delay = Math.pow(2, attempt) * 1000;
-            await new Promise(resolve => setTimeout(resolve, delay));
-          }
-        }
-      }
-      
-      if (!response && lastError) {
-        throw new Error(`Failed to fetch notifications after ${maxRetries} attempts: ${lastError.message}`);
-      }
+
+      // Obtener notificaciones del usuario con fallback de endpoint + reintentos exponenciales.
+      const endpoints = Array.from(new Set([
+        `${API_BASE}/admin/notificaciones/${bucketId}`,
+        `${DIRECT_API_BASE}/admin/notificaciones/${bucketId}`,
+      ]));
+      const response = await fetchFromEndpoints(endpoints, { method: 'GET' }, 3);
       if (!response) {
         throw new Error('No response object after retries');
       }
@@ -555,9 +575,16 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       // Si es admin, también cargar notificaciones de soporte
       if (user?.role === 'admin') {
         try {
-          const supportResponse = await fetchWithAuth(`${API_BASE}/support/notifications`);
+          const supportResponse = await fetchFromEndpoints(
+            Array.from(new Set([
+              `${API_BASE}/support/notifications`,
+              `${DIRECT_API_BASE}/support/notifications`,
+            ])),
+            { method: 'GET' },
+            2,
+          );
 
-          if (supportResponse.ok) {
+          if (supportResponse?.ok) {
             const supportData = await supportResponse.json();
             if (supportData.success && supportData.notificaciones) {
               const notificacionesSoporte = supportData.notificaciones.map((notif: any) => ({
@@ -571,6 +598,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
               }));
               notificacionesDelBackend = [...notificacionesDelBackend, ...notificacionesSoporte];
             }
+          } else if (supportResponse) {
+            console.warn(`⚠ Soporte respondió ${supportResponse.status} ${supportResponse.statusText}`);
           }
         } catch (error) {
           console.warn("⚠ Error al cargar notificaciones de soporte (no bloqueante):", error instanceof Error ? error.message : String(error));

@@ -455,8 +455,13 @@
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-    transition: all 360ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: box-shadow 360ms cubic-bezier(0.22, 1, 0.36, 1),
+                height 360ms cubic-bezier(0.22, 1, 0.36, 1);
     background: #f0f0f0;
+    /* isolation:isolate creates a stacking context WITHOUT adding a transform,
+       avoiding the iOS Safari "content disappears" bug that occurs when
+       overflow:hidden + border-radius + transform are all on the same element. */
+    isolation: isolate;
 }
 
 .mapAndSidebar {
@@ -485,7 +490,9 @@
 
 .mapAndSidebarExpanded .mapContainer {
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
-    transform: translateY(2px);
+    /* transform: translateY(2px) removed — it created an extra stacking
+       context on the overflow:hidden + border-radius container, which caused
+       iOS/mobile WebKit to drop the inner compositing layer (map disappears). */
 }
 
 .mapColumn {
@@ -774,11 +781,17 @@
     }
 
     .mapColumn {
-        height: 100%;
+        /* Explicit height so height:100% children (mapContainer → Leaflet)
+           always have a definite containing-block height on mobile.
+           height:100% in an auto-sized grid row can resolve to 0
+           when there is no other content providing intrinsic height. */
+        height: var(--map-height, 300px);
+        min-height: var(--map-height, 300px);
     }
 
     .mapContainer {
-        height: 100%;
+        height: var(--map-height, 300px);
+        min-height: var(--map-height, 300px);
     }
 
     .heroActions {
