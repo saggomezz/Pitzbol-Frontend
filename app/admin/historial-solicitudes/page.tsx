@@ -19,6 +19,7 @@ import {
 } from "react-icons/fa";
 import { FiX } from "react-icons/fi";
 import { MdArchive, MdOutlineTrackChanges } from "react-icons/md";
+import ConfirmModal from "@/app/components/ConfirmModal";
 
 type SourceBucket = "pendientes" | "activos" | "archivados" | "rechazados";
 
@@ -442,6 +443,14 @@ export default function AdminBusinessHistoryPage() {
   const [actionFilter, setActionFilter] = useState<"todos" | MovementKind>("todos");
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [confirmDeleteEvent, setConfirmDeleteEvent] = useState<TimelineEvent | null>(null);
+  const [resultadoMensaje, setResultadoMensaje] = useState<{ tipo: "exito" | "error"; mensaje: string } | null>(null);
+
+  useEffect(() => {
+    if (!resultadoMensaje) return;
+    const timer = setTimeout(() => setResultadoMensaje(null), 3000);
+    return () => clearTimeout(timer);
+  }, [resultadoMensaje]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement | null>(null);
 
@@ -632,15 +641,18 @@ export default function AdminBusinessHistoryPage() {
 
   const activeFilterLabel = filterOptions.find((option) => option.value === actionFilter)?.label || "Todos los movimientos";
 
-  const handleDeleteMovement = async (event: TimelineEvent, clickEvent: React.MouseEvent) => {
+  const handleDeleteMovement = (event: TimelineEvent, clickEvent: React.MouseEvent) => {
     clickEvent.stopPropagation();
     if (!event.canDelete) return;
+    setConfirmDeleteEvent(event);
+  };
+
+  const performDeleteMovement = async () => {
+    const event = confirmDeleteEvent;
+    if (!event) return;
 
     const movementId = (event.movementLogId || event.id || "").trim();
     if (!movementId) return;
-
-    const confirmed = typeof window !== "undefined" ? window.confirm("Eliminar este movimiento del historial permanentemente?") : false;
-    if (!confirmed) return;
 
     try {
       setDeletingEventId(event.id);
@@ -658,16 +670,14 @@ export default function AdminBusinessHistoryPage() {
       }
 
       setEvents((prev) => prev.filter((item) => item.id !== event.id));
-      if (selectedEvent?.id === event.id) {
-        setSelectedEvent(null);
-      }
+      if (selectedEvent?.id === event.id) setSelectedEvent(null);
+      setResultadoMensaje({ tipo: "exito", mensaje: "Movimiento eliminado correctamente" });
     } catch (error) {
       console.error("Error eliminando movimiento:", error);
-      if (typeof window !== "undefined") {
-        window.alert("No se pudo eliminar el movimiento. Intenta de nuevo.");
-      }
+      setResultadoMensaje({ tipo: "error", mensaje: "No se pudo eliminar el movimiento. Intenta de nuevo." });
     } finally {
       setDeletingEventId(null);
+      setConfirmDeleteEvent(null);
     }
   };
 
@@ -829,6 +839,44 @@ export default function AdminBusinessHistoryPage() {
             })}
           </div>
         )}
+
+        <ConfirmModal
+          open={Boolean(confirmDeleteEvent)}
+          title={"Eliminar movimiento"}
+          description={"Eliminar este movimiento del historial permanentemente? Esta acción no se puede deshacer."}
+          confirmLabel={"Sí, eliminar"}
+          cancelLabel={"Cancelar"}
+          loading={Boolean(deletingEventId)}
+          onClose={() => setConfirmDeleteEvent(null)}
+          onConfirm={performDeleteMovement}
+        />
+
+        <AnimatePresence>
+          {resultadoMensaje && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-24 right-8 z-[60] max-w-md"
+            >
+              <div
+                className={`rounded-2xl shadow-lg p-6 border-l-4 ${
+                  resultadoMensaje.tipo === "exito"
+                    ? "bg-[#E9F7EE] border-l-[#0D601E]"
+                    : "bg-[#FDEAEA] border-l-[#8B0000]"
+                }`}
+              >
+                <p
+                  className={`font-semibold ${
+                    resultadoMensaje.tipo === "exito" ? "text-[#0D601E]" : "text-[#8B0000]"
+                  }`}
+                >
+                  {resultadoMensaje.mensaje}
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {selectedEvent ? (
