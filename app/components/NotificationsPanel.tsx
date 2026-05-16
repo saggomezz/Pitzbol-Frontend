@@ -480,8 +480,45 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       }
       const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
       
-      // Obtener notificaciones del usuario (siempre)
-      const response = await fetchWithAuth(`${API_BASE}/admin/notificaciones/${bucketId}`);
+      // Obtener notificaciones del usuario (siempre) con reintentos exponenciales
+      let response: Response | null = null;
+      const maxRetries = 3;
+      let lastError: Error | null = null;
+      
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 segundos
+          
+          response = await fetch(`${API_BASE}/admin/notificaciones/${bucketId}`, {
+            method: 'GET',
+            credentials: 'include',
+            signal: controller.signal,
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            }
+          });
+          clearTimeout(timeoutId);
+          console.log(`✓ Notificaciones cargadas en intento ${attempt + 1}/${maxRetries}`);
+          break; // Éxito, salir del loop
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`⚠ Intento ${attempt + 1}/${maxRetries} falló:`, err.message);
+          if (attempt < maxRetries - 1) {
+            // Backoff exponencial: 1s, 2s, 4s
+            const delay = Math.pow(2, attempt) * 1000;
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+      }
+      
+      if (!response && lastError) {
+        throw new Error(`Failed to fetch notifications after ${maxRetries} attempts: ${lastError.message}`);
+      }
+      if (!response) {
+        throw new Error('No response object after retries');
+      }
       
       let notificacionesDelBackend: Notification[] = [];
       
@@ -506,6 +543,13 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
             return mapped;
           });
         }
+      } else if (response.status === 401) {
+        console.warn('⚠ Token expirado (401), recargando desde localStorage');
+        cargarNotificacionesLocal();
+        setCargando(false);
+        return;
+      } else {
+        console.warn(`⚠ Respuesta no ok (${response.status} ${response.statusText})`);
       }
 
       // Si es admin, también cargar notificaciones de soporte
@@ -529,7 +573,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
             }
           }
         } catch (error) {
-          console.error("Error al cargar notificaciones de soporte:", error);
+          console.warn("⚠ Error al cargar notificaciones de soporte (no bloqueante):", error instanceof Error ? error.message : String(error));
         }
       }
 
