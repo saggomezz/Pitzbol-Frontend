@@ -17,6 +17,7 @@ const connectSrc = [
   'https://tile.openstreetmap.org',
   'https://*.tile.openstreetmap.org',
   'https://nominatim.openstreetmap.org',
+  'https://router.project-osrm.org',
   'https://cloudflareinsights.com',
   'https://static.cloudflareinsights.com',
   ...(process.env.NODE_ENV === 'development'
@@ -79,12 +80,14 @@ const nextConfig: NextConfig = {
       process.env.BACKEND_INTERNAL_URL ||
       process.env.NEXT_PUBLIC_BACKEND_URL ||
       'https://api.pitzbol.me:8443';
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
-      },
-    ];
+    return {
+      fallback: [
+        {
+          source: '/api/:path*',
+          destination: `${backendUrl}/api/:path*`,
+        },
+      ],
+    };
   },
   reactStrictMode: true,
   allowedDevOrigins: ['69.30.204.56'],

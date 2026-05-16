@@ -96,6 +96,175 @@ export interface GeocodeResponse {
   message?: string;
 }
 
+type TransportMode = NonNullable<RouteRequest['mode']>;
+
+const OSRM_BASE_URL = 'https://router.project-osrm.org/route/v1';
+const OSRM_TIMEOUT_MS = 10_000;
+const MAX_WAYPOINTS = 10;
+const VALID_TRANSPORT_MODES = new Set<TransportMode>([
+  'driving',
+  'walking',
+  'cycling',
+  'transit-like',
+  'rideshare-like',
+]);
+
+function isValidRoutePoint(point: GeoPoint | undefined): boolean {
+  return (
+    typeof point?.lat === 'number' &&
+    typeof point?.lng === 'number' &&
+    Number.isFinite(point.lat) &&
+    Number.isFinite(point.lng) &&
+    point.lat >= -90 &&
+    point.lat <= 90 &&
+    point.lng >= -180 &&
+    point.lng <= 180
+  );
+}
+
+function validateRouteRequest(request: RouteRequest): string | null {
+  if (!isValidRoutePoint(request.origin)) return 'Origen inválido';
+  if (!isValidRoutePoint(request.destination)) return 'Destino inválido';
+  if (request.mode && !VALID_TRANSPORT_MODES.has(request.mode)) return 'Modo de transporte inválido';
+  if (request.departureHour !== undefined && !isValidHour(request.departureHour)) return 'Hora de salida inválida';
+  if (request.waypoints !== undefined) {
+    if (!Array.isArray(request.waypoints) || request.waypoints.length > MAX_WAYPOINTS) {
+      return `Máximo ${MAX_WAYPOINTS} waypoints permitidos`;
+    }
+    if (request.waypoints.some(point => !isValidRoutePoint(point))) return 'Waypoint inválido';
+  }
+  return null;
+}
+
+function getOSRMProfile(mode: TransportMode): string {
+  if (mode === 'walking') return 'walking';
+  if (mode === 'cycling') return 'cycling';
+  return 'driving';
+}
+
+function isValidHour(hour: number): boolean {
+  return Number.isInteger(hour) && hour >= 0 && hour < 24;
+}
+
+function getTrafficFactor(hour: number): number {
+  if (hour >= 7 && hour < 9) return 1.8;
+  if (hour >= 17 && hour < 20) return 2.2;
+  if (hour >= 14 && hour < 17) return 1.3;
+  return 1.0;
+}
+
+function calculateRouteETA(distanceKm: number, mode: TransportMode, hour?: number): number | undefined {
+  if (hour === undefined || !isValidHour(hour)) return undefined;
+  const baseSpeeds: Record<TransportMode, number> = {
+    driving: 30,
+    walking: 5,
+    cycling: 15,
+    'transit-like': 20,
+    'rideshare-like': 25,
+  };
+  let speed = baseSpeeds[mode];
+  if (mode === 'driving' || mode === 'rideshare-like') {
+    speed = speed / getTrafficFactor(hour);
+  }
+  return Math.ceil((distanceKm / speed) * 60);
+}
+
+function parseOSRMInstruction(step: any): string {
+  const maneuver = step.maneuver?.type;
+  const modifier = step.maneuver?.modifier;
+  const road = step.name || 'vía desconocida';
+  const meters = Math.round(step.distance || 0);
+  const directionMap: Record<string, string> = {
+    straight: 'continúa recto',
+    left: 'gira a la izquierda',
+    right: 'gira a la derecha',
+    'sharp left': 'gira fuertemente a la izquierda',
+    'sharp right': 'gira fuertemente a la derecha',
+    'slight left': 'tuerce suavemente a la izquierda',
+    'slight right': 'tuerce suavemente a la derecha',
+    uturn: 'haz un giro de retorno',
+  };
+  const direction = maneuver && modifier
+    ? directionMap[`${maneuver} ${modifier}`] || directionMap[maneuver] || 'continúa'
+    : directionMap[maneuver] || 'continúa';
+  return `${direction} en ${road} por ${meters}m`;
+}
+
+function mapOSRMRoute(osrmRoute: any, mode: TransportMode, departureHour?: number): RouteOption {
+  const distanceKm = osrmRoute.distance / 1000;
+  const durationMinutes = Math.ceil(osrmRoute.duration / 60);
+  const steps: RouteStep[] = [];
+
+  for (const leg of osrmRoute.legs || []) {
+    for (const step of leg.steps || []) {
+      steps.push({
+        distance: step.distance / 1000,
+        duration: Math.ceil(step.duration / 60),
+        instruction: parseOSRMInstruction(step),
+        road: step.name || 'Vía desconocida',
+        maneuver: step.maneuver?.type,
+        location: step.maneuver?.location,
+      });
+    }
+  }
+
+  return {
+    geometry: osrmRoute.geometry,
+    distance: distanceKm,
+    duration: durationMinutes,
+    durationWithTraffic: calculateRouteETA(distanceKm, mode, departureHour) || durationMinutes,
+    steps,
+    polyline: JSON.stringify(osrmRoute.geometry?.coordinates || []),
+  };
+}
+
+async function getRouteFromOSRM(request: RouteRequest): Promise<RouteResponse> {
+  const validationError = validateRouteRequest(request);
+  if (validationError) {
+    return { success: false, error: validationError, fallback: true };
+  }
+
+  const mode = request.mode || 'driving';
+  const points = request.waypoints?.length
+    ? [request.origin, ...request.waypoints, request.destination]
+    : [request.origin, request.destination];
+  const coords = points.map(point => `${point.lng},${point.lat}`).join(';');
+  const profile = getOSRMProfile(mode);
+  const url = `${OSRM_BASE_URL}/${profile}/${coords}?geometries=geojson&steps=true&alternatives=3`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OSRM_TIMEOUT_MS);
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      signal: controller.signal,
+      cache: 'no-store',
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+    });
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      return { success: false, error: 'El servicio de rutas tardó demasiado', fallback: true };
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (!response.ok) {
+    return { success: false, error: `OSRM HTTP ${response.status}`, fallback: true };
+  }
+
+  const data = await response.json();
+  if (data.code !== 'Ok' || !Array.isArray(data.routes) || data.routes.length === 0) {
+    return { success: false, error: data.message || 'No se encontró ruta', fallback: true };
+  }
+
+  const routes = data.routes.map((route: any) => mapOSRMRoute(route, mode, request.departureHour));
+  return { success: true, route: routes[0], routes };
+}
+
 /**
  * Obtener ruta entre dos puntos
  */
@@ -110,7 +279,10 @@ export async function getRoute(request: RouteRequest): Promise<RouteResponse> {
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({}));
+      if (response.status === 404 || response.status >= 500) {
+        return await getRouteFromOSRM(request);
+      }
       return {
         success: false,
         error: error.msg || 'Error obteniendo ruta',
@@ -121,11 +293,15 @@ export async function getRoute(request: RouteRequest): Promise<RouteResponse> {
     return await response.json();
   } catch (error: any) {
     console.error('[geoClient] Error en getRoute:', error);
-    return {
-      success: false,
-      error: error.message || 'Error de red al obtener ruta',
-      fallback: true
-    };
+    try {
+      return await getRouteFromOSRM(request);
+    } catch (fallbackError: any) {
+      return {
+        success: false,
+        error: fallbackError.message || error.message || 'Error de red al obtener ruta',
+        fallback: true
+      };
+    }
   }
 }
 
