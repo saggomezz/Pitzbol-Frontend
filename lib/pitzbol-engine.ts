@@ -21,6 +21,36 @@ function calcularDistancia(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/**
+ * Calcular ETA considerando tráfico y modo de transporte
+ * Emula el cálculo del backend sin necesidad de API call
+ */
+function calcularETA(distanceKm: number, hour: number, mode: string = 'driving'): number {
+  // Velocidades base por modo (km/h)
+  const baseSpeeds: Record<string, number> = {
+    driving: 30,
+    walking: 5,
+    cycling: 15,
+    'transit-like': 20,
+    'rideshare-like': 25
+  };
+
+  const baseSpeed = baseSpeeds[mode] || 30;
+  let finalSpeed = baseSpeed;
+
+  // Factor de tráfico solo para modos motorizados
+  if ((mode === 'driving' || mode === 'rideshare-like') && hour >= 0 && hour < 24) {
+    let factor = 1.0;
+    if (hour >= 7 && hour < 9) factor = 1.8; // Morning rush
+    if (hour >= 17 && hour < 20) factor = 2.2; // Evening rush
+    if (hour >= 14 && hour < 17) factor = 1.3; // Afternoon
+    
+    finalSpeed = baseSpeed / factor;
+  }
+
+  return Math.ceil((distanceKm / finalSpeed) * 60);
+}
+
 export function ordenarPorCercania(lugares: Lugar[], miUbicacion: {lat: number, lng: number}) {
   return [...lugares].sort((a, b) => {
     const distA = calcularDistancia(miUbicacion.lat, miUbicacion.lng, a.lat, a.lng);
@@ -56,7 +86,10 @@ export function generarItinerarioManual(
     });
 
     const proximo = disponibles[0];
-    const traslado = 25; 
+    const distanceKm = calcularDistancia(puntoActual.lat, puntoActual.lng, proximo.lat, proximo.lng);
+    
+    // Usar ETA dinámica considerando hora actual y tráfico
+    const traslado = calcularETA(distanceKm, horaActual, 'driving');
 
     if (tiempoUso + proximo.tiempoEstancia + traslado <= tiempoTotal) {
       plan.push(proximo);
