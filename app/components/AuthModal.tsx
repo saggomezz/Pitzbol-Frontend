@@ -1,7 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { FiEye, FiEyeOff, FiLock, FiMail, FiX } from "react-icons/fi";
 import { getBackendOrigin } from "@/lib/backendUrl";
@@ -10,17 +10,11 @@ const API_BASE = getBackendOrigin();
 const BACKEND_URL = `${API_BASE}/api/auth`;
 
 const ALL_COUNTRIES = [
-  { name: "Alemania", lada: "+49" }, { name: "Argentina", lada: "+54" },
-  { name: "Australia", lada: "+61" }, { name: "Brasil", lada: "+55" },
-  { name: "Canadá", lada: "+1" }, { name: "Chile", lada: "+56" },
-  { name: "Colombia", lada: "+57" }, { name: "Corea del Sur", lada: "+82" },
-  { name: "Dinamarca", lada: "+45" }, { name: "España", lada: "+34" },
-  { name: "Estados Unidos", lada: "+1" }, { name: "Francia", lada: "+33" },
-  { name: "Italia", lada: "+39" }, { name: "Japón", lada: "+81" },
-  { name: "México", lada: "+52" }, { name: "Países Bajos", lada: "+31" },
-  { name: "Perú", lada: "+51" }, { name: "Portugal", lada: "+351" },
-  { name: "Reino Unido", lada: "+44" }, { name: "Uruguay", lada: "+598" },
-].sort((a, b) => a.name.localeCompare(b.name));
+  "Alemania", "Argentina", "Australia", "Brasil", "Canadá", "Chile",
+  "Colombia", "Corea del Sur", "Dinamarca", "España", "Estados Unidos",
+  "Francia", "Italia", "Japón", "México", "Países Bajos", "Perú",
+  "Portugal", "Reino Unido", "Uruguay",
+].sort((a, b) => a.localeCompare(b));
 
 declare global {
   interface Window {
@@ -53,7 +47,6 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo }: { 
   const [regNombre, setRegNombre] = useState("");
   const [regApellido, setRegApellido] = useState("");
   const [nacionalidad, setNacionalidad] = useState("");
-  const [telefono, setTelefono] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
@@ -71,12 +64,6 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo }: { 
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-  useEffect(() => {
-    const country = ALL_COUNTRIES.find(c => c.name === nacionalidad);
-    if (country) {
-      setTelefono(country.lada + " ");
-    }
-  }, [nacionalidad]);
 
   const handleRegister = async () => {
     setErrors({}); 
@@ -86,9 +73,6 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo }: { 
     if (!regNombre.trim()) newErrors.nombre = true;
     if (!regApellido.trim()) newErrors.apellido = true;
     if (!nacionalidad) newErrors.nacionalidad = true;
-    if (telefono.replace(/\s/g, "").length < 10) {
-      newErrors.telefono = t('incompleteNumber');
-    }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(regEmail)) newErrors.email = t('invalidEmail');
@@ -122,7 +106,6 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo }: { 
           password: regPassword,
           nombre: regNombre,
           apellido: regApellido,
-          telefono: telefono.replace(/\s/g, ""),
           nacionalidad: nacionalidad,
           role: intendedRole,
         }),
@@ -164,7 +147,6 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo }: { 
         nombre: loginData.user?.nombre || regNombre,
         apellido: loginData.user?.apellido || regApellido,
         fotoPerfil: loginData.user?.fotoPerfil || null,
-        telefono: loginData.user?.telefono || telefono || "No registrado",
         nacionalidad: loginData.user?.nacionalidad || nacionalidad || "No registrado",
         "07_intereses": interesesData,
         role: userRole,
@@ -395,13 +377,10 @@ if (!isOpen) return null;
               <input placeholder={t('name')} className={inputClass} value={regNombre} onChange={(e) => setRegNombre(capitalize(e.target.value))} />
               <input placeholder={t('lastName')} className={inputClass} value={regApellido} onChange={(e) => setRegApellido(capitalize(e.target.value))} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <select value={nacionalidad} onChange={(e) => setNacionalidad(e.target.value)} className={`${inputClass} appearance-none pr-10`}>
-                <option value="" disabled>{t('nationality')}</option>
-                {ALL_COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-              </select>
-              <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder={t('phone')} className={inputClass} />
-            </div>
+            <select value={nacionalidad} onChange={(e) => setNacionalidad(e.target.value)} className={`${inputClass} appearance-none`}>
+              <option value="" disabled>{t('nationality')}</option>
+              {ALL_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
             <div className="relative">
               <FiMail color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
               <input placeholder={t('email')} className={`${inputClass} pl-14`} value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
