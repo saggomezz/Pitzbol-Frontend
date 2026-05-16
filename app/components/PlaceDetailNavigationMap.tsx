@@ -393,12 +393,11 @@ function PlaceDetailNavigationMapComponent({
   }
 
   return (
-    <div style={{
-      position: 'relative', width: '100%', height: '100%',
-      // overflow:hidden clips the rotated+scaled map tiles so grey
-      // corners never show through the edges of the container.
-      overflow: 'hidden',
-    }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {/* Grey-corner clipping during CSS rotation is handled by the parent
+          .mapContainer CSS class (overflow:hidden + border-radius:20px).
+          Adding a second overflow:hidden here created extra compositing layers
+          that caused mobile WebKit to drop the map rendering layer. */}
       <MapContainer
         center={[fallbackDestination.lat, fallbackDestination.lng]}
         zoom={15}
