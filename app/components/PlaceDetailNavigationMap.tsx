@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import dynamic from "next/dynamic";
+import "leaflet/dist/leaflet.css";
 import type { GeoPoint } from "@/lib/geoClient";
 
 let destinationIcon: any = undefined;
@@ -290,11 +291,6 @@ function PlaceDetailNavigationMapComponent({
    */
   const [followMode, setFollowMode] = useState<'follow' | 'free'>('follow');
   const mapInstanceRef = useRef<any>(null);
-
-  // Load Leaflet CSS lazily on mount to avoid the "preloaded but not used" warning
-  useEffect(() => {
-    import("leaflet/dist/leaflet.css");
-  }, []);
 
   // Reset to follow when navigation starts or ends
   useEffect(() => {
