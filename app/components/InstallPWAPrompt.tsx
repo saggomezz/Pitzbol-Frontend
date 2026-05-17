@@ -1,61 +1,13 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
+import { usePWAInstall } from "@/app/context/PWAInstallContext";
 
 export default function InstallPWAPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showBanner, setShowBanner] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const { showBanner, isIOS, deferredPrompt, install, dismiss } = usePWAInstall();
+  const [neverShow, setNeverShow] = useState(false);
 
-  useEffect(() => {
-    // No mostrar si ya está instalada como PWA
-    if (window.matchMedia("(display-mode: standalone)").matches) return;
-
-    // No mostrar si el usuario ya la descartó recientemente (7 días)
-    const dismissed = localStorage.getItem("pwa_install_dismissed");
-    if (dismissed && Date.now() - Number(dismissed) < 7 * 24 * 60 * 60 * 1000) return;
-
-    // Detectar iOS (Safari no soporta beforeinstallprompt)
-    const ua = navigator.userAgent;
-    const isiOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    if (isiOS) {
-      setIsIOS(true);
-      // Mostrar después de 3 segundos en iOS
-      const timer = setTimeout(() => setShowBanner(true), 3000);
-      return () => clearTimeout(timer);
-    }
-
-    // Android / Chrome: capturar el evento beforeinstallprompt
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      // Mostrar después de 3 segundos
-      setTimeout(() => setShowBanner(true), 3000);
-    };
-
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
-
-  const handleInstall = useCallback(async () => {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setShowBanner(false);
-    }
-    setDeferredPrompt(null);
-  }, [deferredPrompt]);
-
-  const handleDismiss = useCallback(() => {
-    setShowBanner(false);
-    localStorage.setItem("pwa_install_dismissed", String(Date.now()));
-  }, []);
+  const handleDismiss = () => dismiss(neverShow);
 
   return (
     <AnimatePresence>
@@ -114,12 +66,39 @@ export default function InstallPWAPrompt() {
             {/* Botón de instalar (solo Android/Chrome) */}
             {!isIOS && deferredPrompt && (
               <button
-                onClick={handleInstall}
+                onClick={install}
                 className="mt-3 w-full py-2.5 rounded-xl bg-[#1A4D2E] text-white text-sm font-semibold hover:bg-[#0D601E] active:scale-[0.98] transition-all"
               >
                 Instalar app
               </button>
             )}
+
+            {/* Checkbox "No volver a mostrar" */}
+            <label className="mt-3 flex items-center gap-2 cursor-pointer select-none group">
+              <div
+                onClick={() => setNeverShow((v) => !v)}
+                className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${
+                  neverShow
+                    ? "bg-[#1A4D2E] border-[#1A4D2E]"
+                    : "bg-white border-gray-300 group-hover:border-[#1A4D2E]"
+                }`}
+              >
+                {neverShow && (
+                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                  </svg>
+                )}
+              </div>
+              <input
+                type="checkbox"
+                checked={neverShow}
+                onChange={(e) => setNeverShow(e.target.checked)}
+                className="sr-only"
+              />
+              <span className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">
+                No volver a mostrar
+              </span>
+            </label>
           </div>
         </motion.div>
       )}

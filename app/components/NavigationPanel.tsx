@@ -893,9 +893,12 @@ export function NavigationPanel({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const savedState = parsePersistedNavigationState(window.localStorage.getItem(navigationStorageKey));
     const sharedParams = parseSharedNavigationParams(window.location.search);
-    if (sharedParams && !savedState?.navigationStarted) {
+    if (sharedParams) {
+      // Shared links must always open in pre-navigation mode, even if a previous
+      // active navigation session exists in localStorage.
+      removePersistedNavigationState();
+
       if (sharedParams.transportMode !== transportMode) {
         suppressNextModeRecalcRef.current = true;
       }
@@ -908,13 +911,24 @@ export function NavigationPanel({
       setOriginHint(`Ruta compartida: ${sharedParams.origin.lat.toFixed(5)}, ${sharedParams.origin.lng.toFixed(5)}`);
       setOriginSearchError(null);
       setRouteError(null);
+      setRoute(null);
+      setAvailableRoutes([]);
+      setSelectedRouteIdx(0);
       setNavigationStarted(false);
+      setCurrentStepIdx(0);
+      currentStepIdxRef.current = 0;
+      resetLiveMetrics();
+      setHasArrived(false);
+      lastLivePositionRef.current = null;
+      onLivePosition?.(null);
       setPendingSharedRouteIdx(sharedParams.selectedRouteIdx);
       onOriginMarkerChange?.(sharedParams.origin, { source: 'search', manual: false });
       showNavNotice('info', 'Ruta compartida cargada. Calculando el recorrido desde el punto de partida.', 6500);
       setIsPersistenceReady(true);
       return;
     }
+
+    const savedState = parsePersistedNavigationState(window.localStorage.getItem(navigationStorageKey));
 
     if (!savedState) {
       setIsPersistenceReady(true);

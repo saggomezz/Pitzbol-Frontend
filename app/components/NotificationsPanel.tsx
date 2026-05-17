@@ -33,6 +33,7 @@ interface NotificationsPanelProps {
 const BACKEND_URL = getSocketBackendOrigin();
 const API_BASE = getApiBaseUrl();
 const DIRECT_API_BASE = BACKEND_URL ? `${BACKEND_URL}/api` : API_BASE;
+const NOTIFICATIONS_FALLBACK_SYNC_MS = 5 * 60 * 1000;
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
 
@@ -532,8 +533,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
 
       // Obtener notificaciones del usuario con fallback de endpoint + reintentos exponenciales.
       const endpoints = Array.from(new Set([
-        `${API_BASE}/admin/notificaciones/${bucketId}`,
         `${DIRECT_API_BASE}/admin/notificaciones/${bucketId}`,
+        `${API_BASE}/admin/notificaciones/${bucketId}`,
       ]));
       const response = await fetchFromEndpoints(endpoints, { method: 'GET' }, 3);
       if (!response) {
@@ -719,8 +720,9 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     if (!userId) return;
 
     const intervalId = window.setInterval(() => {
+      if (document.hidden) return;
       void cargarNotificacionesDelBackend();
-    }, 10000);
+    }, NOTIFICATIONS_FALLBACK_SYNC_MS);
 
     return () => {
       window.clearInterval(intervalId);

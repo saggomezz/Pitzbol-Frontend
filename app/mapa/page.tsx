@@ -398,6 +398,7 @@ export default function MapaPage() {
                                 ubicacion: String(row["Dirección"] || "").trim(),
                                 latitud: String(row["Latitud"] || "").replace(",", ".").trim(),
                                 longitud: String(row["Longitud"] || "").replace(",", ".").trim(),
+                                views: Number(String(row["Views"] || row["Vistas"] || "0").replace(",", ".").trim()) || 0,
                             };
                         }).filter(lugar => lugar.nombre !== ""); // Filtrar lugares vacíos
                         
@@ -430,6 +431,16 @@ export default function MapaPage() {
                             })
                             .then(data => {
                                 const lugaresFirestore = data.lugares || [];
+                                const viewsByName: Record<string, number> = {};
+
+                                lugaresFirestore.forEach((lugarFirestore: any) => {
+                                    const nombre = String(lugarFirestore?.nombre || '').trim();
+                                    if (!nombre) return;
+                                    const rawViews = Number(String(lugarFirestore?.views ?? '').replace(',', '.').trim());
+                                    if (Number.isFinite(rawViews) && rawViews >= 0) {
+                                        viewsByName[nombre] = rawViews;
+                                    }
+                                });
                                 
                                 // Crear un mapa de nombres del CSV para verificar duplicados
                                 const nombresCSV = new Set(lugaresCSV.map(l => l.nombre));
@@ -451,16 +462,23 @@ export default function MapaPage() {
                                             descripcion: lugarFirestore.descripcion || '',
                                             ubicacion: lugarFirestore.ubicacion || '',
                                             latitud: lugarFirestore.latitud || '',
-                                            longitud: lugarFirestore.longitud || ''
+                                            longitud: lugarFirestore.longitud || '',
+                                            views: Number(String(lugarFirestore?.views ?? '0').replace(',', '.').trim()) || 0,
                                         });
                                         console.log(`✅ Lugar creado manualmente agregado: ${lugarFirestore.nombre}`);
                                     }
                                 });
+
+                                // Priorizar vistas reales de Firestore para cualquier lugar existente
+                                const lugaresConViews = lugaresCSV.map((lugar) => ({
+                                    ...lugar,
+                                    views: viewsByName[lugar.nombre] ?? (typeof lugar.views === 'number' ? lugar.views : 0),
+                                }));
                                 
                                 console.log(`📊 Total lugares: ${lugaresCSV.length} (${parsed.length} del CSV + ${lugaresCSV.length - parsed.length} creados manualmente)`);
                                 
-                                setLugares(lugaresCSV);
-                                setFilteredLugares(lugaresCSV);
+                                setLugares(lugaresConViews);
+                                setFilteredLugares(lugaresConViews);
                                 
                                 // Crear mapas de fotos y vistas por nombre
                                 const fotosMap: Record<string, string[]> = {};
@@ -520,6 +538,17 @@ export default function MapaPage() {
         console.log("🔍 Término de búsqueda:", searchTerm);
 
         if (selectedCategory === "Más Populares") {
+            const antes = filtered.length;
+            const conVistas = filtered
+                .filter((lugar) => (typeof lugar.views === "number" ? lugar.views : 0) > 0)
+                .sort((a, b) => (b.views || 0) - (a.views || 0));
+
+            // Si todavía no hay suficientes vistas registradas, mantenemos orden estable sin ocultar todo.
+            filtered = conVistas.length > 0
+                ? conVistas
+                : [...filtered].sort((a, b) => (b.views || 0) - (a.views || 0));
+
+            console.log(`🔍 Filtrado por populares (views): ${antes} → ${filtered.length}`);
             filtered = [...lugares]
                 .sort((a, b) => (b.views || 0) - (a.views || 0))
                 .slice(0, 10);

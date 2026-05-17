@@ -124,8 +124,8 @@ interface Lugar {
   website?: string;
   email?: string;
   codigoPostal?: string;
-  tiempoEstancia: number;
-  costoEstimado: string;
+  tiempoEstancia?: number;
+  costoEstimado?: string;
   notaIA: string;
   fotos: string[];
   negocioId?: string;
@@ -197,8 +197,8 @@ function mapPlaceToPublicDetail(place: PlaceRecord): Lugar {
       (place as PlaceRecord & { ownerEmail?: string; contactEmail?: string }).ownerEmail ||
       (place as PlaceRecord & { ownerEmail?: string; contactEmail?: string }).contactEmail,
     codigoPostal: place.codigoPostal,
-    tiempoEstancia: placeAsAny.tiempoEstancia && placeAsAny.tiempoEstancia > 0 ? placeAsAny.tiempoEstancia : 60,
-    costoEstimado: placeAsAny.costoEstimado || "No especificado",
+    tiempoEstancia: placeAsAny.tiempoEstancia && placeAsAny.tiempoEstancia > 0 ? placeAsAny.tiempoEstancia : undefined,
+    costoEstimado: placeAsAny.costoEstimado && String(placeAsAny.costoEstimado).trim() ? String(placeAsAny.costoEstimado).trim() : undefined,
     notaIA: place.descripcion || "",
     fotos: Array.isArray(place.fotos) ? place.fotos : [],
     negocioId: place.negocioId,
@@ -391,8 +391,8 @@ export default function InformacionLugar() {
   setFotos(lugarEncontrado ? getGalleryPhotos(lugarEncontrado) : []);
         if (lugarEncontrado) {
           setEtiquetasEdit(lugarEncontrado.etiquetas);
-          setEditTiempo(String(lugarEncontrado.tiempoEstancia));
-          setEditCosto(lugarEncontrado.costoEstimado);
+          setEditTiempo(String(lugarEncontrado.tiempoEstancia ?? ''));
+          setEditCosto(lugarEncontrado.costoEstimado || '');
           setEditDescripcion(lugarEncontrado.notaIA || '');
           const h = getHorarioActivo(lugarEncontrado.nombre, lugarEncontrado.horariosJson);
           const initDias: Record<string, DiaEdit> = {};
@@ -626,6 +626,9 @@ export default function InformacionLugar() {
     setGuardandoInfo(true);
     setMensajeInfo("");
     const token = localStorage.getItem("pitzbol_token");
+    const tiempoParsed = Number(editTiempo);
+    const hasTiempo = editTiempo.trim() !== '' && Number.isFinite(tiempoParsed) && tiempoParsed > 0;
+    const hasCosto = editCosto.trim() !== '';
     try {
       const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}/info`, {
         method: "PATCH",
@@ -635,12 +638,16 @@ export default function InformacionLugar() {
         },
         credentials: "include",
         body: JSON.stringify({
-          tiempoEstancia: Number(editTiempo),
-          costoEstimado: editCosto,
+          tiempoEstancia: hasTiempo ? tiempoParsed : null,
+          costoEstimado: hasCosto ? editCosto.trim() : null,
         }),
       });
       if (res.ok) {
-        setLugar(prev => prev ? { ...prev, tiempoEstancia: Number(editTiempo), costoEstimado: editCosto } : prev);
+        setLugar(prev => prev ? {
+          ...prev,
+          tiempoEstancia: hasTiempo ? tiempoParsed : undefined,
+          costoEstimado: hasCosto ? editCosto.trim() : undefined,
+        } : prev);
         setMensajeInfo("✓ Guardado");
         setEditandoInfo(false);
       } else {
@@ -691,6 +698,10 @@ export default function InformacionLugar() {
   }
 
   const lugarSeguro = lugar as Lugar;
+  const horarioLugar = getHorarioActivo(lugarSeguro.nombre, lugarSeguro.horariosJson);
+  const mostrarHorario = esAdminLugares || !!horarioLugar;
+  const tieneTiempo = typeof lugarSeguro.tiempoEstancia === "number" && lugarSeguro.tiempoEstancia > 0;
+  const tieneCosto = !!(lugarSeguro.costoEstimado && lugarSeguro.costoEstimado.trim());
 
   return (
     <div className={styles.container}>
@@ -806,7 +817,7 @@ export default function InformacionLugar() {
             <h1 className={styles.title}>{lugarSeguro.nombre}</h1>
           </div>
 
-          {/* Galería: carrusel + panel de horario */}
+          {/* Galería: carrusel + miniaturas */}
           <section className={styles.gallerySplit}>
             {/* Carrusel */}
             <div className={styles.galleryViewer} style={{ position: 'relative' }}>
@@ -852,81 +863,31 @@ export default function InformacionLugar() {
               )}
             </div>
 
-            {/* Panel horario por día */}
-            {(() => {
-              const horario = getHorarioActivo(lugarSeguro.nombre, lugarSeguro.horariosJson);
-              const hoy = getDiaIdx();
-              return (
-                <div style={{ background: '#F7F9F4', borderRadius: '0.875rem', padding: '1.1rem 1.15rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <FiClock color="#1A4D2E" size={16} />
-                      <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.88rem' }}>Horario</span>
-                    </div>
-                    {esAdminLugares && !editandoHorarios && (
-                      <button onClick={() => setEditandoHorarios(true)} style={{ fontSize: '0.72rem', fontWeight: 600, color: '#1A4D2E', background: 'none', border: '1px solid #1A4D2E', borderRadius: '0.4rem', padding: '0.2rem 0.6rem', cursor: 'pointer' }}>
-                        ✏️ Editar
-                      </button>
-                    )}
-                  </div>
-                  {editandoHorarios ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                      {DIAS_ES.map(dia => {
-                        const d = editHorarios[dia] || { apertura: '09:00', cierre: '18:00', cerrado: false };
-                        return (
-                          <div key={dia} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#4b5563', minWidth: 68 }}>{NOMBRE_DIA[dia]}</span>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: '#6b7280', cursor: 'pointer' }}>
-                              <input type="checkbox" checked={d.cerrado} onChange={e => setEditHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], cerrado: e.target.checked } }))} />
-                              Cerrado
-                            </label>
-                            {!d.cerrado && (
-                              <>
-                                <input type="time" value={d.apertura} onChange={e => setEditHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], apertura: e.target.value } }))} style={{ fontSize: '0.7rem', border: '1px solid #d1d5db', borderRadius: '0.3rem', padding: '1px 4px' }} />
-                                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>–</span>
-                                <input type="time" value={d.cierre} onChange={e => setEditHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], cierre: e.target.value } }))} style={{ fontSize: '0.7rem', border: '1px solid #d1d5db', borderRadius: '0.3rem', padding: '1px 4px' }} />
-                              </>
-                            )}
-                          </div>
-                        );
-                      })}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.4rem' }}>
-                        <button onClick={guardarHorarios} disabled={guardandoHorarios} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#1A4D2E', color: 'white', border: 'none', fontSize: '0.72rem', fontWeight: 600, padding: '0.35rem 0.85rem', borderRadius: '0.4rem', cursor: 'pointer', opacity: guardandoHorarios ? 0.6 : 1 }}>
-                          <FiCheck size={11} /> {guardandoHorarios ? 'Guardando...' : 'Guardar'}
-                        </button>
-                        <button onClick={() => setEditandoHorarios(false)} style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer' }}>
-                          Cancelar
-                        </button>
-                        {mensajeHorarios && <span style={{ fontSize: '0.72rem', fontWeight: 600, color: mensajeHorarios.startsWith('✓') ? '#16a34a' : '#dc2626' }}>{mensajeHorarios}</span>}
-                      </div>
-                    </div>
-                  ) : horario ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem' }}>
-                      {DIAS_ES.map(dia => {
-                        const esHoy = dia === hoy;
-                        const rango = formatRango(horario[dia]);
-                        const cerrado = rango === 'Cerrado';
-                        return (
-                          <div key={dia} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0.18rem 0.35rem', borderRadius: '0.4rem', background: esHoy ? '#E8F5E9' : 'transparent' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: esHoy ? 700 : 500, color: esHoy ? '#1A4D2E' : '#4b5563', minWidth: 72 }}>
-                              {NOMBRE_DIA[dia]}
-                            </span>
-                            <span style={{ fontSize: '0.75rem', fontWeight: esHoy ? 700 : 400, color: cerrado ? '#dc2626' : esHoy ? '#0D601E' : '#374151', textAlign: 'right' }}>
-                              {rango}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <span style={{ color: '#9ca3af', fontSize: '0.83rem', fontWeight: 500 }}>Horario no disponible</span>
-                      <span style={{ color: '#d1d5db', fontSize: '0.72rem' }}>Consulta directamente al lugar</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+            {/* Miniaturas (estilo anterior) */}
+            <div className={styles.galleryThumbsColumn}>
+              {fotos.map((foto, idx) => (
+                <button
+                  key={`${foto}-${idx}`}
+                  type="button"
+                  onClick={() => setFotoIdx(idx)}
+                  className={`${styles.galleryThumbButton} ${idx === fotoIdx ? styles.galleryThumbButtonActive : ''}`}
+                  aria-label={`Ver imagen ${idx + 1}`}
+                >
+                  <img
+                    src={foto}
+                    alt={`${lugarSeguro.nombre} miniatura ${idx + 1}`}
+                    className={styles.galleryThumbImage}
+                    loading="lazy"
+                    onError={(e) => {
+                      const fallbackPhoto = getFallbackPhoto(lugarSeguro);
+                      if (e.currentTarget.getAttribute('src') !== fallbackPhoto) {
+                        e.currentTarget.src = fallbackPhoto;
+                      }
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
           </section>
 
           {/* Etiquetas + panel derecho (tiempo/costo/contacto) */}
@@ -1071,7 +1032,74 @@ export default function InformacionLugar() {
             </section>
 
             <aside className={styles.quickInfoColumn}>
+              {mostrarHorario && (
+                <div style={{ background: '#F7F9F4', borderRadius: '0.875rem', padding: '1.1rem 1.15rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <FiClock color="#1A4D2E" size={16} />
+                      <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.88rem' }}>Horario</span>
+                    </div>
+                    {esAdminLugares && !editandoHorarios && (
+                      <button onClick={() => setEditandoHorarios(true)} style={{ fontSize: '0.72rem', fontWeight: 600, color: '#1A4D2E', background: 'none', border: '1px solid #1A4D2E', borderRadius: '0.4rem', padding: '0.2rem 0.6rem', cursor: 'pointer' }}>
+                        ✏️ Editar
+                      </button>
+                    )}
+                  </div>
+                  {editandoHorarios ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      {DIAS_ES.map(dia => {
+                        const d = editHorarios[dia] || { apertura: '09:00', cierre: '18:00', cerrado: false };
+                        return (
+                          <div key={dia} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#4b5563', minWidth: 68 }}>{NOMBRE_DIA[dia]}</span>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: '#6b7280', cursor: 'pointer' }}>
+                              <input type="checkbox" checked={d.cerrado} onChange={e => setEditHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], cerrado: e.target.checked } }))} />
+                              Cerrado
+                            </label>
+                            {!d.cerrado && (
+                              <>
+                                <input type="time" value={d.apertura} onChange={e => setEditHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], apertura: e.target.value } }))} style={{ fontSize: '0.7rem', border: '1px solid #d1d5db', borderRadius: '0.3rem', padding: '1px 4px' }} />
+                                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>–</span>
+                                <input type="time" value={d.cierre} onChange={e => setEditHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], cierre: e.target.value } }))} style={{ fontSize: '0.7rem', border: '1px solid #d1d5db', borderRadius: '0.3rem', padding: '1px 4px' }} />
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.4rem' }}>
+                        <button onClick={guardarHorarios} disabled={guardandoHorarios} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#1A4D2E', color: 'white', border: 'none', fontSize: '0.72rem', fontWeight: 600, padding: '0.35rem 0.85rem', borderRadius: '0.4rem', cursor: 'pointer', opacity: guardandoHorarios ? 0.6 : 1 }}>
+                          <FiCheck size={11} /> {guardandoHorarios ? 'Guardando...' : 'Guardar'}
+                        </button>
+                        <button onClick={() => setEditandoHorarios(false)} style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          Cancelar
+                        </button>
+                        {mensajeHorarios && <span style={{ fontSize: '0.72rem', fontWeight: 600, color: mensajeHorarios.startsWith('✓') ? '#16a34a' : '#dc2626' }}>{mensajeHorarios}</span>}
+                      </div>
+                    </div>
+                  ) : horarioLugar ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem' }}>
+                      {DIAS_ES.map(dia => {
+                        const esHoy = dia === getDiaIdx();
+                        const rango = formatRango(horarioLugar[dia]);
+                        const cerrado = rango === 'Cerrado';
+                        return (
+                          <div key={dia} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0.18rem 0.35rem', borderRadius: '0.4rem', background: esHoy ? '#E8F5E9' : 'transparent' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: esHoy ? 700 : 500, color: esHoy ? '#1A4D2E' : '#4b5563', minWidth: 72 }}>
+                              {NOMBRE_DIA[dia]}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: esHoy ? 700 : 400, color: cerrado ? '#dc2626' : esHoy ? '#0D601E' : '#374151', textAlign: 'right' }}>
+                              {rango}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
               <div className={styles.quickInfoStack}>
+                {(esAdminLugares || editandoInfo || tieneTiempo) && (
                 <div className={styles.statCard}>
                   <div className={styles.statIcon}>
                     <FiClock />
@@ -1091,7 +1119,9 @@ export default function InformacionLugar() {
                     )}
                   </div>
                 </div>
+                )}
 
+                {(esAdminLugares || editandoInfo || tieneCosto) && (
                 <div className={styles.statCard}>
                   <div className={styles.statIcon}>
                     <FiDollarSign />
@@ -1111,6 +1141,7 @@ export default function InformacionLugar() {
                     )}
                   </div>
                 </div>
+                )}
               </div>
 
               {esAdminLugares && (
@@ -1125,7 +1156,7 @@ export default function InformacionLugar() {
                         <FiCheck size={12} /> {guardandoInfo ? "Guardando..." : "Guardar info"}
                       </button>
                       <button
-                        onClick={() => { setEditandoInfo(false); setEditTiempo(String(lugarSeguro.tiempoEstancia)); setEditCosto(lugarSeguro.costoEstimado); }}
+                        onClick={() => { setEditandoInfo(false); setEditTiempo(String(lugarSeguro.tiempoEstancia ?? '')); setEditCosto(lugarSeguro.costoEstimado || ''); }}
                         style={{ fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}
                       >
                         Cancelar

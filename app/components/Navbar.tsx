@@ -14,6 +14,8 @@ import imglogo from "./logoPitzbol.png";
 import imgPasto from "./pastoVerde.png";
 import NotificationsPanel from "./NotificationsPanel";
 import HistorialSolicitudesModal from "./HistorialSolicitudesModal";
+import PWAInstallButton from "./PWAInstallButton";
+import { usePWAInstall } from "@/app/context/PWAInstallContext";
 import { useMessageNotifications } from "@/lib/useMessageNotifications";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
@@ -58,6 +60,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const businessCloseTimeoutRef = useRef<number | null>(null);
     const t = useTranslations('navbar');
     const tRoles = useTranslations('roles');
+    const { canInstall } = usePWAInstall();
 
     const clearBusinessCloseTimeout = () => {
         if (businessCloseTimeoutRef.current !== null) {
@@ -637,14 +640,20 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             </Link>
                             {user && (
                                 <>
-                                    <div className="h-[1px] bg-gray-100 my-3 mx-2" />
+                                    <div className="h-[1px] bg-gray-100 my-1 mx-2" />
                                     <button
                                         onClick={handleLogout}
-                                        className="flex items-center gap-3 p-3 rounded-2xl text-sm font-semibold group w-full text-left transition-colors"
+                                        className="flex items-center gap-3 p-3 rounded-2xl text-sm font-semibold group w-full text-left transition-colors hover:bg-[#F00808] hover:text-white"
                                     >
-                                        <FiLogOut className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
-                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('logout')}</span>
+                                        <FiLogOut className="text-[#0D601E] group-hover:text-white transition-colors" />
+                                        <span className="text-[#1A4D2E] group-hover:text-white transition-colors">{t('logout')}</span>
                                     </button>
+                                    {canInstall && (
+                                        <>
+                                            <div className="h-[1px] bg-gray-100 my-1 mx-2" />
+                                            <PWAInstallButton />
+                                        </>
+                                    )}
                                 </>
                             )}
                         </motion.div>

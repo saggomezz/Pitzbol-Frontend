@@ -58,8 +58,33 @@ interface FirestorePlace {
   subcategorias?: string[];
   categorias?: string[];
   fotos?: string[];
+  images?: string[];
+  galeria?: string[];
+  logo?: string;
   rating?: number | string;
   views?: number | string;
+}
+
+function normalizeMediaUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (/^(javascript|vbscript|file):/i.test(trimmed)) return null;
+
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^\/\//.test(trimmed)) return `https:${trimmed}`;
+  if (/^\//.test(trimmed) || /^\.\.?\//.test(trimmed)) return trimmed;
+  if (/^data:image\//i.test(trimmed) || /^blob:/i.test(trimmed)) return trimmed;
+  if (/^([a-z0-9-]+\.)+[a-z]{2,}(\/|$)/i.test(trimmed)) return `https://${trimmed}`;
+
+  return null;
+}
+
+function normalizeMediaList(values: unknown[]): string[] {
+  return values
+    .map((value) => normalizeMediaUrl(value))
+    .filter((value): value is string => Boolean(value));
 }
 
 function parseNumber(value: unknown): number | null {
@@ -147,7 +172,14 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
   });
 
   try {
-    const firestoreResponse = await fetch(`${API_BASE}/lugares?includeApprovedBusinesses=true`);
+    let firestoreResponse = await fetch(`${API_BASE}/lugares?includeApprovedBusinesses=true`);
+
+    // Fallback defensivo: si la integración con negocios aprobados falla,
+    // intentamos al menos recuperar lugares base con fotos manuales.
+    if (!firestoreResponse.ok) {
+      firestoreResponse = await fetch(`${API_BASE}/lugares`);
+    }
+
     if (!firestoreResponse.ok) {
       return Array.from(mergedByName.values());
     }
@@ -165,6 +197,23 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
       const realRating = parseNumber(firestorePlace.rating) ?? 
                         parseNumber((firestorePlace as any).averageRating);
       const realViews = parseNumber(firestorePlace.views);
+
+      const photosFromPlace = [
+        ...(Array.isArray(firestorePlace.fotos) ? firestorePlace.fotos : []),
+        ...(Array.isArray(firestorePlace.images) ? firestorePlace.images : []),
+        ...(Array.isArray(firestorePlace.galeria) ? firestorePlace.galeria : []),
+      ];
+
+      const normalizedPhotos = normalizeMediaList(photosFromPlace);
+      const normalizedLogo = normalizeMediaUrl(firestorePlace.logo);
+
+      const mergedPhotos = Array.from(
+        new Set([
+          ...(normalizedLogo ? [normalizedLogo] : []),
+          ...normalizedPhotos,
+          ...(existing?.fotos || []),
+        ])
+      );
 
       // Si Firebase tiene categorias[] (editadas por el admin), son autoritativas.
       // No mezclar con CSV — el admin decidió exactamente qué categorías tiene el lugar.
@@ -230,7 +279,7 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
           undefined,
         horario: firestorePlace.schedule ?? existing?.horario ?? null,
         horariosJson: firestorePlace.horariosJson ?? existing?.horariosJson,
-        fotos: Array.isArray(firestorePlace.fotos) ? firestorePlace.fotos : existing?.fotos || [],
+        fotos: mergedPhotos,
         rating: realRating ?? existing?.rating ?? fallbackRating(nombre),
         views: realViews ?? existing?.views ?? fallbackViews(nombre),
         negocioId: firestorePlace.negocioId || (firestorePlace as any).id || existing?.negocioId,
