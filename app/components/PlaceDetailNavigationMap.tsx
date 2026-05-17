@@ -47,8 +47,10 @@ type MapTrafficSegment = {
   coordinates: [number, number][];
   level: TrafficLevel;
 };
+type RouteTravelMode = 'driving' | 'motorcycle' | 'walking' | 'cycling';
 type MapRoute = {
   polyline: string;
+  travelMode?: RouteTravelMode;
   trafficSegments?: MapTrafficSegment[];
 };
 type NavigationAlert = { type: 'info' | 'warning' | 'success'; message: string };
@@ -74,7 +76,12 @@ function isValidPoint(point: GeoPoint | null | undefined): point is GeoPoint {
 /** Exposes the Leaflet map instance to a parent ref (must live inside MapContainer) */
 function MapRefSetter({ mapRef }: { mapRef: React.MutableRefObject<any> }) {
   const map = useMap();
-  useEffect(() => { mapRef.current = map; }, [map, mapRef]);
+  useEffect(() => {
+    mapRef.current = map;
+    return () => {
+      if (mapRef.current === map) mapRef.current = null;
+    };
+  }, [map, mapRef]);
   return null;
 }
 
@@ -260,20 +267,68 @@ function MapResizeHandler() {
     // ResizeObserver para detectar cambios en el tamaño del contenedor del mapa
     const mapContainer = map.getContainer();
     if (!mapContainer) return;
+    const timeoutIds = new Set<number>();
 
     const resizeObserver = new ResizeObserver(() => {
       // Esperar a que el DOM se estabilice antes de invalidar
-      setTimeout(() => {
+      const timeoutId = window.setTimeout(() => {
+        timeoutIds.delete(timeoutId);
+        if (!mapContainer.isConnected || !(map as any)._loaded) return;
         map.invalidateSize();
       }, 100);
+      timeoutIds.add(timeoutId);
     });
 
     resizeObserver.observe(mapContainer);
 
     return () => {
       resizeObserver.disconnect();
+      timeoutIds.forEach(timeoutId => window.clearTimeout(timeoutId));
+      timeoutIds.clear();
     };
   }, [map]);
+
+  return null;
+}
+
+function parsePolylinePositionsSafe(polyline: string): [number, number][] {
+  try {
+    const coords: [number, number][] = JSON.parse(polyline);
+    return Array.isArray(coords) ? coords.map(([lng, lat]) => [lat, lng]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function RouteViewport({
+  routes,
+  selectedRouteIndex,
+  isNavigating,
+}: {
+  routes: MapRoute[];
+  selectedRouteIndex: number;
+  isNavigating: boolean;
+}) {
+  const map = useMap();
+  const routeKey = routes.map(route => route.polyline.slice(0, 80)).join('|');
+
+  useEffect(() => {
+    if (isNavigating || !routes.length) return;
+    const selectedRoute = routes[selectedRouteIndex] ?? routes[0];
+    const positions = parsePolylinePositionsSafe(selectedRoute.polyline);
+    if (positions.length < 2) return;
+
+    const timeoutId = setTimeout(() => {
+      map.fitBounds(positions, {
+        paddingTopLeft: [54, 54],
+        paddingBottomRight: [54, 86],
+        maxZoom: 16,
+        animate: true,
+      });
+    }, 80);
+
+    return () => clearTimeout(timeoutId);
+  }, [map, routeKey, selectedRouteIndex, isNavigating, routes]);
 
   return null;
 }
@@ -385,17 +440,50 @@ function PlaceDetailNavigationMapComponent({
     });
   })();
 
-  function parsePolylinePositions(polyline: string): [number, number][] {
-    try {
-      const coords: [number, number][] = JSON.parse(polyline);
-      return coords.map(([lng, lat]) => [lat, lng]);
-    } catch {
-      return [];
-    }
-  }
-
   function parseTrafficSegmentPositions(segment: MapTrafficSegment): [number, number][] {
     return segment.coordinates.map(([lng, lat]) => [lat, lng]);
+  }
+
+  function baseRouteStyle(mode: RouteTravelMode, isSelected: boolean, idx: number) {
+    if (mode === 'walking') {
+      return {
+        color: '#2563eb',
+        weight: isSelected ? 6 : 4,
+        opacity: isSelected ? 1 : 0.72,
+        dashArray: '1 11',
+        lineCap: 'round' as const,
+        lineJoin: 'round' as const,
+      };
+    }
+
+    if (mode === 'cycling') {
+      return {
+        color: '#059669',
+        weight: isSelected ? 6 : 4,
+        opacity: isSelected ? 1 : 0.72,
+        dashArray: '14 8',
+        lineCap: 'round' as const,
+        lineJoin: 'round' as const,
+      };
+    }
+
+    if (mode === 'motorcycle') {
+      return {
+        color: isSelected ? '#0f766e' : '#0d9488',
+        weight: isSelected ? 6 : 3,
+        opacity: isSelected ? 1 : 0.42,
+        lineCap: 'round' as const,
+        lineJoin: 'round' as const,
+      };
+    }
+
+    return {
+      color: isSelected ? '#1a73e8' : ROUTE_COLORS[(idx % (ROUTE_COLORS.length - 1)) + 1],
+      weight: isSelected ? 6 : 3,
+      opacity: isSelected ? 1 : 0.4,
+      lineCap: 'round' as const,
+      lineJoin: 'round' as const,
+    };
   }
 
   const handleMapPick = (lat: number, lng: number) => {
@@ -437,6 +525,7 @@ function PlaceDetailNavigationMapComponent({
         />
 
         <MapViewport destination={fallbackDestination} origin={origin} isNavigating={!!liveNavPosition} />
+        <RouteViewport routes={routes} selectedRouteIndex={selectedRouteIndex} isNavigating={!!liveNavPosition} />
         <MapResizeHandler />
         {/* Block map-click origin changes while live navigation is active */}
         {!liveNavPosition && <MapPickHandler onPick={handleMapPick} />}
@@ -473,24 +562,26 @@ function PlaceDetailNavigationMapComponent({
           )
         )}
 
-        {/* Render non-selected routes first (below), selected route last (on top) */}
-        {[...routes.map((r, idx) => ({ r, idx })).filter(({ idx }) => idx !== selectedRouteIndex),
-           ...routes.map((r, idx) => ({ r, idx })).filter(({ idx }) => idx === selectedRouteIndex),
-        ].map(({ r, idx }) => {
-          const positions = parsePolylinePositions(r.polyline);
+        {/* Render only the selected route */}
+        {routes.map((r, idx) => ({ r, idx }))
+          .filter(({ idx }) => idx === selectedRouteIndex)
+          .map(({ r, idx }) => {
+          const positions = parsePolylinePositionsSafe(r.polyline);
           if (!positions.length) return null;
           const isSelected = idx === selectedRouteIndex;
+          const travelMode = r.travelMode ?? 'driving';
+          const routeStyle = baseRouteStyle(travelMode, isSelected, idx);
           const trafficSegments = (r.trafficSegments ?? [])
             .map(segment => ({ segment, positions: parseTrafficSegmentPositions(segment) }))
             .filter(({ positions }) => positions.length > 1);
           return isSelected ? (
-            // Selected route: white casing beneath + estimated traffic colors on top.
+            // Selected route: white casing beneath + mode-specific line on top.
             <React.Fragment key={`sel-${idx}`}>
               <Polyline
                 positions={positions}
-                pathOptions={{ color: 'white', weight: 10, opacity: 0.85 }}
+                pathOptions={{ color: 'white', weight: 10, opacity: 0.88, lineCap: 'round', lineJoin: 'round' }}
               />
-              {trafficSegments.length > 0 ? (
+              {(travelMode === 'driving' || travelMode === 'motorcycle') && trafficSegments.length > 0 ? (
                 trafficSegments.map(({ segment, positions }, segmentIdx) => (
                   <Polyline
                     key={`traffic-${idx}-${segmentIdx}`}
@@ -499,13 +590,15 @@ function PlaceDetailNavigationMapComponent({
                       color: TRAFFIC_COLORS[segment.level] ?? '#1a73e8',
                       weight: 6,
                       opacity: 1,
+                      lineCap: 'round',
+                      lineJoin: 'round',
                     }}
                   />
                 ))
               ) : (
                 <Polyline
                   positions={positions}
-                  pathOptions={{ color: '#1a73e8', weight: 6, opacity: 1 }}
+                  pathOptions={routeStyle}
                 />
               )}
             </React.Fragment>
@@ -513,11 +606,7 @@ function PlaceDetailNavigationMapComponent({
             <Polyline
               key={`alt-${idx}`}
               positions={positions}
-              pathOptions={{
-                color: ROUTE_COLORS[(idx % (ROUTE_COLORS.length - 1)) + 1],
-                weight: 3,
-                opacity: 0.4,
-              }}
+              pathOptions={routeStyle}
             />
           );
         })}
@@ -675,7 +764,7 @@ function PlaceDetailNavigationMapComponent({
         </div>
       )}
 
-      {routes[selectedRouteIndex]?.trafficSegments?.length ? (
+      {routes[selectedRouteIndex]?.travelMode !== 'walking' && routes[selectedRouteIndex]?.travelMode !== 'cycling' && routes[selectedRouteIndex]?.trafficSegments?.length ? (
         <div style={{
           position: 'absolute', left: 12, bottom: liveNavPosition ? 12 : 44,
           zIndex: 1000, display: 'flex', gap: 8, alignItems: 'center',

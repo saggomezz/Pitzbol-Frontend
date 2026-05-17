@@ -2,12 +2,12 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { FiChevronDown, FiMapPin, FiAlertCircle, FiLoader, FiNavigation, FiShare2, FiSearch, FiClock, FiUser, FiTarget, FiX } from 'react-icons/fi';
-import { FaCarSide, FaPersonWalking, FaBicycle, FaBusSimple, FaTaxi } from 'react-icons/fa6';
+import { FaCarSide, FaMotorcycle, FaPersonWalking, FaBicycle } from 'react-icons/fa6';
 import { geocodeAddress, getRoute, RouteResponse, RouteOption, GeoPoint } from '@/lib/geoClient';
 import { useGeolocation } from '@/lib/useGeolocation';
 import { usePitzbolUser } from '@/lib/usePitzbolUser';
 
-export type TransportMode = 'driving' | 'walking' | 'cycling' | 'transit-like' | 'rideshare-like';
+export type TransportMode = 'driving' | 'motorcycle' | 'walking' | 'cycling';
 type TrafficSegment = NonNullable<RouteOption['trafficSegments']>[number];
 
 const OFF_ROUTE_BASE_RADIUS_M = 60;
@@ -51,7 +51,7 @@ function fmtMinutes(minutes: number): string {
 function maxReasonableSpeedMps(mode: TransportMode): number {
   if (mode === 'walking') return 3.2;
   if (mode === 'cycling') return 13.9;
-  if (mode === 'transit-like') return 36;
+  if (mode === 'motorcycle') return 50;
   return 45;
 }
 
@@ -267,7 +267,7 @@ export interface NavigationPanelProps {
   onExpandedChange?: (expanded: boolean) => void;
   onOriginMarkerChange?: (point: GeoPoint | null, meta: OriginMarkerMeta) => void;
   mapOriginEvent?: MapOriginEvent | null;
-  onRouteChange?: (routes: RouteOption[], selectedIndex: number) => void;
+  onRouteChange?: (routes: RouteOption[], selectedIndex: number, mode: TransportMode) => void;
   /** Called on every GPS update during live navigation. null = navigation stopped. */
   onLivePosition?: (pos: { lat: number; lng: number; bearing: number | null } | null) => void;
   onDrivingModeChange?: (active: boolean) => void;
@@ -275,35 +275,31 @@ export interface NavigationPanelProps {
 }
 
 const TRANSPORT_MODE_LABELS: Record<TransportMode, string> = {
-  driving: 'Auto',
+  driving: 'Automóvil',
+  motorcycle: 'Motocicleta',
   walking: 'A pie',
-  cycling: 'Bici',
-  'transit-like': 'Transporte',
-  'rideshare-like': 'Viaje'
+  cycling: 'Bicicleta'
 };
 
 const TRANSPORT_MODE_ICONS: Record<TransportMode, React.ComponentType<{ className?: string }>> = {
   driving: FaCarSide,
+  motorcycle: FaMotorcycle,
   walking: FaPersonWalking,
-  cycling: FaBicycle,
-  'transit-like': FaBusSimple,
-  'rideshare-like': FaTaxi
+  cycling: FaBicycle
 };
 
 const TRANSPORT_MODE_STYLES: Record<TransportMode, string> = {
   driving: 'bg-[#0E5F27] text-white border-[#0E5F27] shadow-sm',
+  motorcycle: 'bg-[#0E5F27] text-white border-[#0E5F27] shadow-sm',
   walking: 'bg-[#0E5F27] text-white border-[#0E5F27] shadow-sm',
-  cycling: 'bg-[#0E5F27] text-white border-[#0E5F27] shadow-sm',
-  'transit-like': 'bg-[#0E5F27] text-white border-[#0E5F27] shadow-sm',
-  'rideshare-like': 'bg-[#0E5F27] text-white border-[#0E5F27] shadow-sm'
+  cycling: 'bg-[#0E5F27] text-white border-[#0E5F27] shadow-sm'
 };
 
 const TRANSPORT_MODE_OUTLINE: Record<TransportMode, string> = {
   driving: 'bg-[#F5F8F3] text-[#0E5F27] border-emerald-200 hover:border-emerald-400',
+  motorcycle: 'bg-[#F5F8F3] text-[#0E5F27] border-emerald-200 hover:border-emerald-400',
   walking: 'bg-[#F5F8F3] text-[#0E5F27] border-emerald-200 hover:border-emerald-400',
-  cycling: 'bg-[#F5F8F3] text-[#0E5F27] border-emerald-200 hover:border-emerald-400',
-  'transit-like': 'bg-[#F5F8F3] text-[#0E5F27] border-emerald-200 hover:border-emerald-400',
-  'rideshare-like': 'bg-[#F5F8F3] text-[#0E5F27] border-emerald-200 hover:border-emerald-400'
+  cycling: 'bg-[#F5F8F3] text-[#0E5F27] border-emerald-200 hover:border-emerald-400'
 };
 
 function normalizePoint(value: number | string | undefined): number {
@@ -474,6 +470,7 @@ export function NavigationPanel({
     onRouteChange?.(
       buildMapRoutes(availableRoutesRef.current, selectedRouteIdxRef.current, position),
       selectedRouteIdxRef.current,
+      transportMode,
     );
   }
 
@@ -542,7 +539,7 @@ export function NavigationPanel({
     if (availableRoutes.length > 0) {
       publishMapRoutes(undefined, true);
     } else {
-      onRouteChange?.([], 0);
+      onRouteChange?.([], 0, transportMode);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableRoutes, selectedRouteIdx]);
@@ -1018,6 +1015,7 @@ export function NavigationPanel({
 
     setLoadingRoute(true);
     setRouteError(null);
+    setNavNotice(null);
     setAvailableRoutes([]);
     setNavigationStarted(false);
 
@@ -1045,7 +1043,6 @@ export function NavigationPanel({
         setSelectedRouteIdx(0);
         setRoute(routeResult);
         hasCalculatedRoutesRef.current = true;
-        showNavNotice('success', `${topRoutes.length} ruta${topRoutes.length === 1 ? '' : 's'} lista${topRoutes.length === 1 ? '' : 's'}.`, 4500);
         onNavigationStart?.();
       } else {
         setRouteError(routeResult.error || 'No se pudo calcular la ruta');
@@ -1238,7 +1235,7 @@ export function NavigationPanel({
               </div>
               <FiClock className="h-5 w-5 text-slate-500" />
             </div>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
               {(Object.keys(TRANSPORT_MODE_LABELS) as TransportMode[]).map(mode => {
                 const Icon = TRANSPORT_MODE_ICONS[mode];
                 return (
@@ -1248,13 +1245,16 @@ export function NavigationPanel({
                     onClick={() => setTransportMode(mode)}
                     aria-label={TRANSPORT_MODE_LABELS[mode]}
                     title={TRANSPORT_MODE_LABELS[mode]}
-                    className={`inline-flex h-11 w-full items-center justify-center rounded-xl border transition ${
+                    className={`inline-flex min-h-[3.4rem] w-full min-w-0 items-center gap-2 rounded-xl border px-2 py-2 text-left transition ${
                       transportMode === mode
                         ? TRANSPORT_MODE_STYLES[mode]
                         : TRANSPORT_MODE_OUTLINE[mode]
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="min-w-0 flex-1 text-[11px] font-bold leading-tight sm:text-xs">
+                      {TRANSPORT_MODE_LABELS[mode]}
+                    </span>
                   </button>
                 );
               })}
@@ -1307,7 +1307,7 @@ export function NavigationPanel({
               <div className="space-y-2">
                 {availableRoutes.map((r, idx) => {
                   const COLORS = ['#2563eb', '#d97706', '#7c3aed'];
-                  const LABELS = ['Ruta más rápida', 'Ruta alternativa', 'Ruta adicional'];
+                  const LABELS = ['Ruta más rápida', 'Ruta alternativa'];
                   const isSelected = idx === selectedRouteIdx;
                   return (
                     <button
@@ -1492,7 +1492,7 @@ export function NavigationPanel({
                             </p>
                           </div>
                           <div className="min-w-0 rounded-2xl bg-blue-50 p-2">
-                            <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-500">ETA vivo</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-500">Tiempo</p>
                             <p className="mt-1 text-lg font-bold text-slate-900">
                               {liveEtaMinutes !== null
                                 ? fmtMinutes(liveEtaMinutes)

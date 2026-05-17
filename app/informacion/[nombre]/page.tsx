@@ -9,7 +9,7 @@ import styles from "../informacion.module.css";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import DeletedBusinessModal from "@/app/components/DeletedBusinessModal";
 import PlaceRating from "@/app/components/PlaceRating";
-import { NavigationPanel, type MapOriginEvent, type NavigationMapAlert, type OriginMarkerMeta } from "../../components/NavigationPanel";
+import { NavigationPanel, type MapOriginEvent, type NavigationMapAlert, type OriginMarkerMeta, type TransportMode } from "../../components/NavigationPanel";
 import PlaceDetailNavigationMap, { type OriginChangeMeta } from "@/app/components/PlaceDetailNavigationMap";
 import { usePlaceView } from "@/lib/usePlaceView";
 import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
@@ -265,6 +265,7 @@ export default function InformacionLugar() {
   const [mapOriginEvent, setMapOriginEvent] = useState<MapOriginEvent | null>(null);
   const [mapRoutes, setMapRoutes] = useState<{
     polyline: string;
+    travelMode?: TransportMode;
     trafficSegments?: { coordinates: [number, number][]; level: 'free' | 'moderate' | 'heavy' }[];
   }[]>([]);
   const [mapSelectedRouteIdx, setMapSelectedRouteIdx] = useState(0);
@@ -743,7 +744,7 @@ export default function InformacionLugar() {
 
       <div className={styles.wrapper}>
         {/* Información principal */}
-        <div className={styles.mainContent}>
+        <div className={`${styles.mainContent} ${isNavigationExpanded || isDrivingMode ? styles.mainContentStickyMap : ''}`}>
           <div className={styles.titleSection}>
             <div className={styles.titleTopRow}>
               <span className={styles.categoryBadge}>{lugarSeguro.categoria}</span>
@@ -1249,9 +1250,10 @@ export default function InformacionLugar() {
                     onExpandedChange={setIsNavigationExpanded}
                     onOriginMarkerChange={handlePanelOriginMarkerChange}
                     mapOriginEvent={mapOriginEvent}
-                    onRouteChange={(routes, idx) => {
+                    onRouteChange={(routes, idx, mode) => {
                       setMapRoutes(routes.map(r => ({
                         polyline: r.polyline ?? '',
+                        travelMode: mode,
                         trafficSegments: r.trafficSegments,
                       })));
                       setMapSelectedRouteIdx(idx);
