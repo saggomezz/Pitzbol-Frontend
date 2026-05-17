@@ -1,7 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { FiChevronDown, FiEye, FiEyeOff, FiLock, FiMail, FiX } from "react-icons/fi";
 import { getBackendOrigin } from "@/lib/backendUrl";
@@ -55,11 +55,14 @@ const ErrorMsg = ({ text }: { text: string }) => (
   </motion.p>
 );
 
-const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo }: { isOpen: boolean; onClose: () => void; intendedRole?: "turista" | "guia" | "negocio"; redirectTo?: string }) => {
+const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defaultLogin = false }: { isOpen: boolean; onClose: () => void; intendedRole?: "turista" | "guia" | "negocio"; redirectTo?: string; defaultLogin?: boolean }) => {
   const t = useTranslations('auth');
   const tCommon = useTranslations('common');
   
   const [isLogin, setIsLogin] = useState(() => {
+  if (defaultLogin) {
+    return true;
+  }
   if (typeof window !== 'undefined') {
     return window.innerWidth < 768 ? true : false;
   }
@@ -85,6 +88,11 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo }: { 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setIsLogin(defaultLogin || (typeof window !== 'undefined' && window.innerWidth < 768));
+  }, [defaultLogin, isOpen]);
 
 
   const handleRegister = async () => {

@@ -38,6 +38,7 @@ function getRoleFromStorage(): string {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authDefaultLogin, setAuthDefaultLogin] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isBusinessOpen, setIsBusinessOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState<"turista" | "guia" | "negocio">("turista");
@@ -116,8 +117,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }, 500);
     };
 
+    const handleOpenAuthModal = () => {
+      setPendingRole("turista");
+      setAuthDefaultLogin(false);
+      setIsAuthOpen(true);
+    };
+
+    const handleOpenAuthFromRating = () => {
+      setPendingRole("turista");
+      setAuthDefaultLogin(true);
+      setIsAuthOpen(true);
+    };
+
+    window.addEventListener("openAuthModal", handleOpenAuthModal);
+    window.addEventListener("openAuthModal:rating", handleOpenAuthFromRating);
+
     return () => {
       delete window.openBusinessFlowLikeNavbar;
+      window.removeEventListener("openAuthModal", handleOpenAuthModal);
+      window.removeEventListener("openAuthModal:rating", handleOpenAuthFromRating);
     };
   }, []);
 
@@ -189,6 +207,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   isOpen={isAuthOpen} 
                   onClose={() => setIsAuthOpen(false)}
                   intendedRole={pendingRole}
+                  defaultLogin={authDefaultLogin}
                 />
               )}
 

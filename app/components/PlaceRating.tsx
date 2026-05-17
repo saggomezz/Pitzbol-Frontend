@@ -87,6 +87,11 @@ export default function PlaceRating({
     large: 22,
   };
 
+  const openAuthModal = () => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new CustomEvent("openAuthModal:rating"));
+  };
+
   useEffect(() => {
     loadRatingData();
   }, [placeName]);
@@ -130,11 +135,16 @@ export default function PlaceRating({
   };
 
   const handleRatePlace = async (rating: number) => {
-    if (readonly || !isAuthenticated) return;
+    if (readonly) return;
+
+    if (!isAuthenticated) {
+      openAuthModal();
+      return;
+    }
 
     const token = localStorage.getItem("pitzbol_token");
     if (!token) {
-      alert("Debes iniciar sesión para calificar lugares");
+      openAuthModal();
       return;
     }
 
@@ -228,10 +238,8 @@ export default function PlaceRating({
               onClick={() => handleRatePlace(star)}
               onMouseEnter={() => !readonly && setHoverRating(star)}
               onMouseLeave={() => !readonly && setHoverRating(0)}
-              disabled={readonly || !isAuthenticated}
-              className={`transition-colors ${
-                readonly || !isAuthenticated ? "cursor-default" : "cursor-pointer"
-              }`}
+              disabled={readonly}
+              className={`transition-colors ${readonly ? "cursor-default" : "cursor-pointer"}`}
               title={
                 !isAuthenticated
                   ? "Inicia sesión para calificar"
