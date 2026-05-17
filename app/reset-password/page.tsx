@@ -41,13 +41,36 @@ function ResetPasswordPageInner() {
     }
 
     try {
-      // TODO: Lógica de reseteo de contraseña vía backend
-      setStatus({ type: 'success', msg: "¡Contraseña actualizada! Redirigiendo... (simulado)" });
-      // IMPORTANTE: Limpia el localStorage para forzar login nuevo
+      const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+      const res = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ oobCode, newPassword }),
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const code = (err as any)?.error?.message || "";
+        if (code === "EXPIRED_OOB_CODE") {
+          setStatus({ type: 'error', msg: "El enlace de recuperación ha expirado. Solicita uno nuevo." });
+        } else if (code === "INVALID_OOB_CODE") {
+          setStatus({ type: 'error', msg: "El enlace de recuperación es inválido." });
+        } else {
+          setStatus({ type: 'error', msg: "Error al restablecer la contraseña. Inténtalo de nuevo." });
+        }
+        return;
+      }
+
+      // Contraseña actualizada correctamente en Firebase
       localStorage.removeItem("pitzbol_user");
+      localStorage.removeItem("pitzbol_token");
+      setStatus({ type: 'success', msg: "¡Contraseña actualizada! Redirigiendo al inicio de sesión..." });
       setTimeout(() => router.push("/"), 3000);
-    } catch (error) {
-      setStatus({ type: 'error', msg: "Error al restablecer la contraseña." });
+    } catch {
+      setStatus({ type: 'error', msg: "Error de conexión. Inténtalo de nuevo." });
     }
   };
 
