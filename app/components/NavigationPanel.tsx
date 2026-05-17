@@ -18,11 +18,162 @@ const WRONG_WAY_ANGLE_DEG = 125;
 const REROUTE_COOLDOWN_MS = 12_000;
 const SPEED_SAMPLE_WINDOW_MS = 45_000;
 const POOR_GPS_ACCURACY_M = 80;
+const NAVIGATION_STORAGE_VERSION = 1;
+const NAVIGATION_STORAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 type RerouteReason = 'off-route' | 'wrong-way';
 type RerouteRequest = GeoPoint & { reason: RerouteReason; remainingDistanceM?: number };
 type SignalStatus = 'waiting' | 'good' | 'weak' | 'lost';
+type LiveNavView = 'live' | 'steps';
 export type NavigationMapAlert = { type: 'info' | 'warning' | 'success'; message: string };
+type NavigationPositionReading = {
+  coords: Pick<GeolocationCoordinates, 'latitude' | 'longitude' | 'accuracy' | 'heading' | 'speed'>;
+  timestamp: number;
+};
+type LivePositionSnapshot = { lat: number; lng: number; bearing: number | null };
+
+type PersistedNavigationState = {
+  version: typeof NAVIGATION_STORAGE_VERSION;
+  savedAt: number;
+  transportMode: TransportMode;
+  originPoint: GeoPoint | null;
+  originLabel: string;
+  originInput: string;
+  originHint: string;
+  availableRoutes: RouteOption[];
+  selectedRouteIdx: number;
+  navigationStarted: boolean;
+  isExpanded: boolean;
+  currentStepIdx: number;
+  remainingRouteDistanceM: number | null;
+  liveEtaMinutes: number | null;
+  liveNavView: LiveNavView;
+  lastLivePosition: LivePositionSnapshot | null;
+};
+
+type SharedNavigationParams = {
+  origin: GeoPoint;
+  originLabel: string;
+  transportMode: TransportMode;
+  selectedRouteIdx: number;
+};
+
+function isTransportModeValue(value: string | null | undefined): value is TransportMode {
+  return value === 'driving' || value === 'motorcycle' || value === 'walking' || value === 'cycling';
+}
+
+function isGeoPointValue(value: unknown): value is GeoPoint {
+  if (!value || typeof value !== 'object') return false;
+  const point = value as GeoPoint;
+  return Number.isFinite(point.lat) && Number.isFinite(point.lng);
+}
+
+function parsePointParam(value: string | null): GeoPoint | null {
+  if (!value) return null;
+  const [latText, lngText] = value.split(',');
+  const lat = Number.parseFloat(latText ?? '');
+  const lng = Number.parseFloat(lngText ?? '');
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
+function clampRouteIndex(index: number | undefined, routesLength: number): number {
+  if (!Number.isFinite(index) || routesLength <= 0) return 0;
+  return Math.max(0, Math.min(routesLength - 1, Math.trunc(index ?? 0)));
+}
+
+function isRouteOptionArray(value: unknown): value is RouteOption[] {
+  if (!Array.isArray(value)) return false;
+  return value.every((routeOption) => {
+    if (!routeOption || typeof routeOption !== 'object') return false;
+    const candidate = routeOption as Partial<RouteOption>;
+    return (
+      typeof candidate.distance === 'number' &&
+      typeof candidate.duration === 'number' &&
+      Array.isArray(candidate.steps)
+    );
+  });
+}
+
+function buildNavigationStorageKey(placeName: string, destination: GeoPoint): string {
+  const placeSlug = encodeURIComponent(placeName.trim().toLowerCase());
+  return `pitzbol:navigation:v${NAVIGATION_STORAGE_VERSION}:${destination.lat.toFixed(6)},${destination.lng.toFixed(6)}:${placeSlug}`;
+}
+
+function parsePersistedNavigationState(value: string | null): PersistedNavigationState | null {
+  if (!value) return null;
+
+  try {
+    const parsed = JSON.parse(value) as Partial<PersistedNavigationState>;
+    if (parsed.version !== NAVIGATION_STORAGE_VERSION) return null;
+    if (typeof parsed.savedAt !== 'number' || Date.now() - parsed.savedAt > NAVIGATION_STORAGE_MAX_AGE_MS) return null;
+    if (!isTransportModeValue(parsed.transportMode)) return null;
+    if (parsed.originPoint !== null && parsed.originPoint !== undefined && !isGeoPointValue(parsed.originPoint)) return null;
+    if (!isRouteOptionArray(parsed.availableRoutes)) return null;
+
+    return {
+      version: NAVIGATION_STORAGE_VERSION,
+      savedAt: parsed.savedAt,
+      transportMode: parsed.transportMode,
+      originPoint: parsed.originPoint ?? null,
+      originLabel: typeof parsed.originLabel === 'string' ? parsed.originLabel : 'Elige un punto de partida',
+      originInput: typeof parsed.originInput === 'string' ? parsed.originInput : '',
+      originHint: typeof parsed.originHint === 'string' ? parsed.originHint : '',
+      availableRoutes: parsed.availableRoutes,
+      selectedRouteIdx: clampRouteIndex(parsed.selectedRouteIdx, parsed.availableRoutes.length),
+      navigationStarted: Boolean(parsed.navigationStarted && parsed.availableRoutes.length),
+      isExpanded: Boolean(parsed.isExpanded),
+      currentStepIdx: Math.max(0, Math.trunc(parsed.currentStepIdx ?? 0)),
+      remainingRouteDistanceM: typeof parsed.remainingRouteDistanceM === 'number' ? parsed.remainingRouteDistanceM : null,
+      liveEtaMinutes: typeof parsed.liveEtaMinutes === 'number' ? parsed.liveEtaMinutes : null,
+      liveNavView: parsed.liveNavView === 'steps' ? 'steps' : 'live',
+      lastLivePosition: parsed.lastLivePosition && isGeoPointValue(parsed.lastLivePosition)
+        ? {
+          lat: parsed.lastLivePosition.lat,
+          lng: parsed.lastLivePosition.lng,
+          bearing: typeof parsed.lastLivePosition.bearing === 'number' ? parsed.lastLivePosition.bearing : null,
+        }
+        : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parseSharedNavigationParams(search: string): SharedNavigationParams | null {
+  const params = new URLSearchParams(search);
+  if (params.get('nav') !== 'route') return null;
+
+  const origin = parsePointParam(params.get('navOrigin'));
+  const modeParam = params.get('navMode');
+  if (!origin || !isTransportModeValue(modeParam)) return null;
+
+  const routeIndex = Number.parseInt(params.get('navRoute') ?? '0', 10);
+  const originLabel = params.get('navOriginLabel')?.trim() || 'Punto de partida compartido';
+
+  return {
+    origin,
+    originLabel,
+    transportMode: modeParam,
+    selectedRouteIdx: Number.isFinite(routeIndex) ? Math.max(0, routeIndex) : 0,
+  };
+}
+
+function routeDurationMinutes(routeOption: RouteOption): number {
+  return routeOption.durationWithTraffic ?? routeOption.duration;
+}
+
+function buildRouteStepsText(steps: RouteOption['steps']): string {
+  if (!steps.length) return 'Sin instrucciones paso a paso disponibles.';
+
+  return steps
+    .map((routeStep, index) => {
+      const roadText = routeStep.road ? ` por ${routeStep.road}` : '';
+      const durationText = routeStep.duration ? `, ${fmtMinutes(routeStep.duration)}` : '';
+      return `${index + 1}. ${routeStep.instruction}${roadText} - ${fmtDist(routeStep.distance * 1000)}${durationText}`;
+    })
+    .join('\n');
+}
 
 /** Haversine distance between two lat/lng points, in metres */
 function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -189,7 +340,7 @@ function trimTrafficSegments(
 }
 
 function buildMapRoutes(routes: RouteOption[], selectedRouteIdx: number, position?: GeoPoint): RouteOption[] {
-  const limitedRoutes = routes.slice(0, 3);
+  const limitedRoutes = routes.slice(0, 2);
   if (!position) return limitedRoutes;
 
   return limitedRoutes.map((route, idx) => {
@@ -312,7 +463,7 @@ export function NavigationPanel({
   placeName,
   destination,
   placeAddress,
-  placeCost: _placeCost,
+  placeCost,
   placeCategory,
   onNavigationStart,
   onExpandedChange,
@@ -339,25 +490,34 @@ export function NavigationPanel({
   const [originHint, setOriginHint] = useState<string>('');
   const [originSearchError, setOriginSearchError] = useState<string | null>(null);
   const [navNotice, setNavNotice] = useState<{ type: 'info' | 'warning' | 'success'; message: string } | null>(null);
+  const [isPersistenceReady, setIsPersistenceReady] = useState(false);
+  const [pendingSharedRouteIdx, setPendingSharedRouteIdx] = useState<number | null>(null);
 
   const geo = useGeolocation({ enableHighAccuracy: true, throttleMs: 2000, confirmBeforeUse: true });
   const user = usePitzbolUser();
 
   const destinationAddress = placeAddress?.trim() || 'Direccion no disponible';
   const selectedTransportModeLabel = TRANSPORT_MODE_LABELS[transportMode];
+  const placeMetaTags = [placeCategory?.trim(), placeCost?.trim()].filter((value): value is string => Boolean(value));
+  const navigationStorageKey = buildNavigationStorageKey(placeName, destination);
   const lastHandledMapEventRef = useRef<number | null>(null);
   const availableRoutesRef = useRef<RouteOption[]>([]);
   const selectedRouteIdxRef = useRef(0);
   const lastMapPublishRef = useRef(0);
   const noticeTimeoutRef = useRef<number | null>(null);
   const mapAlertTimeoutRef = useRef<number | null>(null);
+  const suppressNextModeRecalcRef = useRef(false);
+  const suppressNextOriginResetRef = useRef(false);
+  const skipNextNavigationStopResetRef = useRef(false);
+  const preserveLiveStateOnNextWatchRef = useRef(false);
+  const lastLivePositionRef = useRef<LivePositionSnapshot | null>(null);
   // Tracks whether routes have been calculated at least once (for auto-recalc on mode change)
   const hasCalculatedRoutesRef = useRef(false);
   // Tracks previous origin to detect real changes vs initial set
   const prevOriginRef = useRef<GeoPoint | null | undefined>(undefined);
 
   // ── Real-time navigation ──────────────────────────────────────────────────
-  const [liveNavView, setLiveNavView] = useState<'live' | 'steps'>('live');
+  const [liveNavView, setLiveNavView] = useState<LiveNavView>('live');
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
   const [distanceToNext, setDistanceToNext] = useState<number | null>(null);
   const [remainingRouteDistanceM, setRemainingRouteDistanceM] = useState<number | null>(null);
@@ -414,6 +574,14 @@ export function NavigationPanel({
     if (mapAlertTimeoutRef.current !== null) window.clearTimeout(mapAlertTimeoutRef.current);
     mapAlertTimeoutRef.current = null;
     onMapAlertChange?.(null);
+  }
+
+  function removePersistedNavigationState() {
+    try {
+      window.localStorage.removeItem(navigationStorageKey);
+    } catch {
+      // Storage can be unavailable in private mode; navigation should still work.
+    }
   }
 
   function vibrate(pattern: number | number[]) {
@@ -474,6 +642,183 @@ export function NavigationPanel({
     );
   }
 
+  function handlePositionUpdate(pos: NavigationPositionReading) {
+    const { latitude, longitude, heading, speed, accuracy } = pos.coords;
+    const readingTime = Number.isFinite(pos.timestamp) ? pos.timestamp : Date.now();
+    const previousGps = prevGpsRef.current;
+    const accuracyValue = Number.isFinite(accuracy) ? Math.round(accuracy) : null;
+    setGpsAccuracyM(accuracyValue);
+    setSignalStatus(!accuracyValue || accuracyValue <= POOR_GPS_ACCURACY_M ? 'good' : 'weak');
+
+    const elapsedSeconds = previousGps && readingTime > previousGps.timestamp
+      ? (readingTime - previousGps.timestamp) / 1000
+      : null;
+    const movedMeters = previousGps
+      ? haversineMeters(previousGps.lat, previousGps.lng, latitude, longitude)
+      : 0;
+
+    let rawSpeedMps: number | null = speed !== null && speed !== undefined && Number.isFinite(speed) && speed >= 0
+      ? speed
+      : null;
+    if (rawSpeedMps === null && previousGps && elapsedSeconds !== null) {
+      if (elapsedSeconds >= 1.5 && movedMeters >= 4 && (!accuracyValue || accuracyValue <= 80)) {
+        rawSpeedMps = movedMeters / elapsedSeconds;
+      }
+    }
+
+    const maxSpeed = maxReasonableSpeedMps(transportMode);
+    let rollingSpeedMps: number | null = null;
+    if (rawSpeedMps !== null && rawSpeedMps <= maxSpeed) {
+      const prevSpeed = smoothedSpeedMpsRef.current;
+      const smoothed = prevSpeed === null ? rawSpeedMps : prevSpeed * 0.65 + rawSpeedMps * 0.35;
+      const nextSpeedMps = smoothed < 0.35 ? 0 : smoothed;
+      smoothedSpeedMpsRef.current = nextSpeedMps;
+      setCurrentSpeedKmh(Math.round(nextSpeedMps * 3.6));
+
+      if (!accuracyValue || accuracyValue <= POOR_GPS_ACCURACY_M) {
+        speedSamplesRef.current = [
+          ...speedSamplesRef.current.filter(sample => readingTime - sample.timestamp <= SPEED_SAMPLE_WINDOW_MS),
+          { timestamp: readingTime, speedMps: nextSpeedMps },
+        ];
+        rollingSpeedMps = movingAverageSpeed(speedSamplesRef.current);
+      }
+    } else {
+      speedSamplesRef.current = speedSamplesRef.current.filter(sample => readingTime - sample.timestamp <= SPEED_SAMPLE_WINDOW_MS);
+      rollingSpeedMps = movingAverageSpeed(speedSamplesRef.current);
+    }
+
+    let bearing: number | null = null;
+    let movementBearing: number | null = null;
+    const isMoving = speed !== null && speed !== undefined && Number.isFinite(speed) && speed >= 0.5;
+    if (isMoving && heading !== null && heading !== undefined && Number.isFinite(heading)) {
+      bearing = heading;
+      movementBearing = heading;
+    } else if (previousGps) {
+      const { lat: pLat, lng: pLng } = previousGps;
+      if (movedMeters >= 15) {
+        movementBearing = calcBearing(pLat, pLng, latitude, longitude);
+        bearing = movementBearing;
+      } else {
+        bearing = null;
+      }
+    }
+
+    const currentPoint = { lat: latitude, lng: longitude };
+    const poly = activeRoutePolylineRef.current;
+    const routeProjection = projectPointToPolyline(latitude, longitude, poly);
+    const routeBearing = routeBearingForProjection(poly, routeProjection);
+    const snapThreshold = snapThresholdForAccuracy(accuracyValue);
+    const shouldSnapToRoute = !!routeProjection && routeProjection.distanceToRouteM <= snapThreshold;
+    const displayPoint = shouldSnapToRoute && routeProjection
+      ? { lat: routeProjection.projected[1], lng: routeProjection.projected[0] }
+      : currentPoint;
+
+    if (bearing === null && shouldSnapToRoute && routeBearing !== null) {
+      bearing = routeBearing;
+    }
+
+    prevGpsRef.current = { lat: latitude, lng: longitude, timestamp: readingTime };
+    const livePosition = { ...displayPoint, bearing };
+    lastLivePositionRef.current = livePosition;
+    onLivePosition?.(livePosition);
+
+    if (routeProjection) {
+      setRemainingRouteDistanceM(routeProjection.remainingDistanceM);
+      remainingRouteDistanceRef.current = routeProjection.remainingDistanceM;
+      const speedForEtaMps = rollingSpeedMps ?? smoothedSpeedMpsRef.current;
+      setLiveEtaMinutes(speedForEtaMps && speedForEtaMps >= 0.7
+        ? Math.ceil(routeProjection.remainingDistanceM / speedForEtaMps / 60)
+        : null);
+      publishMapRoutes(displayPoint);
+    }
+
+    const distanceToDestination = haversineMeters(latitude, longitude, destination.lat, destination.lng);
+    if (distanceToDestination <= ARRIVAL_RADIUS_M || (routeProjection && routeProjection.remainingDistanceM <= ARRIVAL_RADIUS_M)) {
+      setHasArrived(true);
+      setNavigationStarted(false);
+      setRemainingRouteDistanceM(null);
+      setLiveEtaMinutes(null);
+      lastLivePositionRef.current = null;
+      onLivePosition?.(null);
+      showNavNotice('success', `Has llegado a ${placeName}.`, 9000);
+      try { navigator.vibrate?.(220); } catch {}
+      return;
+    }
+
+    if (routeProjection) {
+      const safeAccuracy = Number.isFinite(accuracy) ? Math.max(accuracy, 15) : 25;
+      const offRouteThreshold = Math.max(OFF_ROUTE_BASE_RADIUS_M, Math.min(130, safeAccuracy * 1.8));
+      if (routeProjection.distanceToRouteM > offRouteThreshold) {
+        offRouteCountRef.current += 1;
+        if (offRouteCountRef.current >= 2 && !isAutoRecalcRef.current) {
+          offRouteCountRef.current = 0;
+          requestReroute(currentPoint, 'off-route');
+        }
+      } else {
+        offRouteCountRef.current = 0;
+      }
+
+      const speedForDirection = smoothedSpeedMpsRef.current ?? 0;
+      const wrongWay = shouldSnapToRoute &&
+        movementBearing !== null &&
+        routeBearing !== null &&
+        speedForDirection >= 1.2 &&
+        angleDelta(movementBearing, routeBearing) >= WRONG_WAY_ANGLE_DEG;
+
+      if (wrongWay) {
+        wrongWayCountRef.current += 1;
+        if (wrongWayCountRef.current >= 3 && !isAutoRecalcRef.current) {
+          wrongWayCountRef.current = 0;
+          showNavNotice('warning', 'Vas en sentido contrario. Buscando una ruta mejor...', 4500);
+          showMapAlert('warning', 'Vas en sentido contrario. Buscando una ruta mejor...', 4500);
+          requestReroute(currentPoint, 'wrong-way');
+        }
+      } else {
+        wrongWayCountRef.current = 0;
+      }
+    }
+
+    const steps = activeStepsRef.current;
+    const idx = currentStepIdxRef.current;
+    if (!steps.length) return;
+
+    const progressIdx = routeProjection
+      ? findStepIndexForProgress(steps, poly, idx, routeProjection.distanceAlongM)
+      : idx;
+    if (progressIdx !== idx) {
+      currentStepIdxRef.current = progressIdx;
+      setCurrentStepIdx(progressIdx);
+    }
+
+    const step = steps[currentStepIdxRef.current];
+    if (!step?.location) return;
+
+    const [lng, lat] = step.location;
+    const dist = haversineMeters(latitude, longitude, lat, lng);
+    setDistanceToNext(dist);
+    triggerManeuverAlert(step, currentStepIdxRef.current, dist);
+
+    const isLastStep = currentStepIdxRef.current >= steps.length - 1;
+
+    if (dist < 30) {
+      if (isLastStep) {
+        setHasArrived(true);
+        setNavigationStarted(false);
+        setRemainingRouteDistanceM(null);
+        setLiveEtaMinutes(null);
+        lastLivePositionRef.current = null;
+        onLivePosition?.(null);
+        showNavNotice('success', `Has llegado a ${placeName}.`, 9000);
+        try { navigator.vibrate?.(220); } catch {}
+      } else {
+        const next = currentStepIdxRef.current + 1;
+        currentStepIdxRef.current = next;
+        setCurrentStepIdx(next);
+        setDistanceToNext(null);
+      }
+    }
+  }
+
   useEffect(() => {
     return () => {
       if (noticeTimeoutRef.current !== null) window.clearTimeout(noticeTimeoutRef.current);
@@ -500,6 +845,12 @@ export function NavigationPanel({
 
   // Auto-recalculate when transport mode changes IF routes were already calculated
   useEffect(() => {
+    if (suppressNextModeRecalcRef.current) {
+      suppressNextModeRecalcRef.current = false;
+      setRouteError(null);
+      return;
+    }
+
     if (!hasCalculatedRoutesRef.current) {
       // No routes yet — just clear any stale error
       setRouteError(null);
@@ -511,6 +862,12 @@ export function NavigationPanel({
 
   // Clear routes when origin changes so user knows a new calculation is needed
   useEffect(() => {
+    if (suppressNextOriginResetRef.current) {
+      prevOriginRef.current = originPoint;
+      suppressNextOriginResetRef.current = false;
+      return;
+    }
+
     if (prevOriginRef.current === undefined) {
       // First assignment (initial mount) — don't clear anything
       prevOriginRef.current = originPoint;
@@ -532,6 +889,144 @@ export function NavigationPanel({
     hasCalculatedRoutesRef.current = false;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [originPoint]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const savedState = parsePersistedNavigationState(window.localStorage.getItem(navigationStorageKey));
+    const sharedParams = parseSharedNavigationParams(window.location.search);
+    if (sharedParams && !savedState?.navigationStarted) {
+      if (sharedParams.transportMode !== transportMode) {
+        suppressNextModeRecalcRef.current = true;
+      }
+      suppressNextOriginResetRef.current = true;
+      setIsExpanded(true);
+      setTransportMode(sharedParams.transportMode);
+      setOriginPoint(sharedParams.origin);
+      setOriginLabel(sharedParams.originLabel);
+      setOriginInput(sharedParams.originLabel);
+      setOriginHint(`Ruta compartida: ${sharedParams.origin.lat.toFixed(5)}, ${sharedParams.origin.lng.toFixed(5)}`);
+      setOriginSearchError(null);
+      setRouteError(null);
+      setNavigationStarted(false);
+      setPendingSharedRouteIdx(sharedParams.selectedRouteIdx);
+      onOriginMarkerChange?.(sharedParams.origin, { source: 'search', manual: false });
+      showNavNotice('info', 'Ruta compartida cargada. Calculando el recorrido desde el punto de partida.', 6500);
+      setIsPersistenceReady(true);
+      return;
+    }
+
+    if (!savedState) {
+      setIsPersistenceReady(true);
+      return;
+    }
+
+    const restoredRouteIdx = clampRouteIndex(savedState.selectedRouteIdx, savedState.availableRoutes.length);
+    const restoredNavigationStarted = savedState.navigationStarted && savedState.availableRoutes.length > 0;
+
+    if (savedState.transportMode !== transportMode) {
+      suppressNextModeRecalcRef.current = true;
+    }
+    suppressNextOriginResetRef.current = true;
+    setTransportMode(savedState.transportMode);
+    setOriginPoint(savedState.originPoint);
+    setOriginLabel(savedState.originLabel);
+    setOriginInput(savedState.originInput);
+    setOriginHint(savedState.originHint);
+    setAvailableRoutes(savedState.availableRoutes);
+    setSelectedRouteIdx(restoredRouteIdx);
+    setRoute(savedState.availableRoutes.length
+      ? { success: true, route: savedState.availableRoutes[restoredRouteIdx], routes: savedState.availableRoutes }
+      : null);
+    setIsExpanded(savedState.isExpanded || restoredNavigationStarted || savedState.availableRoutes.length > 0 || Boolean(savedState.originPoint));
+    setNavigationStarted(restoredNavigationStarted);
+    setCurrentStepIdx(savedState.currentStepIdx);
+    currentStepIdxRef.current = savedState.currentStepIdx;
+    setRemainingRouteDistanceM(savedState.remainingRouteDistanceM);
+    remainingRouteDistanceRef.current = savedState.remainingRouteDistanceM;
+    setLiveEtaMinutes(savedState.liveEtaMinutes);
+    setLiveNavView(savedState.liveNavView);
+    hasCalculatedRoutesRef.current = savedState.availableRoutes.length > 0;
+
+    if (savedState.originPoint) {
+      onOriginMarkerChange?.(savedState.originPoint, { source: 'search', manual: false });
+    }
+
+    lastLivePositionRef.current = savedState.lastLivePosition;
+    if (restoredNavigationStarted) {
+      if (savedState.lastLivePosition) {
+        onLivePosition?.(savedState.lastLivePosition);
+      }
+      skipNextNavigationStopResetRef.current = true;
+      preserveLiveStateOnNextWatchRef.current = true;
+      showNavNotice('info', 'Navegación restaurada. Esperando señal GPS para actualizar tu posición.', 6500);
+    }
+
+    setIsPersistenceReady(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigationStorageKey]);
+
+  useEffect(() => {
+    if (!isPersistenceReady || typeof window === 'undefined') return;
+
+    const hasStateToPersist = Boolean(
+      originPoint ||
+      originInput.trim() ||
+      availableRoutes.length > 0 ||
+      navigationStarted ||
+      transportMode !== 'driving'
+    );
+
+    if (!hasStateToPersist) {
+      try {
+        window.localStorage.removeItem(navigationStorageKey);
+      } catch {
+        // Storage can be unavailable in private mode; navigation should still work.
+      }
+      return;
+    }
+
+    const snapshot: PersistedNavigationState = {
+      version: NAVIGATION_STORAGE_VERSION,
+      savedAt: Date.now(),
+      transportMode,
+      originPoint,
+      originLabel,
+      originInput,
+      originHint,
+      availableRoutes,
+      selectedRouteIdx,
+      navigationStarted,
+      isExpanded,
+      currentStepIdx,
+      remainingRouteDistanceM,
+      liveEtaMinutes,
+      liveNavView,
+      lastLivePosition: lastLivePositionRef.current,
+    };
+
+    try {
+      window.localStorage.setItem(navigationStorageKey, JSON.stringify(snapshot));
+    } catch {
+      // If storage quota is full, keep the in-memory navigation usable.
+    }
+  }, [
+    availableRoutes,
+    currentStepIdx,
+    isExpanded,
+    isPersistenceReady,
+    liveEtaMinutes,
+    liveNavView,
+    navigationStarted,
+    navigationStorageKey,
+    originHint,
+    originInput,
+    originLabel,
+    originPoint,
+    remainingRouteDistanceM,
+    selectedRouteIdx,
+    transportMode,
+  ]);
 
   useEffect(() => {
     availableRoutesRef.current = availableRoutes;
@@ -579,7 +1074,7 @@ export function NavigationPanel({
           const routes = result.routes?.length
             ? result.routes
             : result.route ? [result.route] : [];
-          const topRoutes = routes.slice(0, 3);
+          const topRoutes = routes.slice(0, 2);
           if (topRoutes.length) {
             availableRoutesRef.current = topRoutes;
             selectedRouteIdxRef.current = 0;
@@ -612,208 +1107,38 @@ export function NavigationPanel({
   // Start / stop real-time position watcher when navigation begins or ends
   useEffect(() => {
     if (!navigationStarted) {
+      if (skipNextNavigationStopResetRef.current) {
+        skipNextNavigationStopResetRef.current = false;
+        return;
+      }
+
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
       prevGpsRef.current = null;
       resetLiveMetrics();
+      lastLivePositionRef.current = null;
       onLivePosition?.(null);
       return;
     }
 
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;
 
-    setCurrentStepIdx(0);
-    currentStepIdxRef.current = 0;
-    resetLiveMetrics();
+    const preserveLiveState = preserveLiveStateOnNextWatchRef.current;
+    preserveLiveStateOnNextWatchRef.current = false;
+
+    if (!preserveLiveState) {
+      setCurrentStepIdx(0);
+      currentStepIdxRef.current = 0;
+      resetLiveMetrics();
+      setLiveNavView('live');
+    }
+
     setHasArrived(false);
-    setLiveNavView('live');
 
     const id = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude, heading, speed, accuracy } = pos.coords;
-        const readingTime = Number.isFinite(pos.timestamp) ? pos.timestamp : Date.now();
-        const previousGps = prevGpsRef.current;
-        const accuracyValue = Number.isFinite(accuracy) ? Math.round(accuracy) : null;
-        setGpsAccuracyM(accuracyValue);
-        setSignalStatus(!accuracyValue || accuracyValue <= POOR_GPS_ACCURACY_M ? 'good' : 'weak');
-
-        const elapsedSeconds = previousGps && readingTime > previousGps.timestamp
-          ? (readingTime - previousGps.timestamp) / 1000
-          : null;
-        const movedMeters = previousGps
-          ? haversineMeters(previousGps.lat, previousGps.lng, latitude, longitude)
-          : 0;
-
-        let rawSpeedMps: number | null = speed !== null && speed !== undefined && Number.isFinite(speed) && speed >= 0
-          ? speed
-          : null;
-        if (rawSpeedMps === null && previousGps && elapsedSeconds !== null) {
-          if (elapsedSeconds >= 1.5 && movedMeters >= 4 && (!accuracyValue || accuracyValue <= 80)) {
-            rawSpeedMps = movedMeters / elapsedSeconds;
-          }
-        }
-
-        const maxSpeed = maxReasonableSpeedMps(transportMode);
-        let rollingSpeedMps: number | null = null;
-        if (rawSpeedMps !== null && rawSpeedMps <= maxSpeed) {
-          const prevSpeed = smoothedSpeedMpsRef.current;
-          const smoothed = prevSpeed === null ? rawSpeedMps : prevSpeed * 0.65 + rawSpeedMps * 0.35;
-          const nextSpeedMps = smoothed < 0.35 ? 0 : smoothed;
-          smoothedSpeedMpsRef.current = nextSpeedMps;
-          setCurrentSpeedKmh(Math.round(nextSpeedMps * 3.6));
-
-          if (!accuracyValue || accuracyValue <= POOR_GPS_ACCURACY_M) {
-            speedSamplesRef.current = [
-              ...speedSamplesRef.current.filter(sample => readingTime - sample.timestamp <= SPEED_SAMPLE_WINDOW_MS),
-              { timestamp: readingTime, speedMps: nextSpeedMps },
-            ];
-            rollingSpeedMps = movingAverageSpeed(speedSamplesRef.current);
-          }
-        } else {
-          speedSamplesRef.current = speedSamplesRef.current.filter(sample => readingTime - sample.timestamp <= SPEED_SAMPLE_WINDOW_MS);
-          rollingSpeedMps = movingAverageSpeed(speedSamplesRef.current);
-        }
-
-        // ── Bearing calculation ───────────────────────────────────────────
-        // Rules:
-        //  - Device compass (heading) is only reliable when actually moving
-        //    (speed >= 0.5 m/s). At rest the heading is random noise.
-        //  - Fallback calcBearing requires >= 15 m movement so GPS scatter
-        //    (typical ±5-10 m accuracy) doesn't generate nonsense angles.
-        //  - Returning null keeps the map at its previous bearing.
-        let bearing: number | null = null;
-        let movementBearing: number | null = null;
-        const isMoving = speed !== null && speed !== undefined && Number.isFinite(speed) && speed >= 0.5;
-        if (isMoving && heading !== null && heading !== undefined && Number.isFinite(heading)) {
-          bearing = heading;
-          movementBearing = heading;
-        } else if (previousGps) {
-          const { lat: pLat, lng: pLng } = previousGps;
-          if (movedMeters >= 15) {
-            // Only recalculate if moved enough to avoid noise
-            movementBearing = calcBearing(pLat, pLng, latitude, longitude);
-            bearing = movementBearing;
-          } else {
-            bearing = null; // Not enough movement, keep previous
-          }
-        }
-
-        const currentPoint = { lat: latitude, lng: longitude };
-        const poly = activeRoutePolylineRef.current;
-        const routeProjection = projectPointToPolyline(latitude, longitude, poly);
-        const routeBearing = routeBearingForProjection(poly, routeProjection);
-        const snapThreshold = snapThresholdForAccuracy(accuracyValue);
-        const shouldSnapToRoute = !!routeProjection && routeProjection.distanceToRouteM <= snapThreshold;
-        const displayPoint = shouldSnapToRoute && routeProjection
-          ? { lat: routeProjection.projected[1], lng: routeProjection.projected[0] }
-          : currentPoint;
-
-        if (bearing === null && shouldSnapToRoute && routeBearing !== null) {
-          bearing = routeBearing;
-        }
-
-        prevGpsRef.current = { lat: latitude, lng: longitude, timestamp: readingTime };
-        onLivePosition?.({ ...displayPoint, bearing });
-
-        if (routeProjection) {
-          setRemainingRouteDistanceM(routeProjection.remainingDistanceM);
-          remainingRouteDistanceRef.current = routeProjection.remainingDistanceM;
-          const speedForEtaMps = rollingSpeedMps ?? smoothedSpeedMpsRef.current;
-          setLiveEtaMinutes(speedForEtaMps && speedForEtaMps >= 0.7
-            ? Math.ceil(routeProjection.remainingDistanceM / speedForEtaMps / 60)
-            : null);
-          publishMapRoutes(displayPoint);
-        }
-
-        const distanceToDestination = haversineMeters(latitude, longitude, destination.lat, destination.lng);
-        if (distanceToDestination <= ARRIVAL_RADIUS_M || (routeProjection && routeProjection.remainingDistanceM <= ARRIVAL_RADIUS_M)) {
-          setHasArrived(true);
-          setNavigationStarted(false);
-          setRemainingRouteDistanceM(null);
-          setLiveEtaMinutes(null);
-          onLivePosition?.(null);
-          showNavNotice('success', `Has llegado a ${placeName}.`, 9000);
-          try { navigator.vibrate?.(220); } catch {}
-          return;
-        }
-
-        // Off-route detection: accuracy-aware threshold to avoid rerouting from GPS noise.
-        if (routeProjection) {
-          const safeAccuracy = Number.isFinite(accuracy) ? Math.max(accuracy, 15) : 25;
-          const offRouteThreshold = Math.max(OFF_ROUTE_BASE_RADIUS_M, Math.min(130, safeAccuracy * 1.8));
-          if (routeProjection.distanceToRouteM > offRouteThreshold) {
-            offRouteCountRef.current += 1;
-            if (offRouteCountRef.current >= 2 && !isAutoRecalcRef.current) {
-              offRouteCountRef.current = 0;
-              requestReroute(currentPoint, 'off-route');
-            }
-          } else {
-            offRouteCountRef.current = 0;
-          }
-
-          const speedForDirection = smoothedSpeedMpsRef.current ?? 0;
-          const wrongWay = shouldSnapToRoute &&
-            movementBearing !== null &&
-            routeBearing !== null &&
-            speedForDirection >= 1.2 &&
-            angleDelta(movementBearing, routeBearing) >= WRONG_WAY_ANGLE_DEG;
-
-          if (wrongWay) {
-            wrongWayCountRef.current += 1;
-            if (wrongWayCountRef.current >= 3 && !isAutoRecalcRef.current) {
-              wrongWayCountRef.current = 0;
-              showNavNotice('warning', 'Vas en sentido contrario. Buscando una ruta mejor...', 4500);
-              showMapAlert('warning', 'Vas en sentido contrario. Buscando una ruta mejor...', 4500);
-              requestReroute(currentPoint, 'wrong-way');
-            }
-          } else {
-            wrongWayCountRef.current = 0;
-          }
-        }
-
-        // Step proximity detection ──────────────────────────────────────
-        const steps = activeStepsRef.current;
-        const idx = currentStepIdxRef.current;
-        if (!steps.length) return;
-
-        const progressIdx = routeProjection
-          ? findStepIndexForProgress(steps, poly, idx, routeProjection.distanceAlongM)
-          : idx;
-        if (progressIdx !== idx) {
-          currentStepIdxRef.current = progressIdx;
-          setCurrentStepIdx(progressIdx);
-        }
-
-        // Find nearest upcoming step that has a location
-        const step = steps[currentStepIdxRef.current];
-        if (!step?.location) return;
-
-        const [lng, lat] = step.location;
-        const dist = haversineMeters(latitude, longitude, lat, lng);
-        setDistanceToNext(dist);
-        triggerManeuverAlert(step, currentStepIdxRef.current, dist);
-
-        const isLastStep = currentStepIdxRef.current >= steps.length - 1;
-
-        if (dist < 30) {
-          if (isLastStep) {
-            setHasArrived(true);
-            setNavigationStarted(false);
-            setRemainingRouteDistanceM(null);
-            setLiveEtaMinutes(null);
-            onLivePosition?.(null);
-            showNavNotice('success', `Has llegado a ${placeName}.`, 9000);
-            try { navigator.vibrate?.(220); } catch {}
-          } else {
-            const next = currentStepIdxRef.current + 1;
-            currentStepIdxRef.current = next;
-            setCurrentStepIdx(next);
-            setDistanceToNext(null);
-          }
-        }
-      },
+      handlePositionUpdate,
       (error) => {
         setSignalStatus('lost');
         const message = error.code === error.PERMISSION_DENIED
@@ -929,6 +1254,7 @@ export function NavigationPanel({
     }
 
     void applyManualMapOrigin(mapOriginEvent.point);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapOriginEvent]);
 
   const applyCurrentLocation = async () => {
@@ -1002,7 +1328,7 @@ export function NavigationPanel({
     setLoadingOrigin(false);
   };
 
-  const handleCalculateRoutes = async () => {
+  const handleCalculateRoutes = async (options?: { preferredRouteIdx?: number; fromSharedLink?: boolean }) => {
     let origin = originPoint;
     if (!origin) {
       origin = ensureDefaultOriginPoint();
@@ -1034,25 +1360,38 @@ export function NavigationPanel({
           : routeResult.route
           ? [routeResult.route]
           : [];
-        const topRoutes = all.slice(0, 3);
+        const topRoutes = all.slice(0, 2);
         if (!topRoutes.length) {
           setRouteError('No se encontraron rutas disponibles para ese origen y destino.');
           return;
         }
+        const nextRouteIdx = clampRouteIndex(options?.preferredRouteIdx, topRoutes.length);
         setAvailableRoutes(topRoutes);
-        setSelectedRouteIdx(0);
+        setSelectedRouteIdx(nextRouteIdx);
         setRoute(routeResult);
         hasCalculatedRoutesRef.current = true;
+        if (options?.fromSharedLink) {
+          showNavNotice('success', 'Ruta compartida lista con el origen y modo de viaje guardados.', 6000);
+        }
         onNavigationStart?.();
       } else {
         setRouteError(routeResult.error || 'No se pudo calcular la ruta');
       }
-    } catch (err: any) {
-      setRouteError(err.message || 'Error al calcular la ruta');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error al calcular la ruta';
+      setRouteError(message || 'Error al calcular la ruta');
     } finally {
       setLoadingRoute(false);
     }
   };
+
+  useEffect(() => {
+    if (pendingSharedRouteIdx === null || !originPoint || !user) return;
+    const routeIdx = pendingSharedRouteIdx;
+    setPendingSharedRouteIdx(null);
+    void handleCalculateRoutes({ preferredRouteIdx: routeIdx, fromSharedLink: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSharedRouteIdx, originPoint, user]);
 
   const handleStartNavigation = () => {
     setIsExpanded(true);
@@ -1067,16 +1406,42 @@ export function NavigationPanel({
 
   const handleShareRoute = async () => {
     const selectedRoute = availableRoutes[selectedRouteIdx];
-    if (!selectedRoute) return;
+    if (!selectedRoute || !originPoint) {
+      showNavNotice('warning', 'Calcula una ruta con punto de partida antes de compartir.', 5000);
+      return;
+    }
 
-    const shareText = `Ruta a ${placeName}\nSalida: ${originLabel}\nDestino: ${placeName} - ${destinationAddress}\nDistancia: ${selectedRoute.distance.toFixed(2)}km\nDuración: ${selectedRoute.durationWithTraffic ?? selectedRoute.duration}min`;
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set('nav', 'route');
+    shareUrl.searchParams.set('navOrigin', `${originPoint.lat.toFixed(6)},${originPoint.lng.toFixed(6)}`);
+    shareUrl.searchParams.set('navOriginLabel', originLabel);
+    shareUrl.searchParams.set('navMode', transportMode);
+    shareUrl.searchParams.set('navRoute', String(selectedRouteIdx));
+
+    const shareText = [
+      `Ruta personalizada a ${placeName}`,
+      `Salida: ${originLabel}`,
+      `Origen: ${originPoint.lat.toFixed(6)}, ${originPoint.lng.toFixed(6)}`,
+      `Destino: ${placeName} - ${destinationAddress}`,
+      `Modo: ${selectedTransportModeLabel}`,
+      `Distancia: ${selectedRoute.distance.toFixed(2)} km`,
+      `Duración estimada: ${fmtMinutes(routeDurationMinutes(selectedRoute))}`,
+      selectedRoute.trafficSummary
+        ? `Tráfico: ${selectedRoute.trafficSummary.label}${selectedRoute.trafficSummary.delayMinutes > 0 ? ` (+${selectedRoute.trafficSummary.delayMinutes} min)` : ''}`
+        : null,
+      '',
+      'Instrucciones:',
+      buildRouteStepsText(selectedRoute.steps),
+      '',
+      `Abrir ruta en Pitzbol: ${shareUrl.toString()}`,
+    ].filter((line): line is string => line !== null).join('\n');
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: `Ruta a ${placeName}`,
           text: shareText,
-          url: window.location.href
+          url: shareUrl.toString()
         });
       } catch (err) {
         console.error('Error compartiendo:', err);
@@ -1084,8 +1449,8 @@ export function NavigationPanel({
       return;
     }
 
-    navigator.clipboard.writeText(shareText);
-    alert('Ruta copiada al portapapeles');
+    await navigator.clipboard.writeText(shareText);
+    showNavNotice('success', 'Ruta completa copiada con enlace e instrucciones.', 4500);
   };
 
   const clearRoute = () => {
@@ -1101,6 +1466,9 @@ export function NavigationPanel({
     setIsRecalculating(false);
     setOffRoutePosition(null);
     setNavNotice(null);
+    lastLivePositionRef.current = null;
+    onLivePosition?.(null);
+    removePersistedNavigationState();
     offRouteCountRef.current = 0;
     isAutoRecalcRef.current = false;
     hasCalculatedRoutesRef.current = false;
@@ -1111,10 +1479,10 @@ export function NavigationPanel({
       {!navigationStarted && <button
         type="button"
         onClick={() => setIsExpanded(prev => !prev)}
-        className={`flex w-full min-w-0 items-center justify-between gap-3 px-4 py-4 text-left transition-colors duration-200 hover:bg-white/[0.08] active:bg-white/[0.14]${!isExpanded ? ' flex-1 rounded-3xl' : ' rounded-t-3xl'}`}
+        className={`flex w-full min-w-0 items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-200 hover:bg-white/[0.08] active:bg-white/[0.14]${!isExpanded ? ' flex-1 rounded-3xl' : ' rounded-t-3xl'}`}
       >
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/12 ring-1 ring-white/15 backdrop-blur-sm">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/12 ring-1 ring-white/15 backdrop-blur-sm">
             <FiNavigation className="h-5 w-5 text-[#CFF7D5]" />
           </div>
           <div className="min-w-0">
@@ -1131,106 +1499,110 @@ export function NavigationPanel({
       </button>}
 
       {isExpanded && (
-        <div className={navigationStarted ? 'flex min-h-0 flex-1 flex-col bg-transparent p-0 text-slate-800' : 'min-w-0 space-y-3 border-t border-white/10 bg-gradient-to-b from-[#0F6A2B] to-[#0B4D1E] p-3 text-slate-800 sm:p-4'}>
+        <div className={navigationStarted ? 'flex min-h-0 flex-1 flex-col bg-transparent p-0 text-slate-800' : 'min-w-0 space-y-2.5 border-t border-white/10 bg-gradient-to-b from-[#0F6A2B] to-[#0B4D1E] p-2.5 text-slate-800 sm:p-3'}>
           {!navigationStarted && (
-          <div className="flex flex-col gap-3">
-            <section className="rounded-2xl border border-emerald-200 bg-white p-3 shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-700">Punto de partida</p>
-                  <h4 className="text-sm font-semibold text-slate-900">Escribe o usa ubicación</h4>
-                </div>
-                <FiUser className="h-5 w-5 text-emerald-700" />
+          <section className="rounded-2xl border border-emerald-200 bg-white p-3 shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-700">Ruta</p>
+                <h4 className="truncate text-sm font-semibold text-slate-900">{originLabel} → {placeName}</h4>
               </div>
+              <FiNavigation className="h-5 w-5 shrink-0 text-emerald-700" />
+            </div>
 
-              <div className="flex items-center gap-2">
-                <div className="relative min-w-0 flex-1">
-                  <input
-                    value={originInput}
-                    onChange={e => { setOriginInput(e.target.value); if (originSearchError) setOriginSearchError(null); }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        void findOrigin();
-                      }
-                    }}
-                    placeholder="Ej. Centro, Chapultepec, tu hotel..."
-                    className="min-w-0 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 pr-12 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
-                  />
+            <div className="grid gap-2">
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-2.5">
+                <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-700">
+                  <FiUser className="h-3.5 w-3.5" />
+                  Punto de partida
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative min-w-0 flex-1">
+                    <input
+                      value={originInput}
+                      onChange={e => { setOriginInput(e.target.value); if (originSearchError) setOriginSearchError(null); }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void findOrigin();
+                        }
+                      }}
+                      placeholder="Origen, hotel o ubicación"
+                      className="min-w-0 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 pr-10 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearRoute();
+                        setOriginPoint(null);
+                        setOriginLabel('Elige un punto de partida');
+                        setOriginInput('');
+                        setOriginHint('');
+                        setOriginSearchError(null);
+                        onOriginMarkerChange?.(null, { source: 'clear', manual: false });
+                      }}
+                      aria-label="Limpiar punto de partida"
+                      title="Limpiar"
+                      className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition-all duration-200 hover:bg-red-500 hover:text-white"
+                    >
+                      <FiX className="h-4 w-4" />
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      setOriginPoint(null);
-                      setOriginLabel('Elige un punto de partida');
-                      setOriginInput('');
-                      setOriginHint('');
-                      setOriginSearchError(null);
-                      onOriginMarkerChange?.(null, { source: 'clear', manual: false });
-                    }}
-                    aria-label="Limpiar punto de partida"
-                    title="Limpiar"
-                    className="absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-black transition-all duration-200 hover:bg-red-500 hover:text-white hover:shadow-[0_8px_18px_rgba(239,68,68,0.28)]"
+                    onClick={() => void findOrigin()}
+                    disabled={loadingOrigin}
+                    aria-label="Buscar punto de partida"
+                    title="Buscar"
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    <FiX className="h-4 w-4" />
+                    {loadingOrigin ? <FiLoader className="h-4 w-4 animate-spin" /> : <FiSearch className="h-4 w-4" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void applyCurrentLocation()}
+                    disabled={loadingOrigin || geo.loading}
+                    aria-label="Usar mi ubicación actual"
+                    title="Mi ubicación"
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-300 bg-white text-emerald-800 transition hover:border-emerald-400 hover:bg-emerald-100 disabled:opacity-60"
+                  >
+                    <FiTarget className="h-4 w-4" />
                   </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void findOrigin()}
-                  disabled={loadingOrigin}
-                  aria-label="Buscar punto de partida"
-                  title="Buscar"
-                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {loadingOrigin ? <FiLoader className="h-4 w-4 animate-spin" /> : <FiSearch className="h-5 w-5" />}
-                </button>
+                {(originHint || originSearchError) && (
+                  <div className={`mt-2 flex items-start gap-2 rounded-xl border px-2.5 py-2 text-xs ${originSearchError ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-white text-slate-600'}`}>
+                    {originSearchError ? <FiAlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> : <FiMapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />}
+                    <p className="min-w-0 break-words">{originSearchError || originHint}</p>
+                  </div>
+                )}
               </div>
 
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => void applyCurrentLocation()}
-                  disabled={loadingOrigin || geo.loading}
-                  className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 transition hover:border-emerald-400 hover:bg-emerald-100 disabled:opacity-60"
-                >
-                  <FiTarget className="h-4 w-4" />
-                  Mi ubicación
-                </button>
-              </div>
-
-              {originSearchError && (
-                <div className="mt-2 flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                  <FiAlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <p>{originSearchError}</p>
+              <div className="rounded-2xl border border-amber-200 bg-[#FFFCF5] p-2.5">
+                <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-amber-700">
+                  <FiMapPin className="h-3.5 w-3.5" />
+                  Destino
                 </div>
-              )}
-
-              <div className="mt-2 rounded-2xl border border-emerald-200 bg-white px-3 py-2 text-xs text-slate-600">
-                <span className="font-semibold text-slate-900">Salida actual:</span> {originLabel}
+                <p className="break-words text-sm font-semibold text-slate-900">{placeName}</p>
+                <p className="mt-0.5 line-clamp-2 break-words text-xs text-slate-600">{destinationAddress}</p>
+                {placeMetaTags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {placeMetaTags.map(metaTag => (
+                      <span key={metaTag} className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-amber-200">
+                        {metaTag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-            </section>
-
-            <section className="rounded-2xl border border-emerald-200 bg-white p-3 shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700">Destino</p>
-                </div>
-                <FiMapPin className="h-5 w-5 text-amber-700" />
-              </div>
-
-              <div className="space-y-2 rounded-2xl border border-amber-200 bg-[#FFFCF5] p-3 min-w-0">
-                <p className="text-base font-semibold text-slate-900 break-words">{placeName}</p>
-                <p className="text-sm text-slate-600 break-words">{destinationAddress}</p>
-              </div>
-            </section>
-          </div>
+            </div>
+          </section>
           )}
 
           {!navigationStarted && (
           <section className="rounded-2xl border border-emerald-200 bg-white p-3 shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
             <div className="mb-2 flex items-center justify-between gap-2">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Modo de viaje</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Modo de viaje</p>
                 <h4 className="text-sm font-semibold text-slate-900">{selectedTransportModeLabel}</h4>
               </div>
               <FiClock className="h-5 w-5 text-slate-500" />
@@ -1245,7 +1617,7 @@ export function NavigationPanel({
                     onClick={() => setTransportMode(mode)}
                     aria-label={TRANSPORT_MODE_LABELS[mode]}
                     title={TRANSPORT_MODE_LABELS[mode]}
-                    className={`inline-flex min-h-[3.4rem] w-full min-w-0 items-center gap-2 rounded-xl border px-2 py-2 text-left transition ${
+                    className={`inline-flex min-h-[2.75rem] w-full min-w-0 items-center gap-2 rounded-xl border px-2 py-1.5 text-left transition ${
                       transportMode === mode
                         ? TRANSPORT_MODE_STYLES[mode]
                         : TRANSPORT_MODE_OUTLINE[mode]
@@ -1263,14 +1635,14 @@ export function NavigationPanel({
           )}
 
           {routeError && (
-            <div className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
               <FiAlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>{routeError}</p>
             </div>
           )}
 
           {navNotice && !navigationStarted && (
-            <div className={`flex items-start gap-2 rounded-2xl border px-4 py-3 text-sm ${
+            <div className={`flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-sm ${
               navNotice.type === 'success'
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
                 : navNotice.type === 'warning'
@@ -1288,7 +1660,7 @@ export function NavigationPanel({
               type="button"
               onClick={() => void handleCalculateRoutes()}
               disabled={loadingRoute || loadingOrigin}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#0E5F27] bg-white px-4 py-3 font-semibold text-[#0E5F27] shadow-[0_8px_20px_rgba(6,78,24,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:bg-emerald-700 hover:text-white hover:shadow-[0_12px_24px_rgba(14,95,39,0.28)] disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#0E5F27] bg-white px-4 py-2.5 font-semibold text-[#0E5F27] shadow-[0_8px_20px_rgba(6,78,24,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:bg-emerald-700 hover:text-white hover:shadow-[0_12px_24px_rgba(14,95,39,0.28)] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {loadingRoute ? <FiLoader className="h-5 w-5 animate-spin" /> : <FiNavigation className="h-5 w-5" />}
               {loadingRoute ? 'Calculando rutas...' : 'Calcular ruta'}
@@ -1297,10 +1669,13 @@ export function NavigationPanel({
 
           {/* ESTADO 2: Rutas disponibles — selector + Iniciar navegación */}
           {availableRoutes.length > 0 && !navigationStarted && (
-            <section className="space-y-3 rounded-2xl border border-emerald-200 bg-white p-4">
+            <section className="space-y-2.5 rounded-2xl border border-emerald-200 bg-white p-3">
               <div className="flex items-center justify-between">
-                <h5 className="text-sm font-semibold text-slate-900">Rutas disponibles</h5>
-                <button type="button" onClick={clearRoute} className="text-xs text-slate-400 hover:text-red-500 transition">
+                <div>
+                  <h5 className="text-sm font-semibold text-slate-900">Rutas disponibles</h5>
+                  <p className="text-xs text-slate-500">Elige una alternativa para el mapa y las instrucciones.</p>
+                </div>
+                <button type="button" onClick={clearRoute} aria-label="Limpiar rutas" title="Limpiar rutas" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-red-50 hover:text-red-500">
                   <FiX className="h-4 w-4" />
                 </button>
               </div>
@@ -1314,7 +1689,7 @@ export function NavigationPanel({
                       key={idx}
                       type="button"
                       onClick={() => setSelectedRouteIdx(idx)}
-                      className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
+                      className={`flex w-full items-center gap-2.5 rounded-2xl border p-2.5 text-left transition-all ${
                         isSelected
                           ? 'border-blue-300 bg-blue-50 shadow-sm'
                           : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-slate-100'
@@ -1327,7 +1702,7 @@ export function NavigationPanel({
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-slate-900">{LABELS[idx] ?? `Ruta ${idx + 1}`}</p>
                         <p className="text-xs text-slate-500">
-                          {r.distance.toFixed(1)} km · {r.durationWithTraffic ?? r.duration} min
+                          {r.distance.toFixed(1)} km · {fmtMinutes(routeDurationMinutes(r))}
                         </p>
                         {r.trafficSummary && (
                           <p className={`mt-1 text-[11px] font-semibold ${trafficTextClass(r.trafficSummary.level)}`}>
@@ -1354,14 +1729,24 @@ export function NavigationPanel({
                   );
                 })}
               </div>
-              <button
-                type="button"
-                onClick={handleStartNavigation}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-4 py-3 font-semibold text-white shadow-[0_8px_20px_rgba(6,78,24,0.25)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-[0_12px_24px_rgba(6,78,24,0.3)]"
-              >
-                <FiNavigation className="h-5 w-5" />
-                Iniciar navegación
-              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleShareRoute()}
+                  className="inline-flex min-w-0 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
+                >
+                  <FiShare2 className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Compartir</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartNavigation}
+                  className="inline-flex min-w-0 items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-3 py-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(6,78,24,0.25)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-[0_12px_24px_rgba(6,78,24,0.3)]"
+                >
+                  <FiNavigation className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Iniciar</span>
+                </button>
+              </div>
             </section>
           )}
 

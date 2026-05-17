@@ -889,7 +889,7 @@
 
 .mapAndSidebarDriving {
     --map-height: max(340px, calc(100dvh - var(--driving-sticky-top) - 2 * clamp(0.75rem, 1.2vw, 1.25rem)));
-    grid-template-columns: minmax(0, 1fr) clamp(340px, 28vw, 430px);
+    grid-template-columns: minmax(0, 1fr) clamp(330px, 25vw, 400px);
     grid-template-rows: var(--map-height);
     gap: clamp(0.5rem, 0.8vw, 0.9rem);
     height: var(--map-height);
@@ -930,7 +930,7 @@
 
 @media (min-width: 1280px) {
     .mapAndSidebarDriving {
-        grid-template-columns: minmax(0, 1fr) clamp(390px, 27vw, 460px);
+        grid-template-columns: minmax(0, 1fr) clamp(360px, 24vw, 420px);
     }
 }
 
