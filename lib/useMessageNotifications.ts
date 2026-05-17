@@ -4,7 +4,7 @@ import { ensureValidAuthToken, fetchWithAuth } from './fetchWithAuth';
 import { getBackendOrigin, getSocketBackendOrigin } from './backendUrl';
 
 const BACKEND_URL = getSocketBackendOrigin();
-const API_BASE = "/api";
+const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
 const UNREAD_CACHE_TTL_MS = 2 * 60 * 1000;
 const UNREAD_FALLBACK_SYNC_MS = 2 * 60 * 1000;
 const UNREAD_CACHE_KEY_PREFIX = "pitzbol_unread_messages_";
