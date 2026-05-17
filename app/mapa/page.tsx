@@ -51,14 +51,13 @@ import {
     FiChevronLeft,
     FiChevronRight
 } from "react-icons/fi";
-import { 
-    GiSoccerBall, 
+import {
+    GiSoccerBall,
     GiForkKnifeSpoon,
-    GiPalette,
     GiGreekTemple,
     GiPartyFlags,
     GiHospitalCross,
-    GiStethoscope
+    GiMartini
 } from "react-icons/gi";
 import { motion, AnimatePresence } from "framer-motion";
 import "leaflet/dist/leaflet.css";
@@ -76,6 +75,7 @@ interface Lugar {
     imagen?: string;
     latitud?: string;
     longitud?: string;
+    views?: number;
 }
 
 // Componente de carrusel de imágenes para el info box
@@ -321,12 +321,11 @@ export default function MapaPage() {
         { name: "Más Populares", icon: FiTrendingUp },
         { name: "Fútbol", icon: GiSoccerBall },
         { name: "Gastronomía", icon: GiForkKnifeSpoon },
-        { name: "Arte", icon: GiPalette },
         { name: "Cultura", icon: GiGreekTemple },
         { name: "Eventos", icon: GiPartyFlags },
+        { name: "Clubs", icon: GiMartini },
         { name: "Casas de Cambio", icon: FiDollarSign },
         { name: "Hospitales", icon: GiHospitalCross },
-        { name: "Médico", icon: GiStethoscope },
     ];
 
     const normalizeText = (value: string) =>
@@ -340,13 +339,12 @@ export default function MapaPage() {
 
     const CATEGORY_FILTER_ALIASES: Record<string, string[]> = {
         futbol: ["futbol", "soccer", "deporte", "deportefutbol"],
-        gastronomia: ["gastronomia", "gastronomia mexicana", "comida", "postre", "vegana"],
-        arte: ["arte", "arte e historia", "arquitectura", "museos", "fotografia"],
-        cultura: ["cultura", "museos", "arquitectura", "religion"],
-        eventos: ["eventos", "musica", "vida nocturna", "conciertos"],
+        gastronomia: ["gastronomia", "gastronomia mexicana", "comida", "postre", "vegana", "cafeteria", "cafe"],
+        cultura: ["cultura", "museos", "arquitectura", "religion", "arte", "arte e historia", "fotografia"],
+        eventos: ["eventos", "musica", "conciertos"],
+        clubs: ["clubs", "club", "vida nocturna", "nocturna", "bar", "cantina"],
         "casas de cambio": ["casas de cambio", "cambio"],
-        hospitales: ["hospitales", "hospital", "salud"],
-        medico: ["medico", "salud", "clinica", "doctor"],
+        hospitales: ["hospitales", "hospital", "salud", "medico", "clinica"],
     };
 
     useEffect(() => {
@@ -470,11 +468,22 @@ export default function MapaPage() {
                                 setLugares(lugaresCSV);
                                 setFilteredLugares(lugaresCSV);
                                 
-                                // Crear un mapa de fotos por nombre
+                                // Crear mapas de fotos y vistas por nombre
                                 const fotosMap: Record<string, string[]> = {};
+                                const viewsMap: Record<string, number> = {};
                                 lugaresFirestore.forEach((lugar: any) => {
                                     if (lugar.nombre && lugar.fotos && lugar.fotos.length > 0) {
                                         fotosMap[lugar.nombre] = lugar.fotos;
+                                    }
+                                    if (lugar.nombre && lugar.views) {
+                                        viewsMap[lugar.nombre] = Number(lugar.views) || 0;
+                                    }
+                                });
+
+                                // Añadir vistas a cada lugar
+                                lugaresCSV.forEach((l: Lugar) => {
+                                    if (viewsMap[l.nombre] !== undefined) {
+                                        l.views = viewsMap[l.nombre];
                                     }
                                 });
                                 
@@ -516,7 +525,11 @@ export default function MapaPage() {
         console.log("🔍 Categoría seleccionada:", selectedCategory);
         console.log("🔍 Término de búsqueda:", searchTerm);
 
-        if (selectedCategory !== "Todos Los Lugares" && selectedCategory !== "Más Populares") {
+        if (selectedCategory === "Más Populares") {
+            filtered = [...lugares]
+                .sort((a, b) => (b.views || 0) - (a.views || 0))
+                .slice(0, 10);
+        } else if (selectedCategory !== "Todos Los Lugares") {
             const antes = filtered.length;
             const normalizedSelected = normalizeText(selectedCategory);
             const targetAliases = CATEGORY_FILTER_ALIASES[normalizedSelected] || [normalizedSelected];
@@ -747,7 +760,7 @@ export default function MapaPage() {
                         <div className={styles.results}>
                             <div className={styles.resultsHeader}>
                                 <span className={styles.resultsCount}>
-                                    {filteredLugares.length} LUGARES ENCONTRADOS
+                                    LUGARES ENCONTRADOS
                                 </span>
                             </div>
 
