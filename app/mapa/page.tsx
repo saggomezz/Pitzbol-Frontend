@@ -60,6 +60,7 @@ import {
     GiMartini
 } from "react-icons/gi";
 import { motion, AnimatePresence } from "framer-motion";
+import { MAP_FILTER_ALIASES } from "@/lib/categories";
 import "leaflet/dist/leaflet.css";
 import styles from "./mapa.module.css";
 import { getPlaceImageUrlSync, getPlaceImageByCategory } from "@/lib/placeImages";
@@ -337,15 +338,8 @@ export default function MapaPage() {
             .replace(/\s+/g, " ")
             .trim();
 
-    const CATEGORY_FILTER_ALIASES: Record<string, string[]> = {
-        futbol: ["futbol", "soccer", "deporte", "deportefutbol"],
-        gastronomia: ["gastronomia", "gastronomia mexicana", "comida", "postre", "vegana", "cafeteria", "cafe"],
-        cultura: ["cultura", "museos", "arquitectura", "religion", "arte", "arte e historia", "fotografia"],
-        eventos: ["eventos", "musica", "conciertos"],
-        clubs: ["clubs", "club", "vida nocturna", "nocturna", "bar", "cantina"],
-        "casas de cambio": ["casas de cambio", "cambio"],
-        hospitales: ["hospitales", "hospital", "salud", "medico", "clinica"],
-    };
+    // Aliases generados desde la taxonomía centralizada
+    const CATEGORY_FILTER_ALIASES = MAP_FILTER_ALIASES;
 
     useEffect(() => {
         const loadInitialData = async () => {

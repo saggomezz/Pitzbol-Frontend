@@ -24,14 +24,12 @@ type FilterOptions = {
     soloFavoritos?: boolean;
 };
 
-const quickFilters = ["Estadios", "Museos", "Fan Zone", "Históricos", "Familiar"];
-const quickFilterKeywords: Record<string, string[]> = {
-    "Estadios": ["estadio", "cancha", "akron", "jalisco"],
-    "Museos": ["museo", "historia", "seleccion", "trofeos"],
-    "Fan Zone": ["fan", "zone", "experiencia", "evento", "pantalla"],
-    "Históricos": ["historico", "tradicion", "clasico", "iconico"],
-    "Familiar": ["familiar", "familia", "parque", "museo", "tour"],
-};
+import { getQuickFilters } from "@/lib/categories";
+const _subs = getQuickFilters('futbol');
+const quickFilters = _subs.map(s => s.label);
+const quickFilterKeywords: Record<string, string[]> = Object.fromEntries(
+    _subs.map(s => [s.label, s.keywords])
+);
 
 const normalizeText = (value: string) =>
     value
