@@ -6,8 +6,6 @@ import {
   FiImage, FiMapPin, FiPlus, FiSave, FiTrash2, FiUpload, FiX
 } from "react-icons/fi";
 import { useRouter } from "next/navigation";
-import { storage } from "@/lib/firebase";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 const EMAIL_AUTORIZADO = "cua@hotmail.com";
 
@@ -138,29 +136,26 @@ export default function DatosLugaresPage() {
     setMensaje("");
   };
 
-  const handleFileUpload = (slot: number, file: File) => {
-    const nombreLugar = expandido || "lugar";
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `lugares/${nombreLugar.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_${slot + 1}_${Date.now()}.${ext}`;
-    const storageRef = ref(storage, fileName);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      "state_changed",
-      snapshot => {
-        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        setUploadProgress(prev => { const n = [...prev]; n[slot] = pct; return n; });
-      },
-      () => {
-        setUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
-        setMensaje("Error al subir imagen");
-      },
-      async () => {
-        const url = await getDownloadURL(uploadTask.snapshot.ref);
-        setInputFotos(prev => { const n = [...prev]; n[slot] = url; return n; });
-        setUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
-      }
-    );
+  const handleFileUpload = async (slot: number, file: File) => {
+    const token = localStorage.getItem("pitzbol_token");
+    const formData = new FormData();
+    formData.append("foto", file);
+    setUploadProgress(prev => { const n = [...prev]; n[slot] = 50; return n; });
+    try {
+      const res = await fetch("/api/lugares/upload-foto", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setInputFotos(prev => { const n = [...prev]; n[slot] = data.url; return n; });
+    } catch {
+      setMensaje("Error al subir imagen");
+    } finally {
+      setUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
+    }
   };
 
   const agregarSlot = () => {
@@ -240,28 +235,26 @@ export default function DatosLugaresPage() {
   };
 
   // Handlers formulario nuevo lugar
-  const handleNuevoFileUpload = (slot: number, file: File) => {
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `lugares/${(nuevoNombre || "nuevo").replace(/[^a-z0-9]/gi, "_").toLowerCase()}_${slot + 1}_${Date.now()}.${ext}`;
-    const storageRef = ref(storage, fileName);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      "state_changed",
-      snapshot => {
-        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        setNuevoUploadProgress(prev => { const n = [...prev]; n[slot] = pct; return n; });
-      },
-      () => {
-        setNuevoUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
-        setMensajeNuevo("Error al subir imagen");
-      },
-      async () => {
-        const url = await getDownloadURL(uploadTask.snapshot.ref);
-        setNuevoInputFotos(prev => { const n = [...prev]; n[slot] = url; return n; });
-        setNuevoUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
-      }
-    );
+  const handleNuevoFileUpload = async (slot: number, file: File) => {
+    const token = localStorage.getItem("pitzbol_token");
+    const formData = new FormData();
+    formData.append("foto", file);
+    setNuevoUploadProgress(prev => { const n = [...prev]; n[slot] = 50; return n; });
+    try {
+      const res = await fetch("/api/lugares/upload-foto", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setNuevoInputFotos(prev => { const n = [...prev]; n[slot] = data.url; return n; });
+    } catch {
+      setMensajeNuevo("Error al subir imagen");
+    } finally {
+      setNuevoUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
+    }
   };
 
   const toggleSubcategoria = (sub: string) => {
