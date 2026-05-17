@@ -27,6 +27,8 @@ function ResetPasswordPageInner() {
   const oobCode = searchParams.get("oobCode");
 
   const handleReset = async () => {
+    console.log("oobCode recibido:", oobCode);
+    console.log("URL completa:", window.location.href);
     if (!oobCode) {
       setStatus({ type: 'error', msg: "El código de recuperación es inválido o ha expirado." });
       return;
@@ -53,13 +55,16 @@ function ResetPasswordPageInner() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        const code = (err as any)?.error?.message || "";
-        if (code === "EXPIRED_OOB_CODE") {
-          setStatus({ type: 'error', msg: "El enlace de recuperación ha expirado. Solicita uno nuevo." });
-        } else if (code === "INVALID_OOB_CODE") {
-          setStatus({ type: 'error', msg: "El enlace de recuperación es inválido." });
+        const code: string = (err as any)?.error?.message || "UNKNOWN";
+        console.error("Firebase resetPassword error:", code, err);
+        if (code.includes("EXPIRED_OOB_CODE")) {
+          setStatus({ type: 'error', msg: "El enlace expiró. Solicita uno nuevo desde ¿Olvidaste tu contraseña?" });
+        } else if (code.includes("INVALID_OOB_CODE")) {
+          setStatus({ type: 'error', msg: "El enlace ya fue usado o es inválido. Solicita uno nuevo." });
+        } else if (code.includes("WEAK_PASSWORD")) {
+          setStatus({ type: 'error', msg: "La contraseña es muy débil. Usa al menos 6 caracteres." });
         } else {
-          setStatus({ type: 'error', msg: "Error al restablecer la contraseña. Inténtalo de nuevo." });
+          setStatus({ type: 'error', msg: `Error (${code}). Solicita un nuevo enlace.` });
         }
         return;
       }
