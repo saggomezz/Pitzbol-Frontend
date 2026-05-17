@@ -236,12 +236,31 @@ export default function PerfilDetallado() {
   };
 
   useEffect(() => {
-    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    let userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
     const cargarDatos = async () => {
       if (!userLocal.uid) {
         setLoading(false);
         return;
       }
+
+      // Refrescar datos desde Firestore via /api/auth/me
+      try {
+        const token = localStorage.getItem("pitzbol_token");
+        if (token) {
+          const meRes = await fetch(`${API_BASE}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "include",
+          });
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            if (meData.success && meData.user) {
+              // Mezclar datos frescos con localStorage y guardar
+              userLocal = { ...userLocal, ...meData.user };
+              localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+            }
+          }
+        }
+      } catch {}
 
       const initialEspecialidades =
         (userLocal["07_intereses"]?.length > 0 ? userLocal["07_intereses"] : null) ||
