@@ -8,6 +8,7 @@ import {
 import { useRouter } from "next/navigation";
 
 const EMAIL_AUTORIZADO = "cua@hotmail.com";
+const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
 
 const CATEGORY_CONFIG: Record<string, string[]> = {
   "Restaurante / Cafetería": ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana", "Internacional"],
@@ -96,7 +97,7 @@ export default function DatosLugaresPage() {
         setHorarioMap(csvHorarioM);
       });
 
-    fetch(`/api/lugares`)
+    fetch(`${BACKEND}/lugares`)
       .then(r => r.json())
       .then(data => {
         const fotosM: Record<string, string[]> = {};
@@ -142,7 +143,7 @@ export default function DatosLugaresPage() {
     formData.append("foto", file);
     setUploadProgress(prev => { const n = [...prev]; n[slot] = 50; return n; });
     try {
-      const res = await fetch("/api/lugares/upload-foto", {
+      const res = await fetch(`${BACKEND}/lugares/upload-foto`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         credentials: "include",
@@ -172,7 +173,7 @@ export default function DatosLugaresPage() {
     const token = localStorage.getItem("pitzbol_token");
     setMensaje("Eliminando...");
     try {
-      const res = await fetch(`/api/lugares/${encodeURIComponent(nombre)}`, {
+      const res = await fetch(`${BACKEND}/lugares/${encodeURIComponent(nombre)}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         credentials: "include",
@@ -212,7 +213,7 @@ export default function DatosLugaresPage() {
     const fotosLimpias = inputFotos.filter(u => u.trim().startsWith("http"));
     const token = localStorage.getItem("pitzbol_token");
     try {
-      const res = await fetch(`/api/lugares/${encodeURIComponent(nombre)}/fotos`, {
+      const res = await fetch(`${BACKEND}/lugares/${encodeURIComponent(nombre)}/fotos`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -241,7 +242,7 @@ export default function DatosLugaresPage() {
     formData.append("foto", file);
     setNuevoUploadProgress(prev => { const n = [...prev]; n[slot] = 50; return n; });
     try {
-      const res = await fetch("/api/lugares/upload-foto", {
+      const res = await fetch(`${BACKEND}/lugares/upload-foto`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         credentials: "include",
@@ -281,7 +282,7 @@ export default function DatosLugaresPage() {
     const fotosLimpias = nuevoInputFotos.filter(u => u.trim().startsWith("http"));
 
     try {
-      const res1 = await fetch(`/api/lugares`, {
+      const res1 = await fetch(`${BACKEND}/lugares`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -314,7 +315,7 @@ export default function DatosLugaresPage() {
         ? [nuevaCategoria, ...nuevasSubcategorias]
         : [nuevaCategoria];
 
-      await fetch(`/api/lugares/${encodeURIComponent(nombre)}/categorias`, {
+      await fetch(`${BACKEND}/lugares/${encodeURIComponent(nombre)}/categorias`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -330,7 +331,7 @@ export default function DatosLugaresPage() {
         horarioObj[dia] = d.cerrado ? 'cerrado' : { apertura: d.apertura, cierre: d.cierre };
       }
 
-      await fetch(`/api/lugares/${encodeURIComponent(nombre)}/info`, {
+      await fetch(`${BACKEND}/lugares/${encodeURIComponent(nombre)}/info`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ horariosJson: JSON.stringify(horarioObj) }),
