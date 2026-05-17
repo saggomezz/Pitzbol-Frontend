@@ -143,7 +143,6 @@ export default withPWA({
     cleanupOutdatedCaches: true,
   } as any,
   disable: process.env.NODE_ENV === 'development',
-  skipWaiting: true,
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: false,
   reloadOnOnline: true,
