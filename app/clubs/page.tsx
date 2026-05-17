@@ -2,6 +2,9 @@
 
 import { FiMusic } from "react-icons/fi";
 import CategoryPlacesPage from "@/app/components/CategoryPlacesPage";
+import { getQuickFilters } from "@/lib/categories";
+
+const _subs = getQuickFilters('clubs');
 
 export default function ClubsPage() {
   return (
@@ -17,11 +20,8 @@ export default function ClubsPage() {
       sectionTitle="Clubs y Bares"
       sectionSubtitle="Los mejores espacios para salir de noche en Guadalajara."
       searchPlaceholder="Buscar club, bar, cantina, zona..."
-      quickFilters={["Club", "Bar"]}
-      quickFilterKeywords={{
-        "Club": ["club", "antro", "discoteca", "nocturno", "nightclub"],
-        "Bar": ["bar", "cantina", "pub", "taberna"],
-      }}
+      quickFilters={_subs.map(s => s.label)}
+      quickFilterKeywords={Object.fromEntries(_subs.map(s => [s.label, s.keywords]))}
       loadingText="Cargando clubs y bares..."
       emptyText="No se encontraron lugares con ese criterio."
       defaultDescription="Explora este espacio nocturno recomendado para vivir la mejor noche en Guadalajara."

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { FiLock, FiCheckCircle, FiAlertCircle, FiEye, FiEyeOff } from "react-icons/fi";
 
@@ -27,6 +27,8 @@ function ResetPasswordPageInner() {
   const oobCode = searchParams.get("oobCode");
 
   const handleReset = async () => {
+    console.log("oobCode recibido:", oobCode);
+    console.log("URL completa:", window.location.href);
     if (!oobCode) {
       setStatus({ type: 'error', msg: "El código de recuperación es inválido o ha expirado." });
       return;
@@ -41,13 +43,39 @@ function ResetPasswordPageInner() {
     }
 
     try {
-      // TODO: Lógica de reseteo de contraseña vía backend
-      setStatus({ type: 'success', msg: "¡Contraseña actualizada! Redirigiendo... (simulado)" });
-      // IMPORTANTE: Limpia el localStorage para forzar login nuevo
+      const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyA9gGWAse4hO2Kq3mbkUY-pN7EoiJLSatw";
+      const res = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ oobCode, newPassword }),
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const code: string = (err as any)?.error?.message || "UNKNOWN";
+        console.error("Firebase resetPassword error:", code, err);
+        if (code.includes("EXPIRED_OOB_CODE")) {
+          setStatus({ type: 'error', msg: "El enlace expiró. Solicita uno nuevo desde ¿Olvidaste tu contraseña?" });
+        } else if (code.includes("INVALID_OOB_CODE")) {
+          setStatus({ type: 'error', msg: "El enlace ya fue usado o es inválido. Solicita uno nuevo." });
+        } else if (code.includes("WEAK_PASSWORD")) {
+          setStatus({ type: 'error', msg: "La contraseña es muy débil. Usa al menos 6 caracteres." });
+        } else {
+          setStatus({ type: 'error', msg: `Error (${code}). Solicita un nuevo enlace.` });
+        }
+        return;
+      }
+
+      // Contraseña actualizada correctamente en Firebase
       localStorage.removeItem("pitzbol_user");
+      localStorage.removeItem("pitzbol_token");
+      setStatus({ type: 'success', msg: "¡Contraseña actualizada! Redirigiendo al inicio de sesión..." });
       setTimeout(() => router.push("/"), 3000);
-    } catch (error) {
-      setStatus({ type: 'error', msg: "Error al restablecer la contraseña." });
+    } catch {
+      setStatus({ type: 'error', msg: "Error de conexión. Inténtalo de nuevo." });
     }
   };
 
@@ -66,6 +94,7 @@ function ResetPasswordPageInner() {
           <div className="relative">
             <FiLock className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
             <input
+              type={showPassword ? "text" : "password"}
               placeholder="Escribe tu nueva clave"
               className="w-full pl-12 pr-12 py-3.5 bg-[#FDFCF9] border border-[#F6F0E6] rounded-full outline-none text-[#1A4D2E] focus:border-[#0D601E]"
               value={newPassword}

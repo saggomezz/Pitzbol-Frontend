@@ -1,6 +1,6 @@
 import Papa from "papaparse";
 
-const API_BASE = "/api";
+const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
 
 export interface PlaceRecord {
   nombre: string;
@@ -215,12 +215,17 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
         ])
       );
 
+      // Si Firebase tiene categorias[] (editadas por el admin), son autoritativas.
+      // No mezclar con CSV — el admin decidió exactamente qué categorías tiene el lugar.
+      const hasAdminCats = Array.isArray(firestorePlace.categorias) && firestorePlace.categorias.length > 0;
       const nextValue: PlaceRecord = {
         nombre,
-        rawCategoria: (Array.isArray(firestorePlace.categorias) && firestorePlace.categorias.length > 1)
-          ? firestorePlace.categorias.join(', ')
+        rawCategoria: hasAdminCats
+          ? firestorePlace.categorias!.join(', ')
           : existing?.rawCategoria || normalizeCategory(String(firestorePlace.categoria || "")),
-        categoria: normalizeCategory(String(firestorePlace.categoria || existing?.categoria || "")),
+        categoria: hasAdminCats
+          ? firestorePlace.categorias![0]
+          : normalizeCategory(String(firestorePlace.categoria || existing?.categoria || "")),
         subcategoria:
           String(
             firestorePlace.subcategoria ||

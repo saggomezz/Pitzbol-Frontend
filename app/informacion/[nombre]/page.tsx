@@ -13,6 +13,7 @@ import { NavigationPanel, type MapOriginEvent, type NavigationMapAlert, type Ori
 import PlaceDetailNavigationMap, { type OriginChangeMeta } from "@/app/components/PlaceDetailNavigationMap";
 import { usePlaceView } from "@/lib/usePlaceView";
 import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
+import { ALL_ADMIN_TAGS } from "@/lib/categories";
 import type { GeoPoint } from "@/lib/geoClient";
 import { getPlaceImageUrlSync } from "@/lib/placeImages";
 
@@ -241,12 +242,8 @@ function getGalleryPhotos(lugar: Lugar): string[] {
 
 const EMAIL_ADMIN_LUGARES = "cua@hotmail.com";
 
-const TODAS_CATEGORIAS = [
-  "Gastronomía", "Cultura", "Vida Nocturna", "Cafetería", "Futbol",
-  "Arte", "Deporte", "Turismo", "Compras", "Hotel", "Transporte",
-  "Salud", "Hospital", "Entretenimiento", "Museos", "Naturaleza",
-  "Mercado", "Bar", "Restaurante", "Museo", "Parque", "Estadio",
-];
+// Etiquetas disponibles generadas desde la taxonomía centralizada (lib/categories.ts)
+const TODAS_CATEGORIAS = ALL_ADMIN_TAGS;
 
 export default function InformacionLugar() {
   const params = useParams();

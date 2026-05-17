@@ -112,6 +112,7 @@ export default function PoliticaPrivacidad() {
                                     <li className={styles.listItem}>{t('security2')}</li>
                                     <li className={styles.listItem}>{t('security3')}</li>
                                     <li className={styles.listItem}>{t('security4')}</li>
+                                    <li className={styles.listItem}>{t('security5')}</li>
                                 </ul>
                             </div>
                         </div>

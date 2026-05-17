@@ -24,14 +24,12 @@ type FilterOptions = {
     soloFavoritos?: boolean;
 };
 
-const quickFilters = ["Estadios", "Museos", "Fan Zone", "Históricos", "Familiar"];
-const quickFilterKeywords: Record<string, string[]> = {
-    "Estadios": ["estadio", "cancha", "akron", "jalisco"],
-    "Museos": ["museo", "historia", "seleccion", "trofeos"],
-    "Fan Zone": ["fan", "zone", "experiencia", "evento", "pantalla"],
-    "Históricos": ["historico", "tradicion", "clasico", "iconico"],
-    "Familiar": ["familiar", "familia", "parque", "museo", "tour"],
-};
+import { getQuickFilters } from "@/lib/categories";
+const _subs = getQuickFilters('futbol');
+const quickFilters = _subs.map(s => s.label);
+const quickFilterKeywords: Record<string, string[]> = Object.fromEntries(
+    _subs.map(s => [s.label, s.keywords])
+);
 
 const normalizeText = (value: string) =>
     value
@@ -226,7 +224,7 @@ export default function FutbolPage() {
             <main className="max-w-[1600px] mx-auto px-6 py-12 w-full">
                 <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
                     <div>
-                        <h2 className="text-4xl font-black text-[#1A4D2E] uppercase mb-2" style={{ fontFamily: "'Jockey One', sans-serif" }}>Destinos Futboleros</h2>
+                        <h2 className="text-4xl font-black text-[#1A4D2E] uppercase mb-2" style={{ fontFamily: "'Jockey One', sans-serif" }}>Eventos de la FIFA y Destinos Futboleros en Guadalajara</h2>
                         <p className="text-[#769C7B] font-medium italic">Explora los templos del fútbol en la Perla Tapatía.</p>
                     </div>
 

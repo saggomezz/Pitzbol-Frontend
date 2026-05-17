@@ -51,16 +51,16 @@ import {
     FiChevronLeft,
     FiChevronRight
 } from "react-icons/fi";
-import { 
-    GiSoccerBall, 
+import {
+    GiSoccerBall,
     GiForkKnifeSpoon,
-    GiPalette,
     GiGreekTemple,
     GiPartyFlags,
     GiHospitalCross,
-    GiStethoscope
+    GiMartini
 } from "react-icons/gi";
 import { motion, AnimatePresence } from "framer-motion";
+import { MAP_FILTER_ALIASES } from "@/lib/categories";
 import "leaflet/dist/leaflet.css";
 import styles from "./mapa.module.css";
 import { getPlaceImageUrlSync, getPlaceImageByCategory } from "@/lib/placeImages";
@@ -322,12 +322,11 @@ export default function MapaPage() {
         { name: "Más Populares", icon: FiTrendingUp },
         { name: "Fútbol", icon: GiSoccerBall },
         { name: "Gastronomía", icon: GiForkKnifeSpoon },
-        { name: "Arte", icon: GiPalette },
         { name: "Cultura", icon: GiGreekTemple },
         { name: "Eventos", icon: GiPartyFlags },
+        { name: "Clubs", icon: GiMartini },
         { name: "Casas de Cambio", icon: FiDollarSign },
         { name: "Hospitales", icon: GiHospitalCross },
-        { name: "Médico", icon: GiStethoscope },
     ];
 
     const normalizeText = (value: string) =>
@@ -339,16 +338,8 @@ export default function MapaPage() {
             .replace(/\s+/g, " ")
             .trim();
 
-    const CATEGORY_FILTER_ALIASES: Record<string, string[]> = {
-        futbol: ["futbol", "soccer", "deporte", "deportefutbol"],
-        gastronomia: ["gastronomia", "gastronomia mexicana", "comida", "postre", "vegana"],
-        arte: ["arte", "arte e historia", "arquitectura", "museos", "fotografia"],
-        cultura: ["cultura", "museos", "arquitectura", "religion"],
-        eventos: ["eventos", "musica", "vida nocturna", "conciertos"],
-        "casas de cambio": ["casas de cambio", "cambio"],
-        hospitales: ["hospitales", "hospital", "salud"],
-        medico: ["medico", "salud", "clinica", "doctor"],
-    };
+    // Aliases generados desde la taxonomía centralizada
+    const CATEGORY_FILTER_ALIASES = MAP_FILTER_ALIASES;
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -489,11 +480,22 @@ export default function MapaPage() {
                                 setLugares(lugaresConViews);
                                 setFilteredLugares(lugaresConViews);
                                 
-                                // Crear un mapa de fotos por nombre
+                                // Crear mapas de fotos y vistas por nombre
                                 const fotosMap: Record<string, string[]> = {};
+                                const viewsMap: Record<string, number> = {};
                                 lugaresFirestore.forEach((lugar: any) => {
                                     if (lugar.nombre && lugar.fotos && lugar.fotos.length > 0) {
                                         fotosMap[lugar.nombre] = lugar.fotos;
+                                    }
+                                    if (lugar.nombre && lugar.views) {
+                                        viewsMap[lugar.nombre] = Number(lugar.views) || 0;
+                                    }
+                                });
+
+                                // Añadir vistas a cada lugar
+                                lugaresCSV.forEach((l: Lugar) => {
+                                    if (viewsMap[l.nombre] !== undefined) {
+                                        l.views = viewsMap[l.nombre];
                                     }
                                 });
                                 
@@ -547,6 +549,9 @@ export default function MapaPage() {
                 : [...filtered].sort((a, b) => (b.views || 0) - (a.views || 0));
 
             console.log(`🔍 Filtrado por populares (views): ${antes} → ${filtered.length}`);
+            filtered = [...lugares]
+                .sort((a, b) => (b.views || 0) - (a.views || 0))
+                .slice(0, 10);
         } else if (selectedCategory !== "Todos Los Lugares") {
             const antes = filtered.length;
             const normalizedSelected = normalizeText(selectedCategory);
@@ -778,7 +783,7 @@ export default function MapaPage() {
                         <div className={styles.results}>
                             <div className={styles.resultsHeader}>
                                 <span className={styles.resultsCount}>
-                                    {filteredLugares.length} LUGARES ENCONTRADOS
+                                    LUGARES ENCONTRADOS
                                 </span>
                             </div>
 

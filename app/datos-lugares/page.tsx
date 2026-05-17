@@ -6,10 +6,9 @@ import {
   FiImage, FiMapPin, FiPlus, FiSave, FiTrash2, FiUpload, FiX
 } from "react-icons/fi";
 import { useRouter } from "next/navigation";
-import { storage } from "@/lib/firebase";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 const EMAIL_AUTORIZADO = "cua@hotmail.com";
+const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
 
 const CATEGORY_CONFIG: Record<string, string[]> = {
   "Restaurante / Cafetería": ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana", "Internacional"],
@@ -98,7 +97,7 @@ export default function DatosLugaresPage() {
         setHorarioMap(csvHorarioM);
       });
 
-    fetch(`/api/lugares`)
+    fetch(`${BACKEND}/lugares`)
       .then(r => r.json())
       .then(data => {
         const fotosM: Record<string, string[]> = {};
@@ -138,29 +137,26 @@ export default function DatosLugaresPage() {
     setMensaje("");
   };
 
-  const handleFileUpload = (slot: number, file: File) => {
-    const nombreLugar = expandido || "lugar";
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `lugares/${nombreLugar.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_${slot + 1}_${Date.now()}.${ext}`;
-    const storageRef = ref(storage, fileName);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      "state_changed",
-      snapshot => {
-        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        setUploadProgress(prev => { const n = [...prev]; n[slot] = pct; return n; });
-      },
-      () => {
-        setUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
-        setMensaje("Error al subir imagen");
-      },
-      async () => {
-        const url = await getDownloadURL(uploadTask.snapshot.ref);
-        setInputFotos(prev => { const n = [...prev]; n[slot] = url; return n; });
-        setUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
-      }
-    );
+  const handleFileUpload = async (slot: number, file: File) => {
+    const token = localStorage.getItem("pitzbol_token");
+    const formData = new FormData();
+    formData.append("foto", file);
+    setUploadProgress(prev => { const n = [...prev]; n[slot] = 50; return n; });
+    try {
+      const res = await fetch(`${BACKEND}/lugares/upload-foto`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setInputFotos(prev => { const n = [...prev]; n[slot] = data.url; return n; });
+    } catch {
+      setMensaje("Error al subir imagen");
+    } finally {
+      setUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
+    }
   };
 
   const agregarSlot = () => {
@@ -177,7 +173,7 @@ export default function DatosLugaresPage() {
     const token = localStorage.getItem("pitzbol_token");
     setMensaje("Eliminando...");
     try {
-      const res = await fetch(`/api/lugares/${encodeURIComponent(nombre)}`, {
+      const res = await fetch(`${BACKEND}/lugares/${encodeURIComponent(nombre)}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         credentials: "include",
@@ -217,7 +213,7 @@ export default function DatosLugaresPage() {
     const fotosLimpias = inputFotos.filter(u => u.trim().startsWith("http"));
     const token = localStorage.getItem("pitzbol_token");
     try {
-      const res = await fetch(`/api/lugares/${encodeURIComponent(nombre)}/fotos`, {
+      const res = await fetch(`${BACKEND}/lugares/${encodeURIComponent(nombre)}/fotos`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -240,28 +236,26 @@ export default function DatosLugaresPage() {
   };
 
   // Handlers formulario nuevo lugar
-  const handleNuevoFileUpload = (slot: number, file: File) => {
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `lugares/${(nuevoNombre || "nuevo").replace(/[^a-z0-9]/gi, "_").toLowerCase()}_${slot + 1}_${Date.now()}.${ext}`;
-    const storageRef = ref(storage, fileName);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      "state_changed",
-      snapshot => {
-        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        setNuevoUploadProgress(prev => { const n = [...prev]; n[slot] = pct; return n; });
-      },
-      () => {
-        setNuevoUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
-        setMensajeNuevo("Error al subir imagen");
-      },
-      async () => {
-        const url = await getDownloadURL(uploadTask.snapshot.ref);
-        setNuevoInputFotos(prev => { const n = [...prev]; n[slot] = url; return n; });
-        setNuevoUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
-      }
-    );
+  const handleNuevoFileUpload = async (slot: number, file: File) => {
+    const token = localStorage.getItem("pitzbol_token");
+    const formData = new FormData();
+    formData.append("foto", file);
+    setNuevoUploadProgress(prev => { const n = [...prev]; n[slot] = 50; return n; });
+    try {
+      const res = await fetch(`${BACKEND}/lugares/upload-foto`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setNuevoInputFotos(prev => { const n = [...prev]; n[slot] = data.url; return n; });
+    } catch {
+      setMensajeNuevo("Error al subir imagen");
+    } finally {
+      setNuevoUploadProgress(prev => { const n = [...prev]; n[slot] = null; return n; });
+    }
   };
 
   const toggleSubcategoria = (sub: string) => {
@@ -288,7 +282,7 @@ export default function DatosLugaresPage() {
     const fotosLimpias = nuevoInputFotos.filter(u => u.trim().startsWith("http"));
 
     try {
-      const res1 = await fetch(`/api/lugares`, {
+      const res1 = await fetch(`${BACKEND}/lugares`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -321,7 +315,7 @@ export default function DatosLugaresPage() {
         ? [nuevaCategoria, ...nuevasSubcategorias]
         : [nuevaCategoria];
 
-      await fetch(`/api/lugares/${encodeURIComponent(nombre)}/categorias`, {
+      await fetch(`${BACKEND}/lugares/${encodeURIComponent(nombre)}/categorias`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -337,7 +331,7 @@ export default function DatosLugaresPage() {
         horarioObj[dia] = d.cerrado ? 'cerrado' : { apertura: d.apertura, cierre: d.cierre };
       }
 
-      await fetch(`/api/lugares/${encodeURIComponent(nombre)}/info`, {
+      await fetch(`${BACKEND}/lugares/${encodeURIComponent(nombre)}/info`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ horariosJson: JSON.stringify(horarioObj) }),

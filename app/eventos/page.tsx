@@ -3,6 +3,9 @@
 import { FiCalendar } from "react-icons/fi";
 import CategoryPlacesPage from "@/app/components/CategoryPlacesPage";
 import PlaceRating from "@/app/components/PlaceRating";
+import { getQuickFilters } from "@/lib/categories";
+
+const _subs = getQuickFilters('eventos');
 
 export default function EventosPage() {
   return (
@@ -17,12 +20,8 @@ export default function EventosPage() {
       sectionTitle="Eventos Cercanos"
       sectionSubtitle="Planea tu día con actividades destacadas en Guadalajara."
       searchPlaceholder="Buscar concierto, feria, arte, evento, zona..."
-      quickFilters={["Arte", "Ferias", "Conciertos"]}
-      quickFilterKeywords={{
-        "Arte": ["arte", "galeria", "galería", "exposicion", "exposición", "pintura", "escultura", "museo", "historia"],
-        "Ferias": ["feria", "mercado", "artesanal", "artesania", "artesanía", "tianguis"],
-        "Conciertos": ["concierto", "musica", "música", "banda", "orquesta", "show", "teatro", "degollado", "festival"]
-      }}
+      quickFilters={_subs.map(s => s.label)}
+      quickFilterKeywords={Object.fromEntries(_subs.map(s => [s.label, s.keywords]))}
       loadingText="Cargando eventos..."
       emptyText="No se encontraron eventos con ese criterio."
       defaultDescription="Explora este evento recomendado para complementar tu experiencia en la ciudad."

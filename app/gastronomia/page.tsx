@@ -19,7 +19,8 @@ type FilterOptions = {
   soloFavoritos?: boolean;
 };
 
-const quickFilters = ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana"];
+import { getQuickFilters } from "@/lib/categories";
+const quickFilters = getQuickFilters('gastronomia').map(s => s.label);
 
 const normalizeText = (value: string) =>
   value

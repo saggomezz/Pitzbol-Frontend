@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
 
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
