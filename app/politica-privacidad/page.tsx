@@ -1,6 +1,6 @@
 "use client";
 import { useTranslations } from "next-intl";
-import { FiShield, FiEye, FiLock, FiDatabase, FiShare2, FiAlertCircle, FiMail } from "react-icons/fi";
+import { FiAlertCircle, FiDatabase, FiEye, FiLock, FiMail, FiShare2, FiShield } from "react-icons/fi";
 import styles from "./politica-privacidad.module.css";
 
 export default function PoliticaPrivacidad() {

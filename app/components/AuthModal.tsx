@@ -1,10 +1,10 @@
 "use client";
+import { getBackendOrigin } from "@/lib/backendUrl";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 import { FiChevronDown, FiEye, FiEyeOff, FiLock, FiMail, FiX } from "react-icons/fi";
-import { getBackendOrigin } from "@/lib/backendUrl";
 
 const API_BASE = getBackendOrigin();
 const BACKEND_URL = `${API_BASE}/api/auth`;
