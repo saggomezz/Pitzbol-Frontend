@@ -132,6 +132,10 @@
     overflow: hidden;
 }
 
+.mainContentStickyMap {
+    overflow: visible;
+}
+
 .titleSection {
     padding: 4rem 3.5rem 2.5rem;
 }
@@ -480,12 +484,33 @@
     min-width: 0;
 }
 .mapAndSidebarExpanded {
-    --panel-height: min(74vh, 700px);
-    --map-height: var(--panel-height);
+    --map-height: min(74dvh, 700px, calc(100dvh - 7.5rem));
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto;
     gap: 1rem;
-    align-items: stretch;
-    min-height: var(--panel-height, 700px);
+    align-items: start;
+    min-height: 0;
+}
+
+.mapAndSidebarExpanded .mapColumn {
+    position: sticky;
+    top: clamp(72px, 8vw, 104px);
+    height: var(--map-height);
+    min-height: var(--map-height);
+    align-self: start;
+}
+
+.mapAndSidebarExpanded .sidebarColumn {
+    height: auto;
+    min-height: 0;
+    align-self: start;
+    overflow: visible;
+}
+
+.mapAndSidebarExpanded .sidebarColumn > * {
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .mapAndSidebarExpanded .mapContainer {
@@ -748,11 +773,21 @@
     }
 
     .mapAndSidebarExpanded {
-        --map-height: 320px;
-        --panel-height: 320px;
+        --map-height: clamp(280px, 42dvh, 380px);
         grid-template-columns: 1fr;
         gap: 0.75rem;
-        min-height: 320px;
+        min-height: auto;
+    }
+
+    .mapAndSidebarExpanded .mapColumn {
+        top: clamp(64px, 18vw, 88px);
+        height: var(--map-height);
+        min-height: var(--map-height);
+    }
+
+    .mapAndSidebarExpanded .sidebarColumn {
+        height: auto;
+        min-height: 0;
     }
 
     .quickContactCard {
@@ -833,5 +868,125 @@
     .directionsBtn {
         width: 100%;
         justify-content: center;
+    }
+}
+
+.mapSectionDriving {
+    --driving-sticky-top: clamp(72px, 6.8vw, 108px);
+    position: relative;
+    z-index: 3;
+    padding: clamp(0.75rem, 1.2vw, 1.25rem);
+    height: calc(100dvh - var(--driving-sticky-top));
+    border-top: 0;
+    border-radius: 0 0 32px 32px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.mapSectionDriving .mapTitle {
+    display: none;
+}
+
+.mapAndSidebarDriving {
+    --map-height: max(340px, calc(100dvh - var(--driving-sticky-top) - 2 * clamp(0.75rem, 1.2vw, 1.25rem)));
+    grid-template-columns: minmax(0, 1fr) clamp(330px, 25vw, 400px);
+    grid-template-rows: var(--map-height);
+    gap: clamp(0.5rem, 0.8vw, 0.9rem);
+    height: var(--map-height);
+    align-items: stretch;
+}
+
+.mapAndSidebarDriving .mapContainer {
+    height: 100%;
+    min-height: 0;
+    border-radius: 18px;
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.28);
+}
+
+.mapAndSidebarDriving .mapColumn {
+    position: sticky;
+    top: var(--driving-sticky-top);
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: var(--map-height);
+    min-height: var(--map-height);
+    align-self: stretch;
+}
+
+.mapAndSidebarDriving .sidebarColumn {
+    min-height: 0;
+    align-self: stretch;
+    overflow: hidden;
+    display: flex;
+}
+
+.mapAndSidebarDriving .sidebarColumn > * {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+@media (min-width: 1280px) {
+    .mapAndSidebarDriving {
+        grid-template-columns: minmax(0, 1fr) clamp(360px, 24vw, 420px);
+    }
+}
+
+@media (max-width: 1100px) {
+    .mapAndSidebarDriving {
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 38vw);
+    }
+}
+
+@media (max-width: 900px) {
+    .mapSectionDriving {
+        --driving-sticky-top: clamp(68px, 11vw, 92px);
+        padding: 0.5rem;
+        height: auto;
+        overflow: visible;
+    }
+
+    .mapAndSidebarDriving {
+        --map-height: clamp(320px, 56dvh, 520px);
+        grid-template-columns: 1fr;
+        grid-template-rows: var(--map-height) auto;
+        gap: 0.5rem;
+        min-height: var(--map-height);
+        height: auto;
+    }
+
+    .mapAndSidebarDriving .mapColumn {
+        height: var(--map-height);
+        min-height: var(--map-height);
+    }
+
+    .mapAndSidebarDriving .mapContainer {
+        height: 100%;
+        min-height: var(--map-height);
+    }
+
+    .mapAndSidebarDriving .sidebarColumn {
+        height: auto;
+        min-height: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .mapSectionDriving {
+        --driving-sticky-top: clamp(64px, 18vw, 86px);
+        padding: 0.35rem;
+    }
+
+    .mapAndSidebarDriving {
+        --map-height: clamp(300px, 52dvh, 460px);
+        gap: 0.35rem;
+        min-height: var(--map-height);
+    }
+
+    .mapAndSidebarDriving .mapContainer {
+        border-radius: 14px;
+        min-height: var(--map-height);
     }
 }

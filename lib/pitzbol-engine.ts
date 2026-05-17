@@ -30,16 +30,14 @@ function calcularETA(distanceKm: number, hour: number, mode: string = 'driving')
   const baseSpeeds: Record<string, number> = {
     driving: 30,
     walking: 5,
-    cycling: 15,
-    'transit-like': 20,
-    'rideshare-like': 25
+    cycling: 15
   };
 
   const baseSpeed = baseSpeeds[mode] || 30;
   let finalSpeed = baseSpeed;
 
-  // Factor de tráfico solo para modos motorizados
-  if ((mode === 'driving' || mode === 'rideshare-like') && hour >= 0 && hour < 24) {
+  // Factor de tráfico solo para automóvil
+  if (mode === 'driving' && hour >= 0 && hour < 24) {
     let factor = 1.0;
     if (hour >= 7 && hour < 9) factor = 1.8; // Morning rush
     if (hour >= 17 && hour < 20) factor = 2.2; // Evening rush

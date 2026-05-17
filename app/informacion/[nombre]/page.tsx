@@ -9,11 +9,12 @@ import styles from "../informacion.module.css";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import DeletedBusinessModal from "@/app/components/DeletedBusinessModal";
 import PlaceRating from "@/app/components/PlaceRating";
-import { NavigationPanel, type MapOriginEvent, type OriginMarkerMeta } from "../../components/NavigationPanel";
+import { NavigationPanel, type MapOriginEvent, type NavigationMapAlert, type OriginMarkerMeta, type TransportMode } from "../../components/NavigationPanel";
 import PlaceDetailNavigationMap, { type OriginChangeMeta } from "@/app/components/PlaceDetailNavigationMap";
 import { usePlaceView } from "@/lib/usePlaceView";
 import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
 import type { GeoPoint } from "@/lib/geoClient";
+import { getPlaceImageUrlSync } from "@/lib/placeImages";
 
 const APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY = "pitzbol_approved_business_toast_dismissed_by_business_v2";
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
@@ -219,6 +220,25 @@ function getMapEmbedSrc(lugar: Lugar): string {
   return `https://www.openstreetmap.org/export/embed.html?bbox=-103.45%2C20.59%2C-103.25%2C20.76&layer=mapnik&query=${query}`;
 }
 
+function getFallbackPhoto(lugar: Lugar): string {
+  return getPlaceImageUrlSync({
+    nombre: lugar.nombre,
+    categoria: lugar.categoria,
+    ubicacion: lugar.direccion,
+    latitud: lugar.latitud,
+    longitud: lugar.longitud,
+  });
+}
+
+function getGalleryPhotos(lugar: Lugar): string[] {
+  const savedPhotos = (lugar.fotos || [])
+    .map((foto) => String(foto || "").trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  return savedPhotos.length > 0 ? savedPhotos : [getFallbackPhoto(lugar)];
+}
+
 const EMAIL_ADMIN_LUGARES = "cua@hotmail.com";
 
 const TODAS_CATEGORIAS = [
@@ -260,11 +280,17 @@ export default function InformacionLugar() {
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
+  const [isDrivingMode, setIsDrivingMode] = useState(false);
   const [originMarkerPoint, setOriginMarkerPoint] = useState<GeoPoint | null>(null);
   const [mapOriginEvent, setMapOriginEvent] = useState<MapOriginEvent | null>(null);
-  const [mapRoutes, setMapRoutes] = useState<{ polyline: string }[]>([]);
+  const [mapRoutes, setMapRoutes] = useState<{
+    polyline: string;
+    travelMode?: TransportMode;
+    trafficSegments?: { coordinates: [number, number][]; level: 'free' | 'moderate' | 'heavy' }[];
+  }[]>([]);
   const [mapSelectedRouteIdx, setMapSelectedRouteIdx] = useState(0);
   const [liveNavPos, setLiveNavPos] = useState<{ lat: number; lng: number; bearing: number | null } | null>(null);
+  const [navigationMapAlert, setNavigationMapAlert] = useState<NavigationMapAlert | null>(null);
   // Registrar vista del lugar
   const nombreRaw = params.nombre;
   const nombreLugar = typeof nombreRaw === "string" ? decodeURIComponent(nombreRaw) : null;
@@ -290,6 +316,16 @@ export default function InformacionLugar() {
     const timer = setInterval(() => setFotoIdx(i => (i + 1) % fotos.length), 4000);
     return () => clearInterval(timer);
   }, [fotos.length]);
+
+  useEffect(() => {
+    setFotoIdx(0);
+  }, [nombreLugar]);
+
+  useEffect(() => {
+    if (fotos.length > 0 && fotoIdx >= fotos.length) {
+      setFotoIdx(0);
+    }
+  }, [fotoIdx, fotos.length]);
 
 
   useEffect(() => {
@@ -333,6 +369,11 @@ export default function InformacionLugar() {
 
   useEffect(() => {
     const cargarLugar = async () => {
+      setLoading(true);
+      setLugar(null);
+      setFotos([]);
+      setFotoIdx(0);
+
       if (!nombreLugar) {
         setLugar(null);
         setFotos([]);
@@ -350,7 +391,7 @@ export default function InformacionLugar() {
 
         const lugarEncontrado = lugarRecord ? mapPlaceToPublicDetail(lugarRecord) : null;
         setLugar(lugarEncontrado);
-        setFotos((lugarEncontrado?.fotos || []).slice(0, 6));
+  setFotos(lugarEncontrado ? getGalleryPhotos(lugarEncontrado) : []);
         if (lugarEncontrado) {
           setEtiquetasEdit(lugarEncontrado.etiquetas);
           setEditTiempo(String(lugarEncontrado.tiempoEstancia));
@@ -690,6 +731,12 @@ export default function InformacionLugar() {
           <img
             src={fotos[0]}
             alt={lugarSeguro.nombre}
+            onError={(e) => {
+              const fallbackPhoto = getFallbackPhoto(lugarSeguro);
+              if (e.currentTarget.getAttribute('src') !== fallbackPhoto) {
+                e.currentTarget.src = fallbackPhoto;
+              }
+            }}
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6, zIndex: 0 }}
           />
         )}
@@ -738,7 +785,7 @@ export default function InformacionLugar() {
 
       <div className={styles.wrapper}>
         {/* Información principal */}
-        <div className={styles.mainContent}>
+        <div className={`${styles.mainContent} ${isNavigationExpanded || isDrivingMode ? styles.mainContentStickyMap : ''}`}>
           <div className={styles.titleSection}>
             <div className={styles.titleTopRow}>
               <span className={styles.categoryBadge}>{lugarSeguro.categoria}</span>
@@ -772,6 +819,12 @@ export default function InformacionLugar() {
                   src={fotos[fotoIdx]}
                   alt={`${lugarSeguro.nombre} imagen ${fotoIdx + 1}`}
                   className={styles.galleryMainImage}
+                  onError={(e) => {
+                    const fallbackPhoto = getFallbackPhoto(lugarSeguro);
+                    if (e.currentTarget.getAttribute('src') !== fallbackPhoto) {
+                      e.currentTarget.src = fallbackPhoto;
+                    }
+                  }}
                   style={{ animation: 'flipPhoto 0.45s ease' }}
                 />
               ) : (
@@ -1203,9 +1256,9 @@ export default function InformacionLugar() {
           )}
 
           {/* Mapa + Sidebar de ubicacion */}
-          <section className={styles.mapSection}>
+          <section className={`${styles.mapSection} ${isDrivingMode ? styles.mapSectionDriving : ''}`}>
             <h2 className={styles.mapTitle}>Mapa</h2>
-            <div className={`${styles.mapAndSidebar} ${isNavigationExpanded ? styles.mapAndSidebarExpanded : ''}`}>
+            <div className={`${styles.mapAndSidebar} ${isNavigationExpanded ? styles.mapAndSidebarExpanded : ''} ${isDrivingMode ? styles.mapAndSidebarDriving : ''}`}>
               <div className={styles.mapColumn}>
                 <div className={styles.mapContainer}>
                   <PlaceDetailNavigationMap
@@ -1217,6 +1270,7 @@ export default function InformacionLugar() {
                     routes={mapRoutes}
                     selectedRouteIndex={mapSelectedRouteIdx}
                     liveNavPosition={liveNavPos}
+                    navigationAlert={navigationMapAlert}
                   />
                 </div>
               </div>
@@ -1243,11 +1297,17 @@ export default function InformacionLugar() {
                     onExpandedChange={setIsNavigationExpanded}
                     onOriginMarkerChange={handlePanelOriginMarkerChange}
                     mapOriginEvent={mapOriginEvent}
-                    onRouteChange={(routes, idx) => {
-                      setMapRoutes(routes.map(r => ({ polyline: r.polyline ?? '' })));
+                    onRouteChange={(routes, idx, mode) => {
+                      setMapRoutes(routes.map(r => ({
+                        polyline: r.polyline ?? '',
+                        travelMode: mode,
+                        trafficSegments: r.trafficSegments,
+                      })));
                       setMapSelectedRouteIdx(idx);
                     }}
                     onLivePosition={setLiveNavPos}
+                    onDrivingModeChange={setIsDrivingMode}
+                    onMapAlertChange={setNavigationMapAlert}
                     onNavigationStart={() => {
                       console.log(`Starting navigation to ${lugarSeguro.nombre}`);
                     }}

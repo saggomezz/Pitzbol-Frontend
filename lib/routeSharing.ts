@@ -10,7 +10,7 @@ export interface ShareableRoute {
   name: string;
   origin: GeoPoint;
   destination: GeoPoint;
-  transportMode: 'driving' | 'walking' | 'cycling' | 'transit-like' | 'rideshare-like';
+  transportMode: 'driving' | 'motorcycle' | 'walking' | 'cycling';
   distance: number; // km
   duration: number; // minutos
   waypoints?: GeoPoint[];
