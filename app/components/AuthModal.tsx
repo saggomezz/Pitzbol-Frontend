@@ -3,18 +3,40 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { FiEye, FiEyeOff, FiLock, FiMail, FiX } from "react-icons/fi";
+import { FiChevronDown, FiEye, FiEyeOff, FiLock, FiMail, FiX } from "react-icons/fi";
 import { getBackendOrigin } from "@/lib/backendUrl";
 
 const API_BASE = getBackendOrigin();
 const BACKEND_URL = `${API_BASE}/api/auth`;
 
-const ALL_COUNTRIES = [
-  "Alemania", "Argentina", "Australia", "Brasil", "Canadá", "Chile",
-  "Colombia", "Corea del Sur", "Dinamarca", "España", "Estados Unidos",
-  "Francia", "Italia", "Japón", "México", "Países Bajos", "Perú",
-  "Portugal", "Reino Unido", "Uruguay",
-].sort((a, b) => a.localeCompare(b));
+// Todos los países en español usando la API nativa Intl.DisplayNames
+// (soportada en Node.js ≥ 13 y todos los navegadores modernos, sin dependencias)
+const ALL_COUNTRIES = (() => {
+  try {
+    const regionNames = new Intl.DisplayNames(['es'], { type: 'region' });
+    const codes = [
+      'AF','AL','DZ','AD','AO','AG','AR','AM','AU','AT','AZ','BS','BH','BD','BB',
+      'BY','BE','BZ','BJ','BT','BO','BA','BW','BR','BN','BG','BF','BI','CV','KH',
+      'CM','CA','CF','TD','CL','CN','CO','KM','CG','CD','CR','HR','CU','CY','CZ',
+      'DK','DJ','DM','DO','EC','EG','SV','GQ','ER','EE','SZ','ET','FJ','FI','FR',
+      'GA','GM','GE','DE','GH','GR','GD','GT','GN','GW','GY','HT','VA','HN','HU',
+      'IS','IN','ID','IR','IQ','IE','IL','IT','JM','JP','JO','KZ','KE','KI','KP',
+      'KR','KW','KG','LA','LV','LB','LS','LR','LY','LI','LT','LU','MG','MW','MY',
+      'MV','ML','MT','MH','MR','MU','MX','FM','MD','MC','MN','ME','MA','MZ','MM',
+      'NA','NR','NP','NL','NZ','NI','NE','NG','MK','NO','OM','PK','PW','PS','PA',
+      'PG','PY','PE','PH','PL','PT','QA','RO','RU','RW','KN','LC','VC','WS','SM',
+      'ST','SA','SN','RS','SC','SL','SG','SK','SI','SB','SO','ZA','SS','ES','LK',
+      'SD','SR','SE','CH','SY','TW','TJ','TZ','TH','TL','TG','TO','TT','TN','TR',
+      'TM','TV','UG','UA','AE','GB','US','UY','UZ','VU','VE','VN','YE','ZM','ZW',
+    ];
+    return codes
+      .map(c => regionNames.of(c) || '')
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'es'));
+  } catch {
+    return ['México','Argentina','Colombia','España','Estados Unidos','Francia','Italia'];
+  }
+})();
 
 declare global {
   interface Window {
@@ -377,10 +399,20 @@ if (!isOpen) return null;
               <input placeholder={t('name')} className={inputClass} value={regNombre} onChange={(e) => setRegNombre(capitalize(e.target.value))} />
               <input placeholder={t('lastName')} className={inputClass} value={regApellido} onChange={(e) => setRegApellido(capitalize(e.target.value))} />
             </div>
-            <select value={nacionalidad} onChange={(e) => setNacionalidad(e.target.value)} className={`${inputClass} appearance-none`}>
-              <option value="" disabled>{t('nationality')}</option>
-              {ALL_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <div className="relative">
+              <select
+                value={nacionalidad}
+                onChange={(e) => setNacionalidad(e.target.value)}
+                className={`${inputClass} appearance-none pr-10`}
+              >
+                <option value="" disabled>{t('nationality')}</option>
+                {ALL_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <FiChevronDown
+                size={16}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+              />
+            </div>
             <div className="relative">
               <FiMail color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
               <input placeholder={t('email')} className={`${inputClass} pl-14`} value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
