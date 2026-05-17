@@ -66,6 +66,7 @@ function ResetPasswordPageInner() {
           <div className="relative">
             <FiLock className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
             <input
+              type={showPassword ? "text" : "password"}
               placeholder="Escribe tu nueva clave"
               className="w-full pl-12 pr-12 py-3.5 bg-[#FDFCF9] border border-[#F6F0E6] rounded-full outline-none text-[#1A4D2E] focus:border-[#0D601E]"
               value={newPassword}
