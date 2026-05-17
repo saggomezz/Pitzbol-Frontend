@@ -66,30 +66,17 @@ interface FirestorePlace {
 }
 
 function normalizeMediaUrl(value: unknown): string | null {
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
 
-    if (/^(javascript|vbscript|file):/i.test(trimmed)) return null;
+  if (/^(javascript|vbscript|file):/i.test(trimmed)) return null;
 
-    if (/^https?:\/\//i.test(trimmed)) return trimmed;
-    if (/^\/\//.test(trimmed)) return `https:${trimmed}`;
-    if (/^\//.test(trimmed) || /^\.\.?\//.test(trimmed)) return trimmed;
-    if (/^data:image\//i.test(trimmed) || /^blob:/i.test(trimmed)) return trimmed;
-    if (/^([a-z0-9-]+\.)+[a-z]{2,}(\/|$)/i.test(trimmed)) return `https://${trimmed}`;
-
-    return null;
-  }
-
-  if (value && typeof value === "object") {
-    const mediaObj = value as Record<string, unknown>;
-    return (
-      normalizeMediaUrl(mediaObj.url) ||
-      normalizeMediaUrl(mediaObj.secure_url) ||
-      normalizeMediaUrl(mediaObj.secureUrl) ||
-      normalizeMediaUrl(mediaObj.src)
-    );
-  }
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^\/\//.test(trimmed)) return `https:${trimmed}`;
+  if (/^\//.test(trimmed) || /^\.\.?\//.test(trimmed)) return trimmed;
+  if (/^data:image\//i.test(trimmed) || /^blob:/i.test(trimmed)) return trimmed;
+  if (/^([a-z0-9-]+\.)+[a-z]{2,}(\/|$)/i.test(trimmed)) return `https://${trimmed}`;
 
   return null;
 }

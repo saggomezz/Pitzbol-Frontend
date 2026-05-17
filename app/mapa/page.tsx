@@ -79,35 +79,6 @@ interface Lugar {
     views?: number;
 }
 
-function normalizeMediaUrl(value: unknown): string | null {
-    if (typeof value === "string") {
-        const trimmed = value.trim();
-        if (!trimmed) return null;
-        if (/^https?:\/\//i.test(trimmed)) return trimmed;
-        if (/^\/\//.test(trimmed)) return `https:${trimmed}`;
-        if (/^\//.test(trimmed) || /^\.\.?\//.test(trimmed)) return trimmed;
-        return null;
-    }
-
-    if (value && typeof value === "object") {
-        const mediaObj = value as Record<string, unknown>;
-        return (
-            normalizeMediaUrl(mediaObj.url) ||
-            normalizeMediaUrl(mediaObj.secure_url) ||
-            normalizeMediaUrl(mediaObj.secureUrl) ||
-            normalizeMediaUrl(mediaObj.src)
-        );
-    }
-
-    return null;
-}
-
-function normalizeMediaList(values: unknown[]): string[] {
-    return values
-        .map((value) => normalizeMediaUrl(value))
-        .filter((value): value is string => Boolean(value));
-}
-
 // Componente de carrusel de imágenes para el info box
 function PlaceImageCarousel({ 
     selectedPlace, 
@@ -521,18 +492,8 @@ export default function MapaPage() {
                                 // Crear un mapa de fotos por nombre
                                 const fotosMap: Record<string, string[]> = {};
                                 lugaresFirestore.forEach((lugar: any) => {
-                                    if (!lugar?.nombre) return;
-
-                                    const mediaCandidates = [
-                                        ...(Array.isArray(lugar.fotos) ? lugar.fotos : []),
-                                        ...(Array.isArray(lugar.images) ? lugar.images : []),
-                                        ...(Array.isArray(lugar.galeria) ? lugar.galeria : []),
-                                        ...(lugar.logo ? [lugar.logo] : []),
-                                    ];
-
-                                    const normalizedPhotos = normalizeMediaList(mediaCandidates);
-                                    if (normalizedPhotos.length > 0) {
-                                        fotosMap[lugar.nombre] = normalizedPhotos;
+                                    if (lugar.nombre && lugar.fotos && lugar.fotos.length > 0) {
+                                        fotosMap[lugar.nombre] = lugar.fotos;
                                     }
                                 });
                                 
