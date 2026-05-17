@@ -17,7 +17,6 @@ import { getBackendOrigin } from "@/lib/backendUrl";
 import WalletModal from "@/app/components/WalletModal";
 import PersonaTourFormModal from "@/app/components/PersonaTourFormModal";
 import PaqueteFormModal from "@/app/components/PaqueteFormModal";
-import PWAInstallButton from "@/app/components/PWAInstallButton";
 
 const API_BASE = "/api";
 
@@ -1078,10 +1077,6 @@ export default function PerfilDetallado() {
             >
               {t('title')}
             </motion.h1>
-
-            <div className="self-start sm:self-auto">
-              <PWAInstallButton />
-            </div>
           </div>
         </div>
       </div>
