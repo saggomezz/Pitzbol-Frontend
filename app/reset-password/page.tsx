@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { FiLock, FiCheckCircle, FiAlertCircle, FiEye, FiEyeOff } from "react-icons/fi";
 
@@ -43,7 +43,7 @@ function ResetPasswordPageInner() {
     }
 
     try {
-      const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+      const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyA9gGWAse4hO2Kq3mbkUY-pN7EoiJLSatw";
       const res = await fetch(
         `https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=${apiKey}`,
         {
