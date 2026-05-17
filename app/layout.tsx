@@ -12,6 +12,7 @@ import AuthModal from "./components/AuthModal";
 import BecomeGuideFlow from "./components/BecomeGuideFlow";
 import InstallPWAPrompt from "./components/InstallPWAPrompt";
 import LocationPermissionModal from "./components/LocationPermissionModal";
+import { PWAInstallProvider } from "./context/PWAInstallContext";
 const PublishBusinessFlow = dynamic(() => import("./components/PublishBusinessFlow"), { ssr: false });
 
 declare global {
@@ -135,7 +136,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${jockey.variable} ${jetbrains.variable} ${roboto.variable} antialiased bg-[#FDFCF9]`}>
         {messages ? (
-          <NextIntlClientProvider locale={locale} messages={messages}>
+          <PWAInstallProvider>
+            <NextIntlClientProvider locale={locale} messages={messages}>
             <Navbar
               onOpenAuth={() => { setPendingRole("turista"); setIsAuthOpen(true); }}
               onOpenAuthAsGuide={() => { setPendingRole("guia"); setIsAuthOpen(true); }}
@@ -207,7 +209,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               )}
             </AnimatePresence>
             <LocationPermissionModal />
-          </NextIntlClientProvider>
+            </NextIntlClientProvider>
+          </PWAInstallProvider>
         ) : (
           <div className="flex items-center justify-center min-h-screen">
             <div className="text-center">Cargando...</div>

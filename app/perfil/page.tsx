@@ -17,6 +17,7 @@ import { getBackendOrigin } from "@/lib/backendUrl";
 import WalletModal from "@/app/components/WalletModal";
 import PersonaTourFormModal from "@/app/components/PersonaTourFormModal";
 import PaqueteFormModal from "@/app/components/PaqueteFormModal";
+import PWAInstallButton from "@/app/components/PWAInstallButton";
 
 const API_BASE = "/api";
 
@@ -362,9 +363,9 @@ export default function PerfilDetallado() {
               if (toursData.success) setTours(toursData.tours || []);
             }
           } else {
-            const solRes = await fetch(`${API_BASE}/business/my-requests`, {
-              credentials: "include",
-              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            const solRes = await fetchWithAuth(`${API_BASE}/business/my-requests`, {
+              cache: "no-store",
+              headers: { "Content-Type": "application/json" },
             });
             if (solRes.ok) {
               const solData = await solRes.json();
@@ -1068,7 +1069,7 @@ export default function PerfilDetallado() {
       {/* Header */}
       <div className="bg-gradient-to-r from-[#6C9D1C] to-[#3A5A40] border-b border-[#4CAF50]">
         <div className="max-w-7xl mx-auto px-6 md:px-12 py-8">
-          <div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <motion.h1 
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1077,6 +1078,10 @@ export default function PerfilDetallado() {
             >
               {t('title')}
             </motion.h1>
+
+            <div className="self-start sm:self-auto">
+              <PWAInstallButton />
+            </div>
           </div>
         </div>
       </div>

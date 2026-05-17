@@ -5,7 +5,8 @@ import { getBackendOrigin, getSocketBackendOrigin } from './backendUrl';
 
 const BACKEND_URL = getSocketBackendOrigin();
 const API_BASE = "/api";
-const UNREAD_CACHE_TTL_MS = 60000;
+const UNREAD_CACHE_TTL_MS = 2 * 60 * 1000;
+const UNREAD_FALLBACK_SYNC_MS = 2 * 60 * 1000;
 const UNREAD_CACHE_KEY_PREFIX = "pitzbol_unread_messages_";
 
 const buildBackendApiUrl = (path: string) => {
@@ -269,8 +270,9 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     void connectMessageSocket();
 
     const pollInterval = window.setInterval(() => {
+      if (document.hidden) return;
       void fetchUnreadCount();
-    }, 10000);
+    }, UNREAD_FALLBACK_SYNC_MS);
 
     // Limpiar al desmontar
     return () => {
