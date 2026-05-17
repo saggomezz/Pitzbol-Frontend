@@ -226,7 +226,7 @@ export default function FutbolPage() {
             <main className="max-w-[1600px] mx-auto px-6 py-12 w-full">
                 <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
                     <div>
-                        <h2 className="text-4xl font-black text-[#1A4D2E] uppercase mb-2" style={{ fontFamily: "'Jockey One', sans-serif" }}>Destinos Futboleros</h2>
+                        <h2 className="text-4xl font-black text-[#1A4D2E] uppercase mb-2" style={{ fontFamily: "'Jockey One', sans-serif" }}>Eventos de la FIFA y Destinos Futboleros en Guadalajara</h2>
                         <p className="text-[#769C7B] font-medium italic">Explora los templos del fútbol en la Perla Tapatía.</p>
                     </div>
 
