@@ -261,7 +261,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
     useEffect(() => {
-        fetch("/api/lugares")
+        fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443'}/api/lugares`)
             .then(r => r.json())
             .then(data => {
                 const list = (data.lugares || data || []) as { nombre?: string; categoria?: string }[];
