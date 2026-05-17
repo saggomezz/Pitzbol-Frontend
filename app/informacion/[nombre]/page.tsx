@@ -240,7 +240,7 @@ function getGalleryPhotos(lugar: Lugar): string[] {
   return savedPhotos.length > 0 ? savedPhotos : [getFallbackPhoto(lugar)];
 }
 
-const EMAIL_ADMIN_LUGARES = "cua@hotmail.com";
+const EMAILS_ADMIN_LUGARES = ["cua@hotmail.com", "pilarmorag2004@hotmail.com"];
 
 // Etiquetas disponibles generadas desde la taxonomía centralizada (lib/categories.ts)
 const TODAS_CATEGORIAS = ALL_ADMIN_TAGS;
@@ -406,7 +406,7 @@ export default function InformacionLugar() {
         }
 
         const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-        setEsAdminLugares(userLocal.email === EMAIL_ADMIN_LUGARES);
+        setEsAdminLugares(EMAILS_ADMIN_LUGARES.includes(userLocal.email));
 
         // Verificar si esta en favoritos
         try {

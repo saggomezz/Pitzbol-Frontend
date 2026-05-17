@@ -7,7 +7,7 @@ import {
 } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 
-const EMAIL_AUTORIZADO = "cua@hotmail.com";
+const EMAILS_AUTORIZADOS = ["cua@hotmail.com", "pilarmorag2004@hotmail.com"];
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
 
 const CATEGORY_CONFIG: Record<string, string[]> = {
@@ -73,7 +73,7 @@ export default function DatosLugaresPage() {
 
   useEffect(() => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-    if (userLocal.email !== EMAIL_AUTORIZADO) {
+    if (!EMAILS_AUTORIZADOS.includes(userLocal.email)) {
       router.replace("/");
       return;
     }

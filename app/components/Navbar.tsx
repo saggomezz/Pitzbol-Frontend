@@ -468,7 +468,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     <FiCompass /> {t('tours')}
                                 </Link>
                             )}
-                            {user?.email === "cua@hotmail.com" && (
+                            {["cua@hotmail.com", "pilarmorag2004@hotmail.com"].includes(user?.email || "") && (
                                 <>
                                     <div className="h-[1px] bg-gray-100 my-3 mx-2" />
                                     <Link href="/datos-lugares" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium hover:text-[#F00808] transition-colors">
