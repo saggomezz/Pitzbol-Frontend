@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { FiStar } from "react-icons/fi";
 
-const API_BASE = "/api";
+const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
 const STATS_CACHE_TTL_MS = 60000;
 const placeStatsCache = new Map<string, { averageRating: number; totalRatings: number; expiresAt: number }>();
 const inFlightStatsRequests = new Map<string, Promise<{ averageRating: number; totalRatings: number } | null>>();

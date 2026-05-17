@@ -18,7 +18,7 @@ import WalletModal from "@/app/components/WalletModal";
 import PersonaTourFormModal from "@/app/components/PersonaTourFormModal";
 import PaqueteFormModal from "@/app/components/PaqueteFormModal";
 
-const API_BASE = "/api";
+const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
 
 // Función auxiliar para capitalizar texto
 const capitalizarPrimera = (texto: string): string => {
