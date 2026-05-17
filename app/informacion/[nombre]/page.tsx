@@ -14,6 +14,7 @@ import PlaceDetailNavigationMap, { type OriginChangeMeta } from "@/app/component
 import { usePlaceView } from "@/lib/usePlaceView";
 import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
 import type { GeoPoint } from "@/lib/geoClient";
+import { getPlaceImageUrlSync } from "@/lib/placeImages";
 
 const APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY = "pitzbol_approved_business_toast_dismissed_by_business_v2";
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
@@ -219,6 +220,25 @@ function getMapEmbedSrc(lugar: Lugar): string {
   return `https://www.openstreetmap.org/export/embed.html?bbox=-103.45%2C20.59%2C-103.25%2C20.76&layer=mapnik&query=${query}`;
 }
 
+function getFallbackPhoto(lugar: Lugar): string {
+  return getPlaceImageUrlSync({
+    nombre: lugar.nombre,
+    categoria: lugar.categoria,
+    ubicacion: lugar.direccion,
+    latitud: lugar.latitud,
+    longitud: lugar.longitud,
+  });
+}
+
+function getGalleryPhotos(lugar: Lugar): string[] {
+  const savedPhotos = (lugar.fotos || [])
+    .map((foto) => String(foto || "").trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  return savedPhotos.length > 0 ? savedPhotos : [getFallbackPhoto(lugar)];
+}
+
 const EMAIL_ADMIN_LUGARES = "cua@hotmail.com";
 
 const TODAS_CATEGORIAS = [
@@ -297,6 +317,16 @@ export default function InformacionLugar() {
     return () => clearInterval(timer);
   }, [fotos.length]);
 
+  useEffect(() => {
+    setFotoIdx(0);
+  }, [nombreLugar]);
+
+  useEffect(() => {
+    if (fotos.length > 0 && fotoIdx >= fotos.length) {
+      setFotoIdx(0);
+    }
+  }, [fotoIdx, fotos.length]);
+
 
   useEffect(() => {
     if (!nombreLugar || typeof window === "undefined") return;
@@ -339,6 +369,11 @@ export default function InformacionLugar() {
 
   useEffect(() => {
     const cargarLugar = async () => {
+      setLoading(true);
+      setLugar(null);
+      setFotos([]);
+      setFotoIdx(0);
+
       if (!nombreLugar) {
         setLugar(null);
         setFotos([]);
@@ -356,7 +391,7 @@ export default function InformacionLugar() {
 
         const lugarEncontrado = lugarRecord ? mapPlaceToPublicDetail(lugarRecord) : null;
         setLugar(lugarEncontrado);
-        setFotos((lugarEncontrado?.fotos || []).slice(0, 6));
+  setFotos(lugarEncontrado ? getGalleryPhotos(lugarEncontrado) : []);
         if (lugarEncontrado) {
           setEtiquetasEdit(lugarEncontrado.etiquetas);
           setEditTiempo(String(lugarEncontrado.tiempoEstancia));
@@ -696,6 +731,12 @@ export default function InformacionLugar() {
           <img
             src={fotos[0]}
             alt={lugarSeguro.nombre}
+            onError={(e) => {
+              const fallbackPhoto = getFallbackPhoto(lugarSeguro);
+              if (e.currentTarget.getAttribute('src') !== fallbackPhoto) {
+                e.currentTarget.src = fallbackPhoto;
+              }
+            }}
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6, zIndex: 0 }}
           />
         )}
@@ -778,6 +819,12 @@ export default function InformacionLugar() {
                   src={fotos[fotoIdx]}
                   alt={`${lugarSeguro.nombre} imagen ${fotoIdx + 1}`}
                   className={styles.galleryMainImage}
+                  onError={(e) => {
+                    const fallbackPhoto = getFallbackPhoto(lugarSeguro);
+                    if (e.currentTarget.getAttribute('src') !== fallbackPhoto) {
+                      e.currentTarget.src = fallbackPhoto;
+                    }
+                  }}
                   style={{ animation: 'flipPhoto 0.45s ease' }}
                 />
               ) : (
