@@ -91,6 +91,20 @@ const DESCRIPCIONES: Record<string, string> = {
   "The Spot Café, Guadalajara": "Cafetería moderna en Providencia. Bebidas de autor en un espacio tranquilo ideal para trabajar o reunirse con amigos.",
   "Recoleta Confitería Argentina Tepeyac, Guadalajara": "Confitería argentina en Chapalita. Medialunas auténticas y café estilo Buenos Aires; un pedazo de Argentina en Guadalajara.",
   "Recoleta Confitería Argentina La Perla, Guadalajara": "Confitería argentina en La Perla Tapatía. Facturas y medialunas con café; el sabor de Buenos Aires en el sur de Guadalajara.",
+  // ── Bares y vida nocturna ─────────────────────────────────────────────────────
+  "El Gallo Altanero, Guadalajara": "Bar de ambiente íntimo en la Colonia Americana. Mezcales y cócteles creativos en un espacio acogedor para noches tranquilas.",
+  "El Gallo Cantina, Guadalajara": "Cantina de ambiente relajado en Guadalajara. Cócteles, cervezas artesanales y botanas que fusionan la tradición de la cantina con el bar moderno.",
+  "El Gallo D' Oro, Guadalajara": "Cantina clásica con sabor auténtico tapatío. Buena selección de bebidas en un ambiente que evoca la tradición de las cantinas históricas de Guadalajara.",
+  "Gallo Cervecero Sportsbar , Guadalajara": "Bar deportivo con amplia selección de cervezas artesanales. El lugar ideal para ver los partidos del Mundial 2026 en ambiente animado.",
+  "Bar Barba Negra 1988, Guadalajara": "Bar rockero en la zona Providencia con música en vivo. Ambiente oscuro y selección de cervezas nacionales e importadas para los amantes del rock.",
+  "Bargüero, Guadalajara": "Bar moderno en Providencia con ambiente vibrante y coctelería de autor. Espacio íntimo ideal para una noche entre amigos con música seleccionada.",
+  "Búnker Brew Club, Guadalajara": "Club nocturno en el norte de Guadalajara especializado en música electrónica. Ambiente underground con cabina en vivo y buena selección de bebidas.",
+  "Mika Bar, Guadalajara": "Bar de ambiente moderno en la zona de Andares. Cócteles creativos y ambiente animado; punto de encuentro del sector residencial del poniente.",
+  "Maldito Consuelo, Guadalajara": "Bar con personalidad propia en el poniente de Guadalajara. Ambiente desenfadado con música en vivo y una selección de cervezas artesanales.",
+  "Layla": "Restaurante y bar con ambiente sofisticado en Guadalajara. Cocina de autor y coctelería de diseño para veladas especiales.",
+  "Osteria 10, Guadalajara": "Repostería italiana y platillos ligeros en la Colonia Americana. Dulces artesanales y opciones de pasta; perfecto para una pausa gourmet.",
+  "Casa Museo López Portillo, Guadalajara": "Residencia neoclásica del siglo XIX en el Centro Histórico. Alberga exposiciones de arte, historia y cultura jalisciense en una elegante arquitectura colonial.",
+  "Bazar Ale": "Espacio de diseño y artesanías en Guadalajara. Selección curada de objetos de autor, textiles y accesorios de diseñadores locales jaliscienses.",
 };
 
 function normName(s: string): string {
@@ -178,6 +192,15 @@ export async function GET(req: NextRequest) {
 
     if (isCheck) {
       return NextResponse.json({ conDescripcion: conDesc.length, sinDescripcion: sinDesc.length, conDesc, sinDesc });
+    }
+
+    // Eliminar entradas basura
+    const BASURA = ["vxcvxcvxcvx"];
+    for (const nombre of BASURA) {
+      await fetch(`${BACKEND}/api/lugares/${encodeURIComponent(nombre)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
     }
 
     return NextResponse.json({
