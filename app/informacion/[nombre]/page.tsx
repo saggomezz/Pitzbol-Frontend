@@ -702,6 +702,8 @@ export default function InformacionLugar() {
   const mostrarHorario = esAdminLugares || !!horarioLugar;
   const tieneTiempo = typeof lugarSeguro.tiempoEstancia === "number" && lugarSeguro.tiempoEstancia > 0;
   const tieneCosto = !!(lugarSeguro.costoEstimado && lugarSeguro.costoEstimado.trim());
+  const esCasaDeCambio = [lugarSeguro.categoria, ...((lugarSeguro as any).categorias || [])]
+    .some(c => typeof c === "string" && c.toLowerCase().includes("cambio"));
 
   return (
     <div className={styles.container}>
@@ -1099,7 +1101,7 @@ export default function InformacionLugar() {
               )}
 
               <div className={styles.quickInfoStack}>
-                {(esAdminLugares || editandoInfo || tieneTiempo) && (
+                {!esCasaDeCambio && (esAdminLugares || editandoInfo || tieneTiempo) && (
                 <div className={styles.statCard}>
                   <div className={styles.statIcon}>
                     <FiClock />
@@ -1121,7 +1123,7 @@ export default function InformacionLugar() {
                 </div>
                 )}
 
-                {(esAdminLugares || editandoInfo || tieneCosto) && (
+                {!esCasaDeCambio && (esAdminLugares || editandoInfo || tieneCosto) && (
                 <div className={styles.statCard}>
                   <div className={styles.statIcon}>
                     <FiDollarSign />
