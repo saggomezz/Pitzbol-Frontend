@@ -13,7 +13,7 @@ const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
 const invalidarCacheIA = () => fetch(`${IA_URL}/api/places`, { method: 'DELETE' }).catch(() => {});
 
 const CATEGORY_CONFIG: Record<string, string[]> = {
-  "Restaurante / Cafetería": ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana", "Internacional"],
+  "Restaurante / Cafetería": ["Mexicana", "Cafeterías", "Comida de calle", "Postres & Dulces", "Vegana", "Internacional"],
   "Artesanías / Souvenirs": ["Artesanías", "Souvenirs", "Arte popular", "Joyería artesanal", "Textiles", "Talavera"],
   "Clubs / Bar": ["Club / Antro", "Bar", "Cantina", "Pub", "Música en vivo"],
   "Casas de cambio": ["Cambio de divisas", "Transferencias internacionales"],
