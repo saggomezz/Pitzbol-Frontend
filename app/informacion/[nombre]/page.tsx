@@ -551,7 +551,7 @@ export default function InformacionLugar() {
     setMensajeDesc('');
     const token = localStorage.getItem('pitzbol_token');
     try {
-      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}/info`, {
+      const res = await fetch(`${BACKEND_API}/lugares/${encodeURIComponent(nombreLugar)}/info`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         credentials: 'include',
