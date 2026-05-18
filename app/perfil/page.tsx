@@ -1328,59 +1328,6 @@ export default function PerfilDetallado() {
                       )}
                     </motion.div>
 
-                    {/* Card de Teléfono */}
-                    <motion.div 
-                      whileHover={{ y: -1 }}
-                      className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="p-2 bg-[#F1F8F6] rounded-lg">
-                            <FiPhone size={16} className="text-[#66BB6A]" />
-                          </div>
-                          <h3 className="text-xs font-medium text-[#81C784] tracking-wide">{t('phoneLabel')}</h3>
-                        </div>
-                        {!editandoTelefono && (
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setEditandoTelefono(true)}
-                            className="px-2.5 py-1 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1"
-                          >
-                            <FiEdit2 size={12} /> {t('edit')}
-                          </motion.button>
-                        )}
-                      </div>
-                      
-                      {editandoTelefono ? (
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <select
-                              value={ladaTemp}
-                              onChange={(e) => setLadaTemp(e.target.value)}
-                              className="sm:col-span-1 text-sm font-medium text-[#1A4D2E] bg-white border-2 rounded-lg px-3 py-2 focus:outline-none border-[#C8E6C9]"
-                            >
-                              {LADAS.map((lada) => (
-                                <option key={lada.code} value={lada.code}>{lada.code}</option>
-                              ))}
-                            </select>
-                            <input
-                              type="tel"
-                              value={numeroTemp}
-                              onChange={(e) => setNumeroTemp(e.target.value)}
-                              className="sm:col-span-2 text-sm font-medium text-[#1A4D2E] bg-white border-2 rounded-lg px-3 py-2 focus:outline-none border-[#C8E6C9]"
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={guardarTelefono} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors">{t('save')}</button>
-                            <button onClick={cancelarTelefono} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors">{tCommon('cancel')}</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-sm font-medium text-[#1A4D2E] pl-12 break-all">{perfil?.telefono}</p>
-                      )}
-                    </motion.div>
-
                     {/* Card de Tarifa por Tour — solo para guías */}
                     {esGuia && (
                       <motion.div
@@ -1432,7 +1379,10 @@ export default function PerfilDetallado() {
                           </div>
                         ) : (
                           <p className="text-sm font-medium text-[#1A4D2E] pl-12">
-                            {perfil?.tarifa ? `$${Number(perfil.tarifa).toLocaleString("es-MX")} MXN / hora` : "Sin tarifa definida"}
+                            {perfil?.tarifa
+                              ? `$${Number(perfil.tarifa).toLocaleString("es-MX")} MXN / hora`
+                              : <span className="text-xs font-medium text-[#E53935] tracking-wide">Agrega tu tarifa para que turista reserve</span>
+                            }
                           </p>
                         )}
                       </motion.div>
