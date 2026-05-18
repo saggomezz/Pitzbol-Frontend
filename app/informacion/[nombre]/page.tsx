@@ -700,11 +700,13 @@ export default function InformacionLugar() {
 
   const lugarSeguro = lugar as Lugar;
   const horarioLugar = getHorarioActivo(lugarSeguro.nombre, lugarSeguro.horariosJson);
-  const mostrarHorario = esAdminLugares || !!horarioLugar;
+  const mostrarHorario = esAdminLugares || !!horarioLugar || esHospital;
   const tieneTiempo = typeof lugarSeguro.tiempoEstancia === "number" && lugarSeguro.tiempoEstancia > 0;
   const tieneCosto = !!(lugarSeguro.costoEstimado && lugarSeguro.costoEstimado.trim());
   const ocultarTiempoCosto = [lugarSeguro.categoria, ...((lugarSeguro as any).categorias || [])]
     .some(c => typeof c === "string" && (c.toLowerCase().includes("cambio") || c.toLowerCase().includes("hospital") || c.toLowerCase().includes("médico") || c.toLowerCase().includes("medico")));
+  const esHospital = [lugarSeguro.categoria, ...((lugarSeguro as any).categorias || [])]
+    .some(c => typeof c === "string" && (c.toLowerCase().includes("hospital") || c.toLowerCase().includes("médico") || c.toLowerCase().includes("medico")));
 
   return (
     <div className={styles.container}>
@@ -1106,6 +1108,11 @@ export default function InformacionLugar() {
                           </div>
                         );
                       })}
+                    </div>
+                  ) : esHospital ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.35rem', background: '#E8F5E9', borderRadius: '0.5rem' }}>
+                      <span style={{ fontSize: '1rem' }}>🕐</span>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0D601E' }}>Abierto 24 horas</span>
                     </div>
                   ) : null}
                 </div>
