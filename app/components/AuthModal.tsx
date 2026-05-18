@@ -553,7 +553,7 @@ if (!isOpen) return null;
                 disabled={verifying || verifyDigits.join("").length < 6}
                 className="w-full bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium disabled:opacity-50"
               >
-                {verifying ? "Verificando..." : "Siguiente →"}
+                {verifying ? "Verificando..." : "Siguiente"}
               </button>
               <button
                 type="button"
