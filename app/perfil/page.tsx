@@ -260,8 +260,18 @@ export default function PerfilDetallado() {
           if (meRes.ok) {
             const meData = await meRes.json();
             if (meData.success && meData.user) {
-              // Mezclar datos frescos con localStorage y guardar
-              userLocal = { ...userLocal, ...meData.user };
+              // Mezclar datos frescos: solo sobreescribir campos no vacíos
+              // (evita que un campo vacío de Firestore borre datos válidos en localStorage)
+              const fresh = meData.user as Record<string, any>;
+              const merged: Record<string, any> = { ...userLocal };
+              for (const key of Object.keys(fresh)) {
+                const val = fresh[key];
+                // Solo actualizar si el valor fresco es útil (no vacío, no null, no undefined)
+                if (val !== null && val !== undefined && val !== "") {
+                  merged[key] = val;
+                }
+              }
+              userLocal = merged;
               localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
             }
           }
