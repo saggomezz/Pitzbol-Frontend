@@ -183,8 +183,8 @@ export default function PerfilDetallado() {
 
   const guardarTarifa = async () => {
     const valor = parseFloat(tarifaTemp);
-    if (isNaN(valor) || valor <= 0) {
-      setErrorTarifa("Ingresa una tarifa válida mayor a 0");
+    if (isNaN(valor) || valor < 350) {
+      setErrorTarifa("La tarifa mínima es de $350 MXN / hora");
       return;
     }
     setGuardando(true);
