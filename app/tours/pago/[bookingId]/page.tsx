@@ -289,6 +289,25 @@ export default function TourPaymentPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
+  const [invalidCard, setInvalidCard] = useState(false);
+  const [deletingCard, setDeletingCard] = useState(false);
+
+  const handleDeleteInvalidCard = async () => {
+    if (!selectedCard || !user) return;
+    const card = savedCards.find(c => c.stripePaymentMethodId === selectedCard);
+    if (!card) return;
+    setDeletingCard(true);
+    try {
+      await fetchWithAuth(`${BACKEND_URL}/api/perfil/card/${card.id}`, { method: 'DELETE' });
+      setInvalidCard(false);
+      setError(null);
+      await fetchCards();
+    } catch {
+      setError('No se pudo eliminar la tarjeta. Inténtalo desde tu perfil.');
+    } finally {
+      setDeletingCard(false);
+    }
+  };
 
   const handlePaymentSuccess = () => {
     setSuccess(true);
@@ -382,8 +401,7 @@ export default function TourPaymentPage() {
 
       const paymentData = await paymentResponse.json();
 
-      if (!paymentData.success) {
-        throw new Error(paymentData.message || "Error al crear el pago");
+      if (!paymentData.success) {        if (paymentData.code === 'INVALID_PAYMENT_METHOD') setInvalidCard(true);        throw new Error(paymentData.message || "Error al crear el pago");
       }
 
       // 2. Confirmar pago con tarjeta guardada
@@ -402,8 +420,7 @@ export default function TourPaymentPage() {
 
       const confirmData = await confirmResponse.json();
 
-      if (!confirmData.success) {
-        throw new Error(confirmData.message || "Error al confirmar el pago");
+      if (!confirmData.success) {        if (confirmData.code === 'INVALID_PAYMENT_METHOD') setInvalidCard(true);        throw new Error(confirmData.message || "Error al confirmar el pago");
       }
 
       handlePaymentSuccess();
@@ -693,7 +710,22 @@ export default function TourPaymentPage() {
               className="text-red-600 mt-0.5 shrink-0"
               size={18}
             />
-            <p className="text-red-800 text-sm">{error}</p>
+            <div className="flex-1">
+              <p className="text-red-800 text-sm">{error}</p>
+              {invalidCard && (
+                <button
+                  onClick={handleDeleteInvalidCard}
+                  disabled={deletingCard}
+                  className="mt-3 w-full bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {deletingCard ? (
+                    <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" /> Eliminando...</>
+                  ) : (
+                    'Eliminar tarjeta inválida y agregar una nueva'
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         )}
 

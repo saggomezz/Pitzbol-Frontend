@@ -12,8 +12,10 @@ interface Chat {
   id: string;
   touristId: string;
   touristName: string;
+  touristPhoto?: string;
   guideId: string;
   guideName: string;
+  guidePhoto?: string;
   lastMessage?: string;
   lastMessageTime?: Date;
   unreadCount?: number;
@@ -129,8 +131,10 @@ export default function MensajesPage() {
           onClose={() => setSelectedChat(null)}
           guideId={selectedChat.guideId}
           guideName={selectedChat.guideName}
+          guidePhoto={selectedChat.guidePhoto}
           touristId={selectedChat.touristId}
           touristName={selectedChat.touristName}
+          touristPhoto={selectedChat.touristPhoto}
           currentUserType={isGuide ? "guide" : "tourist"}
           currentUserId={user.uid}
           currentUserName={user.nombre + " " + user.apellido}

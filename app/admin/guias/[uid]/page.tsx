@@ -647,7 +647,7 @@ export default function AdminGuiaDetallePage() {
                   icon={<FiMapPin />}
                 />
                 <EditableRow
-                  label="Tarifa por hora (MXN)"
+                  label="Tarifa por recorrido (MXN)"
                   field="tarifaMxn"
                   value={String(guide.tarifaMxn)}
                   icon={<FiDollarSign />}

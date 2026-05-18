@@ -16,6 +16,7 @@ import {
   FiRefreshCw,
   FiFilter,
   FiCreditCard,
+  FiFlag,
 } from "react-icons/fi";
 import { getBackendOrigin } from "@/lib/backendUrl";
 import WalletModal from "@/app/components/WalletModal";
@@ -58,6 +59,7 @@ export default function GuideSolicitudesPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ bookingId: string; action: "completar" | "cancelar" } | null>(null);
 
   const fetchBookings = useCallback(async () => {
     if (!user) return;
@@ -111,6 +113,49 @@ export default function GuideSolicitudesPage() {
 
     fetchBookings();
   }, [fetchBookings, router, user]);
+
+  const handleStatusUpdate = async (bookingId: string, action: "completar" | "cancelar") => {
+    if (!user) return;
+    const token = localStorage.getItem("pitzbol_token");
+    if (!token) return;
+    setProcessingId(bookingId);
+    setConfirmAction(null);
+
+    const booking = bookings.find((b) => b.id === bookingId);
+    // For paid bookings being cancelled, use the refund endpoint
+    const url =
+      action === "cancelar" && booking?.status === "pagado"
+        ? `${BACKEND_URL}/api/bookings/${bookingId}/cancel-by-guide`
+        : `${BACKEND_URL}/api/bookings/${bookingId}/status`;
+    const body =
+      action === "cancelar" && booking?.status === "pagado"
+        ? {}
+        : { status: action === "completar" ? "completado" : "cancelado" };
+
+    try {
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setBookings((prev) =>
+          prev.map((b) =>
+            b.id === bookingId
+              ? { ...b, status: action === "completar" ? "completado" : "cancelado" }
+              : b
+          )
+        );
+      } else {
+        setError(data.message || "Error al actualizar la reserva");
+      }
+    } catch {
+      setError("Error de conexión. Intenta más tarde.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   const handleAction = async (bookingId: string, action: "confirmar" | "rechazar") => {
     if (!user) return;
@@ -438,23 +483,137 @@ export default function GuideSolicitudesPage() {
                       </div>
                     )}
 
-                    {/* Confirmed message */}
-                    {booking.status === "confirmado" && (
-                      <div className="pt-3 border-t border-gray-100">
-                        <p className="text-xs text-blue-600 bg-blue-50 rounded-xl p-3 flex items-center gap-2">
-                          <FiCheckCircle size={14} />
-                          Confirmado — esperando pago del turista
-                        </p>
+
+
+                    {/* Paid — finalize or cancel */}
+                    {booking.status === "pagado" && (
+                      <div className="pt-3 border-t border-gray-100 space-y-3">
+                        {confirmAction?.bookingId === booking.id ? (
+                          <div className="rounded-xl p-3 bg-amber-50 border border-amber-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-xs font-semibold text-amber-800">
+                              ¿Confirmar{" "}
+                              {confirmAction.action === "completar" ? "finalizar" : "cancelar"} este tour?
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setConfirmAction(null)}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all"
+                              >
+                                No
+                              </button>
+                              <button
+                                onClick={() => handleStatusUpdate(booking.id, confirmAction.action)}
+                                disabled={processingId === booking.id}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50 ${
+                                  confirmAction.action === "completar"
+                                    ? "bg-emerald-600 hover:bg-emerald-700"
+                                    : "bg-red-500 hover:bg-red-600"
+                                }`}
+                              >
+                                {processingId === booking.id ? (
+                                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                ) : confirmAction.action === "completar" ? (
+                                  "Sí, finalizar"
+                                ) : (
+                                  "Sí, cancelar"
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-xs text-green-600 bg-green-50 rounded-xl p-3 flex items-center gap-2">
+                              <FiDollarSign size={14} />
+                              Pagado — tour listo para realizarse
+                            </p>
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                              <button
+                                onClick={() => setConfirmAction({ bookingId: booking.id, action: "cancelar" })}
+                                className="flex-1 flex items-center justify-center gap-2 bg-white hover:bg-red-50 text-red-600 border border-red-200 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all"
+                              >
+                                <FiXCircle size={15} />
+                                Cancelar tour
+                              </button>
+                              {(() => {
+                                const [h, m] = (booking.horaInicio || "00:00").split(":").map(Number);
+                                const tourStart = new Date(booking.fecha + "T00:00:00");
+                                tourStart.setHours(h ?? 0, m ?? 0, 0, 0);
+                                const canFinalize = new Date() >= tourStart;
+                                return (
+                                  <button
+                                    onClick={() =>
+                                      canFinalize
+                                        ? setConfirmAction({ bookingId: booking.id, action: "completar" })
+                                        : undefined
+                                    }
+                                    disabled={!canFinalize}
+                                    title={
+                                      canFinalize
+                                        ? "Marcar tour como finalizado"
+                                        : `Disponible desde ${tourStart.toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" })}`
+                                    }
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all shadow-sm ${
+                                      canFinalize
+                                        ? "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    }`}
+                                  >
+                                    <FiFlag size={15} />
+                                    Finalizar tour
+                                    {!canFinalize && (
+                                      <span className="text-[10px] font-normal opacity-70 hidden sm:inline">
+                                        · desde {tourStart.toLocaleDateString("es-MX", { day: "numeric", month: "short" })}{" "}
+                                        {booking.horaInicio}
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })()}
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
 
-                    {/* Paid message */}
-                    {booking.status === "pagado" && (
-                      <div className="pt-3 border-t border-gray-100">
-                        <p className="text-xs text-green-600 bg-green-50 rounded-xl p-3 flex items-center gap-2">
-                          <FiDollarSign size={14} />
-                          Pagado — tour listo para realizarse
-                        </p>
+                    {/* Confirmado — allow cancel before payment */}
+                    {booking.status === "confirmado" && (
+                      <div className="pt-3 border-t border-gray-100 space-y-2">
+                        {confirmAction?.bookingId === booking.id ? (
+                          <div className="rounded-xl p-3 bg-amber-50 border border-amber-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-xs font-semibold text-amber-800">¿Cancelar esta reserva?</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setConfirmAction(null)}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all"
+                              >
+                                No
+                              </button>
+                              <button
+                                onClick={() => handleStatusUpdate(booking.id, "cancelar")}
+                                disabled={processingId === booking.id}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-500 hover:bg-red-600 transition-all disabled:opacity-50"
+                              >
+                                {processingId === booking.id ? (
+                                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                ) : "Sí, cancelar"}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-xs text-blue-600 bg-blue-50 rounded-xl p-3 flex items-center gap-2 flex-1">
+                              <FiCheckCircle size={14} />
+                              Confirmado — esperando pago del turista
+                            </p>
+                            <button
+                              onClick={() => setConfirmAction({ bookingId: booking.id, action: "cancelar" })}
+                              className="flex items-center justify-center gap-2 bg-white hover:bg-red-50 text-red-600 border border-red-200 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all whitespace-nowrap"
+                            >
+                              <FiXCircle size={15} />
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

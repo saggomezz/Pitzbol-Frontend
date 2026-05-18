@@ -11,8 +11,10 @@ interface Chat {
   id: string;
   touristId: string;
   touristName: string;
+  touristPhoto?: string;
   guideId: string;
   guideName: string;
+  guidePhoto?: string;
   lastMessage?: string;
   lastMessageTime?: Date;
   unreadCount?: number;
@@ -287,9 +289,19 @@ export default function GuideChatList({ guideId, onSelectChat }: GuideChatListPr
           className="bg-white border border-gray-200 rounded-xl p-4 cursor-pointer hover:shadow-lg transition-all duration-300"
         >
           <div className="flex items-center gap-4">
-            {/* Avatar */}
-            <div className="bg-[#1A4D2E] text-white w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0">
-              <FiUser size={24} />
+            {/* Avatar del turista */}
+            <div className="relative w-12 h-12 shrink-0">
+              {chat.touristPhoto ? (
+                <img
+                  src={chat.touristPhoto}
+                  alt={chat.touristName}
+                  className="w-12 h-12 rounded-full object-cover border-2 border-[#1A4D2E]/20"
+                />
+              ) : (
+                <div className="bg-[#1A4D2E] text-white w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold">
+                  {chat.touristName.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
 
             {/* Información del chat */}

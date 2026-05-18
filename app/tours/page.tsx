@@ -56,6 +56,7 @@ export default function ToursPage() {
   // Guides state
   const [guides, setGuides] = useState<Guide[]>([]);
   const [guidesLoading, setGuidesLoading] = useState(true);
+  const [guideRatings, setGuideRatings] = useState<Record<string, { promedio: number; total: number }>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("all");
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");
@@ -74,7 +75,24 @@ export default function ToursPage() {
         const res = await fetch(`/api/guides/verified?t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) { setGuides([]); return; }
         const data = await res.json();
-        setGuides([...(data.guides || [])]);
+        const loadedGuides: Guide[] = data.guides || [];
+        setGuides([...loadedGuides]);
+        // Fetch rating stats for all guides in parallel
+        const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443';
+        const ratingResults = await Promise.allSettled(
+          loadedGuides.map((g) =>
+            fetch(`${BACKEND}/api/ratings/guide/${g.uid}/stats`)
+              .then((r) => r.json())
+              .then((d) => ({ uid: g.uid, stats: d.stats }))
+          )
+        );
+        const ratingsMap: Record<string, { promedio: number; total: number }> = {};
+        ratingResults.forEach((r) => {
+          if (r.status === 'fulfilled' && r.value.stats?.totalCalificaciones > 0) {
+            ratingsMap[r.value.uid] = { promedio: r.value.stats.promedioEstrellas, total: r.value.stats.totalCalificaciones };
+          }
+        });
+        setGuideRatings(ratingsMap);
       } catch {
         setGuides([]);
       } finally {
@@ -304,7 +322,7 @@ export default function ToursPage() {
               ) : (
                 <div className={guideViewMode === "list" ? styles.guidesList : styles.guidesGrid}>
                   {filteredGuides.map(guide => (
-                    <GuideCard key={guide.uid} guide={guide} viewMode={guideViewMode} />
+                    <GuideCard key={guide.uid} guide={guide} rating={guideRatings[guide.uid]} viewMode={guideViewMode} />
                   ))}
                 </div>
               )}

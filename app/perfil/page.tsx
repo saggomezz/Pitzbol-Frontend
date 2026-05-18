@@ -6,8 +6,8 @@ import {
   FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
   FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
 } from "react-icons/fa";
-import { FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
-  FiPlus, FiShield, FiUser, FiX, FiCreditCard, FiDollarSign, FiTrash2
+import { FiCalendar, FiCamera, FiCheck, FiChevronRight, FiClock, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
+  FiPlus, FiShield, FiUser, FiUsers, FiX, FiCreditCard, FiDollarSign, FiTrash2
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
 import { useFavoritesSync } from "@/lib/favoritesApi";
@@ -104,6 +104,12 @@ export default function PerfilDetallado() {
   const [perfil, setPerfil] = useState<any>(null);
   const [tours, setTours] = useState<any[]>([]);
   const [showTourModal, setShowTourModal] = useState(false);
+  const [reservasHistorial, setReservasHistorial] = useState<any[]>([]);
+  const [showHistorialModal, setShowHistorialModal] = useState(false);
+  const [bookingRatings, setBookingRatings] = useState<Record<string, any>>({});
+  const [ratingDraft, setRatingDraft] = useState<Record<string, { estrellas: number; comentario: string }>>({});
+  const [submittingRating, setSubmittingRating] = useState<string | null>(null);
+  const [guiaRatingStats, setGuiaRatingStats] = useState<any>(null);
   const [paquetes, setPaquetes] = useState<any[]>([]);
   const [experiencias, setExperiencias] = useState<any[]>([]);
   const [tipoGuia, setTipoGuia] = useState<string>(() => {
@@ -405,6 +411,30 @@ export default function PerfilDetallado() {
             if (expRes.ok) {
               const expData = await expRes.json();
               if (expData.success) setExperiencias(expData.experiencias || []);
+            }
+          } catch {}
+        }
+
+        // Cargar historial de reservas (solo turistas)
+        if (rol !== "guia") {
+          try {
+            const reservasRes = await fetchWithAuth(`${API_BASE}/bookings/tourist/${userLocal.uid}`, {
+              cache: "no-store",
+            });
+            if (reservasRes.ok) {
+              const reservasData = await reservasRes.json();
+              if (reservasData.success) setReservasHistorial(reservasData.bookings || []);
+            }
+          } catch {}
+        }
+
+        // Cargar calificaciones del guía (solo guías)
+        if (rol === "guia") {
+          try {
+            const statsRes = await fetch(`${API_BASE}/ratings/guide/${userLocal.uid}/stats`);
+            if (statsRes.ok) {
+              const statsData = await statsRes.json();
+              if (statsData.success) setGuiaRatingStats(statsData.stats);
             }
           } catch {}
         }
@@ -775,41 +805,64 @@ export default function PerfilDetallado() {
   const guardarEspecialidades = async () => {
     setGuardando(true);
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    const rolLocal = userLocal["03_rol"] || userLocal.role || "turista";
+    const esGuiaSave = rolLocal === "guia";
 
     try {
-      const response = await fetch('/api/guides/update', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uid: userLocal.uid,
-          categorias: especialidadesTemp 
-        })
-      });
-      
-      // TODO: backend debe proteger este endpoint; incluir credenciales y token si existe
+      let response: Response;
+
+      if (esGuiaSave) {
+        // Guías: endpoint específico de guías (requiere rol guía)
+        const token = localStorage.getItem("pitzbol_token");
+        const backendUrl = getBackendOrigin();
+        response = await fetch(`${backendUrl}/api/guides/update`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ uid: userLocal.uid, categorias: especialidadesTemp }),
+        });
+      } else {
+        // Turistas: endpoint general de perfil
+        const token = localStorage.getItem("pitzbol_token");
+        const backendUrl = getBackendOrigin();
+        response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ especialidades: especialidadesTemp }),
+        });
+      }
 
       if (response.ok) {
         setEspecialidades([...especialidadesTemp]);
         setEditandoEspecialidades(false);
-        const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-
-        const updatedUser = {
-          ...userLocal,
+        const userUpdated = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+        localStorage.setItem("pitzbol_user", JSON.stringify({
+          ...userUpdated,
           "07_intereses": especialidadesTemp,
-        };
-        
-        localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
+          "07_especialidades": especialidadesTemp,
+        }));
         window.dispatchEvent(new Event("storage"));
-        
-        // Emitir evento para actualizar lista de guías
-        console.log('📤 Emitiendo evento: guideProfileUpdated (especialidades)');
-        window.dispatchEvent(new Event('guideProfileUpdated'));
-        
+        if (esGuiaSave) {
+          console.log('📤 Emitiendo evento: guideProfileUpdated (especialidades)');
+          window.dispatchEvent(new Event('guideProfileUpdated'));
+        }
         setExito(t('changesSaved'));
         setTimeout(() => setExito(""), 3000);
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        console.error("Error al guardar intereses:", errData);
+        setErrorEspecialidades(errData.msg || errData.error || "Error al guardar");
       }
     } catch (error) {
-      console.error("Error al guardar intereses");
+      console.error("Error al guardar intereses", error);
+      setErrorEspecialidades("Error de conexión. Intenta de nuevo.");
     } finally {
       setGuardando(false);
     }
@@ -1384,10 +1437,14 @@ export default function PerfilDetallado() {
                           </div>
                         ) : (
                           <p className="text-sm font-medium text-[#1A4D2E] pl-12">
+<<<<<<< Updated upstream
                             {perfil?.tarifa
                               ? `$${Number(perfil.tarifa).toLocaleString("es-MX")} MXN / hora`
                               : <span className="text-xs font-medium text-[#E53935] tracking-wide">Agrega tu tarifa para que turistas reserven</span>
                             }
+=======
+                            {perfil?.tarifa ? `$${Number(perfil.tarifa).toLocaleString("es-MX")} MXN / recorrido` : "Sin tarifa definida"}
+>>>>>>> Stashed changes
                           </p>
                         )}
                       </motion.div>
@@ -1932,27 +1989,178 @@ export default function PerfilDetallado() {
                   </div>
                 )
               ) : (
-                /* Vista para Turista */
-                <div className="relative group cursor-pointer" onClick={() => window.location.href = '/tours'}>
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#E8F5E9] to-white rounded-lg -z-10" />
-                  <div className="py-10 flex flex-col items-center text-center">
-                    <div className="w-14 h-14 bg-[#F1F8F6] rounded-xl shadow-sm flex items-center justify-center mb-3 border border-[#E0F2F1]">
-                      <FiMap size={24} className="text-[#66BB6A]" />
+                /* Vista para Turista - Próximos destinos */
+                (() => {
+                  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+                  const proximos = [...reservasHistorial]
+                    .filter((r: any) => {
+                      const f = new Date(r.fecha + 'T00:00:00'); f.setHours(0, 0, 0, 0);
+                      return f >= hoy && r.status !== 'cancelado' && r.status !== 'completado';
+                    })
+                    .sort((a: any, b: any) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+                    .slice(0, 3);
+
+                  if (proximos.length === 0) {
+                    return (
+                      <div className="relative group cursor-pointer" onClick={() => window.location.href = '/tours'}>
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#E8F5E9] to-white rounded-lg -z-10" />
+                        <div className="py-10 flex flex-col items-center text-center">
+                          <div className="w-14 h-14 bg-[#F1F8F6] rounded-xl shadow-sm flex items-center justify-center mb-3 border border-[#E0F2F1]">
+                            <FiMap size={24} className="text-[#66BB6A]" />
+                          </div>
+                          <h4 className="text-base font-semibold text-[#1A4D2E]">{t('exploreTours')}</h4>
+                          <p className="text-xs text-[#81C784] max-w-[200px] mt-1.5 mb-5 font-normal">
+                            {t('findPerfectTour')}
+                          </p>
+                          <button className="px-5 py-1.5 bg-[#3A5A40] text-white rounded-lg text-xs font-medium tracking-wide shadow-md hover:bg-[#2D4630]">
+                            {t('explore')}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {proximos.map((reserva: any, i: number) => {
+                        const fechaReserva = new Date(reserva.fecha + 'T00:00:00');
+                        fechaReserva.setHours(0, 0, 0, 0);
+                        const esHoy = fechaReserva.getTime() === hoy.getTime();
+                        return (
+                          <motion.div
+                            key={reserva.id || i}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            className="rounded-xl border border-[#E0F2F1] p-4 hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-[#1A4D2E] truncate">{reserva.guideName || 'Guía'}</p>
+                                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-[#6C8870]">
+                                  <span className="flex items-center gap-1">
+                                    <FiCalendar size={11} />
+                                    {fechaReserva.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <FiClock size={11} />
+                                    {reserva.duracion === 'completo' ? 'Día completo' : 'Medio día'}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <FiUsers size={11} />
+                                    {reserva.numPersonas} {reserva.numPersonas === 1 ? 'persona' : 'personas'}
+                                  </span>
+                                  {reserva.total != null && (
+                                    <span className="flex items-center gap-1">
+                                      <FiDollarSign size={11} />
+                                      ${reserva.total.toLocaleString('es-MX')} MXN
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <span className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full ${esHoy ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
+                                {esHoy ? 'En proceso' : 'Por empezar'}
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                     </div>
-                    <h4 className="text-base font-semibold text-[#1A4D2E]">{t('exploreTours')}</h4>
-                    <p className="text-xs text-[#81C784] max-w-[200px] mt-1.5 mb-5 font-normal">
-                      {t('findPerfectTour')}
-                    </p>
-                    <button className="px-5 py-1.5 bg-[#3A5A40] text-white rounded-lg text-xs font-medium tracking-wide shadow-md hover:bg-[#2D4630]">
-                      {t('explore')}
-                    </button>
-                  </div>
-                </div>
+                  );
+                })()
               )}
             </motion.div>
 
+<<<<<<< Updated upstream
             {/* ── Sección de Mis Experiencias (historial de tours completados) ── */}
             {esGuia && tipoGuia !== "empresa" && (
+=======
+            {/* ── Historial de Reservas (solo turistas) ── */}
+            {!esGuia && (
+              reservasHistorial.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
+                >
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
+                    <div className="w-12 h-12 bg-[#E8F5E9] rounded-full flex items-center justify-center mb-3">
+                      <FiCalendar size={20} className="text-[#66BB6A]" />
+                    </div>
+                    <p className="text-sm font-medium text-[#1A4D2E]">Sin historial aún</p>
+                    <p className="text-xs text-[#81C784] mt-1">Tus reservas completadas aparecerán aquí</p>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  onClick={async () => {
+                    setShowHistorialModal(true);
+                    // Load existing ratings for completed bookings
+                    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+                    const completedIds = reservasHistorial
+                      .filter((r: any) => {
+                        const f = new Date(r.fecha + 'T00:00:00'); f.setHours(0,0,0,0);
+                        return (r.status === 'completado' || f < hoy) && r.status !== 'cancelado' && r.id;
+                      })
+                      .map((r: any) => r.id);
+                    const results = await Promise.allSettled(
+                      completedIds.map((id: string) =>
+                        fetch(`${API_BASE}/ratings/booking/${id}`).then(r => r.json()).then(d => ({ id, rating: d.rating || null }))
+                      )
+                    );
+                    const map: Record<string, any> = {};
+                    results.forEach(r => { if (r.status === 'fulfilled' && r.value.rating) map[r.value.id] = r.value.rating; });
+                    setBookingRatings(map);
+                  }}
+                  className="w-full bg-white rounded-2xl shadow-md border border-[#E0F2F1] p-5 text-left hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-11 h-11 bg-[#E8F5E9] rounded-xl flex items-center justify-center shrink-0">
+                        <FiCalendar size={20} className="text-[#2E7D32]" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-semibold text-[#1A4D2E]">Historial de Reservas</h3>
+                        <p className="text-[11px] text-[#81C784] mt-0.5">
+                          {reservasHistorial.length} {reservasHistorial.length === 1 ? 'reserva' : 'reservas'} · Ver todos los tours asistidos
+                        </p>
+                      </div>
+                    </div>
+                    <FiChevronRight size={18} className="text-[#81C784] group-hover:text-[#1A4D2E] transition-colors shrink-0" />
+                  </div>
+                  {(() => {
+                    const ultima = [...reservasHistorial].sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())[0];
+                    if (!ultima) return null;
+                    return (
+                      <div className="mt-3 pt-3 border-t border-[#E0F2F1] flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs text-[#6C8870]">
+                        <span className="flex items-center gap-1.5">
+                          <FiUser size={11} className="shrink-0" />
+                          {ultima.guideName || 'Guía'}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <FiCalendar size={11} />
+                          {new Date(ultima.fecha + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                        {ultima.total != null && (
+                          <span className="flex items-center gap-1.5">
+                            <FiDollarSign size={11} />
+                            ${ultima.total.toLocaleString('es-MX')} MXN
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </motion.button>
+              )
+            )}
+
+            {/* ── Sección de Paquetes ── */}
+            {esGuia && (
+>>>>>>> Stashed changes
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -2015,9 +2223,250 @@ export default function PerfilDetallado() {
                 )}
               </motion.div>
             )}
+
+            {/* ── Mis Calificaciones (solo guías) ── */}
+            {esGuia && guiaRatingStats && guiaRatingStats.totalCalificaciones > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-white rounded-2xl shadow-md border border-[#E0F2F1] overflow-hidden"
+              >
+                <div className="px-7 pt-7 pb-5">
+                  <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Calificaciones</h3>
+                  <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
+                    Lo que los turistas dicen de ti
+                  </p>
+                </div>
+
+                {/* Score summary */}
+                <div className="mx-7 mb-5 rounded-2xl bg-linear-to-br from-[#1A4D2E] to-[#0D601E] p-5 text-white flex items-center gap-5">
+                  <div className="text-center shrink-0">
+                    <p className="text-5xl font-black leading-none">{guiaRatingStats.promedioEstrellas.toFixed(1)}</p>
+                    <div className="flex items-center justify-center gap-0.5 mt-2">
+                      {[1,2,3,4,5].map((s: number) => (
+                        <svg key={s} viewBox="0 0 20 20" className={`w-4 h-4 ${ s <= Math.round(guiaRatingStats.promedioEstrellas) ? 'text-amber-400' : 'text-white/30'}`} fill="currentColor">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                      ))}
+                    </div>
+                    <p className="text-xs text-white/60 mt-1">{guiaRatingStats.totalCalificaciones} {guiaRatingStats.totalCalificaciones === 1 ? 'reseña' : 'reseñas'}</p>
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    {[5,4,3,2,1].map((star: number) => {
+                      const count = guiaRatingStats.distribucion?.[`estrellas${star}`] || 0;
+                      const pct = guiaRatingStats.totalCalificaciones > 0 ? (count / guiaRatingStats.totalCalificaciones) * 100 : 0;
+                      return (
+                        <div key={star} className="flex items-center gap-2 text-xs">
+                          <span className="text-white/70 w-2 text-right">{star}</span>
+                          <svg viewBox="0 0 20 20" className="w-3 h-3 text-amber-400 shrink-0" fill="currentColor">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                          </svg>
+                          <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                            <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-white/50 w-5 text-right">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Reviews list */}
+                <div className="px-7 pb-7 space-y-3">
+                  {guiaRatingStats.ultimasCalificaciones?.map((r: any) => (
+                    <div key={r.id} className="rounded-xl border border-[#E0F2F1] p-4 bg-[#FAFAF7]">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-[#E8F5E9] flex items-center justify-center shrink-0">
+                            <FiUser size={14} className="text-[#1A4D2E]" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#1A4D2E]">{r.touristName}</p>
+                            <p className="text-[10px] text-gray-400">{new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          {[1,2,3,4,5].map((s: number) => (
+                            <svg key={s} viewBox="0 0 20 20" className={`w-3.5 h-3.5 ${s <= r.estrellas ? 'text-amber-400' : 'text-gray-200'}`} fill="currentColor">
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                            </svg>
+                          ))}
+                        </div>
+                      </div>
+                      {r.comentario && <p className="text-xs text-gray-600 italic">&ldquo;{r.comentario}&rdquo;</p>}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Modal Historial de Reservas */}
+      <AnimatePresence>
+        {showHistorialModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-5"
+            onClick={() => setShowHistorialModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[68vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#E0F2F1] shrink-0">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold text-[#1A4D2E]">Historial de Reservas</h2>
+                  <p className="text-xs text-[#81C784] mt-0.5">
+                    {reservasHistorial.length} {reservasHistorial.length === 1 ? 'experiencia' : 'experiencias'} en total
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowHistorialModal(false)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full bg-[#F1F8F6] hover:bg-[#E0F2F1] transition-colors"
+                >
+                  <FiX size={18} className="text-[#1A4D2E]" />
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 p-4 space-y-3">
+                {[...reservasHistorial]
+                  .sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+                  .map((reserva: any, i: number) => {
+                    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+                    const fechaReserva = new Date(reserva.fecha + 'T00:00:00');
+                    fechaReserva.setHours(0, 0, 0, 0);
+                    let estadoDisplay: { label: string; color: string; bg: string };
+                    if (reserva.status === 'cancelado') {
+                      estadoDisplay = { label: 'Cancelado', color: 'text-red-600', bg: 'bg-red-50' };
+                    } else if (reserva.status === 'completado' || fechaReserva < hoy) {
+                      estadoDisplay = { label: 'Finalizado', color: 'text-[#2E7D32]', bg: 'bg-[#E8F5E9]' };
+                    } else if (fechaReserva.getTime() === hoy.getTime()) {
+                      estadoDisplay = { label: 'En proceso', color: 'text-amber-700', bg: 'bg-amber-50' };
+                    } else {
+                      estadoDisplay = { label: 'Por empezar', color: 'text-blue-700', bg: 'bg-blue-50' };
+                    }
+                    return (
+                      <motion.div
+                        key={reserva.id || i}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="rounded-xl border border-[#E0F2F1] p-4 hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-[#1A4D2E] truncate">{reserva.guideName || 'Guía'}</p>
+                            <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-[#6C8870]">
+                              <span className="flex items-center gap-1">
+                                <FiCalendar size={11} />
+                                {fechaReserva.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <FiClock size={11} />
+                                {reserva.duracion === 'completo' ? 'Día completo' : 'Medio día'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <FiUsers size={11} />
+                                {reserva.numPersonas} {reserva.numPersonas === 1 ? 'persona' : 'personas'}
+                              </span>
+                              {reserva.total != null && (
+                                <span className="flex items-center gap-1">
+                                  <FiDollarSign size={11} />
+                                  ${reserva.total.toLocaleString('es-MX')} MXN
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full ${estadoDisplay.bg} ${estadoDisplay.color}`}>
+                            {estadoDisplay.label}
+                          </span>
+                        </div>
+
+                        {/* Calificar guía — solo tours finalizados */}
+                        {estadoDisplay.label === 'Finalizado' && reserva.id && (() => {
+                          const existing = bookingRatings[reserva.id];
+                          const draft = ratingDraft[reserva.id] || { estrellas: 0, comentario: '' };
+                          if (existing) {
+                            return (
+                              <div className="mt-3 pt-3 border-t border-[#E0F2F1]">
+                                <p className="text-[10px] font-bold text-[#81C784] uppercase mb-1.5">Tu calificaci\u00f3n</p>
+                                <div className="flex items-center gap-1 mb-1">
+                                  {[1,2,3,4,5].map(s => (
+                                    <svg key={s} viewBox="0 0 20 20" className={`w-4 h-4 ${s <= existing.estrellas ? 'text-amber-400' : 'text-gray-200'}`} fill="currentColor">
+                                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                    </svg>
+                                  ))}
+                                </div>
+                                {existing.comentario && <p className="text-xs text-[#6C8870] italic">&ldquo;{existing.comentario}&rdquo;</p>}
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="mt-3 pt-3 border-t border-[#E0F2F1]">
+                              <p className="text-[10px] font-bold text-[#81C784] uppercase mb-2">Califica tu experiencia</p>
+                              <div className="flex items-center gap-1 mb-2">
+                                {[1,2,3,4,5].map(s => (
+                                  <button
+                                    key={s}
+                                    onClick={() => setRatingDraft(prev => ({ ...prev, [reserva.id]: { ...draft, estrellas: s } }))}
+                                    className="focus:outline-none"
+                                    title={`${s} estrella${s > 1 ? 's' : ''}`}
+                                  >
+                                    <svg viewBox="0 0 20 20" className={`w-6 h-6 transition-colors ${s <= draft.estrellas ? 'text-amber-400' : 'text-gray-200 hover:text-amber-200'}`} fill="currentColor">
+                                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                    </svg>
+                                  </button>
+                                ))}
+                              </div>
+                              <textarea
+                                value={draft.comentario}
+                                onChange={e => setRatingDraft(prev => ({ ...prev, [reserva.id]: { ...draft, comentario: e.target.value } }))}
+                                placeholder="Comentario opcional..."
+                                rows={2}
+                                className="w-full text-xs text-black rounded-lg border border-[#E0F2F1] bg-white px-3 py-2 resize-none focus:outline-none focus:border-[#81C784] placeholder-gray-300"
+                              />
+                              <button
+                                disabled={draft.estrellas === 0 || submittingRating === reserva.id}
+                                onClick={async () => {
+                                  if (!draft.estrellas || !reserva.id) return;
+                                  setSubmittingRating(reserva.id);
+                                  try {
+                                    const token = localStorage.getItem('pitzbol_token');
+                                    const userLocal = JSON.parse(localStorage.getItem('pitzbol_user') || '{}');
+                                    const res = await fetch(`${API_BASE}/ratings/create`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                      body: JSON.stringify({ bookingId: reserva.id, guideId: reserva.guideId, touristId: userLocal.uid, estrellas: draft.estrellas, comentario: draft.comentario }),
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                      setBookingRatings(prev => ({ ...prev, [reserva.id]: { estrellas: draft.estrellas, comentario: draft.comentario } }));
+                                    }
+                                  } finally { setSubmittingRating(null); }
+                                }}
+                                className="mt-2 w-full py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 bg-[#1A4D2E] text-white hover:bg-[#0D601E] disabled:cursor-not-allowed"
+                              >
+                                {submittingRating === reserva.id ? 'Enviando...' : 'Enviar calificaci\u00f3n'}
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </motion.div>
+                    );
+                  })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Notificación de Aprobación como Guía */}
       <AnimatePresence>

@@ -84,12 +84,11 @@ export default function BookTourPage() {
   const calcularTotal = () => {
     if (!guide) return 0;
     
-    if (duracion === "completo" && guide.tarifaCompleta) {
-      return guide.tarifaCompleta;
-    }
+    const tarifaBase = duracion === "completo" && guide.tarifaCompleta
+      ? guide.tarifaCompleta
+      : guide.tarifa;
     
-    // Para medio día, calcular 4 horas
-    return guide.tarifa * 4;
+    return tarifaBase * numPersonas;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -233,7 +232,7 @@ export default function BookTourPage() {
                   <p className="text-lg">Medio Día</p>
                   <p className="text-sm text-gray-600">4 horas</p>
                   <p className="text-xl font-bold mt-2">
-                    ${(guide.tarifa * 4).toLocaleString("es-MX")} MXN
+                    ${(guide.tarifa).toLocaleString("es-MX")} MXN
                   </p>
                 </button>
 

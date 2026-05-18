@@ -23,8 +23,10 @@ interface ChatModalProps {
   onClose: () => void;
   guideId: string;
   guideName: string;
+  guidePhoto?: string;
   touristId: string;
   touristName: string;
+  touristPhoto?: string;
   currentUserType: "tourist" | "guide"; // Nuevo prop
   currentUserId: string; // Nuevo prop
   currentUserName: string; // Nuevo prop
@@ -36,8 +38,10 @@ export default function ChatModal({
   onClose,
   guideId,
   guideName,
+  guidePhoto,
   touristId,
   touristName,
+  touristPhoto,
   currentUserType,
   currentUserId,
   currentUserName,
@@ -53,6 +57,7 @@ export default function ChatModal({
   const [currentTouristName, setCurrentTouristName] = useState(touristName);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [myPhoto, setMyPhoto] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -62,6 +67,13 @@ export default function ChatModal({
     setCurrentGuideName(guideName);
     setCurrentTouristName(touristName);
   }, [guideName, touristName]);
+
+  // Cargar foto del usuario actual desde localStorage
+  useEffect(() => {
+    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    const photo = userLocal["14_foto_perfil"]?.url || userLocal.fotoPerfil || null;
+    setMyPhoto(photo);
+  }, []);
 
   // Inicializar chat y socket
   useEffect(() => {
@@ -378,9 +390,24 @@ export default function ChatModal({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#1A4D2E] to-[#0D601E] text-white p-4 rounded-t-2xl flex items-center justify-between">
+          <div className="bg-linear-to-r from-[#1A4D2E] to-[#0D601E] text-white p-4 rounded-t-2xl flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <FiMessageCircle size={24} />
+              {/* Foto del interlocutor */}
+              {(() => {
+                const otherPhoto = currentUserType === "tourist" ? guidePhoto : touristPhoto;
+                const otherName = currentUserType === "tourist" ? currentGuideName : currentTouristName;
+                return otherPhoto ? (
+                  <img
+                    src={otherPhoto}
+                    alt={otherName}
+                    className="w-10 h-10 rounded-full object-cover border-2 border-white/50"
+                  />
+                ) : (
+                  <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">
+                    {otherName.charAt(0).toUpperCase()}
+                  </div>
+                );
+              })()}
               <div>
                 <h3 className="font-bold text-lg">
                   {currentUserType === "tourist" ? currentGuideName : currentTouristName}
@@ -445,40 +472,68 @@ export default function ChatModal({
                     </div>
 
                     {/* Messages for this date */}
-                    {msgs.map((message, index) => (
-                      <motion.div
-                        key={`${message.id}-${index}`}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`mb-3 flex ${
-                          message.senderId === currentUserId
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
-                      >
-                        <div
-                          className={`max-w-[70%] ${
-                            message.senderId === currentUserId
-                              ? "bg-[#1A4D2E] text-white"
-                              : "bg-white text-gray-800 border border-gray-200"
-                          } rounded-2xl px-4 py-2 shadow-sm`}
+                    {msgs.map((message, index) => {
+                      const isOwn = message.senderId === currentUserId;
+                      const otherPhoto = currentUserType === "tourist" ? guidePhoto : touristPhoto;
+                      const avatarPhoto = isOwn ? myPhoto : otherPhoto;
+                      const avatarInitial = (isOwn ? currentUserName : (currentUserType === "tourist" ? currentGuideName : currentTouristName)).charAt(0).toUpperCase();
+                      return (
+                        <motion.div
+                          key={`${message.id}-${index}`}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className={`mb-3 flex items-end gap-2 ${
+                            isOwn ? "justify-end" : "justify-start"
+                          }`}
                         >
-                          <p className="text-xs font-semibold mb-1 opacity-80">
-                            {message.senderName}
-                          </p>
-                          <p className="text-sm">{message.content}</p>
-                          <p
-                            className={`text-xs mt-1 ${
-                              message.senderId === currentUserId
-                                ? "text-white/70"
-                                : "text-gray-500"
-                            }`}
+                          {/* Avatar izquierda (mensajes del otro) */}
+                          {!isOwn && (
+                            <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 mb-1">
+                              {avatarPhoto ? (
+                                <img src={avatarPhoto} alt={avatarInitial} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-[#1A4D2E] flex items-center justify-center text-white text-xs font-bold">
+                                  {avatarInitial}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div
+                            className={`max-w-[70%] ${
+                              isOwn
+                                ? "bg-[#1A4D2E] text-white"
+                                : "bg-white text-gray-800 border border-gray-200"
+                            } rounded-2xl px-4 py-2 shadow-sm`}
                           >
-                            {formatTime(message.timestamp)}
-                          </p>
-                        </div>
-                      </motion.div>
-                    ))}
+                            <p className="text-xs font-semibold mb-1 opacity-80">
+                              {message.senderName}
+                            </p>
+                            <p className="text-sm">{message.content}</p>
+                            <p
+                              className={`text-xs mt-1 ${
+                                isOwn ? "text-white/70" : "text-gray-500"
+                              }`}
+                            >
+                              {formatTime(message.timestamp)}
+                            </p>
+                          </div>
+
+                          {/* Avatar derecha (mensajes propios) */}
+                          {isOwn && (
+                            <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 mb-1">
+                              {avatarPhoto ? (
+                                <img src={avatarPhoto} alt={avatarInitial} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-[#0D601E] flex items-center justify-center text-white text-xs font-bold">
+                                  {avatarInitial}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 ))}
 

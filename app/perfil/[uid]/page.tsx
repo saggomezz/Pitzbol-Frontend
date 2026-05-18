@@ -7,11 +7,37 @@ import {
   FiMapPin, FiGlobe, FiAward, FiStar, FiMessageSquare, 
   FiCalendar, FiCheckCircle, FiClock, FiDollarSign, FiUser, FiMail, FiPhone, FiShield, FiDatabase, FiShoppingBag, FiMap
 } from "react-icons/fi";
+import {
+  FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
+  FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
+} from "react-icons/fa";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
 import ChatModal from "@/app/components/ChatModal";
 import { getBackendOrigin } from "@/lib/backendUrl";
 
 const BACKEND_URL = getBackendOrigin();
+
+const INTERESES_DISPONIBLES = [
+  { nombre: "Arte e Historia", icono: FaPalette, color: "from-purple-500 to-pink-500" },
+  { nombre: "Arquitectura", icono: FaBuilding, color: "from-gray-600 to-gray-800" },
+  { nombre: "Cultura", icono: FaLandmark, color: "from-blue-500 to-indigo-600" },
+  { nombre: "Gastronomía", icono: FaUtensils, color: "from-orange-500 to-red-500" },
+  { nombre: "Deporte Fútbol", icono: FaFutbol, color: "from-green-600 to-green-800" },
+  { nombre: "Música", icono: FaMusic, color: "from-purple-600 to-pink-600" },
+  { nombre: "Naturaleza", icono: FaTree, color: "from-green-500 to-emerald-600" },
+  { nombre: "Fotografía", icono: FaCamera, color: "from-cyan-500 to-blue-500" },
+  { nombre: "Vida Nocturna", icono: FaMoon, color: "from-indigo-600 to-purple-700" },
+  { nombre: "Compras", icono: FaShoppingBag, color: "from-pink-500 to-rose-500" },
+  { nombre: "Museos", icono: FaLandmark, color: "from-amber-600 to-yellow-700" },
+  { nombre: "Tours Guiados", icono: FaMapMarkedAlt, color: "from-teal-500 to-cyan-600" },
+  { nombre: "Aventura", icono: FaMountain, color: "from-orange-600 to-red-600" },
+  { nombre: "Religión", icono: FaChurch, color: "from-slate-600 to-gray-700" },
+  { nombre: "Mercados Locales", icono: FaStore, color: "from-yellow-600 to-orange-600" }
+];
+
+const getInteresData = (nombre: string) => {
+  return INTERESES_DISPONIBLES.find(i => i.nombre === nombre) || INTERESES_DISPONIBLES[0];
+};
 
 interface PublicProfile {
   uid: string;
@@ -439,7 +465,7 @@ export default function GuidePublicProfilePage() {
                         <h3 className="text-xs font-medium text-[#81C784] tracking-wide">Cobro por Tour</h3>
                       </div>
                       <p className="text-sm font-medium text-[#1A4D2E] pl-10">
-                        ${Number(profile.tarifa).toLocaleString("es-MX")} MXN / hora
+                        ${Number(profile.tarifa).toLocaleString("es-MX")} MXN / recorrido
                       </p>
                       {profile.tarifaCompleta && (
                         <p className="text-xs text-[#81C784] pl-10 mt-1">
@@ -514,21 +540,25 @@ export default function GuidePublicProfilePage() {
                   </p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {profile.especialidades.map((esp, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: i * 0.05 }}
-                      whileHover={{ y: -2, scale: 1.02 }}
-                      className="bg-gradient-to-br from-[#F1F8F6] to-white rounded-xl p-5 border border-[#E0F2F1] hover:border-[#A5D6A7] transition-all shadow-sm hover:shadow-md flex flex-col items-center gap-3"
-                    >
-                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#1A4D2E] to-[#0D601E] flex items-center justify-center text-white shadow-lg">
-                        <FiAward size={28} />
-                      </div>
-                      <span className="text-sm font-medium text-[#1A4D2E] text-center leading-tight">{esp}</span>
-                    </motion.div>
-                  ))}
+                  {profile.especialidades.map((esp, i) => {
+                    const interesData = getInteresData(esp);
+                    const Icon = interesData.icono;
+                    return (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.05 }}
+                        whileHover={{ y: -2, scale: 1.02 }}
+                        className="bg-gradient-to-br from-[#F1F8F6] to-white rounded-xl p-5 border border-[#E0F2F1] hover:border-[#A5D6A7] transition-all shadow-sm hover:shadow-md flex flex-col items-center gap-3"
+                      >
+                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${interesData.color} flex items-center justify-center text-white shadow-lg`}>
+                          <Icon size={28} />
+                        </div>
+                        <span className="text-sm font-medium text-[#1A4D2E] text-center leading-tight">{esp}</span>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </motion.div>
             )}
