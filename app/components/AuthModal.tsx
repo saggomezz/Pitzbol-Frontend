@@ -641,7 +641,16 @@ if (!isOpen) return null;
                 {errors.confirmPassword && <ErrorMsg text={errors.confirmPassword} />}
               </div>
             </div>
-            <button type="submit" className="w-full bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium">{t('register')}</button>
+            {generalError && (
+              <p className="text-xs text-red-500 text-center -mt-2">{generalError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={sendingCode}
+              className="w-full bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium disabled:opacity-60"
+            >
+              {sendingCode ? "Enviando código..." : t('register')}
+            </button>
             
             {/* Alternar a Login en móvil */}
             <div className="md:hidden text-center mt-4 pb-4">
