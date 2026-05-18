@@ -22,9 +22,11 @@ const DURACIONES = [
 
 
 const QUE_INCLUYE = [
-  "Guía certificado", "Agua", "Transporte", "Comida", "Entradas a museos",
+  "Agua", "Transporte", "Comida", "Entradas al lugar",
   "Seguro", "Fotografía", "Degustación", "Alojamiento",
 ];
+
+const DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 const VEHICLE_TYPES = ["Auto / SUV", "Van", "Minibús", "Camión", "Otro"];
 const MAX_FOTOS = 3;
@@ -44,7 +46,9 @@ interface FormData {
   incluyeTransporte: boolean;
   capacidad: string;
   tipoVehiculo: string[];
-  disponibilidad: string;
+  diasDisponibles: string[];
+  horaInicio: string;
+  horaFin: string;
   fotos: (File | null)[];
 }
 
@@ -102,7 +106,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, guiaIdiomas =
     descripcion: "", duracion: "", precio: "",
     idiomas: [], queIncluye: [],
     incluyeTransporte: false,
-    capacidad: "", tipoVehiculo: [], disponibilidad: "",
+    capacidad: "", tipoVehiculo: [], diasDisponibles: [], horaInicio: "09:00", horaFin: "18:00",
     fotos: [null, null, null],
   });
   const [geocoding, setGeocoding] = useState(false);
@@ -184,7 +188,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, guiaIdiomas =
     if (!form.duracion) e.duracion = "Selecciona la duración aproximada";
     if (!form.precio.trim()) e.precio = "Indica el precio";
     if (form.idiomas.length === 0) e.idiomas = "Selecciona al menos un idioma";
-    if (!form.disponibilidad.trim()) e.disponibilidad = "Indica tus días o forma de disponibilidad";
+    if (form.diasDisponibles.length === 0) e.diasDisponibles = "Selecciona al menos un día disponible";
     if (form.incluyeTransporte && form.tipoVehiculo.length === 0) e.tipoVehiculo = "Selecciona al menos un tipo de vehículo";
     if (form.incluyeTransporte && !form.capacidad.trim()) e.capacidad = "Indica la capacidad disponible";
     if (!form.fotos.some(f => f !== null)) e.fotos = "Sube al menos una foto";
@@ -216,7 +220,10 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, guiaIdiomas =
         fd.append("capacidad", form.capacidad);
         fd.append("tipoVehiculo", JSON.stringify(form.tipoVehiculo));
       }
-      fd.append("disponibilidad", form.disponibilidad);
+      const disponibilidad = form.diasDisponibles.length > 0
+        ? `${form.diasDisponibles.join(", ")} · ${form.horaInicio} – ${form.horaFin}`
+        : "";
+      fd.append("disponibilidad", disponibilidad);
       for (const f of form.fotos) {
         if (f) fd.append("fotos", await compressImage(f));
       }
@@ -240,7 +247,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, guiaIdiomas =
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-500 bg-black/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto px-3 pt-20 pb-10 sm:px-6"
+        className="fixed inset-0 z-500 bg-black/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto px-2 pt-24 pb-12 sm:px-4"
         onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       >
         <motion.div
@@ -389,9 +396,37 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, guiaIdiomas =
                   </div>
 
                   <div>
-                    <label className={labelClass}>Disponibilidad <span className="text-red-500">*</span></label>
-                    <input className={inputClass + (errors.disponibilidad ? " border-red-400" : "")} placeholder="Ej: Lunes a sábado de 9:00 a 18:00, con reserva previa" value={form.disponibilidad} onChange={e => set("disponibilidad", e.target.value)} />
-                    {errors.disponibilidad && <p className={errClass}>{errors.disponibilidad}</p>}
+                    <label className={labelClass}>Días disponibles <span className="text-red-500">*</span></label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {DIAS_SEMANA.map(dia => {
+                        const active = form.diasDisponibles.includes(dia);
+                        return (
+                          <button key={dia} type="button" onClick={() => setForm(f => ({
+                            ...f,
+                            diasDisponibles: active
+                              ? f.diasDisponibles.filter(d => d !== dia)
+                              : [...f.diasDisponibles, dia]
+                          }))}
+                            className={`text-[11px] px-3 py-1.5 rounded-full border transition-all ${active ? "bg-[#1A4D2E] text-white border-[#1A4D2E]" : "bg-white text-[#245038] border-[#C9D4CB] hover:border-[#1A4D2E]"}`}
+                          >{dia}</button>
+                        );
+                      })}
+                    </div>
+                    {errors.diasDisponibles && <p className={errClass}>{errors.diasDisponibles}</p>}
+                    <div className="flex items-center gap-3 mt-2">
+                      <div className="flex-1">
+                        <label className={labelClass}>Hora inicio</label>
+                        <input type="time" value={form.horaInicio} onChange={e => set("horaInicio", e.target.value)} className={inputClass} />
+                      </div>
+                      <span className="text-[#81C784] font-bold mt-4">–</span>
+                      <div className="flex-1">
+                        <label className={labelClass}>Hora fin</label>
+                        <input type="time" value={form.horaFin} onChange={e => set("horaFin", e.target.value)} className={inputClass} />
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-[#6C8870] mt-1">
+                      {form.diasDisponibles.length > 0 ? `Disponible: ${form.diasDisponibles.join(", ")} · ${form.horaInicio} – ${form.horaFin}` : "Selecciona los días en que ofreces el tour"}
+                    </p>
                   </div>
 
                   <div className="rounded-2xl border border-[#D9E5DB] bg-white p-4">
