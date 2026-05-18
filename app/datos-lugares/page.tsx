@@ -208,9 +208,13 @@ export default function DatosLugaresPage() {
   };
 
   const guardarFotos = async (nombre: string) => {
+    const fotosLimpias = inputFotos.filter(u => u.trim().startsWith("http"));
+    if (fotosLimpias.length === 0) {
+      setMensaje("Sube o pega al menos una imagen antes de guardar");
+      return;
+    }
     setGuardando(true);
     setMensaje("");
-    const fotosLimpias = inputFotos.filter(u => u.trim().startsWith("http"));
     const token = localStorage.getItem("pitzbol_token");
     try {
       const res = await fetch(`${BACKEND}/lugares/${encodeURIComponent(nombre)}/fotos`, {
@@ -224,12 +228,13 @@ export default function DatosLugaresPage() {
       });
       if (res.ok) {
         setFotosMap(prev => ({ ...prev, [nombre]: fotosLimpias }));
-        setMensaje("✓ Guardado");
+        setMensaje(`✓ ${fotosLimpias.length} foto(s) guardada(s)`);
       } else {
-        setMensaje("Error al guardar");
+        const body = await res.json().catch(() => ({}));
+        setMensaje(`Error ${res.status}: ${body.message || body.msg || "sin guardar"}`);
       }
-    } catch {
-      setMensaje("Error de conexión");
+    } catch (err: any) {
+      setMensaje(`Error de conexión: ${err.message}`);
     } finally {
       setGuardando(false);
     }
