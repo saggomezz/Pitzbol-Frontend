@@ -118,12 +118,23 @@ export async function GET(req: NextRequest) {
     const lugaresData = await lugaresRes.json();
     const lugares = lugaresData.lugares || [];
 
+    const isCheck = req.nextUrl.searchParams.get("check") === "true";
+    const conDesc: string[] = [];
+    const sinDesc: string[] = [];
     const resultados: string[] = [];
     let actualizados = 0;
 
     for (const lugar of lugares) {
       const nombre: string = lugar.nombre || "";
-      if (!nombre || lugar.descripcion?.trim()) continue; // ya tiene descripción, saltar
+      if (!nombre) continue;
+
+      if (isCheck) {
+        if (lugar.descripcion?.trim()) conDesc.push(nombre);
+        else sinDesc.push(nombre);
+        continue;
+      }
+
+      if (lugar.descripcion?.trim()) continue; // ya tiene descripción, saltar
 
       // Buscar coincidencia normalizada
       let desc = DESCRIPCIONES[nombre];
@@ -163,6 +174,10 @@ export async function GET(req: NextRequest) {
       } else {
         resultados.push(`✗ ${nombre} (${patchRes.status})`);
       }
+    }
+
+    if (isCheck) {
+      return NextResponse.json({ conDescripcion: conDesc.length, sinDescripcion: sinDesc.length, conDesc, sinDesc });
     }
 
     return NextResponse.json({
