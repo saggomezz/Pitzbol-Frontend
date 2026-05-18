@@ -241,6 +241,7 @@ function getGalleryPhotos(lugar: Lugar): string[] {
 }
 
 const EMAILS_ADMIN_LUGARES = ["cua@hotmail.com", "pilarmorag2004@hotmail.com"];
+const BACKEND_API = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
 
 // Etiquetas disponibles generadas desde la taxonomía centralizada (lib/categories.ts)
 const TODAS_CATEGORIAS = ALL_ADMIN_TAGS;
@@ -576,7 +577,7 @@ export default function InformacionLugar() {
       horarioObj[dia] = d?.cerrado ? 'cerrado' : { apertura: d?.apertura || '09:00', cierre: d?.cierre || '18:00' };
     }
     try {
-      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}/info`, {
+      const res = await fetch(`${BACKEND_API}/lugares/${encodeURIComponent(nombreLugar)}/info`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         credentials: 'include',
@@ -596,7 +597,7 @@ export default function InformacionLugar() {
     setEliminando(true);
     const token = localStorage.getItem('pitzbol_token');
     try {
-      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}`, {
+      const res = await fetch(`${BACKEND_API}/lugares/${encodeURIComponent(nombreLugar)}`, {
         method: 'DELETE',
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         credentials: 'include',
@@ -630,7 +631,7 @@ export default function InformacionLugar() {
     const hasTiempo = editTiempo.trim() !== '' && Number.isFinite(tiempoParsed) && tiempoParsed > 0;
     const hasCosto = editCosto.trim() !== '';
     try {
-      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}/info`, {
+      const res = await fetch(`${BACKEND_API}/lugares/${encodeURIComponent(nombreLugar)}/info`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -1068,7 +1069,17 @@ export default function InformacionLugar() {
                           </div>
                         );
                       })}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.4rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => {
+                            const h24: Record<string, any> = {};
+                            DIAS_ES.forEach(d => { h24[d] = { apertura: '00:00', cierre: '23:59', cerrado: false }; });
+                            setEditHorarios(h24);
+                          }}
+                          style={{ fontSize: '0.72rem', fontWeight: 600, color: '#0D601E', background: '#E8F5E9', border: '1px solid #81C784', borderRadius: '0.4rem', padding: '0.25rem 0.7rem', cursor: 'pointer' }}
+                        >
+                          🕐 24 horas
+                        </button>
                         <button onClick={guardarHorarios} disabled={guardandoHorarios} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#1A4D2E', color: 'white', border: 'none', fontSize: '0.72rem', fontWeight: 600, padding: '0.35rem 0.85rem', borderRadius: '0.4rem', cursor: 'pointer', opacity: guardandoHorarios ? 0.6 : 1 }}>
                           <FiCheck size={11} /> {guardandoHorarios ? 'Guardando...' : 'Guardar'}
                         </button>
