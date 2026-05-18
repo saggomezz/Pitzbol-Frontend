@@ -700,13 +700,13 @@ export default function InformacionLugar() {
 
   const lugarSeguro = lugar as Lugar;
   const horarioLugar = getHorarioActivo(lugarSeguro.nombre, lugarSeguro.horariosJson);
+  const esHospital = [lugarSeguro.categoria, ...((lugarSeguro as any).categorias || [])]
+    .some(c => typeof c === "string" && (c.toLowerCase().includes("hospital") || c.toLowerCase().includes("médico") || c.toLowerCase().includes("medico")));
   const mostrarHorario = esAdminLugares || !!horarioLugar || esHospital;
   const tieneTiempo = typeof lugarSeguro.tiempoEstancia === "number" && lugarSeguro.tiempoEstancia > 0;
   const tieneCosto = !!(lugarSeguro.costoEstimado && lugarSeguro.costoEstimado.trim());
   const ocultarTiempoCosto = [lugarSeguro.categoria, ...((lugarSeguro as any).categorias || [])]
     .some(c => typeof c === "string" && (c.toLowerCase().includes("cambio") || c.toLowerCase().includes("hospital") || c.toLowerCase().includes("médico") || c.toLowerCase().includes("medico")));
-  const esHospital = [lugarSeguro.categoria, ...((lugarSeguro as any).categorias || [])]
-    .some(c => typeof c === "string" && (c.toLowerCase().includes("hospital") || c.toLowerCase().includes("médico") || c.toLowerCase().includes("medico")));
 
   return (
     <div className={styles.container}>
