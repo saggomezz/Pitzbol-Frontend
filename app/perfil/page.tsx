@@ -2067,6 +2067,7 @@ export default function PerfilDetallado() {
         <PersonaTourFormModal
           guiaId={perfil?.id || ""}
           guiaNombre={`${perfil?.nombre || ""} ${perfil?.apellido || ""}`.trim()}
+          guiaIdiomas={perfil?.idiomas || []}
           onClose={() => setShowTourModal(false)}
           onSuccess={(tour: any) => {
             setTours((prev: any[]) => [tour, ...prev]);

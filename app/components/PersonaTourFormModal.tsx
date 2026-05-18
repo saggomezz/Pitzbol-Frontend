@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -15,22 +15,11 @@ const MinimapaLocationPicker = dynamic(
   { ssr: false }
 );
 
-const DESTINOS = [
-  "Centro Histórico", "Tequila", "Tlaquepaque", "Tonalá",
-  "Chapala", "Mazamitla", "Tapalpa", "Zona Metropolitana",
-  "Puerto Vallarta", "Otro",
-];
-
 const DURACIONES = [
   "2 horas", "3 horas", "4 horas", "Medio día (5-6 h)",
   "Día completo (8+ h)", "2 días", "3 días o más",
 ];
 
-const IDIOMAS = [
-  "Español", "Inglés", "Francés", "Alemán", "Italiano",
-  "Portugués", "Japonés", "Chino", "Coreano", "Árabe",
-  "Ruso", "Holandés", "Polaco", "Turco",
-];
 
 const QUE_INCLUYE = [
   "Guía certificado", "Agua", "Transporte", "Comida", "Entradas a museos",
@@ -43,16 +32,15 @@ const MAX_FOTOS = 3;
 interface FormData {
   titulo: string;
   destino: string;
-  destinoCalleNum: string;
-  destinoCP: string;
+  destinoLat: string;
+  destinoLng: string;
+  seVeranAhi: boolean;
+  puntoEncuentro: string;
   descripcion: string;
   duracion: string;
   precio: string;
   idiomas: string[];
   queIncluye: string[];
-  puntoRecogida: string;
-  recogidaLat: string;
-  recogidaLng: string;
   incluyeTransporte: boolean;
   capacidad: string;
   tipoVehiculo: string[];
@@ -63,6 +51,7 @@ interface FormData {
 interface Props {
   guiaId: string;
   guiaNombre: string;
+  guiaIdiomas?: string[];
   onClose: () => void;
   onSuccess: (tour: any) => void;
 }
@@ -106,16 +95,18 @@ function Chips({ options, selected, toggle }: { options: string[]; selected: str
   );
 }
 
-export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSuccess }: Props) {
+export default function PersonaTourFormModal({ guiaId, guiaNombre, guiaIdiomas = [], onClose, onSuccess }: Props) {
   const [form, setForm] = useState<FormData>({
-    titulo: "", destino: "", destinoCalleNum: "", destinoCP: "",
+    titulo: "", destino: "", destinoLat: "", destinoLng: "",
+    seVeranAhi: true, puntoEncuentro: "",
     descripcion: "", duracion: "", precio: "",
-    idiomas: [], queIncluye: [], puntoRecogida: "",
-    recogidaLat: "", recogidaLng: "",
+    idiomas: [], queIncluye: [],
     incluyeTransporte: false,
     capacidad: "", tipoVehiculo: [], disponibilidad: "",
     fotos: [null, null, null],
   });
+  const [geocoding, setGeocoding] = useState(false);
+  const geocodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [fotoPreviews, setFotoPreviews] = useState<(string | null)[]>([null, null, null]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -159,16 +150,37 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
     set("precio", clean);
   };
 
-  const handleLocationChange = useCallback((lat: string, lng: string) => {
-    setForm(f => ({ ...f, recogidaLat: lat, recogidaLng: lng }));
+  const handleLocationChange = useCallback(async (lat: string, lng: string) => {
+    setForm(f => ({ ...f, destinoLat: lat, destinoLng: lng }));
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=es`);
+      const data = await res.json();
+      if (data?.display_name) setForm(f => ({ ...f, destino: data.display_name }));
+    } catch {}
   }, []);
+
+  const handleDestinoInput = (value: string) => {
+    setForm(f => ({ ...f, destino: value }));
+    if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
+    if (!value.trim()) return;
+    geocodeTimer.current = setTimeout(async () => {
+      setGeocoding(true);
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=1&accept-language=es&countrycodes=mx`);
+        const data = await res.json();
+        if (data?.[0]) {
+          setForm(f => ({ ...f, destinoLat: String(data[0].lat), destinoLng: String(data[0].lon) }));
+        }
+      } catch {} finally { setGeocoding(false); }
+    }, 800);
+  };
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.titulo.trim()) e.titulo = "Escribe el nombre de la experiencia";
-    if (!form.destino) e.destino = "Selecciona la zona o destino principal";
-    if (form.destino === "Otro" && !form.destinoCalleNum.trim()) e.destinoCalleNum = "Indica la dirección o zona principal";
-    if (!form.descripcion.trim()) e.descripcion = "Describe qué vivirá el turista en esta experiencia";
+    if (!form.titulo.trim()) e.titulo = "Escribe el nombre del paquete";
+    if (!form.destino.trim()) e.destino = "Escribe la dirección o zona principal";
+    if (!form.seVeranAhi && !form.puntoEncuentro.trim()) e.puntoEncuentro = "Indica dónde se encontrarán";
+    if (!form.descripcion.trim()) e.descripcion = "Agrega una descripción del tour";
     if (!form.duracion) e.duracion = "Selecciona la duración aproximada";
     if (!form.precio.trim()) e.precio = "Indica el precio";
     if (form.idiomas.length === 0) e.idiomas = "Selecciona al menos un idioma";
@@ -190,18 +202,15 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
       fd.append("guiaId", guiaId);
       fd.append("tipoGuia", "persona");
       fd.append("titulo", form.titulo);
-      const destinoFinal = form.destino === "Otro" && form.destinoCalleNum.trim()
-        ? `${form.destinoCalleNum.trim()}${form.destinoCP ? `, CP ${form.destinoCP}` : ""}`
-        : form.destino;
-      fd.append("destino", destinoFinal);
+      fd.append("destino", form.destino);
+      if (form.destinoLat) fd.append("destinoLat", form.destinoLat);
+      if (form.destinoLng) fd.append("destinoLng", form.destinoLng);
+      fd.append("puntoRecogida", form.seVeranAhi ? form.destino : form.puntoEncuentro);
       fd.append("descripcion", form.descripcion);
       fd.append("duracion", form.duracion);
       fd.append("precio", form.precio ? `$${form.precio} MXN` : "");
       fd.append("idiomas", JSON.stringify(form.idiomas));
       fd.append("queIncluye", JSON.stringify(form.queIncluye));
-      fd.append("puntoRecogida", form.puntoRecogida);
-      if (form.recogidaLat) fd.append("recogidaLat", form.recogidaLat);
-      if (form.recogidaLng) fd.append("recogidaLng", form.recogidaLng);
       fd.append("incluyeTransporte", String(form.incluyeTransporte));
       if (form.incluyeTransporte) {
         fd.append("capacidad", form.capacidad);
@@ -231,14 +240,14 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-500 bg-black/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto px-3 py-4 sm:px-4 sm:py-6"
+        className="fixed inset-0 z-500 bg-black/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto px-3 pt-20 pb-10 sm:px-6"
         onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       >
         <motion.div
           initial={{ opacity: 0, y: 32, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 32, scale: 0.97 }}
-          className="relative w-full max-w-3xl overflow-hidden rounded-[28px] bg-white shadow-2xl sm:rounded-3xl"
+          className="relative w-full max-w-5xl overflow-hidden rounded-[28px] bg-white shadow-2xl sm:rounded-3xl"
         >
           <div className="bg-linear-to-r from-[#0D601E] to-[#1A4D2E] px-4 pb-4 pt-5 text-white sm:px-6 sm:pb-5 sm:pt-6">
             <button onClick={onClose} className="absolute right-4 top-4 text-white/70 hover:text-white sm:right-5">
@@ -277,53 +286,73 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
                     {errors.titulo && <p className={errClass}>{errors.titulo}</p>}
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label className={labelClass}>Zona o destino principal <span className="text-red-500">*</span></label>
-                      <div className="relative">
-                        <select className={inputClass + " appearance-none pr-8" + (errors.destino ? " border-red-400" : "")} value={form.destino} onChange={e => { set("destino", e.target.value); set("destinoCalleNum", ""); set("destinoCP", ""); }}>
-                          <option value="">Selecciona</option>
-                          {DESTINOS.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                        <FiMapPin className="absolute right-3 top-1/2 -translate-y-1/2 text-[#769C7B] pointer-events-none" size={14} />
-                      </div>
-                      {errors.destino && <p className={errClass}>{errors.destino}</p>}
+                  <div>
+                    <label className={labelClass}>Zona o destino principal <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <input
+                        className={inputClass + " pr-10" + (errors.destino ? " border-red-400" : "")}
+                        placeholder="Escribe la calle, colonia o zona del tour…"
+                        value={form.destino}
+                        onChange={e => handleDestinoInput(e.target.value)}
+                      />
+                      <FiMapPin className={`absolute right-3 top-1/2 -translate-y-1/2 ${geocoding ? "animate-pulse text-[#1A4D2E]" : "text-[#769C7B]"} pointer-events-none`} size={14} />
                     </div>
-                    <div>
-                      <label className={labelClass}>Duración estimada <span className="text-red-500">*</span></label>
-                      <div className="relative">
-                        <select className={inputClass + " appearance-none pr-8" + (errors.duracion ? " border-red-400" : "")} value={form.duracion} onChange={e => set("duracion", e.target.value)}>
-                          <option value="">Selecciona</option>
-                          {DURACIONES.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                        <FiClock className="absolute right-3 top-1/2 -translate-y-1/2 text-[#769C7B] pointer-events-none" size={14} />
-                      </div>
-                      {errors.duracion && <p className={errClass}>{errors.duracion}</p>}
+                    {errors.destino && <p className={errClass}>{errors.destino}</p>}
+                    <div className="mt-2 rounded-2xl overflow-hidden border border-[#C9D4CB]">
+                      <MinimapaLocationPicker
+                        latitud={form.destinoLat}
+                        longitud={form.destinoLng}
+                        onLocationChange={handleLocationChange}
+                        height="200px"
+                      />
                     </div>
+                    {form.destinoLat && form.destinoLng && (
+                      <p className="text-[10px] text-[#4A7A5A] mt-1 ml-1">Pin en: {parseFloat(form.destinoLat).toFixed(5)}, {parseFloat(form.destinoLng).toFixed(5)}</p>
+                    )}
                   </div>
 
-                  {form.destino === "Otro" && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-3 rounded-2xl border border-[#D9E5DB] bg-white p-4">
+                  {/* Switch ¿Se verán ahí? */}
+                  <div className="rounded-2xl border border-[#D9E5DB] bg-white p-4">
+                    <button type="button" onClick={() => set("seVeranAhi", !form.seVeranAhi)} className="flex w-full items-center justify-between gap-4">
                       <div>
-                        <label className={labelClass}>Dirección o zona personalizada <span className="text-red-500">*</span></label>
-                        <input className={inputClass + (errors.destinoCalleNum ? " border-red-400" : "")} placeholder="Ej: Av. Hidalgo 123, Col. Centro" value={form.destinoCalleNum} onChange={e => set("destinoCalleNum", e.target.value)} />
-                        {errors.destinoCalleNum && <p className={errClass}>{errors.destinoCalleNum}</p>}
+                        <p className="text-sm font-bold text-[#1A4D2E] text-left">¿Se verán ahí?</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">¿El punto de encuentro es el mismo destino del tour?</p>
                       </div>
-                      <div>
-                        <label className={labelClass}>Código postal</label>
-                        <input className={inputClass} placeholder="Ej: 44100" value={form.destinoCP} maxLength={5} onChange={e => set("destinoCP", e.target.value.replace(/\D/g, ""))} />
+                      <div className={`w-10 h-6 rounded-full transition-all flex items-center px-1 ${form.seVeranAhi ? "bg-[#0D601E]" : "bg-gray-200"}`}>
+                        <motion.div animate={{ x: form.seVeranAhi ? 16 : 0 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} className="w-4 h-4 rounded-full bg-white shadow" />
                       </div>
-                    </motion.div>
-                  )}
+                    </button>
+                    <AnimatePresence>
+                      {!form.seVeranAhi && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-3 overflow-hidden">
+                          <label className={labelClass}>Dirección de encuentro <span className="text-red-500">*</span></label>
+                          <input className={inputClass + (errors.puntoEncuentro ? " border-red-400" : "")} placeholder="Ej: Plaza de la Liberación, frente a la Catedral" value={form.puntoEncuentro} onChange={e => set("puntoEncuentro", e.target.value)} />
+                          {errors.puntoEncuentro && <p className={errClass}>{errors.puntoEncuentro}</p>}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
 
                   <div>
-                    <label className={labelClass}>¿Qué vivirá el turista? <span className="text-red-500">*</span></label>
+                    <label className={labelClass}>Duración estimada <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <select className={inputClass + " appearance-none pr-8" + (errors.duracion ? " border-red-400" : "")} value={form.duracion} onChange={e => set("duracion", e.target.value)}>
+                        <option value="">Selecciona</option>
+                        {DURACIONES.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                      <FiClock className="absolute right-3 top-1/2 -translate-y-1/2 text-[#769C7B] pointer-events-none" size={14} />
+                    </div>
+                    {errors.duracion && <p className={errClass}>{errors.duracion}</p>}
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Descripción del tour <span className="text-red-500">*</span></label>
                     <textarea className={inputClass + " min-h-32 resize-y" + (errors.descripcion ? " border-red-400" : "")} rows={5} placeholder="Describe el recorrido, las paradas, el ritmo del tour, lo que aprenderán y por qué tu experiencia es distinta." value={form.descripcion} onChange={e => set("descripcion", e.target.value)} />
                     {errors.descripcion && <p className={errClass}>{errors.descripcion}</p>}
                   </div>
 
                   <div>
-                    <label className={labelClass}>Precio de la experiencia <span className="text-red-500">*</span></label>
+                    <label className={labelClass}>Precio del tour por persona <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#1A4D2E] font-bold text-sm pointer-events-none">$</span>
                       <input type="text" inputMode="decimal" className={inputClass + " pl-8 pr-14" + (errors.precio ? " border-red-400" : "")} placeholder="0.00" value={form.precio} onChange={handlePrecioChange} />
@@ -342,24 +371,21 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, onClose, onSu
 
                   <div>
                     <label className={labelClass}>Idiomas del tour <span className="text-red-500">*</span></label>
-                    <Chips options={IDIOMAS} selected={form.idiomas} toggle={v => toggleArr("idiomas", v)} />
-                    {errors.idiomas && <p className={errClass}>{errors.idiomas}</p>}
+                    {guiaIdiomas.length === 0 ? (
+                      <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                        No tienes idiomas registrados en tu perfil. Ve a <strong>Mi Perfil → Idiomas</strong> y agrégalos antes de publicar un paquete.
+                      </p>
+                    ) : (
+                      <>
+                        <Chips options={guiaIdiomas} selected={form.idiomas} toggle={v => toggleArr("idiomas", v)} />
+                        {errors.idiomas && <p className={errClass}>{errors.idiomas}</p>}
+                      </>
+                    )}
                   </div>
 
                   <div>
                     <label className={labelClass}>¿Qué incluye la experiencia?</label>
                     <Chips options={QUE_INCLUYE} selected={form.queIncluye} toggle={v => toggleArr("queIncluye", v)} />
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Punto de encuentro o recogida</label>
-                    <input className={inputClass + " mb-3"} placeholder="Ej: Plaza de la Liberación, frente a la Catedral" value={form.puntoRecogida} onChange={e => set("puntoRecogida", e.target.value)} />
-                    <div className="rounded-2xl overflow-hidden border border-[#C9D4CB]">
-                      <MinimapaLocationPicker latitud={form.recogidaLat} longitud={form.recogidaLng} onLocationChange={handleLocationChange} height="220px" />
-                    </div>
-                    {(form.recogidaLat && form.recogidaLng) && (
-                      <p className="text-[10px] text-[#4A7A5A] mt-1 ml-1">Ubicación marcada: {parseFloat(form.recogidaLat).toFixed(5)}, {parseFloat(form.recogidaLng).toFixed(5)}</p>
-                    )}
                   </div>
 
                   <div>
