@@ -34,7 +34,7 @@ export const TAXONOMY: Category[] = [
       { id: 'cafeterias',    label: 'Cafeterías',          keywords: ['cafeteria', 'cafe', 'brunch'] },
       { id: 'internacional', label: 'Internacional',        keywords: ['gastronomia', 'bistro', 'americana'] },
       { id: 'postres',       label: 'Postres & Dulces',    keywords: ['postre', 'nieves', 'dulces', 'churros'] },
-      { id: 'vegana',        label: 'Vegana / Saludable',  keywords: ['vegana', 'vegetariana', 'sano'] },
+      { id: 'vegana',        label: 'Vegana',              keywords: ['vegana', 'vegetariana'] },
       { id: 'callejera',     label: 'Comida de calle',     keywords: ['comida calle', 'lonche', 'fonda'] },
     ],
   },

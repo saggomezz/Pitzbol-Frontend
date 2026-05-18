@@ -19,8 +19,8 @@ type FilterOptions = {
   soloFavoritos?: boolean;
 };
 
-import { getQuickFilters } from "@/lib/categories";
-const quickFilters = getQuickFilters('gastronomia').map(s => s.label);
+import { getQuickFilters, placeMatchesSub } from "@/lib/categories";
+const quickFilters = getQuickFilters('gastronomia'); // objetos { id, label, keywords }
 
 const normalizeText = (value: string) =>
   value
@@ -129,9 +129,8 @@ export default function GastronomiaPage() {
 
     const matchesQuickFilter = (place: PlaceRecord) => {
       if (!activeQuickFilter) return true;
-      const raw = (place.rawCategoria || place.categoria || "").toLowerCase();
-      const filter = activeQuickFilter.toLowerCase();
-      return raw.includes(filter);
+      // Usar placeMatchesSub con el ID de la subcategoría + keywords (no el label)
+      return placeMatchesSub(place.rawCategoria || place.categoria || "", activeQuickFilter);
     };
 
     const matchesZone = (place: PlaceRecord) => {
@@ -270,15 +269,15 @@ export default function GastronomiaPage() {
             <div className="flex flex-wrap gap-2 mb-8">
               {quickFilters.map((filter) => (
                 <button
-                  key={filter}
-                  onClick={() => setActiveQuickFilter((prev) => (prev === filter ? null : filter))}
+                  key={filter.id}
+                  onClick={() => setActiveQuickFilter((prev) => (prev === filter.id ? null : filter.id))}
                   className={`px-4 py-2 rounded-full border text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                    activeQuickFilter === filter
+                    activeQuickFilter === filter.id
                       ? "bg-[#1A4D2E] border-[#1A4D2E] text-white"
                       : "bg-white border-[#F6F0E6] text-[#1A4D2E] hover:bg-[#1A4D2E] hover:text-white"
                   }`}
                 >
-                  {filter}
+                  {filter.label}
                 </button>
               ))}
               {activeQuickFilter && (
