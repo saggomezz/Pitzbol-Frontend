@@ -172,15 +172,25 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
   });
 
   try {
-    let firestoreResponse = await fetch(`${API_BASE}/lugares?includeApprovedBusinesses=true`);
+    let firestoreResponse: Response | undefined;
 
-    // Fallback defensivo: si la integración con negocios aprobados falla,
-    // intentamos al menos recuperar lugares base con fotos manuales.
-    if (!firestoreResponse.ok) {
-      firestoreResponse = await fetch(`${API_BASE}/lugares`);
+    try {
+      firestoreResponse = await fetch(`${API_BASE}/lugares?includeApprovedBusinesses=true`);
+    } catch {
+      // error de red en la petición principal — intentamos el fallback
     }
 
-    if (!firestoreResponse.ok) {
+    // Fallback defensivo: si la integración con negocios aprobados falla
+    // (error HTTP o de red), intentamos al menos recuperar lugares base.
+    if (!firestoreResponse || !firestoreResponse.ok) {
+      try {
+        firestoreResponse = await fetch(`${API_BASE}/lugares`);
+      } catch {
+        // error de red en el fallback también — usamos datos CSV
+      }
+    }
+
+    if (!firestoreResponse || !firestoreResponse.ok) {
       return Array.from(mergedByName.values());
     }
 
@@ -288,7 +298,7 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
       mergedByName.set(nombre, nextValue);
     });
   } catch (error) {
-    console.error("Error obteniendo lugares de Firestore:", error);
+    console.warn("Error obteniendo lugares de Firestore:", error);
   }
 
   return Array.from(mergedByName.values());

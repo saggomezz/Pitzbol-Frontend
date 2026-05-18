@@ -107,7 +107,11 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
     } catch (error) {
       // If local proxy/rewrite fails, retry directly against backend host.
       if (error instanceof TypeError) {
-        return fetchWithAuth(buildBackendApiUrl(normalizedPath), options);
+        try {
+          return await fetchWithAuth(buildBackendApiUrl(normalizedPath), options);
+        } catch {
+          throw error;
+        }
       }
       throw error;
     }
@@ -135,7 +139,7 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
         }
       }
     } catch (error) {
-      console.error("Error al obtener mensajes no leídos:", error);
+      console.warn("Error al obtener mensajes no leídos:", error);
     }
   }, [userId, userType, enabled, readUnreadCache, applyUnreadSnapshot, fetchChatApi]);
 
@@ -308,7 +312,7 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
         removeChatFromUnreadState(chatId);
       }
     } catch (error) {
-      console.error("Error al marcar como leído:", error);
+      console.warn("Error al marcar como leído:", error);
     }
   }, [userId, removeChatFromUnreadState, fetchChatApi]);
 

@@ -1437,14 +1437,10 @@ export default function PerfilDetallado() {
                           </div>
                         ) : (
                           <p className="text-sm font-medium text-[#1A4D2E] pl-12">
-<<<<<<< Updated upstream
                             {perfil?.tarifa
                               ? `$${Number(perfil.tarifa).toLocaleString("es-MX")} MXN / hora`
                               : <span className="text-xs font-medium text-[#E53935] tracking-wide">Agrega tu tarifa para que turistas reserven</span>
                             }
-=======
-                            {perfil?.tarifa ? `$${Number(perfil.tarifa).toLocaleString("es-MX")} MXN / recorrido` : "Sin tarifa definida"}
->>>>>>> Stashed changes
                           </p>
                         )}
                       </motion.div>
@@ -2071,10 +2067,6 @@ export default function PerfilDetallado() {
               )}
             </motion.div>
 
-<<<<<<< Updated upstream
-            {/* ── Sección de Mis Experiencias (historial de tours completados) ── */}
-            {esGuia && tipoGuia !== "empresa" && (
-=======
             {/* ── Historial de Reservas (solo turistas) ── */}
             {!esGuia && (
               reservasHistorial.length === 0 ? (
@@ -2158,9 +2150,8 @@ export default function PerfilDetallado() {
               )
             )}
 
-            {/* ── Sección de Paquetes ── */}
-            {esGuia && (
->>>>>>> Stashed changes
+            {/* ── Sección de Mis Experiencias (historial de tours completados) ── */}
+            {esGuia && tipoGuia !== "empresa" && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

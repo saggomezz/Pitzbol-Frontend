@@ -685,7 +685,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       // Actualizar localStorage
       localStorage.setItem(key, JSON.stringify(notificacionesCombinadas));
     } catch (error) {
-      console.error("Error al cargar notificaciones del backend:", error);
+      console.warn("Error al cargar notificaciones del backend:", error);
       // Cargar solo del localStorage si el backend falla
       cargarNotificacionesLocal();
     } finally {
