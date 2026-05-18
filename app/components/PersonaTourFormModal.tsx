@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import {
-  FiX, FiMapPin, FiClock, FiUsers, FiPlus, FiTrash2,
+  FiX, FiMapPin, FiClock, FiUsers, FiPlus, FiTrash2, FiChevronLeft,
 } from "react-icons/fi";
 import { FaMapMarkedAlt } from "react-icons/fa";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
