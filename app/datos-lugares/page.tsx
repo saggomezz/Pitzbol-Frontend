@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 
 const EMAILS_AUTORIZADOS = ["cua@hotmail.com", "pilarmorag2004@hotmail.com"];
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
+const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
+const invalidarCacheIA = () => fetch(`${IA_URL}/api/places`, { method: 'DELETE' }).catch(() => {});
 
 const CATEGORY_CONFIG: Record<string, string[]> = {
   "Restaurante / Cafetería": ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana", "Internacional"],
@@ -201,6 +203,7 @@ export default function DatosLugaresPage() {
       setExpandido(null);
       setConfirmDelete(null);
       setMensaje("✓ Lugar eliminado");
+      invalidarCacheIA();
       setTimeout(() => setMensaje(""), 3000);
     } catch (e: any) {
       setMensaje(`Error de conexión: ${e.message}`);
@@ -229,6 +232,7 @@ export default function DatosLugaresPage() {
       if (res.ok) {
         setFotosMap(prev => ({ ...prev, [nombre]: fotosLimpias }));
         setMensaje(`✓ ${fotosLimpias.length} foto(s) guardada(s)`);
+        invalidarCacheIA();
       } else {
         const body = await res.json().catch(() => ({}));
         setMensaje(`Error ${res.status}: ${body.message || body.msg || "sin guardar"}`);
@@ -371,6 +375,7 @@ export default function DatosLugaresPage() {
       }).catch(() => {});
 
       setMensajeNuevo("✓ Lugar creado correctamente");
+      invalidarCacheIA();
       // Añadir a la lista sin recargar
       setLugares(prev => [...prev, { nombre, categoria: nuevaCategoria }]);
       if (fotosLimpias.length) setFotosMap(prev => ({ ...prev, [nombre]: fotosLimpias }));
