@@ -107,11 +107,24 @@ export default function DatosLugaresPage() {
         const descripcionM: Record<string, boolean> = {};
         const firebaseSoloLugares: { nombre: string; categoria: string; horaApertura?: string }[] = [];
 
+        // Helper: normaliza nombre quitando ", Ciudad" al final para comparar variantes
+        const normNombre = (n: string) => n.toLowerCase()
+          .replace(/,\s*(guadalajara|zapopan|tlaquepaque|tonala|tonalá)[^,]*$/i, '').trim();
+
         (data.lugares || []).forEach((l: any) => {
           if (!l.nombre) return;
-          if (l.fotos?.length) fotosM[l.nombre] = l.fotos;
-          if (l.horariosJson) horarioM[l.nombre] = true;
-          if (l.descripcion?.trim()) descripcionM[l.nombre] = true;
+          if (l.fotos?.length) {
+            fotosM[l.nombre] = l.fotos;
+            fotosM[normNombre(l.nombre)] = l.fotos;
+          }
+          if (l.horariosJson) {
+            horarioM[l.nombre] = true;
+            horarioM[normNombre(l.nombre)] = true;
+          }
+          if (l.descripcion?.trim()) {
+            descripcionM[l.nombre] = true;
+            descripcionM[normNombre(l.nombre)] = true;
+          }
           firebaseSoloLugares.push({ nombre: l.nombre, categoria: l.categoria || '' });
         });
 
@@ -405,12 +418,19 @@ export default function DatosLugaresPage() {
     });
   };
 
+  const normNombreFilter = (n: string) => n.toLowerCase()
+    .replace(/,\s*(guadalajara|zapopan|tlaquepaque|tonala|tonalá)[^,]*$/i, '').trim();
+
   const lugaresFiltrados = lugares.filter(l => {
     const q = busqueda.toLowerCase();
     if (q && !l.nombre.toLowerCase().includes(q) && !l.categoria.toLowerCase().includes(q)) return false;
-    if (filtros.has('sinImagen') && (fotosMap[l.nombre]?.length || 0) > 0) return false;
-    if (filtros.has('sinHorario') && horarioMap[l.nombre]) return false;
-    if (filtros.has('sinDescripcion') && descripcionMap[l.nombre]) return false;
+    const nn = normNombreFilter(l.nombre);
+    const tieneImagen = (fotosMap[l.nombre]?.length || 0) > 0 || (fotosMap[nn]?.length || 0) > 0;
+    const tieneHorario = !!(horarioMap[l.nombre] || horarioMap[nn]);
+    const tieneDescripcion = !!(descripcionMap[l.nombre] || descripcionMap[nn]);
+    if (filtros.has('sinImagen') && tieneImagen) return false;
+    if (filtros.has('sinHorario') && tieneHorario) return false;
+    if (filtros.has('sinDescripcion') && tieneDescripcion) return false;
     return true;
   });
 
