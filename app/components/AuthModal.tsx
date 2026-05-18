@@ -131,12 +131,16 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         setVerifyError("");
         setWrongAttempts(0);
         setTimeout(() => verifyInputsRef.current[0]?.focus(), 100);
+      } else if (res.status === 404) {
+        // Endpoint aún no disponible en el servidor — registrar directamente
+        await doActualRegister();
       } else {
         const data = await res.json().catch(() => ({}));
         setGeneralError(data.msg || "No se pudo enviar el código. Intenta de nuevo.");
       }
     } catch {
-      setGeneralError("Error de conexión. Verifica tu internet e intenta de nuevo.");
+      // Si falla la conexión al endpoint de código, registrar directamente
+      await doActualRegister();
     } finally {
       setSendingCode(false);
     }
