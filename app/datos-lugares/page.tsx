@@ -756,50 +756,63 @@ export default function DatosLugaresPage() {
                   <div className="px-3 pb-3 border-t border-gray-50">
                     <p className="text-xs text-gray-400 mt-2 mb-2">Imágenes — pega un URL o sube un archivo</p>
                     {inputFotos.map((foto, i) => (
-                      <div key={i} className="flex items-center gap-2 mb-2">
-                        <FiImage size={13} className="text-gray-400 flex-shrink-0" />
-                        <input
-                          type="url"
-                          placeholder={`URL imagen ${i + 1}`}
-                          value={foto}
-                          onChange={e => {
-                            const nuevo = [...inputFotos];
-                            nuevo[i] = e.target.value;
-                            setInputFotos(nuevo);
-                          }}
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-black focus:outline-none focus:border-[#1A4D2E]"
-                        />
-                        <input
-                          ref={el => { fileInputRefsArray.current[i] = el; }}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) handleFileUpload(i, file);
-                            e.target.value = "";
-                          }}
-                        />
-                        <button
-                          onClick={() => fileInputRefsArray.current[i]?.click()}
-                          disabled={uploadProgress[i] !== null}
-                          title="Subir imagen"
-                          className="flex-shrink-0 p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                        >
-                          {uploadProgress[i] !== null
-                            ? <span className="text-[10px] text-[#1A4D2E] font-medium w-7 text-center block">{uploadProgress[i]}%</span>
-                            : <FiUpload size={13} className="text-gray-500" />
-                          }
-                        </button>
-                        {inputFotos.length > 1 && (
-                          <button
-                            onClick={() => eliminarSlot(i)}
-                            title="Eliminar este campo"
-                            className="flex-shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors"
-                          >
-                            <FiX size={13} />
-                          </button>
+                      <div key={i} className="mb-3">
+                        {/* Preview */}
+                        {foto && foto.startsWith("http") && (
+                          <div className="mb-1.5 rounded-lg overflow-hidden border border-gray-100 h-24 w-full bg-gray-50">
+                            <img
+                              src={foto}
+                              alt={`Foto ${i + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                            />
+                          </div>
                         )}
+                        <div className="flex items-center gap-2">
+                          <FiImage size={13} className="text-gray-400 flex-shrink-0" />
+                          <input
+                            type="url"
+                            placeholder={`URL imagen ${i + 1}`}
+                            value={foto}
+                            onChange={e => {
+                              const nuevo = [...inputFotos];
+                              nuevo[i] = e.target.value;
+                              setInputFotos(nuevo);
+                            }}
+                            className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-black focus:outline-none focus:border-[#1A4D2E]"
+                          />
+                          <input
+                            ref={el => { fileInputRefsArray.current[i] = el; }}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={e => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload(i, file);
+                              e.target.value = "";
+                            }}
+                          />
+                          <button
+                            onClick={() => fileInputRefsArray.current[i]?.click()}
+                            disabled={uploadProgress[i] !== null}
+                            title="Subir imagen"
+                            className="flex-shrink-0 p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                          >
+                            {uploadProgress[i] !== null
+                              ? <span className="text-[10px] text-[#1A4D2E] font-medium w-7 text-center block">↑</span>
+                              : <FiUpload size={13} className="text-gray-500" />
+                            }
+                          </button>
+                          {inputFotos.length > 1 && (
+                            <button
+                              onClick={() => eliminarSlot(i)}
+                              title="Eliminar este campo"
+                              className="flex-shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors"
+                            >
+                              <FiX size={13} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                     <button
