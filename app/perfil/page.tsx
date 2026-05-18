@@ -105,7 +105,7 @@ export default function PerfilDetallado() {
   const [tours, setTours] = useState<any[]>([]);
   const [showTourModal, setShowTourModal] = useState(false);
   const [paquetes, setPaquetes] = useState<any[]>([]);
-  const [showPaqueteModal, setShowPaqueteModal] = useState(false);
+  const [experiencias, setExperiencias] = useState<any[]>([]);
   const [tipoGuia, setTipoGuia] = useState<string>(() => {
     if (typeof window !== "undefined") {
       const u = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
@@ -368,10 +368,10 @@ export default function PerfilDetallado() {
 
         const resolvedGuideType = userLocal.guia_tipo || tipoGuia || "persona";
 
-        // Cargar experiencias del guía individual o solicitudes del flujo empresarial
-        try {
-          const token = localStorage.getItem("pitzbol_token");
-          if (rol === "guia" && resolvedGuideType !== "empresa") {
+        // Cargar paquetes publicados del guía (tours activos)
+        if (rol === "guia" && resolvedGuideType !== "empresa") {
+          try {
+            const token = localStorage.getItem("pitzbol_token");
             const toursRes = await fetch(`${API_BASE}/tours/guia/${userLocal.uid}`, {
               credentials: "include",
               headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -380,7 +380,9 @@ export default function PerfilDetallado() {
               const toursData = await toursRes.json();
               if (toursData.success) setTours(toursData.tours || []);
             }
-          } else {
+          } catch {}
+        } else if (rol === "guia") {
+          try {
             const solRes = await fetchWithAuth(`${API_BASE}/business/my-requests`, {
               cache: "no-store",
               headers: { "Content-Type": "application/json" },
@@ -389,17 +391,20 @@ export default function PerfilDetallado() {
               const solData = await solRes.json();
               if (solData.success) setTours(solData.solicitudes || []);
             }
-          }
-        } catch {}
+          } catch {}
+        }
 
-        // Cargar paquetes del guía
-        if (rol === "guia") {
+        // Cargar historial de experiencias completadas del guía
+        if (rol === "guia" && resolvedGuideType !== "empresa") {
           try {
-            const backendUrlPaq = getBackendOrigin();
-            const paqRes = await fetch(`${backendUrlPaq}/api/paquetes/guia/${userLocal.uid}`);
-            if (paqRes.ok) {
-              const paqData = await paqRes.json();
-              if (paqData.success) setPaquetes(paqData.paquetes || []);
+            const token = localStorage.getItem("pitzbol_token");
+            const expRes = await fetch(`${API_BASE}/bookings/guia/${userLocal.uid}/experiencias`, {
+              credentials: "include",
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            if (expRes.ok) {
+              const expData = await expRes.json();
+              if (expData.success) setExperiencias(expData.experiencias || []);
             }
           } catch {}
         }
@@ -1381,7 +1386,7 @@ export default function PerfilDetallado() {
                           <p className="text-sm font-medium text-[#1A4D2E] pl-12">
                             {perfil?.tarifa
                               ? `$${Number(perfil.tarifa).toLocaleString("es-MX")} MXN / hora`
-                              : <span className="text-xs font-medium text-[#E53935] tracking-wide">Agrega tu tarifa para que turista reserve</span>
+                              : <span className="text-xs font-medium text-[#E53935] tracking-wide">Agrega tu tarifa para que turistas reserven</span>
                             }
                           </p>
                         )}
@@ -1777,51 +1782,49 @@ export default function PerfilDetallado() {
               </motion.div>
             )}
 
-            {/* Sección de los Tours */}
-            <motion.div 
+            {/* ── Sección de Paquetes (tours publicados) ── */}
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
             >
-              {/* Encabezado de la sección */}
               <div className="mb-6 flex justify-between items-end">
                 <div>
                   <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">
-                    {esGuia ? t('myExperiences') : t('upcomingDestinations')}
+                    {esGuia ? "Paquetes" : t('upcomingDestinations')}
                   </h3>
                   <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
-                    {esGuia ? t('toursPublished') : t('bookings')}
+                    {esGuia ? "Tours que ofreces a turistas" : t('bookings')}
                   </p>
                 </div>
                 {esGuia && (
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
-                      {tipoGuia !== "empresa" ? tours.length : tours.filter((s: any) => s.estado === 'aprobado').length} {t('published')}
+                      {tipoGuia !== "empresa" ? tours.length : tours.filter((s: any) => s.estado === 'aprobado').length} publicados
                     </span>
                   </div>
                 )}
               </div>
 
-              {/* Contenido condicional por ROL */}
               {esGuia ? (
                 tipoGuia !== "empresa" ? (
                   <div className="space-y-4">
-                    <motion.button 
+                    <motion.button
                       whileHover={{ scale: 1.01, backgroundColor: "#f9fafb" }}
                       whileTap={{ scale: 0.99 }}
-                      onClick={() => setShowTourModal(true)} 
+                      onClick={() => setShowTourModal(true)}
                       className="w-full py-4 border-2 border-dashed border-[#E0F2F1] rounded-lg flex items-center justify-center gap-2 text-[#81C784] hover:text-[#66BB6A] hover:border-[#A5D6A7] transition-all group"
                     >
                       <div className="w-7 h-7 bg-[#E8F5E9] group-hover:bg-[#3A5A40] group-hover:text-white rounded-full flex items-center justify-center transition-colors">
                         <FiPlus size={16} />
                       </div>
-                      <span className="text-sm font-medium tracking-tight">{t('createExperience')}</span>
+                      <span className="text-sm font-medium tracking-tight">Crear paquete</span>
                     </motion.button>
 
                     {tours.length === 0 ? (
                       <p className="text-center text-[11px] text-[#81C784] font-normal py-4">
-                        {t('noExperiencesYet')}
+                        Aún no tienes paquetes. Crea uno para que los turistas puedan reservarlo.
                       </p>
                     ) : (
                       <div className="space-y-3 mt-1">
@@ -1838,14 +1841,14 @@ export default function PerfilDetallado() {
                             >
                               <a href={`/tours/${tour.id}`} className="flex items-center gap-3 flex-1 min-w-0">
                                 {foto ? (
-                                  <img src={foto} alt={tour.titulo || "Experiencia"} className="h-14 w-14 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
+                                  <img src={foto} alt={tour.titulo || "Paquete"} className="h-14 w-14 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
                                 ) : (
                                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
                                     <FiMap size={18} className="text-[#66BB6A]" />
                                   </div>
                                 )}
                                 <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold text-[#1A4D2E] group-hover:text-[#0D601E]">{tour.titulo || "Experiencia"}</p>
+                                  <p className="truncate text-sm font-semibold text-[#1A4D2E] group-hover:text-[#0D601E]">{tour.titulo || "Paquete"}</p>
                                   <p className="truncate text-[11px] text-gray-500">{tour.destino || "Destino por definir"}</p>
                                   <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
                                     {tour.duracion && <span>{tour.duracion}</span>}
@@ -1855,12 +1858,12 @@ export default function PerfilDetallado() {
                                 </div>
                               </a>
                               <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
-                                Completado
+                                Activo
                               </span>
                               <button
                                 onClick={() => handleDeleteTour(tour.id)}
                                 className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                title="Eliminar experiencia"
+                                title="Eliminar paquete"
                               >
                                 <FiTrash2 size={14} />
                               </button>
@@ -1948,8 +1951,8 @@ export default function PerfilDetallado() {
               )}
             </motion.div>
 
-            {/* ── Sección de Paquetes ── */}
-            {esGuia && (
+            {/* ── Sección de Mis Experiencias (historial de tours completados) ── */}
+            {esGuia && tipoGuia !== "empresa" && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1958,83 +1961,58 @@ export default function PerfilDetallado() {
               >
                 <div className="mb-6 flex justify-between items-end">
                   <div>
-                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Paquetes</h3>
+                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Experiencias</h3>
                     <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
-                      Paquetes que ofreces a turistas
+                      Historial de tours completados
                     </p>
                   </div>
                   <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
-                    {paquetes.length} publicados
+                    {experiencias.length} completados
                   </span>
                 </div>
 
-                <div className="space-y-4">
-                  <motion.button
-                    whileHover={{ scale: 1.01, backgroundColor: "#f9fafb" }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => setShowPaqueteModal(true)}
-                    className="w-full py-4 border-2 border-dashed border-[#E0F2F1] rounded-lg flex items-center justify-center gap-2 text-[#81C784] hover:text-[#66BB6A] hover:border-[#A5D6A7] transition-all group"
-                  >
-                    <div className="w-7 h-7 bg-[#E8F5E9] group-hover:bg-[#3A5A40] group-hover:text-white rounded-full flex items-center justify-center transition-colors">
-                      <FiPlus size={16} />
+                {experiencias.length === 0 ? (
+                  <div className="py-10 flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-[#F1F8F6] rounded-xl flex items-center justify-center mb-3 border border-[#E0F2F1]">
+                      <FiMap size={20} className="text-[#A5D6A7]" />
                     </div>
-                    <span className="text-sm font-medium tracking-tight">Crear paquete</span>
-                  </motion.button>
-
-                  {paquetes.length === 0 ? (
-                    <p className="text-center text-[11px] text-[#81C784] font-normal py-4">
-                      Aún no tienes paquetes. Crea uno para que los turistas puedan reservarlo.
+                    <p className="text-sm font-medium text-[#1A4D2E] mb-1">Sin experiencias aún</p>
+                    <p className="text-[11px] text-[#81C784] max-w-[220px] font-normal">
+                      Una vez que hayas completado un tour, aparecerá aquí y será visible en tu perfil público.
                     </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {paquetes.map((paq: any, i: number) => (
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {experiencias.map((exp: any, i: number) => {
+                      const tourTitulo = exp.tourTitulo || exp.titulo || "Tour";
+                      const tourFoto = exp.tourFoto || exp.fotoPrincipal || null;
+                      return (
                         <motion.div
-                          key={paq.id || i}
+                          key={exp.id || i}
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.05 }}
-                          className="rounded-xl border border-[#E0F2F1] overflow-hidden hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all group"
+                          className="flex items-center gap-3 p-3 rounded-xl border border-[#E0F2F1] hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
                         >
-                          {/* Photo strip */}
-                          {(paq.fotos?.length > 0 || paq.fotoPrincipal) && (
-                            <div className="flex gap-0.5 h-24 overflow-hidden">
-                              {(paq.fotos?.length > 0 ? paq.fotos : [paq.fotoPrincipal]).slice(0, 3).map((src: string, fi: number) => (
-                                <div key={fi} className="relative overflow-hidden flex-1">
-                                  <img src={src} alt="" className="w-full h-full object-cover" />
-                                </div>
-                              ))}
+                          {tourFoto ? (
+                            <img src={tourFoto} alt={tourTitulo} className="h-12 w-12 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
+                          ) : (
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
+                              <FiMap size={16} className="text-[#66BB6A]" />
                             </div>
                           )}
-                          <div className="flex items-center gap-3 p-3">
-                            {!paq.fotoPrincipal && !paq.fotos?.length && (
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
-                                <FiMap size={16} className="text-[#66BB6A]" />
-                              </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-semibold text-[#1A4D2E]">{paq.titulo}</p>
-                              <p className="truncate text-[11px] text-gray-500">{paq.destino}</p>
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
-                                {paq.duracion && <span>{paq.duracion}</span>}
-                                {paq.precio && <span className="font-semibold text-[#0D601E]">{paq.precio}</span>}
-                              </div>
-                            </div>
-                            <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
-                              Activo
-                            </span>
-                            <button
-                              onClick={() => handleDeletePaquete(paq.id)}
-                              className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                              title="Eliminar paquete"
-                            >
-                              <FiTrash2 size={14} />
-                            </button>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-[#1A4D2E]">{tourTitulo}</p>
+                            <p className="text-[11px] text-gray-500">{exp.fecha || ""} {exp.horaInicio ? `· ${exp.horaInicio}` : ""}</p>
                           </div>
+                          <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
+                            Completado
+                          </span>
                         </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </motion.div>
             )}
           </div>
@@ -2084,7 +2062,7 @@ export default function PerfilDetallado() {
       {/* Wallet Modal */}
       <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
 
-      {/* Modal crear experiencia */}
+      {/* Modal crear paquete (usa el formulario de tour) */}
       {showTourModal && esGuia && tipoGuia !== "empresa" && (
         <PersonaTourFormModal
           guiaId={perfil?.id || ""}
@@ -2093,19 +2071,6 @@ export default function PerfilDetallado() {
           onSuccess={(tour: any) => {
             setTours((prev: any[]) => [tour, ...prev]);
             setShowTourModal(false);
-          }}
-        />
-      )}
-
-      {/* Modal crear paquete */}
-      {showPaqueteModal && esGuia && (
-        <PaqueteFormModal
-          isOpen={showPaqueteModal}
-          guiaId={perfil?.id || ""}
-          onClose={() => setShowPaqueteModal(false)}
-          onCreated={(paquete: any) => {
-            setPaquetes((prev: any[]) => [paquete, ...prev]);
-            setShowPaqueteModal(false);
           }}
         />
       )}
