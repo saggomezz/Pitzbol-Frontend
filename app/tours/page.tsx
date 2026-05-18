@@ -42,12 +42,6 @@ interface Tour {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const QUICK_FILTERS = ["Todos", "Tequila", "Tlaquepaque", "Tonalá", "Chapala", "Centro Histórico"];
-const TIPO_FILTERS = [
-  { value: "todos", label: "Todos" },
-  { value: "persona", label: "Guía individual" },
-  { value: "empresa", label: "Empresa" },
-];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -71,8 +65,6 @@ export default function ToursPage() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [toursLoading, setToursLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [filterDestino, setFilterDestino] = useState("Todos");
-  const [filterTipo, setFilterTipo] = useState("todos");
 
   // ── Load both data sources in parallel ──────────────────────────────────────
   useEffect(() => {
@@ -156,10 +148,8 @@ export default function ToursPage() {
       tour.destino.toLowerCase().includes(q) ||
       tour.descripcion.toLowerCase().includes(q) ||
       tour.empresaNombre.toLowerCase().includes(q);
-    const matchesFilter = filterDestino === "Todos" || tour.destino.toLowerCase().includes(filterDestino.toLowerCase());
-    const matchesTipo = filterTipo === "todos" || tour.tipoGuia === filterTipo;
-    return matchesQuery && matchesFilter && matchesTipo;
-  }), [tours, query, filterDestino, filterTipo]);
+    return matchesQuery;
+  }), [tours, query]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -344,39 +334,6 @@ export default function ToursPage() {
                 />
               </div>
 
-              {/* Quick filters destino */}
-              <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
-                {QUICK_FILTERS.map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setFilterDestino(f)}
-                    className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                      filterDestino === f
-                        ? "bg-[#1A4D2E] text-white border-[#1A4D2E]"
-                        : "bg-white text-[#1A4D2E] border-[#C9D4CB] hover:border-[#1A4D2E]"
-                    }`}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
-
-              {/* Filtro tipo */}
-              <div className="flex gap-2 mb-6">
-                {TIPO_FILTERS.map(f => (
-                  <button
-                    key={f.value}
-                    onClick={() => setFilterTipo(f.value)}
-                    className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                      filterTipo === f.value
-                        ? "bg-[#F6F0E6] text-[#8B0000] border-[#8B0000]"
-                        : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
 
               {/* Content */}
               {toursLoading ? (
@@ -397,16 +354,16 @@ export default function ToursPage() {
                     </p>
                     <p className="text-gray-400 text-sm mt-1">
                       {tours.length === 0
-                        ? "Las empresas verificadas publicarán sus experiencias aquí."
-                        : "Intenta con otro destino o elimina los filtros."}
+                        ? "Los guías verificados publicarán sus paquetes aquí."
+                        : "Intenta con otro término de búsqueda."}
                     </p>
                   </div>
-                  {(query || filterDestino !== "Todos" || filterTipo !== "todos") && (
+                  {query && (
                     <button
-                      onClick={() => { setQuery(""); setFilterDestino("Todos"); setFilterTipo("todos"); }}
+                      onClick={() => setQuery("")}
                       className="text-xs text-[#0D601E] underline mt-1"
                     >
-                      Limpiar filtros
+                      Limpiar búsqueda
                     </button>
                   )}
                 </div>
