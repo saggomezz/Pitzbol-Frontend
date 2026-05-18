@@ -3,7 +3,7 @@ import { getBackendOrigin } from "@/lib/backendUrl";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiChevronDown, FiEye, FiEyeOff, FiLock, FiMail, FiX } from "react-icons/fi";
 
 const API_BASE = getBackendOrigin();
@@ -84,6 +84,15 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   const [isNewAccount, setIsNewAccount] = useState(false);
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
+  // Verificación de email
+  const [showVerification, setShowVerification] = useState(false);
+  const [verifyDigits, setVerifyDigits] = useState(["", "", "", "", "", ""]);
+  const [verifyError, setVerifyError] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
+  const verifyInputsRef = useRef<(HTMLInputElement | null)[]>([]);
+
   // y datos de Login
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -96,25 +105,98 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
 
 
   const handleRegister = async () => {
-    setErrors({}); 
+    setErrors({});
     setGeneralError("");
-    let newErrors: any = {};
-
+    const newErrors: any = {};
     if (!regNombre.trim()) newErrors.nombre = true;
     if (!regApellido.trim()) newErrors.apellido = true;
     if (!nacionalidad) newErrors.nacionalidad = true;
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(regEmail)) newErrors.email = t('invalidEmail');
-
     if (regPassword.length < 6) newErrors.password = t('minCharacters');
     if (regPassword !== regConfirmPassword) newErrors.confirmPassword = t('passwordsNotMatch');
+    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
+    // Enviar código y mostrar paso de verificación
+    setSendingCode(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/send-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: regEmail, nombre: regNombre }),
+      });
+      if (res.ok) {
+        setShowVerification(true);
+        setVerifyDigits(["", "", "", "", "", ""]);
+        setVerifyError("");
+        setWrongAttempts(0);
+        setTimeout(() => verifyInputsRef.current[0]?.focus(), 100);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setGeneralError(data.msg || "No se pudo enviar el código. Intenta de nuevo.");
+      }
+    } catch {
+      setGeneralError("Error de conexión. Verifica tu internet e intenta de nuevo.");
+    } finally {
+      setSendingCode(false);
     }
+  };
 
+  const handleSendCode = async () => {
+    setSendingCode(true);
+    setVerifyError("");
+    try {
+      const res = await fetch(`${BACKEND_URL}/send-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: regEmail, nombre: regNombre }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setVerifyError(data.msg || "No se pudo enviar el código. Intenta de nuevo.");
+      }
+    } catch {
+      setVerifyError("Error de conexión al enviar el código.");
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    const code = verifyDigits.join("");
+    if (code.length < 6) { setVerifyError("Ingresa los 6 dígitos del código."); return; }
+    setVerifying(true);
+    setVerifyError("");
+    try {
+      const res = await fetch(`${BACKEND_URL}/verify-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: regEmail, code }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        // Código correcto → proceder con el registro real
+        await doActualRegister();
+      } else {
+        const newAttempts = wrongAttempts + 1;
+        setWrongAttempts(newAttempts);
+        if (newAttempts >= 2) {
+          setVerifyError("Código incorrecto. Te enviamos uno nuevo automáticamente.");
+          setVerifyDigits(["", "", "", "", "", ""]);
+          setWrongAttempts(0);
+          await handleSendCode();
+        } else {
+          setVerifyError("Código incorrecto. Inténtalo de nuevo.");
+        }
+      }
+    } catch {
+      setVerifyError("Error al verificar. Intenta de nuevo.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const doActualRegister = async () => {
     try {
       if (!regEmail || !regPassword || !regNombre) {
         alert("Por favor completa los campos obligatorios");
@@ -418,11 +500,75 @@ if (!isOpen) return null;
         </form>
 
         {/* --- LADO DERECHO: CREAR CUENTA --- */}
-        <form 
-          onSubmit={(e) => { e.preventDefault(); handleRegister(); }}
+        <form
+          onSubmit={(e) => { e.preventDefault(); showVerification ? handleVerifyCode() : handleRegister(); }}
           className={`w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white border-l border-gray-100 overflow-y-auto transition-opacity duration-300 ${isLogin && typeof window !== 'undefined' && window.innerWidth < 768 ? 'hidden opacity-0' : 'flex opacity-100'}`}
         >
-          <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-6 font-black text-center uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>{t('registerTitle').toUpperCase()}</h2>
+          <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-6 font-black text-center uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>
+            {showVerification ? "Verifica tu correo" : t('registerTitle').toUpperCase()}
+          </h2>
+
+          {/* ── PASO DE VERIFICACIÓN ─────────────────────────────────── */}
+          {showVerification ? (
+            <div className="w-full max-w-sm flex flex-col items-center gap-y-5">
+              <p className="text-sm text-gray-600 text-center leading-relaxed">
+                Enviamos un código de 6 dígitos a<br />
+                <span className="font-bold text-[#1A4D2E]">{regEmail.replace(/(.{2}).*@/, '$1***@')}</span>
+              </p>
+              {/* 6 cajas de dígitos */}
+              <div className="flex gap-2 justify-center">
+                {verifyDigits.map((d, i) => (
+                  <input
+                    key={i}
+                    ref={el => { verifyInputsRef.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={d}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/, "");
+                      const next = [...verifyDigits];
+                      next[i] = val;
+                      setVerifyDigits(next);
+                      if (val && i < 5) verifyInputsRef.current[i + 1]?.focus();
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === "Backspace" && !verifyDigits[i] && i > 0) {
+                        verifyInputsRef.current[i - 1]?.focus();
+                      }
+                    }}
+                    className="w-11 h-14 text-center text-2xl font-black border-2 rounded-xl focus:outline-none focus:border-[#1A4D2E] border-gray-200 bg-[#F7F9F4] text-[#1A4D2E]"
+                  />
+                ))}
+              </div>
+              {verifyError && (
+                <p className="text-xs text-red-500 text-center">{verifyError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={verifying || verifyDigits.join("").length < 6}
+                className="w-full bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium disabled:opacity-50"
+              >
+                {verifying ? "Verificando..." : "Siguiente →"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowVerification(false); setVerifyDigits(["","","","","",""]); setVerifyError(""); }}
+                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                ← Volver y editar datos
+              </button>
+              <button
+                type="button"
+                onClick={async () => { setVerifyDigits(["","","","","",""]); setVerifyError(""); await handleSendCode(); setVerifyError("Nuevo código enviado."); }}
+                disabled={sendingCode}
+                className="text-xs text-[#1A4D2E] underline disabled:opacity-50"
+              >
+                {sendingCode ? "Enviando..." : "Reenviar código"}
+              </button>
+            </div>
+          ) : (
+          /* ── FORMULARIO DE REGISTRO ─────────────────────────────────── */
           <div className="w-full max-w-sm flex flex-col gap-y-5">
             <div className="grid grid-cols-2 gap-3">
               <input placeholder={t('name')} className={inputClass} value={regNombre} onChange={(e) => setRegNombre(capitalize(e.target.value))} />
@@ -502,6 +648,7 @@ if (!isOpen) return null;
                <p className="text-gray-500 text-xs">{t('haveAccount')} <button type="button" onClick={() => setIsLogin(true)} className="text-[#8B0000] font-bold underline italic">{t('signInHere')}</button></p>
             </div>
           </div>
+          )} {/* cierra ternario showVerification */}
         </form>
 
         {/* PANEL VERDE DESLIZABLE (Solo Desktop) */}
