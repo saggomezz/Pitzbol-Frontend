@@ -25,6 +25,8 @@ interface BookingData {
   horaInicio: string;
   numPersonas: number;
   notas?: string;
+  paqueteId?: string;
+  paqueteTitulo?: string;
   total: number;
   status: string;
 }
@@ -153,7 +155,9 @@ export default function BookingConfirmationPage() {
                     <p className="text-sm text-gray-600 mb-1">Horario</p>
                     <p className="text-lg font-bold text-gray-800">
                       {booking.horaInicio} -{" "}
-                      {booking.duracion === "medio" ? "Medio Día (4 horas)" : "Día Completo (8 horas)"}
+                      {booking.paqueteTitulo
+                        ? booking.paqueteTitulo
+                        : booking.duracion === "medio" ? "Medio Día (4 horas)" : "Día Completo (8 horas)"}
                     </p>
                   </div>
                 </div>

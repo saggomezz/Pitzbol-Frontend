@@ -191,7 +191,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, guiaIdiomas =
     if (s === 1) {
       if (!form.descripcion.trim()) e.descripcion = "Agrega una descripción del tour";
       if (!form.precio.trim()) e.precio = "Indica el precio por persona";
-      if (form.idiomas.length === 0) e.idiomas = "Selecciona al menos un idioma";
+      if (guiaIdiomas.length > 0 && form.idiomas.length === 0) e.idiomas = "Selecciona al menos un idioma";
       if (form.diasDisponibles.length === 0) e.diasDisponibles = "Selecciona al menos un día disponible";
       if (form.incluyeTransporte && form.tipoVehiculo.length === 0) e.tipoVehiculo = "Selecciona el tipo de vehículo";
       if (form.incluyeTransporte && !form.capacidad.trim()) e.capacidad = "Indica la capacidad";
@@ -258,27 +258,26 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, guiaIdiomas =
   const STEP_TITLES = ["Tu Paquete", "Detalles", "Fotos"];
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm p-0 md:p-4">
+    <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <motion.div
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="relative bg-white w-full max-w-[500px] md:max-w-[950px] h-[92vh] md:h-[680px] rounded-t-[30px] md:rounded-[50px] overflow-hidden shadow-2xl flex flex-col"
+        className="relative bg-white w-full max-w-150 max-h-[90vh] rounded-[30px] overflow-hidden shadow-2xl flex flex-col"
       >
         {/* HEADER */}
-        <div className="w-full bg-white z-10 pt-4 md:pt-6 px-8 border-b border-gray-50 shrink-0">
-          <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto md:hidden mb-4" />
+          <div className="w-full bg-white z-10 pt-5 px-8 border-b border-gray-50 shrink-0">
           <div className="absolute top-5 left-6 right-6 flex justify-between items-center">
             {step > 0
               ? <button type="button" onClick={() => setStep(s => s - 1)} className="text-[#1A4D2E] hover:text-[#0D601E] flex items-center gap-1 transition-all">
-                  <FiChevronLeft size={26} /> <span className="hidden md:block font-bold text-sm italic">Atrás</span>
+                  <FiChevronLeft size={26} /> <span className="font-bold text-sm italic">Atrás</span>
                 </button>
               : <div />
             }
             <button type="button" onClick={onClose} className="text-gray-400 hover:text-red-500 transition-all"><FiX size={26} /></button>
           </div>
-          <div className="text-center mt-5 md:mt-2 mb-3">
+          <div className="text-center mt-10 mb-3">
             <h2 className="text-[26px] md:text-[38px] text-[#8B0000] font-black uppercase leading-tight" style={{ fontFamily: 'var(--font-jockey)' }}>
               {STEP_TITLES[step]}
             </h2>

@@ -34,6 +34,8 @@ interface BookingRequest {
   horaInicio: string;
   numPersonas: number;
   notas?: string;
+  paqueteId?: string;
+  paqueteTitulo?: string;
   total: number;
   status: string;
   createdAt: string | { _seconds: number; _nanoseconds: number };
@@ -424,7 +426,7 @@ export default function GuideSolicitudesPage() {
                           <p className="text-[10px] font-bold uppercase">Horario</p>
                         </div>
                         <p className="font-semibold text-sm text-gray-800">
-                          {booking.horaInicio} · {booking.duracion === "medio" ? "4h" : "8h"}
+                          {booking.horaInicio} · {booking.paqueteTitulo ? booking.paqueteTitulo : booking.duracion === "medio" ? "4h" : "8h"}
                         </p>
                       </div>
 
