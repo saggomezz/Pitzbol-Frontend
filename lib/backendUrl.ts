@@ -5,12 +5,15 @@ function normalizeOrigin(value: string): string {
 }
 
 export function getBackendOrigin(): string {
-  // Allow tests running in jsdom to point to a real backend
+  // En el browser, devolver '' para que getApiBaseUrl() use rutas relativas (/api/...)
+  // que el catch-all proxy de Next.js reenvía al backend server-side.
+  // Así el browser nunca necesita resolver api.pitzbol.me directamente.
   if (typeof window !== 'undefined') {
     const win: any = window;
     if (win && win.__TEST_BACKEND_URL__) {
       return normalizeOrigin(win.__TEST_BACKEND_URL__);
     }
+    return '';
   }
 
   return normalizeOrigin(
