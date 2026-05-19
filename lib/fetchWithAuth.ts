@@ -1,4 +1,4 @@
-const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
+const API_BASE = '/api';
 
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
@@ -90,19 +90,11 @@ export async function ensureValidAuthToken(forceRefresh = false): Promise<string
  * - On 401, attempts to refresh once and retries the original request.
  * - If refresh fails, clears auth state and redirects to home.
  */
-function resolveUrl(url: string): string {
-  if (url.startsWith('/api/') || url === '/api') {
-    const backend = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443';
-    return backend + url;
-  }
-  return url;
-}
-
 export async function fetchWithAuth(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const resolvedUrl = resolveUrl(url);
+  const resolvedUrl = url;
   let token = (await ensureValidAuthToken()) || '';
 
   const headers: Record<string, string> = {

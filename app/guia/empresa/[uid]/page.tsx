@@ -78,7 +78,7 @@ export default function EmpresaGuiaPage() {
       const [guideRes, toursRes, ratingsRes] = await Promise.all([
         fetch(`/api/guides/profile/${uid}`),
         fetch(`/api/tours/guia/${uid}`),
-        fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443'}/api/ratings/guide/${uid}/stats`),
+        fetch(`/api/ratings/guide/${uid}/stats`),
       ]);
       const guideData = await guideRes.json();
       const toursData = await toursRes.json();

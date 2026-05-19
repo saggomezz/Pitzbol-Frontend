@@ -58,7 +58,7 @@ export async function createBusiness(business: BusinessData) {
     formData.append('images', img);
   }
   const response = await axios.post(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL}/business/register-with-images`,
+    `/api/business/register-with-images`,
     formData,
     { headers: { 'Content-Type': 'multipart/form-data' } }
   );

@@ -57,7 +57,7 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
       }
 
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/perfil/wallet`,
+        `/api/perfil/wallet`,
         {
           method: 'GET',
           headers: {
@@ -107,7 +107,7 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
       }
 
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/perfil/card/${cardId}`,
+        `/api/perfil/card/${cardId}`,
         {
           method: "DELETE",
           headers: {
@@ -142,7 +142,7 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
       }
 
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/perfil/card/${cardId}/default`,
+        `/api/perfil/card/${cardId}/default`,
         {
           method: "POST",
           headers: {
@@ -440,7 +440,7 @@ const AddCardForm = ({ onSuccess }: { onSuccess: () => void }) => {
       // Crear setup intent para guardar la tarjeta
       console.log('📋 [AddCardForm] Crear setup intent...');
       const setupRes = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/perfil/setup-intent`,
+        `/api/perfil/setup-intent`,
         {
           method: "POST",
           headers: {
@@ -495,7 +495,7 @@ const AddCardForm = ({ onSuccess }: { onSuccess: () => void }) => {
         console.log(`   - Token (primeros 30 chars): ${token.substring(0, 30) + '...'}`);
 
         const saveCardRes = await fetchWithAuth(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/perfil/save-card`,
+          `/api/perfil/save-card`,
           {
             method: "POST",
             headers: {

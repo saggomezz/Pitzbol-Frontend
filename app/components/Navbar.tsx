@@ -19,7 +19,7 @@ import { usePWAInstall } from "@/app/context/PWAInstallContext";
 import { useMessageNotifications } from "@/lib/useMessageNotifications";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
-const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
+const API_BASE = '/api';
 const PHOTO_HYDRATE_COOLDOWN_KEY = "pitzbol_profile_photo_hydrate_cooldown_until";
 const BUSINESS_REQUESTS_CACHE_KEY_PREFIX = "pitzbol_has_business_requests_";
 
@@ -261,7 +261,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
     useEffect(() => {
-        fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443'}/api/lugares`)
+        fetch(`/api/lugares`)
             .then(r => r.json())
             .then(data => {
                 const list = (data.lugares || data || []) as { nombre?: string; categoria?: string }[];

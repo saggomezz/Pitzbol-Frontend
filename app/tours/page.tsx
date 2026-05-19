@@ -78,10 +78,9 @@ export default function ToursPage() {
         const loadedGuides: Guide[] = data.guides || [];
         setGuides([...loadedGuides]);
         // Fetch rating stats for all guides in parallel
-        const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443';
         const ratingResults = await Promise.allSettled(
           loadedGuides.map((g) =>
-            fetch(`${BACKEND}/api/ratings/guide/${g.uid}/stats`)
+            fetch(`/api/ratings/guide/${g.uid}/stats`)
               .then((r) => r.json())
               .then((d) => ({ uid: g.uid, stats: d.stats }))
           )

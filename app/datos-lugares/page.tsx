@@ -8,7 +8,7 @@ import {
 import { useRouter } from "next/navigation";
 
 const EMAILS_AUTORIZADOS = ["cua@hotmail.com", "pilarmorag2004@hotmail.com"];
-const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
+const BACKEND = '/api';
 const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
 const invalidarCacheIA = () => fetch(`${IA_URL}/api/places`, { method: 'DELETE' }).catch(() => {});
 

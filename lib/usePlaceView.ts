@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
+const API_BASE = '/api';
 
 /**
  * Hook para incrementar las vistas de un lugar

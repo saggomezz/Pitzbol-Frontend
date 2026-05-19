@@ -6,7 +6,7 @@ import BusinessModal from "./BusinessModal";
 import { FiAlertTriangle } from "react-icons/fi";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
-const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
+const API_BASE = '/api';
 
 /**
  * Wrapper para mostrar primero la pantalla informativa,

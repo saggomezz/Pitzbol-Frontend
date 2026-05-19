@@ -241,7 +241,7 @@ function getGalleryPhotos(lugar: Lugar): string[] {
 }
 
 const EMAILS_ADMIN_LUGARES = ["cua@hotmail.com", "pilarmorag2004@hotmail.com"];
-const BACKEND_API = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
+const BACKEND_API = '/api';
 
 // Etiquetas disponibles generadas desde la taxonomía centralizada (lib/categories.ts)
 const TODAS_CATEGORIAS = ALL_ADMIN_TAGS;

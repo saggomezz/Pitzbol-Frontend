@@ -81,7 +81,7 @@ export default function CalendarioPage() {
   const [guideBookings, setGuideBookings] = useState<BookingEntry[]>([]);
 
   const user = usePitzbolUser();
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://69.30.204.56:3001';
+  const BACKEND = '';
   const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
 
   const getToken = () => {

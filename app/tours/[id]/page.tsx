@@ -12,7 +12,7 @@ import {
 import { FaBus, FaMapMarkedAlt } from "react-icons/fa";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
 
-const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.pitzbol.me:8443") + "/api";
+const BACKEND = '/api';
 
 interface Tour {
   id: string;

@@ -20,7 +20,7 @@ export async function getAllBusinesses(): Promise<Business[]> {
 }
 
 export async function getPendingBusinesses(): Promise<Business[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/negocios?status=pendiente`);
+  const res = await fetch(`/api/negocios?status=pendiente`);
   if (!res.ok) throw new Error('Error al obtener negocios pendientes');
   return await res.json();
 }

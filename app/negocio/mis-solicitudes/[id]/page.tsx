@@ -19,7 +19,7 @@ import {
   FiShare2,
 } from "react-icons/fi";
 
-const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
+const API_BASE = '/api';
 
 // ─── Status config (matches preview page) ────────────────────────────────────
 
