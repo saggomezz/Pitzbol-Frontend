@@ -7,8 +7,9 @@ const BACKEND = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACK
 // - Sin DNS resolution en el cliente
 // - Sin CORS
 // - Sin redirect loops del rewrite de Vercel
-async function handler(req: NextRequest, { params }: { params: { proxy: string[] } }) {
-  const path = params.proxy.join("/");
+async function handler(req: NextRequest, { params }: { params: Promise<{ proxy: string[] }> }) {
+  const { proxy } = await params;
+  const path = proxy.join("/");
   const url = new URL(req.url);
   const query = url.search;
   const backendUrl = `${BACKEND}/api/${path}${query}`;
