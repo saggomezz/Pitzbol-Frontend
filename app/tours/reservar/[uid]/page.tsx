@@ -13,6 +13,7 @@ import {
 } from "react-icons/fi";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
 import { getBackendOrigin } from "@/lib/backendUrl";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 const BACKEND_URL = getBackendOrigin();
 
@@ -129,7 +130,7 @@ export default function BookTourPage() {
         createdAt: new Date().toISOString(),
       };
 
-      const response = await fetch(`/api/bookings/create`, {
+      const response = await fetchWithAuth(`/api/bookings/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
