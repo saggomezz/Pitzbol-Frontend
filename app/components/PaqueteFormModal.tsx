@@ -224,8 +224,15 @@ export default function PaqueteFormModal({ isOpen, onClose, onCreated, guiaId }:
                 <input value={puntoSalida} onChange={e => setPuntoSalida(e.target.value)} placeholder="Ej. Plaza Tapatía" className={inputCls} />
               </div>
               <div>
-                <label className="text-xs font-bold text-[#81C784] uppercase tracking-wide mb-1 block">Capacidad</label>
-                <input value={capacidad} onChange={e => setCapacidad(e.target.value)} placeholder="Ej. 10 personas" className={inputCls} />
+                <label className="text-xs font-bold text-[#81C784] uppercase tracking-wide mb-1 block">Maximo de personas</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={capacidad}
+                  onChange={e => setCapacidad(e.target.value)}
+                  placeholder="Ej. 10"
+                  className={inputCls}
+                />
               </div>
             </div>
 

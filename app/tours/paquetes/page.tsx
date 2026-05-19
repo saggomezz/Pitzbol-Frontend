@@ -41,6 +41,14 @@ export default function PaquetesPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const parseCapacidad = (capacidad: any) => {
+    if (typeof capacidad === "number" && Number.isFinite(capacidad)) return capacidad;
+    if (typeof capacidad !== "string") return 0;
+    const cleaned = capacidad.replace(/[^0-9]/g, "");
+    const value = Number.parseInt(cleaned, 10);
+    return Number.isFinite(value) ? value : 0;
+  };
+
   const filtered = paquetes.filter(paq => {
     const matchesQuery =
       !query ||
@@ -204,6 +212,11 @@ export default function PaquetesPage() {
                           {paq.precio && (
                             <span className="text-[11px] text-[#0D601E] font-bold flex items-center gap-1">
                               <FiDollarSign size={10} /> {paq.precio}
+                            </span>
+                          )}
+                          {parseCapacidad(paq.capacidad) > 0 && (
+                            <span className="text-[11px] text-gray-500 flex items-center gap-1">
+                              <FiUser size={10} className="text-[#0D601E]" /> Maximo {parseCapacidad(paq.capacidad)}
                             </span>
                           )}
                         </div>
