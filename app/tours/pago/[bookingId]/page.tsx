@@ -613,7 +613,7 @@ export default function TourPaymentPage() {
                   </div>
                 )}
               </motion.div>
-            ) : savedCards.length > 0 ? (
+            ) : savedCards.length > 0 && !invalidCard ? (
               <motion.div
                 key="cards"
                 initial={{ opacity: 0 }}
@@ -730,7 +730,7 @@ export default function TourPaymentPage() {
         )}
 
         {/* Action Buttons */}
-        {savedCards.length > 0 && (
+        {savedCards.length > 0 && !invalidCard && (
           <div className="flex gap-3">
             <button
               onClick={() => router.push(`/tours/reservar/${booking.guideId}`)}
