@@ -16,6 +16,7 @@ interface Paquete {
   fotos?: string[];
   duracion: string;
   precio: string;
+  capacidad?: string | number;
   queIncluye: string[];
   descripcion: string;
   guiaNombre: string;
