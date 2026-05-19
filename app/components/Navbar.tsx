@@ -260,7 +260,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const normalizeStr = (s: string) =>
         s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-    useEffect(() => {
+    const cargarLugares = () => {
         fetch(`/api/lugares`)
             .then(r => r.json())
             .then(data => {
@@ -268,6 +268,14 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                 setTodosLugares(list.filter(l => l.nombre).map(l => ({ nombre: l.nombre!, categoria: l.categoria || "" })));
             })
             .catch(() => {});
+    };
+
+    useEffect(() => {
+        cargarLugares();
+        // Refrescar cuando datos-lugares cree un nuevo lugar
+        window.addEventListener('lugar-creado', cargarLugares);
+        return () => window.removeEventListener('lugar-creado', cargarLugares);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
