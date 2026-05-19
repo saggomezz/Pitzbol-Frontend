@@ -182,7 +182,7 @@ export default function ToursPage() {
           className="object-cover"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0D601E]/70 via-[#1A4D2E]/50 to-black/70" />
+        <div className="absolute inset-0 bg-linear-to-b from-[#0D601E]/70 via-[#1A4D2E]/50 to-black/70" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
           <div className="flex items-center gap-2 text-white/70 text-xs mb-3">
             <FiCompass size={12} /> Turismo • Guadalajara
@@ -418,7 +418,7 @@ export default function ToursPage() {
                                   <FaMapMarkedAlt className="text-[#C9D4CB] text-5xl" />
                                 </div>
                               )}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                              <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
                               <div className="absolute bottom-3 left-3">
                                 <span className="bg-white/20 backdrop-blur-sm text-white text-[11px] px-2.5 py-1 rounded-full font-semibold flex items-center gap-1">
                                   <FiMapPin size={9} /> {tour.destino}
@@ -454,11 +454,11 @@ export default function ToursPage() {
                               )}
                               <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
                                 {tour.empresaLogo ? (
-                                  <div className="relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                                  <div className="relative w-6 h-6 rounded-full overflow-hidden shrink-0">
                                     <Image src={tour.empresaLogo} alt={tour.empresaNombre} fill className="object-cover" />
                                   </div>
                                 ) : (
-                                  <div className="w-6 h-6 rounded-full bg-[#E8F5E9] flex items-center justify-center flex-shrink-0">
+                                  <div className="w-6 h-6 rounded-full bg-[#E8F5E9] flex items-center justify-center shrink-0">
                                     <FaBus className="text-[#1A4D2E] text-[10px]" />
                                   </div>
                                 )}

@@ -308,7 +308,7 @@ export default function BookTourPage() {
             </div>
 
             {/* Resumen */}
-            <div className="bg-gradient-to-br from-[#F6F0E6] to-white p-6 rounded-2xl border-2 border-[#1A4D2E]">
+            <div className="bg-linear-to-br from-[#F6F0E6] to-white p-6 rounded-2xl border-2 border-[#1A4D2E]">
               <h3 className="text-xl font-bold text-[#1A4D2E] mb-4 flex items-center gap-2">
                 <FiDollarSign size={24} />
                 Resumen de Reserva
@@ -343,7 +343,7 @@ export default function BookTourPage() {
 
             {/* Info importante */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-              <FiAlertCircle className="text-blue-600 mt-1 flex-shrink-0" size={20} />
+              <FiAlertCircle className="text-blue-600 mt-1 shrink-0" size={20} />
               <div className="text-sm text-blue-800">
                 <p className="font-semibold mb-1">Información importante:</p>
                 <ul className="list-disc list-inside space-y-1">
@@ -367,7 +367,7 @@ export default function BookTourPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] hover:from-[#1A4D2E] hover:to-[#0D601E] text-white py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 bg-linear-to-r from-[#0D601E] to-[#1A4D2E] hover:from-[#1A4D2E] hover:to-[#0D601E] text-white py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>
