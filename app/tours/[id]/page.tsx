@@ -260,7 +260,7 @@ export default function TourDetailPage() {
         )}
 
         {/* ── Incluye + Transporte ──────────────────────────────────────── */}
-        {(tour.queIncluye?.length > 0 || tour.tipoVehiculo?.length > 0 || tour.puntoRecogida) && (
+        {((tour.queIncluye?.length ?? 0) > 0 || (tour.tipoVehiculo?.length ?? 0) > 0 || tour.puntoRecogida) && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
             {tour.queIncluye?.length > 0 && (
               <div>
