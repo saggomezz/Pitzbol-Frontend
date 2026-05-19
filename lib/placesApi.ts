@@ -175,18 +175,23 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
     let firestoreResponse: Response | undefined;
 
     try {
-      firestoreResponse = await fetch(`${API_BASE}/lugares?includeApprovedBusinesses=true`);
+      firestoreResponse = await fetch(
+        `${API_BASE}/lugares?includeApprovedBusinesses=true`,
+        { signal: AbortSignal.timeout(8000) }
+      );
     } catch {
-      // error de red en la petición principal — intentamos el fallback
+      // error de red o timeout — intentamos el fallback
     }
 
-    // Fallback defensivo: si la integración con negocios aprobados falla
-    // (error HTTP o de red), intentamos al menos recuperar lugares base.
+    // Fallback defensivo: si la petición principal falla, intentar sin negocios aprobados
     if (!firestoreResponse || !firestoreResponse.ok) {
       try {
-        firestoreResponse = await fetch(`${API_BASE}/lugares`);
+        firestoreResponse = await fetch(
+          `${API_BASE}/lugares`,
+          { signal: AbortSignal.timeout(8000) }
+        );
       } catch {
-        // error de red en el fallback también — usamos datos CSV
+        // timeout o error de red en fallback — usamos datos CSV
       }
     }
 
