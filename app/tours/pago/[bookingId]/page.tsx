@@ -311,7 +311,7 @@ export default function TourPaymentPage() {
 
   const handlePaymentSuccess = () => {
     setSuccess(true);
-    setTimeout(() => router.push(`/tours/confirmacion/${bookingId}`), 2000);
+    setTimeout(() => router.push(`/`), 2000);
   };
 
   const fetchCards = async () => {
