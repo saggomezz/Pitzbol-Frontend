@@ -244,7 +244,7 @@ export default function TourDetailPage() {
               <FiUsers size={12} /> Máx. {maxPersonas} personas
             </span>
           )}
-          {(tour.idiomas?.length ?? 0) > 0 && (
+          {tour.idiomas && tour.idiomas.length > 0 && (
             <span className="flex items-center gap-1.5 text-xs font-semibold bg-white border border-[#E0F2F1] text-[#1A4D2E] px-3 py-1.5 rounded-full shadow-sm">
               <FiGlobe size={12} /> {tour.idiomas.join(" · ")}
             </span>
@@ -260,9 +260,9 @@ export default function TourDetailPage() {
         )}
 
         {/* ── Incluye + Transporte ──────────────────────────────────────── */}
-        {((tour.queIncluye?.length ?? 0) > 0 || (tour.tipoVehiculo?.length ?? 0) > 0 || tour.puntoRecogida) && (
+        {(tour.queIncluye?.length || tour.tipoVehiculo?.length || tour.puntoRecogida) && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-            {(tour.queIncluye?.length ?? 0) > 0 && (
+            {tour.queIncluye && tour.queIncluye.length > 0 && (
               <div>
                 <h2 className="text-[11px] font-bold text-[#1A4D2E] uppercase tracking-widest mb-3">Incluye</h2>
                 <div className="grid grid-cols-2 gap-2">
@@ -274,7 +274,7 @@ export default function TourDetailPage() {
                 </div>
               </div>
             )}
-            {(tour.tipoVehiculo?.length ?? 0) > 0 && (
+            {tour.tipoVehiculo && tour.tipoVehiculo.length > 0 && (
               <div>
                 <h2 className="text-[11px] font-bold text-[#1A4D2E] uppercase tracking-widest mb-2">Transporte</h2>
                 <div className="flex flex-wrap gap-2">
