@@ -1,6 +1,7 @@
 import Papa from "papaparse";
 
-const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
+// Usamos el proxy interno de Next.js para evitar CORS y redirect loops del rewrite de Vercel
+const API_BASE = '/api/lugares-proxy';
 
 export interface PlaceRecord {
   nombre: string;
@@ -176,7 +177,7 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
 
     try {
       firestoreResponse = await fetch(
-        `${API_BASE}/lugares?includeApprovedBusinesses=true`,
+        `${API_BASE}?includeApprovedBusinesses=true`,
         { signal: AbortSignal.timeout(8000) }
       );
     } catch {
@@ -187,7 +188,7 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
     if (!firestoreResponse || !firestoreResponse.ok) {
       try {
         firestoreResponse = await fetch(
-          `${API_BASE}/lugares`,
+          `${API_BASE}`,
           { signal: AbortSignal.timeout(8000) }
         );
       } catch {
