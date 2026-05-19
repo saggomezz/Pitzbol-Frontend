@@ -7,9 +7,10 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   FiArrowLeft, FiMapPin, FiClock, FiDollarSign, FiUsers,
-  FiCheckCircle,
+  FiCheckCircle, FiCalendar, FiUser,
 } from "react-icons/fi";
 import { FaBus, FaMapMarkedAlt, FaWhatsapp } from "react-icons/fa";
+import { usePitzbolUser } from "@/lib/usePitzbolUser";
 
 interface Tour {
   id: string;
@@ -36,6 +37,116 @@ export default function TourDetailPage() {
   const router = useRouter();
   const [tour, setTour] = useState<Tour | null>(null);
   const [loading, setLoading] = useState(true);
+  const user = usePitzbolUser();
+  const [paqueteFecha, setPaqueteFecha] = useState("");
+  const [paqueteHoraInicio, setPaqueteHoraInicio] = useState("09:00");
+  const [paqueteNumPersonas, setPaqueteNumPersonas] = useState(1);
+  const [paqueteSubmitting, setPaqueteSubmitting] = useState(false);
+
+  const parsePrecioPaquete = (precio: string) => {
+    const cleaned = precio.replace(/[^0-9.,]/g, "").replace(/,/g, "");
+    const value = Number.parseFloat(cleaned);
+    return Number.isFinite(value) ? value : 0;
+  };
+
+  const parseCapacidadPaquete = (capacidad: string) => {
+    const cleaned = capacidad.replace(/[^0-9]/g, "");
+    const value = Number.parseInt(cleaned, 10);
+    return Number.isFinite(value) ? value : 0;
+  };
+
+  const handleReservePaquete = async () => {
+    if (!tour) return;
+
+    if (!user) {
+      alert("Debes iniciar sesion para reservar un paquete");
+      router.push("/");
+      return;
+    }
+
+    if (!tour.empresaId) {
+      alert("No se pudo identificar al guia de este paquete");
+      return;
+    }
+
+    if (!paqueteFecha) {
+      alert("Por favor selecciona una fecha");
+      return;
+    }
+
+    if (!paqueteHoraInicio) {
+      alert("Por favor selecciona una hora de inicio");
+      return;
+    }
+
+    if (!paqueteNumPersonas || paqueteNumPersonas < 1) {
+      alert("El numero de personas debe ser al menos 1");
+      return;
+    }
+
+    const maxPersonas = parseCapacidadPaquete(tour.capacidad || "");
+    if (maxPersonas && paqueteNumPersonas > maxPersonas) {
+      alert(`El maximo de personas para este paquete es ${maxPersonas}`);
+      return;
+    }
+
+    const fechaSeleccionada = new Date(paqueteFecha);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    if (fechaSeleccionada < hoy) {
+      alert("No puedes reservar para fechas pasadas");
+      return;
+    }
+
+    const total = parsePrecioPaquete(tour.precio || "");
+    if (!total || total <= 0) {
+      alert("No se pudo calcular el precio del paquete");
+      return;
+    }
+
+    const duracion: "medio" | "completo" = /medio/i.test(tour.duracion || "") ? "medio" : "completo";
+
+    setPaqueteSubmitting(true);
+
+    try {
+      const reserva = {
+        guideId: tour.empresaId,
+        guideName: tour.empresaNombre,
+        touristId: user.uid,
+        touristName: user.nombre || "Turista",
+        fecha: paqueteFecha,
+        duracion,
+        horaInicio: paqueteHoraInicio,
+        numPersonas: paqueteNumPersonas,
+        notas: `Paquete: ${tour.titulo} · ID: ${tour.id}`.trim(),
+        total,
+        status: "pendiente",
+        createdAt: new Date().toISOString(),
+      };
+
+      const response = await fetch("/api/bookings/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(reserva),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        router.push(`/tours/pago/${data.bookingId}`);
+      } else {
+        alert("Error al crear la reserva: " + (data.message || "Error desconocido"));
+      }
+    } catch (error) {
+      console.error("Error al crear reserva de paquete:", error);
+      alert("Error al crear la reserva");
+    } finally {
+      setPaqueteSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -191,16 +302,16 @@ export default function TourDetailPage() {
           </motion.div>
         )}
 
-        {/* Empresa */}
+        {/* Guia */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.14 }}
           className="bg-white rounded-2xl p-5 shadow-sm border border-[#0D601E]/10"
         >
-          <h2 className="text-xs font-bold text-[#1A4D2E] uppercase tracking-wide mb-3">Empresa organizadora</h2>
+          <h2 className="text-xs font-bold text-[#1A4D2E] uppercase tracking-wide mb-3">Perfil del guia</h2>
           <Link
-            href={`/empresa/transportes/${tour.empresaId}`}
+            href={`/perfil/${tour.empresaId}`}
             className="flex items-center gap-3 group"
           >
             {tour.empresaLogo ? (
@@ -214,26 +325,74 @@ export default function TourDetailPage() {
             )}
             <div>
               <p className="font-bold text-[#1A4D2E] text-sm group-hover:underline">{tour.empresaNombre}</p>
-              <p className="text-[11px] text-gray-400">Ver perfil de la empresa →</p>
+              <p className="text-[11px] text-gray-400">Ver perfil del guia →</p>
             </div>
           </Link>
         </motion.div>
 
-        {/* CTA contacto */}
+        {/* Reserva */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.17 }}
-          className="bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] rounded-2xl p-5 text-white text-center shadow-lg"
+          className="bg-white rounded-2xl p-5 shadow-sm border border-[#0D601E]/10"
         >
-          <p className="font-bold text-base mb-1">¿Te interesa este tour?</p>
-          <p className="text-white/70 text-xs mb-4">Contacta directamente a la empresa para reservar y obtener más información.</p>
-          <Link
-            href={`/empresa/transportes/${tour.empresaId}`}
-            className="inline-flex items-center gap-2 bg-white text-[#1A4D2E] px-5 py-2.5 rounded-full text-sm font-bold hover:bg-[#F6F9F6] transition-colors shadow"
-          >
-            Ver empresa y contactar
-          </Link>
+          <p className="font-bold text-[#1A4D2E] text-base mb-1">Reserva tu paquete</p>
+          <p className="text-gray-500 text-xs mb-4">Selecciona dia, hora y numero de personas.</p>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-1 flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-[#1A4D2E] mb-1">
+                    <FiCalendar size={14} /> Dia
+                  </label>
+                  <input
+                    type="date"
+                    value={paqueteFecha}
+                    onChange={(e) => setPaqueteFecha(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-full px-3 py-2 border border-[#1A4D2E]/20 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
+                    style={{ colorScheme: "light" }}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-[#1A4D2E] mb-1">
+                    <FiClock size={14} /> Hora de inicio
+                  </label>
+                  <input
+                    type="time"
+                    value={paqueteHoraInicio}
+                    onChange={(e) => setPaqueteHoraInicio(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#1A4D2E]/20 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-[#1A4D2E] mb-1">
+                    <FiUser size={14} /> Personas
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={parseCapacidadPaquete(tour.capacidad || "") || undefined}
+                    value={paqueteNumPersonas}
+                    onChange={(e) => setPaqueteNumPersonas(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-[#1A4D2E]/20 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
+                    placeholder="Personas"
+                  />
+                  {parseCapacidadPaquete(tour.capacidad || "") > 0 && (
+                    <span className="mt-1 block text-[10px] text-gray-500">Maximo {parseCapacidadPaquete(tour.capacidad || "")} personas</span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={handleReservePaquete}
+                disabled={paqueteSubmitting}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold bg-[#1A4D2E] text-white hover:bg-[#0D601E] transition-colors disabled:opacity-60"
+              >
+                {paqueteSubmitting ? "Procesando..." : "Reservar"}
+              </button>
+            </div>
+          </div>
         </motion.div>
       </div>
     </div>
