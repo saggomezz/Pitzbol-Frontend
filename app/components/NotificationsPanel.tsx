@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 
-import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase, FiMapPin } from "react-icons/fi";
+import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase, FiMapPin, FiCalendar, FiCheckCircle, FiCreditCard } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 import { ensureValidAuthToken, fetchWithAuth } from "@/lib/fetchWithAuth";
 import { getApiBaseUrl, getSocketBackendOrigin } from "@/lib/backendUrl";
@@ -12,7 +12,7 @@ import DeletedBusinessModal from "./DeletedBusinessModal";
 
 interface Notification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado' | 'negocio_eliminado' | 'negocio_desarchivado' | 'negocio_pendiente' | 'ver_negocio_publicado';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado' | 'negocio_eliminado' | 'negocio_desarchivado' | 'negocio_pendiente' | 'ver_negocio_publicado' | 'nueva_reserva' | 'reserva_confirmada' | 'pago_confirmado';
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -33,7 +33,7 @@ interface NotificationsPanelProps {
 const BACKEND_URL = getSocketBackendOrigin();
 const API_BASE = getApiBaseUrl();
 const DIRECT_API_BASE = BACKEND_URL ? `${BACKEND_URL}/api` : API_BASE;
-const NOTIFICATIONS_FALLBACK_SYNC_MS = 5 * 60 * 1000;
+const NOTIFICATIONS_FALLBACK_SYNC_MS = 20 * 1000;
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
 
@@ -714,18 +714,38 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     }
   }, [userId, getNotificationBucketId]);
 
+  useEffect(() => {
+    if (!userId || !isOpen) return;
+    void cargarNotificacionesDelBackend();
+  }, [isOpen, userId, getNotificationBucketId]);
+
   // Fallback de sincronización: si Socket.IO no logra conectar en deploy/local,
   // seguimos refrescando desde backend para que las notificaciones aparezcan sin recargar.
   useEffect(() => {
     if (!userId) return;
 
-    const intervalId = window.setInterval(() => {
+    const syncFromBackend = () => {
       if (document.hidden) return;
       void cargarNotificacionesDelBackend();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        syncFromBackend();
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      syncFromBackend();
     }, NOTIFICATIONS_FALLBACK_SYNC_MS);
+
+    window.addEventListener("focus", syncFromBackend);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       window.clearInterval(intervalId);
+      window.removeEventListener("focus", syncFromBackend);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [userId, getNotificationBucketId]);
 
@@ -979,6 +999,12 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return <FiAlertCircle className="text-red-600" size={20} />;
       case 'ver_negocio_publicado':
         return <FiMapPin className="text-[#0D601E]" size={20} />;
+      case 'nueva_reserva':
+        return <FiCalendar className="text-[#0D601E]" size={20} />;
+      case 'reserva_confirmada':
+        return <FiCheckCircle className="text-emerald-600" size={20} />;
+      case 'pago_confirmado':
+        return <FiCreditCard className="text-purple-600" size={20} />;
       default:
         return <FiBell className="text-blue-600" size={20} />;
     }
@@ -1010,6 +1036,12 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return 'bg-red-50 border-red-100';
       case 'ver_negocio_publicado':
         return 'bg-[#F0F7F1] border-[#C9D4CB]';
+      case 'nueva_reserva':
+        return 'bg-[#F0F7F1] border-[#C9D4CB]';
+      case 'reserva_confirmada':
+        return 'bg-emerald-50 border-emerald-100';
+      case 'pago_confirmado':
+        return 'bg-purple-50 border-purple-100';
       default:
         return 'bg-blue-50 border-blue-100';
     }
