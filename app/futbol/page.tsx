@@ -1,4 +1,9 @@
 "use client";
+import AdvancedFiltersModal from "@/app/components/AdvancedFiltersModal";
+import PlaceRating from "@/app/components/PlaceRating";
+import { useFavoritesSync } from "@/lib/favoritesApi";
+import { getPlaceImageByCategory } from "@/lib/placeImages";
+import { getMergedPlaces, getPopularityScore, matchesCategory, PlaceRecord } from "@/lib/placesApi";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,11 +16,6 @@ import {
     FiSearch,
     FiSun
 } from "react-icons/fi";
-import { getPlaceImageByCategory } from "@/lib/placeImages";
-import { getMergedPlaces, getPopularityScore, matchesCategory, PlaceRecord } from "@/lib/placesApi";
-import { useFavoritesSync } from "@/lib/favoritesApi";
-import AdvancedFiltersModal from "@/app/components/AdvancedFiltersModal";
-import PlaceRating from "@/app/components/PlaceRating";
 
 type FilterOptions = {
     zone?: "centro" | "estadio" | "periferico" | null;
@@ -244,35 +244,6 @@ export default function FutbolPage() {
                         </button>
                     </div>
                 </div>
-
-                {/* Aviso informativo */}
-                <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2, duration: 0.4 }}
-                    className="mb-8 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 p-6 shadow-sm"
-                >
-                    <div className="flex items-start gap-4">
-                        <div className="mt-1 text-3xl shrink-0">⚠️</div>
-                        <div className="flex-1">
-                            <h3 className="text-lg font-black text-amber-900 leading-tight">
-                                Capacidad y Logística: ¿Cuántas personas y autos caben en el estadio Akron?
-                            </h3>
-                            <p className="mt-2 text-sm text-amber-800 leading-relaxed">
-                                Consulta información importante sobre el aforo del Estadio Akron, capacidad de estacionamiento y restricciones previstas para el torneo de la FIFA 2026.
-                            </p>
-                            <div className="mt-4 flex flex-wrap items-center gap-3">
-                                <Link
-                                    href="/aviso"
-                                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-900 text-white px-4 py-2 text-xs font-bold uppercase tracking-wide hover:bg-amber-800 transition-colors"
-                                >
-                                    Ver aviso completo →
-                                </Link>
-                                <span className="text-xs font-semibold text-amber-700">No aparecerá en itinerarios de IA</span>
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
 
                 <div className="flex flex-col xl:flex-row items-start gap-5 md:gap-6">
                     <motion.div layout transition={{ type: "spring", stiffness: 260, damping: 26 }} className="w-full">
