@@ -292,8 +292,12 @@ export default function PerfilDetallado() {
               const merged: Record<string, any> = { ...userLocal };
               for (const key of Object.keys(fresh)) {
                 const val = fresh[key];
-                // Solo actualizar si el valor fresco es útil (no vacío, no null, no undefined)
                 if (val !== null && val !== undefined && val !== "") {
+                  // No degradar role: si el local dice "guia" y el fresco dice "turista", conservar "guia"
+                  if ((key === "role" || key === "03_rol") && val === "turista" &&
+                      (merged.role === "guia" || merged["03_rol"] === "guia")) {
+                    continue;
+                  }
                   merged[key] = val;
                 }
               }
@@ -520,7 +524,7 @@ export default function PerfilDetallado() {
       window.removeEventListener("favoritesChanged", handleFavoritesChanged);
       window.removeEventListener("storage", handleFavoritesChanged);
     };
-  }, [syncLocalFavorites]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Escuchar cambios en el localStorage (cuando se cierren modales)
   useEffect(() => {

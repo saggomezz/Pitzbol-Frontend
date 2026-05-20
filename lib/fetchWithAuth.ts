@@ -126,9 +126,9 @@ export async function fetchWithAuth(
   const newToken = await refreshPromise;
 
   if (!newToken) {
-    // Refresh failed — limpiar estado local y dejar que el flujo llamador maneje el 401.
+    // Refresh failed — solo limpiar el token expirado, NO los datos del usuario.
+    // Borrar pitzbol_user causaría que el perfil (rol, especialidades, etc.) desaparezca.
     localStorage.removeItem('pitzbol_token');
-    localStorage.removeItem('pitzbol_user');
     return response;
   }
 
