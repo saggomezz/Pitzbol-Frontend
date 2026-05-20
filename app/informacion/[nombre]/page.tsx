@@ -17,6 +17,117 @@ import { ALL_ADMIN_TAGS } from "@/lib/categories";
 import type { GeoPoint } from "@/lib/geoClient";
 import { getPlaceImageUrlSync } from "@/lib/placeImages";
 
+/* ─── Layout editorial para Avisos FIFA ─────────────────────────────────── */
+function AvisoLayout({ lugar, fotos, onBack }: { lugar: any; fotos: string[]; onBack: () => void }) {
+  const parrafos = (lugar.descripcion || "")
+    .split(/\n+/)
+    .map((p: string) => p.trim())
+    .filter(Boolean);
+
+  // Fotos: primera es hero, el resto se intercalan con el texto
+  const [hero, ...restFotos] = fotos.length ? fotos : [null];
+
+  return (
+    <div className="min-h-screen bg-[#FAFAF8]">
+      {/* Nav top */}
+      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-[#F0EDE8]">
+        <div className="max-w-4xl mx-auto px-5 py-4 flex items-center justify-between">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-[#1A4D2E] font-bold text-sm hover:text-[#F00808] transition-colors"
+          >
+            <FiArrowLeft size={18} /> Volver
+          </button>
+          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#F00808] bg-[#FFF0F0] px-3 py-1 rounded-full">
+            ⚽ AVISO FIFA 2026
+          </span>
+        </div>
+      </div>
+
+      <article className="max-w-4xl mx-auto px-5 py-10">
+        {/* Título */}
+        <motion.h1
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-3xl md:text-5xl font-black text-[#1A4D2E] leading-tight mb-8"
+          style={{ fontFamily: "'Jockey One', sans-serif" }}
+        >
+          {lugar.nombre}
+        </motion.h1>
+
+        {/* Imagen hero */}
+        {hero && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="rounded-3xl overflow-hidden mb-10 shadow-[0_20px_60px_rgba(26,77,46,0.12)]"
+          >
+            <img src={hero} alt={lugar.nombre} className="w-full max-h-[520px] object-cover" />
+          </motion.div>
+        )}
+
+        {/* Descripción + fotos intercaladas */}
+        <div className="space-y-8 text-[15px] md:text-[16px] text-[#3D5241] leading-[1.85]">
+          {parrafos.map((parrafo: string, i: number) => {
+            const fotoIntercalada = restFotos[i];
+            const esImpar = i % 2 === 1;
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 + i * 0.05 }}
+              >
+                {fotoIntercalada ? (
+                  <div className={`flex flex-col ${esImpar ? "md:flex-row-reverse" : "md:flex-row"} gap-6 items-start`}>
+                    <div className="md:w-2/5 shrink-0">
+                      <div className="rounded-2xl overflow-hidden shadow-md">
+                        <img
+                          src={fotoIntercalada}
+                          alt=""
+                          className="w-full h-56 md:h-64 object-cover"
+                        />
+                      </div>
+                    </div>
+                    <p className="flex-1">{parrafo}</p>
+                  </div>
+                ) : (
+                  <p>{parrafo}</p>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Fotos restantes en grid (si hay más que párrafos) */}
+        {restFotos.length > parrafos.length && (
+          <div className="mt-12 grid grid-cols-2 md:grid-cols-3 gap-4">
+            {restFotos.slice(parrafos.length).map((src: string, i: number) => (
+              <div key={i} className="rounded-2xl overflow-hidden shadow-md aspect-video">
+                <img src={src} alt="" className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Footer del aviso */}
+        <div className="mt-14 pt-8 border-t border-[#E8E4DF] flex items-center justify-between">
+          <span className="text-[11px] text-[#A0B5A5] uppercase tracking-widest font-bold">
+            Fútbol · Guadalajara 2026
+          </span>
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-sm font-bold text-[#1A4D2E] hover:text-[#F00808] transition-colors"
+          >
+            <FiArrowLeft size={14} /> Volver a Fútbol
+          </button>
+        </div>
+      </article>
+    </div>
+  );
+}
+
 const APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY = "pitzbol_approved_business_toast_dismissed_by_business_v2";
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
@@ -699,6 +810,21 @@ export default function InformacionLugar() {
   }
 
   const lugarSeguro = lugar as Lugar;
+
+  // Layout editorial para avisos — sin calificación, horario ni costo
+  if (
+    lugarSeguro.subcategoria === "Aviso" ||
+    (lugarSeguro.subcategorias || []).includes("Aviso")
+  ) {
+    return (
+      <AvisoLayout
+        lugar={lugarSeguro}
+        fotos={fotos}
+        onBack={() => router.push("/futbol?tab=avisos")}
+      />
+    );
+  }
+
   const horarioLugar = getHorarioActivo(lugarSeguro.nombre, lugarSeguro.horariosJson);
   const esHospital = [lugarSeguro.categoria, ...((lugarSeguro as any).categorias || [])]
     .some(c => typeof c === "string" && (c.toLowerCase().includes("hospital") || c.toLowerCase().includes("médico") || c.toLowerCase().includes("medico")));

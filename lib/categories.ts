@@ -47,7 +47,7 @@ export const TAXONOMY: Category[] = [
     subs: [
       { id: 'estadios',  label: 'Estadios',          keywords: ['estadio'] },
       { id: 'fan_zone',  label: 'Fan Zones / Fest',  keywords: ['fan zone', 'fanzone', 'fan fest'] },
-      { id: 'bares_dep', label: 'Bares deportivos',  keywords: ['sportsbar', 'bar deportivo'] },
+      { id: 'avisos',    label: 'Avisos',             keywords: ['aviso'] },
     ],
   },
   {

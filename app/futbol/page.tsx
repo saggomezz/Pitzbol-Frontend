@@ -124,8 +124,13 @@ export default function FutbolPage() {
         const term = normalizeText(searchTerm);
         const quickTerms = activeQuickFilter ? (quickFilterKeywords[activeQuickFilter] || [activeQuickFilter]) : [];
 
+        const isAviso = (place: PlaceRecord) =>
+            place.subcategoria === "Aviso" ||
+            (place.subcategorias || []).includes("Aviso");
+
         const matchesQuickFilter = (place: PlaceRecord) => {
             if (!quickTerms.length) return true;
+            if (activeQuickFilter === "Avisos") return isAviso(place);
             const haystack = normalizeText(`${place.nombre} ${place.categoria} ${place.ubicacion} ${place.descripcion}`);
             return quickTerms.some((quickTerm) => haystack.includes(normalizeText(quickTerm)));
         };
@@ -146,7 +151,10 @@ export default function FutbolPage() {
             return favorites.includes(place.nombre);
         };
 
-        let resultado = places.filter((p) => matchesQuickFilter(p) && matchesZone(p) && matchesFavor(p));
+        let resultado = places.filter((p) => {
+            if (activeQuickFilter === "Avisos") return isAviso(p);
+            return !isAviso(p) && matchesQuickFilter(p) && matchesZone(p) && matchesFavor(p);
+        });
 
         // Aplicar búsqueda de texto
         if (term) {
@@ -271,95 +279,134 @@ export default function FutbolPage() {
                             )}
                         </div>
 
-                        {/* GRID DE TARJETAS */}
-                        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-6 ${isFilterModalOpen ? "xl:grid-cols-2" : "xl:grid-cols-3"}`}>
-                            {loading && (
-                                <div className="col-span-full text-center text-[#769C7B] font-medium py-8">Cargando lugares de fútbol...</div>
-                            )}
+                        {/* GRID DE TARJETAS / AVISOS */}
+                        {loading && (
+                            <div className="text-center text-[#769C7B] font-medium py-8">Cargando lugares de fútbol...</div>
+                        )}
 
-                            {!loading && filteredPlaces.length === 0 && (
-                                <div className="col-span-full bg-white border border-[#F6F0E6] rounded-3xl p-8 text-center text-[#769C7B]">
-                                    No se encontraron lugares de fútbol con ese criterio.
-                                </div>
-                            )}
+                        {!loading && filteredPlaces.length === 0 && (
+                            <div className="bg-white border border-[#F6F0E6] rounded-3xl p-8 text-center text-[#769C7B]">
+                                No se encontraron {activeQuickFilter === "Avisos" ? "avisos" : "lugares de fútbol"} con ese criterio.
+                            </div>
+                        )}
 
-                            {filteredPlaces.map((place) => (
-                                <motion.div
-                                    key={place.nombre}
-                                    whileHover={{ y: -10 }}
-                                    onClick={() => goToPlaceDetail(place.nombre)}
-                                    onKeyDown={(event) => {
-                                        if (event.key === "Enter" || event.key === " ") {
-                                            event.preventDefault();
-                                            goToPlaceDetail(place.nombre);
-                                        }
-                                    }}
-                                    role="button"
-                                    tabIndex={0}
-                                    className="bg-white rounded-[40px] overflow-hidden shadow-[0_10px_30px_rgba(26,77,46,0.05)] border border-[#F6F0E6] flex flex-col group cursor-pointer"
-                                >
-                                    <div className="relative h-56 w-full overflow-hidden">
-                                        <img
-                                            src={place.fotos?.[0] || getPlaceImageByCategory(place.categoria || "Fútbol")}
-                                            alt={place.nombre}
-                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                            loading="lazy"
-                                        />
-                                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-[#0D601E] z-10">
-                                            {place.categoria || "Fútbol"}
+                        {/* Layout editorial para Avisos */}
+                        {activeQuickFilter === "Avisos" ? (
+                            <div className="flex flex-col gap-8">
+                                {filteredPlaces.map((place, idx) => (
+                                    <motion.article
+                                        key={place.nombre}
+                                        initial={{ opacity: 0, y: 16 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: idx * 0.1 }}
+                                        onClick={() => goToPlaceDetail(place.nombre)}
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => { if (e.key === "Enter") goToPlaceDetail(place.nombre); }}
+                                        className="group bg-white border border-[#F6F0E6] rounded-[32px] overflow-hidden shadow-[0_8px_32px_rgba(26,77,46,0.07)] cursor-pointer hover:shadow-[0_16px_48px_rgba(26,77,46,0.13)] transition-all duration-300 flex flex-col md:flex-row"
+                                    >
+                                        {/* Imagen izquierda */}
+                                        {place.fotos?.[0] && (
+                                            <div className="relative md:w-80 lg:w-96 h-56 md:h-auto shrink-0 overflow-hidden">
+                                                <img
+                                                    src={place.fotos[0]}
+                                                    alt={place.nombre}
+                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                />
+                                                <div className="absolute inset-0 bg-linear-to-r from-transparent to-black/10 md:bg-linear-to-r" />
+                                            </div>
+                                        )}
+                                        {/* Contenido */}
+                                        <div className="flex flex-col justify-between p-7 lg:p-10 flex-1">
+                                            <div>
+                                                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#F00808] mb-3">
+                                                    ⚽ AVISO FIFA 2026
+                                                </span>
+                                                <h2 className="text-2xl lg:text-3xl font-black text-[#1A4D2E] leading-tight mb-4" style={{ fontFamily: "'Jockey One', sans-serif" }}>
+                                                    {place.nombre}
+                                                </h2>
+                                                <p className="text-[14px] text-[#5A7060] leading-relaxed line-clamp-4">
+                                                    {place.descripcion}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center justify-between mt-6 pt-5 border-t border-[#F6F0E6]">
+                                                <span className="text-[11px] text-[#A0B5A5] font-semibold uppercase tracking-wider">
+                                                    Información oficial
+                                                </span>
+                                                <span className="flex items-center gap-1.5 text-[12px] font-bold text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">
+                                                    Leer aviso <FiInfo size={14} />
+                                                </span>
+                                            </div>
                                         </div>
-
-                                        <button
-                                            onClick={(event) => {
-                                                event.stopPropagation();
-                                                handleFavoriteClick(place.nombre);
-                                            }}
-                                            className="absolute bottom-4 right-4 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg z-10 transition-transform duration-200 ease-out hover:scale-110 active:scale-90"
-                                        >
-                                            <FiHeart
-                                                className={`transition-transform duration-200 ease-out ${favorites.includes(place.nombre) ? "text-[#F00808] fill-[#F00808]" : "text-[#769C7B]"}`}
-                                                size={18}
+                                    </motion.article>
+                                ))}
+                            </div>
+                        ) : (
+                            /* Grid normal de lugares */
+                            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-6 ${isFilterModalOpen ? "xl:grid-cols-2" : "xl:grid-cols-3"}`}>
+                                {filteredPlaces.map((place) => (
+                                    <motion.div
+                                        key={place.nombre}
+                                        whileHover={{ y: -10 }}
+                                        onClick={() => goToPlaceDetail(place.nombre)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter" || event.key === " ") {
+                                                event.preventDefault();
+                                                goToPlaceDetail(place.nombre);
+                                            }
+                                        }}
+                                        role="button"
+                                        tabIndex={0}
+                                        className="bg-white rounded-[40px] overflow-hidden shadow-[0_10px_30px_rgba(26,77,46,0.05)] border border-[#F6F0E6] flex flex-col group cursor-pointer"
+                                    >
+                                        <div className="relative h-56 w-full overflow-hidden">
+                                            <img
+                                                src={place.fotos?.[0] || getPlaceImageByCategory(place.categoria || "Fútbol")}
+                                                alt={place.nombre}
+                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                loading="lazy"
                                             />
-                                        </button>
-                                        <div className="absolute top-4 right-4 z-10 bg-white/95 border border-[#E8E8E8] rounded-full px-2 py-1 shadow-md">
-                                            <PlaceRating
-                                                placeName={place.nombre}
-                                                showLabel={true}
-                                                size="small"
-                                                readonly={true}
-                                            />
+                                            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-[#0D601E] z-10">
+                                                {place.categoria || "Fútbol"}
+                                            </div>
+                                            <button
+                                                onClick={(event) => { event.stopPropagation(); handleFavoriteClick(place.nombre); }}
+                                                className="absolute bottom-4 right-4 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg z-10 transition-transform duration-200 ease-out hover:scale-110 active:scale-90"
+                                            >
+                                                <FiHeart
+                                                    className={`transition-transform duration-200 ease-out ${favorites.includes(place.nombre) ? "text-[#F00808] fill-[#F00808]" : "text-[#769C7B]"}`}
+                                                    size={18}
+                                                />
+                                            </button>
+                                            <div className="absolute top-4 right-4 z-10 bg-white/95 border border-[#E8E8E8] rounded-full px-2 py-1 shadow-md">
+                                                <PlaceRating placeName={place.nombre} showLabel={true} size="small" readonly={true} />
+                                            </div>
                                         </div>
-                                    </div>
-
-                                    <div className="p-6 flex flex-col flex-1">
-                                        <h3 className="text-xl font-black text-[#1A4D2E] uppercase mb-2 leading-tight" style={{ fontFamily: "var(--font-jockey)" }}>
-                                            {place.nombre}
-                                        </h3>
-                                        <div className="mb-3">
-                                            <p className="text-[10px] text-[#769C7B] mt-1">
-                                                {place.views.toLocaleString("es-MX")} vistas
+                                        <div className="p-6 flex flex-col flex-1">
+                                            <h3 className="text-xl font-black text-[#1A4D2E] uppercase mb-2 leading-tight" style={{ fontFamily: "var(--font-jockey)" }}>
+                                                {place.nombre}
+                                            </h3>
+                                            <p className="text-[10px] text-[#769C7B] mb-3">{place.views.toLocaleString("es-MX")} vistas</p>
+                                            <p className="text-[13px] text-[#769C7B] leading-snug mb-6 flex-1 italic">
+                                                {place.descripcion || "Explora este destino futbolero destacado en Guadalajara."}
                                             </p>
+                                            <div className="flex items-center justify-between mt-auto gap-2">
+                                                <Link href={`/mapa?lugar=${encodeURIComponent(place.nombre)}`} className="flex-1" onClick={(e) => e.stopPropagation()}>
+                                                    <button className="w-full bg-[#1A4D2E] text-white py-3 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#F00808] transition-colors shadow-md">
+                                                        <FiMapPin /> Ubicar
+                                                    </button>
+                                                </Link>
+                                                <Link href={`/informacion/${encodeURIComponent(place.nombre)}`} onClick={(e) => e.stopPropagation()}>
+                                                    <button className="p-3 bg-[#F6F0E6] rounded-full text-[#1A4D2E]/40 hover:text-[#1A4D2E] transition-colors">
+                                                        <FiInfo size={16} />
+                                                    </button>
+                                                </Link>
+                                            </div>
                                         </div>
-                                        <p className="text-[13px] text-[#769C7B] leading-snug mb-6 flex-1 italic">
-                                            {place.descripcion || "Explora este destino futbolero destacado en Guadalajara."}
-                                        </p>
-
-                                        <div className="flex items-center justify-between mt-auto gap-2">
-                                            <Link href={`/mapa?lugar=${encodeURIComponent(place.nombre)}`} className="flex-1" onClick={(event) => event.stopPropagation()}>
-                                                <button className="w-full bg-[#1A4D2E] text-white py-3 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#F00808] transition-colors shadow-md">
-                                                    <FiMapPin /> Ubicar
-                                                </button>
-                                            </Link>
-                                            <Link href={`/informacion/${encodeURIComponent(place.nombre)}`} onClick={(event) => event.stopPropagation()}>
-                                                <button className="p-3 bg-[#F6F0E6] rounded-full text-[#1A4D2E]/40 hover:text-[#1A4D2E] transition-colors">
-                                                    <FiInfo size={16} />
-                                                </button>
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
                     </motion.div>
 
                     <AdvancedFiltersModal
