@@ -1234,16 +1234,24 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       {/* Panel de Notificaciones */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="absolute top-[120%] right-0 w-96 max-h-[600px] bg-white rounded-[28px] shadow-2xl border border-gray-100 flex flex-col z-[120] overflow-hidden"
-          >
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-black/10 z-115 md:hidden"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="fixed top-18 left-2 right-2 w-auto max-h-[calc(100vh-5.5rem)] bg-white rounded-3xl shadow-2xl border border-gray-100 flex flex-col z-120 overflow-hidden md:absolute md:top-[120%] md:right-0 md:left-auto md:w-96 md:max-h-150 md:rounded-[28px]"
+            >
             {/* Encabezado */}
-            <div className="bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white px-6 py-5 flex justify-between items-center">
-              <div>
-                <h3 className="font-normal text-lg">Notificaciones</h3>
+            <div className="bg-linear-to-r from-[#0D601E] to-[#1A4D2E] text-white px-4 py-4 sm:px-6 sm:py-5 flex justify-between items-center gap-3">
+              <div className="min-w-0">
+                <h3 className="font-normal text-base sm:text-lg wrap-break-word">Notificaciones</h3>
                 <p className="text-white/70 text-xs font-light mt-0.5">
                   {noLeidas > 0 ? `${noLeidas} sin leer` : 'Todo al día'}
                 </p>
@@ -1260,7 +1268,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
             {/* Contenido */}
             <div className="flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {cargando && notificaciones.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 px-6">
+                <div className="flex flex-col items-center justify-center py-14 px-5 sm:py-16 sm:px-6">
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -1269,7 +1277,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                   <p className="text-gray-500 font-medium text-sm">Cargando notificaciones...</p>
                 </div>
               ) : notificaciones.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                <div className="flex flex-col items-center justify-center py-14 px-5 text-center sm:py-16 sm:px-6">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                     <FiBell size={32} className="text-gray-300" />
                   </div>
@@ -1286,28 +1294,28 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                       whileHover={{ y: -2, scale: 1.01, boxShadow: "0 12px 28px rgba(13, 96, 30, 0.12)" }}
                       whileTap={{ scale: 0.995 }}
                       transition={{ delay: index * 0.05 }}
-                      className={`group relative p-4 border-l-4 ${getColorNotificacion(notif.tipo)} cursor-pointer transition-all duration-300 ${
+                      className={`group relative p-3.5 sm:p-4 border-l-4 ${getColorNotificacion(notif.tipo)} cursor-pointer transition-all duration-300 overflow-hidden ${
                         !notif.leido ? 'border-l-[#F00808] bg-opacity-60' : 'border-l-gray-200'
                       }`}
                       onClick={() => {
                         void handleNotificationClick(notif);
                       }}
                     >
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0D601E]/0 via-[#0D601E]/[0.06] to-[#0D601E]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="flex gap-3">
-                        <div className="flex-shrink-0 mt-1 transition-transform duration-300 group-hover:-translate-y-0.5">
+                      <div className="pointer-events-none absolute inset-0 bg-linear-to-r from-[#0D601E]/0 via-[#0D601E]/6 to-[#0D601E]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="flex gap-3 items-start">
+                        <div className="shrink-0 mt-1 transition-transform duration-300 group-hover:-translate-y-0.5">
                           {getIconoNotificacion(notif.tipo)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <h4 className="font-bold text-sm text-gray-800">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                            <h4 className="font-bold text-sm text-gray-800 wrap-break-word pr-2 sm:pr-0">
                               {notif.titulo}
                             </h4>
-                            <span className="text-xs text-gray-500 flex-shrink-0">
+                            <span className="text-[11px] sm:text-xs text-gray-500 shrink-0">
                               {formatearFecha(notif.fecha)}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-3 wrap-break-word">
                             {notif.mensaje}
                           </p>
                           {/* Botón para revisar solicitud de guía pendiente */}
@@ -1349,7 +1357,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                             e.stopPropagation();
                             eliminarNotificacion(notif.id);
                           }}
-                          className="flex-shrink-0 p-1 hover:bg-red-100 rounded transition-colors text-gray-400 hover:text-red-600"
+                          className="shrink-0 p-1 hover:bg-red-100 rounded transition-colors text-gray-400 hover:text-red-600 self-start"
                         >
                           <FiX size={16} />
                         </button>
@@ -1361,7 +1369,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
             </div>
 
 
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
