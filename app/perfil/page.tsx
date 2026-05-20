@@ -7,7 +7,7 @@ import {
   FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
 } from "react-icons/fa";
 import { FiCalendar, FiCamera, FiCheck, FiChevronRight, FiClock, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
-  FiPlus, FiShield, FiUser, FiUsers, FiX, FiCreditCard, FiDollarSign, FiTrash2
+  FiPlus, FiShield, FiUser, FiUsers, FiX, FiCreditCard, FiDollarSign, FiTrash2, FiAlertTriangle
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
 import { useFavoritesSync } from "@/lib/favoritesApi";
@@ -106,6 +106,8 @@ export default function PerfilDetallado() {
   const [showTourModal, setShowTourModal] = useState(false);
   const [reservasHistorial, setReservasHistorial] = useState<any[]>([]);
   const [showHistorialModal, setShowHistorialModal] = useState(false);
+  const [cancelandoReservaId, setCancelandoReservaId] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [bookingRatings, setBookingRatings] = useState<Record<string, any>>({});
   const [ratingDraft, setRatingDraft] = useState<Record<string, { estrellas: number; comentario: string }>>({});
   const [submittingRating, setSubmittingRating] = useState<string | null>(null);
@@ -139,7 +141,31 @@ export default function PerfilDetallado() {
       }));
       setEspecialidadesTemp(intereses);
     }
-  }; 
+  };
+
+  const BACKEND_URL_PERFIL = getBackendOrigin();
+
+  const cancelarReserva = async (bookingId: string) => {
+    setCancelandoReservaId(bookingId);
+    try {
+      const res = await fetchWithAuth(`${BACKEND_URL_PERFIL}/api/bookings/${bookingId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.message || 'Error al cancelar la reserva');
+        return;
+      }
+      setReservasHistorial(prev =>
+        prev.map(r => r.id === bookingId ? { ...r, status: 'cancelado' } : r)
+      );
+    } catch {
+      alert('Error de conexión al cancelar la reserva');
+    } finally {
+      setCancelandoReservaId(null);
+      setConfirmCancelId(null);
+    }
+  };
 
   const [editandoNacionalidad, setEditandoNacionalidad] = useState(false);
   const [nacionalidadTemp, setNacionalidadTemp] = useState("");
@@ -2064,9 +2090,20 @@ export default function PerfilDetallado() {
                                   )}
                                 </div>
                               </div>
-                              <span className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full ${esHoy ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
-                                {esHoy ? 'En proceso' : 'Por empezar'}
-                              </span>
+                              <div className="flex flex-col items-end gap-2 shrink-0">
+                                <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${esHoy ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
+                                  {esHoy ? 'En proceso' : 'Por empezar'}
+                                </span>
+                                {reserva.id && (
+                                  <button
+                                    onClick={() => setConfirmCancelId(reserva.id)}
+                                    disabled={cancelandoReservaId === reserva.id}
+                                    className="text-[10px] font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-0.5 rounded-full transition-colors disabled:opacity-50"
+                                  >
+                                    {cancelandoReservaId === reserva.id ? 'Cancelando...' : 'Cancelar'}
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </motion.div>
                         );
@@ -2511,6 +2548,57 @@ export default function PerfilDetallado() {
 
       {/* Wallet Modal */}
       <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
+
+      {/* Modal de confirmación de cancelación de reserva */}
+      <AnimatePresence>
+        {confirmCancelId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full"
+            >
+              <div className="flex flex-col items-center text-center gap-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <FiAlertTriangle size={22} className="text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-800">¿Cancelar reserva?</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Esta acción no se puede deshacer. Si el tour estaba pagado, recibirás un reembolso.
+                  </p>
+                </div>
+                <div className="flex gap-3 w-full pt-1">
+                  <button
+                    onClick={() => setConfirmCancelId(null)}
+                    disabled={cancelandoReservaId !== null}
+                    className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors disabled:opacity-50"
+                  >
+                    Volver
+                  </button>
+                  <button
+                    onClick={() => cancelarReserva(confirmCancelId)}
+                    disabled={cancelandoReservaId !== null}
+                    className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {cancelandoReservaId ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      'Sí, cancelar'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal crear paquete (usa el formulario de tour) */}
       {showTourModal && esGuia && tipoGuia !== "empresa" && (

@@ -472,6 +472,7 @@ const AddCardForm = ({ onSuccess }: { onSuccess: () => void }) => {
         payment_method: {
           card: elements.getElement(CardElement)!,
         },
+        return_url: window.location.origin + '/perfil',
       });
 
       console.log(`   - Setup status: ${result.setupIntent?.status}`);

@@ -121,6 +121,7 @@ function InlineCardForm({
           payment_method: {
             card: cardElement,
           },
+          return_url: window.location.href,
         });
 
         if (result.error) {
@@ -175,6 +176,7 @@ function InlineCardForm({
 
       const result = await stripe.confirmCardSetup(clientSecret, {
         payment_method: { card: cardElement },
+        return_url: window.location.href,
       });
 
       if (result.error) {
