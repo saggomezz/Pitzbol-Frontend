@@ -33,7 +33,7 @@ interface NotificationsPanelProps {
 const BACKEND_URL = getSocketBackendOrigin();
 const API_BASE = getApiBaseUrl();
 const DIRECT_API_BASE = BACKEND_URL ? `${BACKEND_URL}/api` : API_BASE;
-const NOTIFICATIONS_FALLBACK_SYNC_MS = 5 * 60 * 1000;
+const NOTIFICATIONS_FALLBACK_SYNC_MS = 20 * 1000;
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
 
@@ -714,18 +714,38 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     }
   }, [userId, getNotificationBucketId]);
 
+  useEffect(() => {
+    if (!userId || !isOpen) return;
+    void cargarNotificacionesDelBackend();
+  }, [isOpen, userId, getNotificationBucketId]);
+
   // Fallback de sincronización: si Socket.IO no logra conectar en deploy/local,
   // seguimos refrescando desde backend para que las notificaciones aparezcan sin recargar.
   useEffect(() => {
     if (!userId) return;
 
-    const intervalId = window.setInterval(() => {
+    const syncFromBackend = () => {
       if (document.hidden) return;
       void cargarNotificacionesDelBackend();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        syncFromBackend();
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      syncFromBackend();
     }, NOTIFICATIONS_FALLBACK_SYNC_MS);
+
+    window.addEventListener("focus", syncFromBackend);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       window.clearInterval(intervalId);
+      window.removeEventListener("focus", syncFromBackend);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [userId, getNotificationBucketId]);
 
