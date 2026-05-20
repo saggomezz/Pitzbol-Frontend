@@ -313,7 +313,7 @@ export default function TourPaymentPage() {
 
   const handlePaymentSuccess = () => {
     setSuccess(true);
-    setTimeout(() => router.push(`/`), 2000);
+    setTimeout(() => router.push(`/perfil`), 2000);
   };
 
   const fetchCards = async () => {
