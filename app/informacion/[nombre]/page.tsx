@@ -316,7 +316,24 @@ function mapPlaceToPublicDetail(place: PlaceRecord): Lugar {
     fotos: Array.isArray(place.fotos) ? place.fotos : [],
     negocioId: place.negocioId,
     horariosJson: (place as any).horariosJson || undefined,
+    subcategoria: place.subcategoria,
+    subcategorias: place.subcategorias,
   };
+}
+
+const NOMBRES_AVISO_NORM = [
+  "capacidad y logistica en el estadio akron",
+  "cuanto cuestan los boletos oficiales para guadalajara",
+];
+function normForAviso(s: string) {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[¿?]/g,"").toLowerCase().trim();
+}
+function esAvisoLugar(lugar: Lugar): boolean {
+  return (
+    lugar.subcategoria === "Aviso" ||
+    (lugar.subcategorias || []).includes("Aviso") ||
+    NOMBRES_AVISO_NORM.some(n => normForAviso(lugar.nombre).includes(n.split(" ").slice(0, 4).join(" ")))
+  );
 }
 
 function getMapEmbedSrc(lugar: Lugar): string {
@@ -814,10 +831,7 @@ export default function InformacionLugar() {
   const lugarSeguro = lugar as Lugar;
 
   // Layout editorial para avisos — sin calificación, horario ni costo
-  if (
-    lugarSeguro.subcategoria === "Aviso" ||
-    (lugarSeguro.subcategorias || []).includes("Aviso")
-  ) {
+  if (esAvisoLugar(lugarSeguro)) {
     return (
       <AvisoLayout
         lugar={lugarSeguro}
