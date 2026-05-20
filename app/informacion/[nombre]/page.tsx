@@ -103,7 +103,7 @@ function AvisoLayout({ lugar, fotos, onBack }: { lugar: any; fotos: string[]; on
         {/* Fotos restantes en grid (si hay más que párrafos) */}
         {restFotos.length > parrafos.length && (
           <div className="mt-12 grid grid-cols-2 md:grid-cols-3 gap-4">
-            {restFotos.slice(parrafos.length).map((src: string, i: number) => (
+            {(restFotos.slice(parrafos.length).filter(Boolean) as string[]).map((src: string, i: number) => (
               <div key={i} className="rounded-2xl overflow-hidden shadow-md aspect-video">
                 <img src={src} alt="" className="w-full h-full object-cover" />
               </div>
