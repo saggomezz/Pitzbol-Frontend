@@ -385,7 +385,7 @@ export default function TourPaymentPage() {
     setError(null);
 
     try {
-      // 1. Crear Payment Intent (sin confirmar)
+      // 1. Crear Payment Intent (sin confirmar en servidor)
       const paymentResponse = await fetchWithAuth(
         `${BACKEND_URL}/api/payments/create-payment-intent`,
         {
@@ -396,33 +396,52 @@ export default function TourPaymentPage() {
             userId: user?.uid,
             amount: booking.total,
             currency: "mxn",
-            paymentMethodId: selectedCard,
           }),
         }
       );
 
       const paymentData = await paymentResponse.json();
 
-      if (!paymentData.success) {        if (paymentData.code === 'INVALID_PAYMENT_METHOD') setInvalidCard(true);        throw new Error(paymentData.message || "Error al crear el pago");
+      if (!paymentData.success) {
+        throw new Error(paymentData.message || "Error al crear el pago");
       }
 
-      // 2. Confirmar pago con tarjeta guardada
-      const confirmResponse = await fetchWithAuth(
-        `${BACKEND_URL}/api/payments/confirm-with-saved-card`,
+      // 2. Confirmar con Stripe.js en el cliente (el cliente está presente)
+      const stripe = await stripePromise;
+      if (!stripe) throw new Error("Stripe no está disponible");
+
+      const result = await stripe.confirmCardPayment(paymentData.clientSecret, {
+        payment_method: selectedCard,
+        return_url: window.location.href,
+      });
+
+      if (result.error) {
+        if (result.error.code === 'card_declined' || result.error.code === 'invalid_number') {
+          setInvalidCard(true);
+        }
+        throw new Error(result.error.message || "Error al procesar el pago");
+      }
+
+      if (result.paymentIntent?.status !== "succeeded") {
+        throw new Error("El pago no se completó correctamente");
+      }
+
+      // 3. Finalizar en el backend (actualiza reserva, envía recibo)
+      const finalizeResponse = await fetchWithAuth(
+        `${BACKEND_URL}/api/payments/finalize-payment-intent`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            paymentIntentId: paymentData.paymentIntentId,
-            paymentMethodId: selectedCard,
+            paymentIntentId: result.paymentIntent.id,
             userId: user?.uid,
           }),
         }
       );
 
-      const confirmData = await confirmResponse.json();
-
-      if (!confirmData.success) {        if (confirmData.code === 'INVALID_PAYMENT_METHOD') setInvalidCard(true);        throw new Error(confirmData.message || "Error al confirmar el pago");
+      const finalizeData = await finalizeResponse.json();
+      if (!finalizeData.success) {
+        throw new Error(finalizeData.message || "Error al finalizar el pago");
       }
 
       handlePaymentSuccess();
