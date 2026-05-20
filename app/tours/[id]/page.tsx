@@ -95,6 +95,8 @@ export default function TourDetailPage() {
   const [numPersonas, setNumPersonas] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [ocupacion, setOcupacion] = useState<{ personasOcupadas: number; disponibles: number } | null>(null);
+  const [loadingOcupacion, setLoadingOcupacion] = useState(false);
 
   const dispoInfo = useMemo(() => tour ? parseDisponibilidad(tour.disponibilidad) : null, [tour]);
   const horasDisponibles = useMemo(
@@ -127,6 +129,19 @@ export default function TourDetailPage() {
     }
   }, [horasDisponibles]);
 
+  // Consultar ocupación del paquete cuando se selecciona una fecha
+  useEffect(() => {
+    if (!id || !fecha || !maxPersonas) { setOcupacion(null); return; }
+    setLoadingOcupacion(true);
+    fetch(`${BACKEND}/paquetes/${id}/ocupacion?fecha=${fecha}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) setOcupacion({ personasOcupadas: data.personasOcupadas, disponibles: data.disponibles });
+      })
+      .catch(() => {})
+      .finally(() => setLoadingOcupacion(false));
+  }, [id, fecha, maxPersonas]);
+
   const handleReservar = async () => {
     setError("");
     if (!user) { setError("Debes iniciar sesión para reservar."); return; }
@@ -134,7 +149,11 @@ export default function TourDetailPage() {
     if (!fecha) { setError("Selecciona una fecha."); return; }
     if (!horaInicio) { setError("Selecciona una hora de inicio."); return; }
     if (numPersonas < 1) { setError("Mínimo 1 persona."); return; }
-    if (maxPersonas && numPersonas > maxPersonas) { setError(`Máximo ${maxPersonas} personas.`); return; }
+    if (ocupacion !== null && numPersonas > ocupacion.disponibles) {
+      setError(`Solo quedan ${ocupacion.disponibles} plazas disponibles para esta fecha.`);
+      return;
+    }
+    if (!ocupacion && maxPersonas && numPersonas > maxPersonas) { setError(`Máximo ${maxPersonas} personas.`); return; }
     if (precioNum <= 0) { setError("No se pudo calcular el precio."); return; }
 
     setSubmitting(true);
@@ -153,6 +172,8 @@ export default function TourDetailPage() {
         total: totalPrecio,
         status: "pendiente",
         createdAt: new Date().toISOString(),
+        paqueteId: tour?.id,
+        paqueteTitulo: tour?.titulo,
       };
 
       const res = await fetch(`${BACKEND}/bookings/create`, {
@@ -168,6 +189,12 @@ export default function TourDetailPage() {
       const data = await res.json();
       if (data.success) {
         router.push(`/tours/pago/${data.bookingId}`);
+      } else if (data.code === "TOUR_FULL") {
+        const disponibles = data.disponibles ?? 0;
+        setError(disponibles > 0
+          ? `Solo quedan ${disponibles} plazas disponibles para esta fecha.`
+          : "No quedan plazas disponibles para esta fecha.");
+        setOcupacion({ personasOcupadas: data.capacidad - disponibles, disponibles });
       } else {
         setError(data.message || "Error al crear la reserva.");
       }
@@ -382,11 +409,24 @@ export default function TourDetailPage() {
               <input
                 type="number"
                 min={1}
-                max={maxPersonas || undefined}
+                max={ocupacion !== null ? ocupacion.disponibles : (maxPersonas || undefined)}
                 value={numPersonas}
                 onChange={e => setNumPersonas(Math.max(1, Number(e.target.value)))}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:border-[#1A4D2E]"
               />
+              {fecha && maxPersonas > 0 && (
+                <p className="text-xs mt-1 flex items-center gap-1">
+                  {loadingOcupacion ? (
+                    <span className="text-gray-400">Consultando disponibilidad...</span>
+                  ) : ocupacion !== null ? (
+                    ocupacion.disponibles === 0 ? (
+                      <span className="text-red-500 font-medium">Sin plazas disponibles para esta fecha</span>
+                    ) : (
+                      <span className="text-[#0D601E] font-medium">{ocupacion.disponibles} de {maxPersonas} plazas disponibles</span>
+                    )
+                  ) : null}
+                </p>
+              )}
             </div>
 
             {/* Total */}
