@@ -241,6 +241,8 @@ interface Lugar {
   fotos: string[];
   negocioId?: string;
   horariosJson?: string;
+  subcategoria?: string;
+  subcategorias?: string[];
 }
 
 function normalizeName(value: string): string {
