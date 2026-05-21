@@ -35,7 +35,6 @@
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import Papa from "papaparse";
 import { 
     FiMapPin, 
     FiSearch, 
@@ -64,6 +63,7 @@ import { MAP_FILTER_ALIASES } from "@/lib/categories";
 import "leaflet/dist/leaflet.css";
 import styles from "./mapa.module.css";
 import { getPlaceImageUrlSync, getPlaceImageByCategory } from "@/lib/placeImages";
+import { getMergedPlaces } from "@/lib/placesApi";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import PlaceRating from "@/app/components/PlaceRating";
 
@@ -74,6 +74,7 @@ interface Lugar {
     descripcion: string;
     ubicacion: string;
     imagen?: string;
+    fotos?: string[];
     latitud?: string;
     longitud?: string;
     views?: number;
@@ -472,184 +473,53 @@ export default function MapaPage() {
                                             ubicacion: lugarFirestore.ubicacion || '',
                                             latitud: lugarFirestore.latitud || '',
                                             longitud: lugarFirestore.longitud || '',
-                                            views: Number(String(lugarFirestore?.views ?? '0').replace(',', '.').trim()) || 0,
-                                        });
-                                        console.log(`✅ Lugar creado manualmente agregado: ${lugarFirestore.nombre}`);
-                                    }
-                                });
+            loadInitialData();
 
-                                // Priorizar vistas reales de Firestore para cualquier lugar existente
-                                const lugaresConViews = lugaresCSV.map((lugar) => ({
-                                    ...lugar,
-                                    views: viewsByName[lugar.nombre] ?? (typeof lugar.views === 'number' ? lugar.views : 0),
-                                }));
-                                
-                                console.log(`📊 Total lugares actualizados: ${lugaresCSV.length} (${parsed.length} del CSV + ${lugaresCSV.length - parsed.length} creados manualmente)`);
-                                
-                                // Actualizar con los datos completos de Firestore
-                                setLugares(lugaresConViews);
-                                setFilteredLugares(lugaresConViews);
-                                
-                                // Crear mapas de fotos y vistas por nombre
-                                const fotosMap: Record<string, string[]> = {};
-                                const viewsMap: Record<string, number> = {};
-                                lugaresFirestore.forEach((lugar: any) => {
-                                    if (lugar.nombre && lugar.fotos && lugar.fotos.length > 0) {
-                                        fotosMap[lugar.nombre] = lugar.fotos;
-                                    }
-                                    if (lugar.nombre && lugar.views) {
-                                        viewsMap[lugar.nombre] = Number(lugar.views) || 0;
-                                    }
-                                });
+            const loadPlaces = async () => {
+                try {
+                    const mergedPlaces = await getMergedPlaces();
+                    const normalizedPlaces: Lugar[] = mergedPlaces.map((place) => {
+                        const photos = Array.isArray(place.fotos) ? place.fotos.filter(Boolean) : [];
+                        return {
+                            nombre: place.nombre,
+                            categoria: place.categoria || place.rawCategoria || "Cultura",
+                            categorias: place.rawCategoria
+                                ? place.rawCategoria.split(",").map((item) => item.trim()).filter(Boolean)
+                                : [place.categoria || "Cultura"],
+                            descripcion: place.descripcion || "",
+                            ubicacion: place.ubicacion || "",
+                            latitud: place.latitud || "",
+                            longitud: place.longitud || "",
+                            views: typeof place.views === "number" ? place.views : 0,
+                            fotos: photos,
+                        };
+                    });
 
-                                // Añadir vistas a cada lugar
-                                lugaresCSV.forEach((l: Lugar) => {
-                                    if (viewsMap[l.nombre] !== undefined) {
-                                        l.views = viewsMap[l.nombre];
-                                    }
-                                });
-                                
-                                // Guardar todas las fotos para el carrusel
-                                setPlaceAllPhotos(fotosMap);
-                                
-                                // Actualizar imágenes con fotos guardadas (primera foto para compatibilidad)
-                                if (Object.keys(fotosMap).length > 0) {
-                                    const updatedImages = { ...initialImages };
-                                    Object.keys(fotosMap).forEach(nombre => {
-                                        if (fotosMap[nombre] && fotosMap[nombre].length > 0) {
-                                            updatedImages[nombre] = fotosMap[nombre][0]; // Usar la primera foto
-                                            console.log(`✅ ${fotosMap[nombre].length} foto(s) guardada(s) para: ${nombre}`);
-                                        }
-                                    });
-                                    setPlaceImages(updatedImages);
-                                }
-                            })
-                            .catch(error => {
-                                console.error("Error obteniendo fotos guardadas:", error);
-                                // Los lugares ya están establecidos desde el CSV, continuar
-                            })
-                            .finally(() => {
-                                setLoading(false);
-                            });
-                    },
-                });
-            })
-            .catch((error) => {
-                console.error("Error loading CSV:", error);
-                setLoading(false);
-            });
-    }, []);
+                    const initialImages: Record<string, string> = {};
+                    const fotosMap: Record<string, string[]> = {};
 
-    useEffect(() => {
-        let filtered = lugares;
-        
-        console.log("🔍 Filtrando lugares - Total:", lugares.length);
-        console.log("🔍 Categoría seleccionada:", selectedCategory);
-        console.log("🔍 Término de búsqueda:", searchTerm);
+                    normalizedPlaces.forEach((lugar) => {
+                        const photos = lugar.fotos || [];
+                        if (photos.length > 0) {
+                            fotosMap[lugar.nombre] = photos;
+                            initialImages[lugar.nombre] = photos[0];
+                        } else {
+                            initialImages[lugar.nombre] = getPlaceImageByCategory(lugar.categoria);
+                        }
+                    });
 
-        if (selectedCategory === "Más Populares") {
-            const antes = filtered.length;
-            const conVistas = filtered
-                .filter((lugar) => (typeof lugar.views === "number" ? lugar.views : 0) > 0)
-                .sort((a, b) => (b.views || 0) - (a.views || 0));
+                    setLugares(normalizedPlaces);
+                    setFilteredLugares(normalizedPlaces);
+                    setPlaceImages(initialImages);
+                    setPlaceAllPhotos(fotosMap);
+                } catch (error) {
+                    console.error("Error loading map places:", error);
+                } finally {
+                    setLoading(false);
+                }
+            };
 
-            // Si todavía no hay suficientes vistas registradas, mantenemos orden estable sin ocultar todo.
-            filtered = conVistas.length > 0
-                ? conVistas
-                : [...filtered].sort((a, b) => (b.views || 0) - (a.views || 0));
-
-            console.log(`🔍 Filtrado por populares (views): ${antes} → ${filtered.length}`);
-            filtered = [...lugares]
-                .sort((a, b) => (b.views || 0) - (a.views || 0))
-                .slice(0, 10);
-        } else if (selectedCategory !== "Todos Los Lugares") {
-            const antes = filtered.length;
-            const normalizedSelected = normalizeText(selectedCategory);
-            const targetAliases = CATEGORY_FILTER_ALIASES[normalizedSelected] || [normalizedSelected];
-
-            filtered = filtered.filter((lugar) => {
-                const placeCategories = (lugar.categorias && lugar.categorias.length > 0
-                    ? lugar.categorias
-                    : [lugar.categoria]
-                )
-                    .map((category) => normalizeText(category))
-                    .filter(Boolean);
-
-                return placeCategories.some((cat) =>
-                    targetAliases.some(
-                        (target) => cat === target || cat.includes(target) || target.includes(cat)
-                    )
-                );
-            });
-            console.log(`🔍 Filtrado por categoría: ${antes} → ${filtered.length}`);
-        }
-
-        if (searchTerm) {
-            const antes = filtered.length;
-            filtered = filtered.filter(
-                (lugar) =>
-                    lugar.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    lugar.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    lugar.ubicacion?.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-            console.log(`🔍 Filtrado por búsqueda: ${antes} → ${filtered.length}`);
-        }
-
-        console.log("✅ Lugares filtrados finales:", filtered.length);
-        setFilteredLugares(filtered);
-    }, [selectedCategory, searchTerm, lugares]);
-
-    // Manejar query parameter "lugar" para mostrar solo un lugar específico
-    useEffect(() => {
-        // Leer el parámetro "lugar" del URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const lugarParam = urlParams.get('lugar');
-        
-        if (lugarParam && lugares.length > 0) {
-            // Buscar el lugar por nombre (decodificando el URL)
-            const lugarEncontrado = lugares.find(
-                lugar => lugar.nombre.toLowerCase() === decodeURIComponent(lugarParam).toLowerCase()
-            );
-            
-            if (lugarEncontrado) {
-                console.log("📍 Lugar encontrado desde URL:", lugarEncontrado.nombre);
-                
-                // Filtrar para mostrar solo este lugar
-                setFilteredLugares([lugarEncontrado]);
-                
-                // Seleccionar el lugar y centrar el mapa
-                setSelectedPlace(lugarEncontrado);
-                const lat = parseFloat(lugarEncontrado.latitud || "20.6597");
-                const lng = parseFloat(lugarEncontrado.longitud || "-103.3496");
-                setMapCenter([lat, lng]);
-                setMapZoom(15);
-                
-                // Limpiar filtros de categoría y búsqueda para evitar conflictos
-                setSelectedCategory("Todos Los Lugares");
-                setSearchTerm("");
-            } else {
-                console.warn("⚠️ No se encontró el lugar:", lugarParam);
-            }
-        }
-    }, [lugares]);
-
-    // Manejar selección de lugar (desde lista o desde mapa)
-    const handleSelectPlace = (lugar: Lugar) => {
-        setSelectedPlace(lugar);
-        const lat = parseFloat(lugar.latitud || "20.6597");
-        const lng = parseFloat(lugar.longitud || "-103.3496");
-        setMapCenter([lat, lng]);
-        setMapZoom(15);
-    };
-
-    // Limpiar selección y volver a mostrar todos los lugares
-    const handleClearSelection = () => {
-        setSelectedPlace(null);
-        setMapCenter([20.6597, -103.3496]);
-        setMapZoom(12);
-    };
-
-    // Deseleccionar con ESC
+            loadPlaces();
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === "Escape" && selectedPlace) {
