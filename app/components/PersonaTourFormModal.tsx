@@ -258,7 +258,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, guiaIdiomas =
   const STEP_TITLES = ["Tu Paquete", "Detalles", "Fotos"];
 
   return (
-    <div className="fixed inset-0 z-300 flex items-start justify-center bg-black/40 backdrop-blur-sm p-3 pt-16 md:p-4 md:pt-20 lg:pt-24">
+    <div className="fixed inset-0 z-300 flex items-start justify-center bg-black/40 backdrop-blur-sm p-3 pt-24 md:p-4 md:pt-28 lg:pt-32 xl:pt-36">
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}

@@ -128,7 +128,7 @@ export default function PaqueteFormModal({ isOpen, onClose, onCreated, guiaId }:
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-0 md:p-4"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-start md:items-center justify-center p-0 md:p-4 pt-20 md:pt-28 lg:pt-32"
         onClick={handleClose}
       >
         <motion.div
