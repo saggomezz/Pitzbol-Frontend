@@ -26,6 +26,7 @@ import {
   FiArchive,
 } from "react-icons/fi";
 import { gestionarNegocioPendiente } from "@/lib/gestionarNegocioApi";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import dynamic from "next/dynamic";
 import GestionarNegocioModal from "@/app/components/GestionarNegocioModal";
 import AdminEditableField from "@/app/components/AdminEditableField";
@@ -708,9 +709,8 @@ export default function AdminViewBusinessPage() {
     setProcesandoAccion(true);
     try {
       const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
-      const response = await fetch(`/api/admin/negocios/${business.id}/regresar-pendientes`, {
+      const response = await fetchWithAuth(`/api/admin/negocios/${business.id}/regresar-pendientes`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ adminUid }),
       });
@@ -735,9 +735,8 @@ export default function AdminViewBusinessPage() {
     try {
       const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
       const motivoFinal = motivoArchivo.trim() || "Archivado por administrador";
-      const response = await fetch(`/api/admin/negocios/${business.id}/archivar`, {
+      const response = await fetchWithAuth(`/api/admin/negocios/${business.id}/archivar`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ motivo: motivoFinal, adminUid }),
       });
@@ -763,9 +762,8 @@ export default function AdminViewBusinessPage() {
     setProcesandoAccion(true);
     try {
       const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
-      const response = await fetch(`/api/admin/negocios/${business.id}/desarchivar`, {
+      const response = await fetchWithAuth(`/api/admin/negocios/${business.id}/desarchivar`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ adminUid }),
       });
@@ -791,9 +789,8 @@ export default function AdminViewBusinessPage() {
     setProcesandoAccion(true);
     try {
       const adminUid = JSON.parse(localStorage.getItem("pitzbol_user") || "{}").uid;
-      const response = await fetch(`/api/admin/negocios/${business.id}/eliminar-permanente`, {
+      const response = await fetchWithAuth(`/api/admin/negocios/${business.id}/eliminar-permanente`, {
         method: "DELETE",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ adminUid, motivo: motivoFinal || undefined }),
       });
