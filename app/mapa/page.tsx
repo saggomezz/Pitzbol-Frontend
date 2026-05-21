@@ -77,6 +77,7 @@ interface Lugar {
     latitud?: string;
     longitud?: string;
     views?: number;
+    fotos?: string[];
 }
 
 // Componente de carrusel de imágenes para el info box
