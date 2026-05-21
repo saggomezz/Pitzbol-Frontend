@@ -27,11 +27,19 @@ function ResetPasswordPageInner() {
   const oobCode = searchParams.get("oobCode");
 
   const isStrongPassword = (value: string) =>
-    value.length >= 8 &&
+    value.length >= 10 &&
     /[a-z]/.test(value) &&
     /[A-Z]/.test(value) &&
     /[0-9]/.test(value) &&
     /[^A-Za-z0-9]/.test(value);
+
+  const getPasswordCriteria = (value: string) => [
+    { label: "10+ caracteres", met: value.length >= 10 },
+    { label: "Mayúscula (A-Z)", met: /[A-Z]/.test(value) },
+    { label: "Minúscula (a-z)", met: /[a-z]/.test(value) },
+    { label: "Número (0-9)", met: /[0-9]/.test(value) },
+    { label: "Símbolo (!@#$...)", met: /[^A-Za-z0-9]/.test(value) },
+  ];
 
   const handleReset = async () => {
     console.log("oobCode recibido:", oobCode);
@@ -41,7 +49,7 @@ function ResetPasswordPageInner() {
       return;
     }
     if (!isStrongPassword(newPassword)) {
-      setStatus({ type: 'error', msg: "Usa una contraseña fuerte: 8+ caracteres, mayúscula, minúscula, número y símbolo." });
+      setStatus({ type: 'error', msg: "Usa una contraseña fuerte: 10+ caracteres, mayúscula, minúscula, número y símbolo." });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -69,7 +77,7 @@ function ResetPasswordPageInner() {
         } else if (code.includes("INVALID_OOB_CODE")) {
           setStatus({ type: 'error', msg: "El enlace ya fue usado o es inválido. Solicita uno nuevo." });
         } else if (code.includes("WEAK_PASSWORD")) {
-          setStatus({ type: 'error', msg: "La contraseña es muy débil. Usa una contraseña fuerte con 8+ caracteres, mayúscula, minúscula, número y símbolo." });
+          setStatus({ type: 'error', msg: "La contraseña es muy débil. Usa una contraseña fuerte con 10+ caracteres, mayúscula, minúscula, número y símbolo." });
         } else {
           setStatus({ type: 'error', msg: `Error (${code}). Solicita un nuevo enlace.` });
         }
@@ -116,6 +124,25 @@ function ResetPasswordPageInner() {
               {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
             </button>
           </div>
+
+          {/* Indicador de fortaleza en tiempo real */}
+          {newPassword.length > 0 ? (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 px-2 py-3 bg-[#F7F9F4] rounded-2xl border border-[#E0EDE0]">
+              {getPasswordCriteria(newPassword).map(({ label, met }) => (
+                <div key={label} className={`flex items-center gap-2 text-[11px] font-medium transition-colors ${met ? 'text-[#0D601E]' : 'text-gray-400'}`}>
+                  <span className={`flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${met ? 'bg-[#0D601E] text-white' : 'bg-gray-200 text-gray-400'}`}>
+                    {met ? '✓' : '·'}
+                  </span>
+                  {label}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[11px] text-[#769C7B] font-medium px-2 leading-relaxed">
+              La nueva contraseña debe tener al menos 10 caracteres, una mayúscula, una minúscula, un número y un símbolo.
+            </p>
+          )}
+
           <div className="relative">
             <FiLock className="absolute left-5 top-1/2 -translate-y-1/2 text-[#769C7B]" />
             <input
@@ -137,14 +164,11 @@ function ResetPasswordPageInner() {
 
           <button
             onClick={handleReset}
-            className="w-full bg-[#0D601E] text-white py-4 rounded-full font-bold text-xs uppercase tracking-widest shadow-lg transition-all active:scale-95"
+            disabled={!isStrongPassword(newPassword) || newPassword !== confirmPassword}
+            className="w-full bg-[#0D601E] text-white py-4 rounded-full font-bold text-xs uppercase tracking-widest shadow-lg transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Actualizar contraseña
           </button>
-
-          <p className="text-[11px] text-[#769C7B] font-medium px-2 leading-relaxed">
-            La nueva contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.
-          </p>
 
           {status.type && (
             <div className={`flex items-center justify-center gap-2 text-[11px] font-bold uppercase mt-4 ${status.type === 'error' ? "text-[#F00808]" : "text-[#0D601E]"}`}>

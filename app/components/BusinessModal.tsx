@@ -1692,31 +1692,59 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                           {nombreError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{nombreError}</p>}
                         </div>
                         <div className="relative pb-2">
-                          <select
-                            className={inputClass + " appearance-none cursor-pointer pr-10" + (categoriaError ? " border-red-500 bg-red-50/50" : "")}
-                            value={form.categoria}
-                            onChange={e => {
-                              setForm((f: FormState) => ({ ...f, categoria: e.target.value, subcategorias: [], solicitaRevisionAdmin: false, justificacionAdmin: "" }));
-                              if (!e.target.value.trim()) setCategoriaError("Selecciona una categoría");
-                              else setCategoriaError("");
-                            }}
-                            onBlur={e => {
-                              if (!e.target.value.trim()) setCategoriaError("Selecciona una categoría");
-                              else setCategoriaError("");
-                            }}
-                          >
-                            <option value="" disabled>Selecciona una categoría</option>
-                            <option value="Restaurante / Cafetería">Restaurante / Cafetería</option>
-                            <option value="Artesanías / Souvenirs">Artesanías / Souvenirs</option>
-                            <option value="Clubs / Bar">Clubs / Bar</option>
-                            <option value="Casas de cambio">Casas de cambio</option>
-                            <option value="Explora más lugares">Otros</option>
-                          </select>
-                          <FiChevronDown
-                            className="absolute right-4 pointer-events-none text-[#769C7B]"
-                            style={{ top: "calc(50% - 4px)", transform: "translateY(-50%)" }}
-                            size={18}
-                          />
+                          {/* Auto-detect if business is futbol, cultura, or eventos */}
+                          {(() => {
+                            const nombre = form.nombre.toLowerCase().trim();
+                            const isFutbol = nombre.includes('futbol') || nombre.includes('fútbol') || nombre.includes('soccer') || nombre.includes('cancha') || nombre.includes('estadio');
+                            const isCultura = nombre.includes('museo') || nombre.includes('galería') || nombre.includes('galeria') || nombre.includes('teatro') || nombre.includes('cultural') || nombre.includes('arte');
+                            const isEventos = nombre.includes('evento') || nombre.includes('concierto') || nombre.includes('festival') || nombre.includes('espectaculo') || nombre.includes('espectáculo');
+                            
+                            const shouldDisable = isFutbol || isCultura || isEventos;
+                            
+                            // Auto-enable admin review if detected
+                            if (shouldDisable && !form.solicitaRevisionAdmin) {
+                              setForm((f: FormState) => ({ ...f, solicitaRevisionAdmin: true }));
+                            }
+                            
+                            return (
+                              <>
+                                <select
+                                  className={inputClass + " appearance-none cursor-pointer pr-10" + (categoriaError ? " border-red-500 bg-red-50/50" : "") + (shouldDisable ? " opacity-60 bg-gray-50 cursor-not-allowed" : "")}
+                                  value={form.categoria}
+                                  disabled={shouldDisable}
+                                  onChange={e => {
+                                    setForm((f: FormState) => ({ ...f, categoria: e.target.value, subcategorias: [], solicitaRevisionAdmin: false, justificacionAdmin: "" }));
+                                    if (!e.target.value.trim()) setCategoriaError("Selecciona una categoría");
+                                    else setCategoriaError("");
+                                  }}
+                                  onBlur={e => {
+                                    if (!e.target.value.trim()) setCategoriaError("Selecciona una categoría");
+                                    else setCategoriaError("");
+                                  }}
+                                >
+                                  <option value="" disabled>Selecciona una categoría</option>
+                                  <option value="Restaurante / Cafetería">Restaurante / Cafetería</option>
+                                  <option value="Artesanías / Souvenirs">Artesanías / Souvenirs</option>
+                                  <option value="Clubs / Bar">Clubs / Bar</option>
+                                  <option value="Casas de cambio">Casas de cambio</option>
+                                  <option value="Explora más lugares">Otros</option>
+                                </select>
+                                {shouldDisable && (
+                                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                    <span className="text-xs text-green-600 font-semibold">Auto detectado</span>
+                                    <FiCheckCircle className="text-green-600" size={16} />
+                                  </div>
+                                )}
+                                {!shouldDisable && (
+                                  <FiChevronDown
+                                    className="absolute right-4 pointer-events-none text-[#769C7B]"
+                                    style={{ top: "calc(50% - 4px)", transform: "translateY(-50%)" }}
+                                    size={18}
+                                  />
+                                )}
+                              </>
+                            );
+                          })()}
                           {categoriaError && <p className="text-[9px] text-red-500 mt-0.5 ml-4 italic">{categoriaError}</p>}
                         </div>
 

@@ -104,11 +104,19 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   }, [defaultLogin, isOpen]);
 
   const isStrongPassword = (value: string) =>
-    value.length >= 8 &&
+    value.length >= 10 &&
     /[a-z]/.test(value) &&
     /[A-Z]/.test(value) &&
     /[0-9]/.test(value) &&
     /[^A-Za-z0-9]/.test(value);
+
+  const getPasswordCriteria = (value: string) => [
+    { label: "10+ caracteres", met: value.length >= 10 },
+    { label: "Mayúscula (A-Z)", met: /[A-Z]/.test(value) },
+    { label: "Minúscula (a-z)", met: /[a-z]/.test(value) },
+    { label: "Número (0-9)", met: /[0-9]/.test(value) },
+    { label: "Símbolo (!@#$...)", met: /[^A-Za-z0-9]/.test(value) },
+  ];
 
 
   const handleRegister = async () => {
@@ -120,7 +128,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     if (!nacionalidad) newErrors.nacionalidad = true;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(regEmail)) newErrors.email = t('invalidEmail');
-    if (!isStrongPassword(regPassword)) newErrors.password = 'Usa una contraseña fuerte: 8+ caracteres, mayúscula, minúscula, número y símbolo.';
+    if (!isStrongPassword(regPassword)) newErrors.password = 'Usa una contraseña fuerte: 10+ caracteres, mayúscula, minúscula, número y símbolo.';
     if (regPassword !== regConfirmPassword) newErrors.confirmPassword = t('passwordsNotMatch');
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
 
@@ -628,9 +636,24 @@ if (!isOpen) return null;
                 {errors.password && <ErrorMsg text={errors.password} />}
               </div>
             </div>
-            <p className="-mt-2 text-[11px] text-[#769C7B] px-1">
-              Debe tener al menos 8 caracteres, con mayúscula, minúscula, número y símbolo.
-            </p>
+            {/* Indicador de fortaleza en tiempo real */}
+            {regPassword.length > 0 && (
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1 px-1">
+                {getPasswordCriteria(regPassword).map(({ label, met }) => (
+                  <div key={label} className={`flex items-center gap-1.5 text-[10px] font-medium transition-colors ${met ? 'text-[#0D601E]' : 'text-gray-400'}`}>
+                    <span className={`flex-shrink-0 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-black ${met ? 'bg-[#0D601E] text-white' : 'bg-gray-200 text-gray-400'}`}>
+                      {met ? '✓' : '·'}
+                    </span>
+                    {label}
+                  </div>
+                ))}
+              </div>
+            )}
+            {regPassword.length === 0 && (
+              <p className="-mt-2 text-[11px] text-[#769C7B] px-1">
+                Debe tener al menos 10 caracteres, con mayúscula, minúscula, número y símbolo.
+              </p>
+            )}
 
             {/* Fila 5: Confirmar Contraseña */}
             <div className="relative">
