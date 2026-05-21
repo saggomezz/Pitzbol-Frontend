@@ -32,7 +32,6 @@ export const TAXONOMY: Category[] = [
     subs: [
       { id: 'mexicana',      label: 'Mexicana',           keywords: ['mexicana', 'birria', 'torta', 'tacos', 'pozole'] },
       { id: 'cafeterias',    label: 'Cafeterías',          keywords: ['cafeteria', 'cafe', 'brunch'] },
-      { id: 'internacional', label: 'Internacional',        keywords: ['gastronomia', 'bistro', 'americana'] },
       { id: 'postres',       label: 'Postres & Dulces',    keywords: ['postre', 'nieves', 'dulces', 'churros'] },
       { id: 'vegana',        label: 'Vegana',              keywords: ['vegana', 'vegetariana'] },
       { id: 'callejera',     label: 'Comida de calle',     keywords: ['comida calle', 'lonche', 'fonda'] },
