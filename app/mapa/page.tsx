@@ -35,7 +35,6 @@
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import Papa from "papaparse";
 import { 
     FiMapPin, 
     FiSearch, 
@@ -66,6 +65,7 @@ import styles from "./mapa.module.css";
 import { getPlaceImageUrlSync, getPlaceImageByCategory } from "@/lib/placeImages";
 import { useFavoritesSync } from "@/lib/favoritesApi";
 import PlaceRating from "@/app/components/PlaceRating";
+import { getMergedPlaces } from "@/lib/placesApi";
 
 interface Lugar {
     nombre: string;
@@ -77,6 +77,7 @@ interface Lugar {
     latitud?: string;
     longitud?: string;
     views?: number;
+    fotos?: string[];
 }
 
 // Componente de carrusel de imágenes para el info box
@@ -343,11 +344,9 @@ export default function MapaPage() {
 
     useEffect(() => {
         const loadInitialData = async () => {
-            // Cargar favoritos sincronizados solo si está autenticado
+            // Favoritos
             try {
-                if (isAuthenticated()) {
-                    await syncLocalFavorites();
-                }
+                if (isAuthenticated()) await syncLocalFavorites();
                 const favs = await getFavorites();
                 setFavorites(favs);
             } catch (error) {
@@ -360,185 +359,58 @@ export default function MapaPage() {
             }
         };
         
-        loadInitialData();
+        // Usar getMergedPlaces() — igual que gastronomia/futbol/cultura
+        // Consolida CSV + Firestore y normaliza fotos (fotos, images, galeria)
+        const loadPlaces = async () => {
+            try {
+                const mergedPlaces = await getMergedPlaces();
+                const normalizedPlaces: Lugar[] = mergedPlaces.map((place) => ({
+                    nombre: place.nombre,
+                    categoria: place.categoria || place.rawCategoria || "Cultura",
+                    categorias: place.rawCategoria
+                        ? place.rawCategoria.split(",").map((c) => c.trim()).filter(Boolean)
+                        : [place.categoria || "Cultura"],
+                    descripcion: place.descripcion || "",
+                    ubicacion: place.ubicacion || "",
+                    latitud: place.latitud || "",
+                    longitud: place.longitud || "",
+                    views: typeof place.views === "number" ? place.views : 0,
+                    fotos: Array.isArray(place.fotos) ? place.fotos.filter(Boolean) : [],
+                }));
 
-        fetch("/datosLugares.csv")
-            .then((response) => response.text())
-            .then((csvText) => {
-                Papa.parse(csvText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    dynamicTyping: false, // Mantener todo como string
-                    complete: (results) => {
-                        console.log("📊 CSV parseado - Total filas:", results.data.length);
-                        
-                        const data = results.data.filter((row: any) => {
-                            const tieneNombre = row && row["Nombre del Lugar"] && String(row["Nombre del Lugar"]).trim() !== "";
-                            if (!tieneNombre && row) {
-                                console.warn("⚠️ Fila sin nombre válido:", row);
-                            }
-                            return tieneNombre;
+                const initialImages: Record<string, string> = {};
+                const fotosMap: Record<string, string[]> = {};
+
+                normalizedPlaces.forEach((lugar) => {
+                    const photos = lugar.fotos || [];
+                    if (photos.length > 0) {
+                        fotosMap[lugar.nombre] = photos;
+                        initialImages[lugar.nombre] = photos[0];
+                    } else {
+                        initialImages[lugar.nombre] = getPlaceImageUrlSync({
+                            nombre: lugar.nombre,
+                            categoria: lugar.categoria,
+                            ubicacion: lugar.ubicacion,
+                            latitud: lugar.latitud,
+                            longitud: lugar.longitud,
                         });
-                        
-                        console.log("📊 Filas con nombre válido:", data.length);
-
-                        const parsed: Lugar[] = data.map((row: any) => {
-                            const nombre = String(row["Nombre del Lugar"] || "").trim();
-                            const categoriaRaw = String(row["Categoría"] || "").trim();
-                            const categorias = categoriaRaw
-                                .split(",")
-                                .map((c) => c.trim())
-                                .filter(Boolean);
-
-                            return {
-                                nombre,
-                                categoria: categorias[0] || categoriaRaw || "Cultura",
-                                categorias,
-                                descripcion: String(row["Nota para IA"] || row["Subcategoría"] || "").trim(),
-                                ubicacion: String(row["Dirección"] || "").trim(),
-                                latitud: String(row["Latitud"] || "").replace(",", ".").trim(),
-                                longitud: String(row["Longitud"] || "").replace(",", ".").trim(),
-                                views: Number(String(row["Views"] || row["Vistas"] || "0").replace(",", ".").trim()) || 0,
-                            };
-                        }).filter(lugar => lugar.nombre !== ""); // Filtrar lugares vacíos
-                        
-                        console.log("✅ Lugares parseados:", parsed.length);
-                        console.log("📋 Primeros 3 lugares:", parsed.slice(0, 3));
-                        
-                        // Generar imágenes iniciales (por categoría como fallback)
-                        const initialImages: Record<string, string> = {};
-                        parsed.forEach((lugar: Lugar) => {
-                            initialImages[lugar.nombre] = getPlaceImageUrlSync({
-                                nombre: lugar.nombre,
-                                categoria: lugar.categoria,
-                                ubicacion: lugar.ubicacion,
-                                latitud: lugar.latitud,
-                                longitud: lugar.longitud
-                            });
-                        });
-                        setPlaceImages(initialImages);
-                        
-                        // Guardar lugares del CSV temporalmente
-                        const lugaresCSV = parsed;
-                        
-                        // Establecer lugares iniciales del CSV para que se muestren aunque falle el API
-                        const lugaresInicialesConViews = lugaresCSV.map((lugar) => ({
-                            ...lugar,
-                            views: typeof lugar.views === 'number' ? lugar.views : 0,
-                        }));
-                        setLugares(lugaresInicialesConViews);
-                        setFilteredLugares(lugaresInicialesConViews);
-                        console.log(`📊 Lugares iniciales establecidos desde CSV: ${lugaresInicialesConViews.length}`);
-                        
-                        // Buscar lugares y fotos guardadas en Firestore (lugares creados manualmente + fotos)
-                        fetch(`/api/lugares?includeApprovedBusinesses=true`)
-                            .then(response => {
-                                if (response.ok) {
-                                    return response.json();
-                                }
-                                return { lugares: [] };
-                            })
-                            .then(data => {
-                                const lugaresFirestore = data.lugares || [];
-                                const viewsByName: Record<string, number> = {};
-
-                                lugaresFirestore.forEach((lugarFirestore: any) => {
-                                    const nombre = String(lugarFirestore?.nombre || '').trim();
-                                    if (!nombre) return;
-                                    const rawViews = Number(String(lugarFirestore?.views ?? '').replace(',', '.').trim());
-                                    if (Number.isFinite(rawViews) && rawViews >= 0) {
-                                        viewsByName[nombre] = rawViews;
-                                    }
-                                });
-                                
-                                // Crear un mapa de nombres del CSV para verificar duplicados
-                                const nombresCSV = new Set(lugaresCSV.map(l => l.nombre));
-                                
-                                // Agregar lugares de Firestore que NO están en el CSV (lugares creados manualmente)
-                                lugaresFirestore.forEach((lugarFirestore: any) => {
-                                    if (lugarFirestore.nombre && !nombresCSV.has(lugarFirestore.nombre)) {
-                                        // Este es un lugar creado manualmente, agregarlo
-                                        const categoriaFirestore = String(lugarFirestore.categoria || "Cultura").trim();
-                                        const categoriasFirestore = categoriaFirestore
-                                            .split(",")
-                                            .map((c) => c.trim())
-                                            .filter(Boolean);
-
-                                        lugaresCSV.push({
-                                            nombre: lugarFirestore.nombre,
-                                            categoria: categoriasFirestore[0] || categoriaFirestore || 'Cultura',
-                                            categorias: categoriasFirestore,
-                                            descripcion: lugarFirestore.descripcion || '',
-                                            ubicacion: lugarFirestore.ubicacion || '',
-                                            latitud: lugarFirestore.latitud || '',
-                                            longitud: lugarFirestore.longitud || '',
-                                            views: Number(String(lugarFirestore?.views ?? '0').replace(',', '.').trim()) || 0,
-                                        });
-                                        console.log(`✅ Lugar creado manualmente agregado: ${lugarFirestore.nombre}`);
-                                    }
-                                });
-
-                                // Priorizar vistas reales de Firestore para cualquier lugar existente
-                                const lugaresConViews = lugaresCSV.map((lugar) => ({
-                                    ...lugar,
-                                    views: viewsByName[lugar.nombre] ?? (typeof lugar.views === 'number' ? lugar.views : 0),
-                                }));
-                                
-                                console.log(`📊 Total lugares actualizados: ${lugaresCSV.length} (${parsed.length} del CSV + ${lugaresCSV.length - parsed.length} creados manualmente)`);
-                                
-                                // Actualizar con los datos completos de Firestore
-                                setLugares(lugaresConViews);
-                                setFilteredLugares(lugaresConViews);
-                                
-                                // Crear mapas de fotos y vistas por nombre
-                                const fotosMap: Record<string, string[]> = {};
-                                const viewsMap: Record<string, number> = {};
-                                lugaresFirestore.forEach((lugar: any) => {
-                                    if (lugar.nombre && lugar.fotos && lugar.fotos.length > 0) {
-                                        fotosMap[lugar.nombre] = lugar.fotos;
-                                    }
-                                    if (lugar.nombre && lugar.views) {
-                                        viewsMap[lugar.nombre] = Number(lugar.views) || 0;
-                                    }
-                                });
-
-                                // Añadir vistas a cada lugar
-                                lugaresCSV.forEach((l: Lugar) => {
-                                    if (viewsMap[l.nombre] !== undefined) {
-                                        l.views = viewsMap[l.nombre];
-                                    }
-                                });
-                                
-                                // Guardar todas las fotos para el carrusel
-                                setPlaceAllPhotos(fotosMap);
-                                
-                                // Actualizar imágenes con fotos guardadas (primera foto para compatibilidad)
-                                if (Object.keys(fotosMap).length > 0) {
-                                    const updatedImages = { ...initialImages };
-                                    Object.keys(fotosMap).forEach(nombre => {
-                                        if (fotosMap[nombre] && fotosMap[nombre].length > 0) {
-                                            updatedImages[nombre] = fotosMap[nombre][0]; // Usar la primera foto
-                                            console.log(`✅ ${fotosMap[nombre].length} foto(s) guardada(s) para: ${nombre}`);
-                                        }
-                                    });
-                                    setPlaceImages(updatedImages);
-                                }
-                            })
-                            .catch(error => {
-                                console.error("Error obteniendo fotos guardadas:", error);
-                                // Los lugares ya están establecidos desde el CSV, continuar
-                            })
-                            .finally(() => {
-                                setLoading(false);
-                            });
-                    },
+                    }
                 });
-            })
-            .catch((error) => {
-                console.error("Error loading CSV:", error);
+
+                setLugares(normalizedPlaces);
+                setFilteredLugares(normalizedPlaces);
+                setPlaceImages(initialImages);
+                setPlaceAllPhotos(fotosMap);
+            } catch (error) {
+                console.error("Error cargando lugares del mapa:", error);
+            } finally {
                 setLoading(false);
-            });
-    }, []);
+            }
+        };
+
+        loadInitialData();
+        loadPlaces();
+    }, [getFavorites, isAuthenticated, syncLocalFavorites]);
 
     useEffect(() => {
         let filtered = lugares;
