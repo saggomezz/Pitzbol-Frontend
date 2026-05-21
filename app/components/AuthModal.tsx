@@ -100,17 +100,50 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   const [loginErrors, setLoginErrors] = useState<{ email?: string; password?: string; general?: string }>({});
   const [loginSubmitting, setLoginSubmitting] = useState(false);
 
-  // Limpiar el error general del login en cuanto el usuario edita algún campo
+  // Revalidación inline del email del login en tiempo real
   useEffect(() => {
-    if (loginErrors.general) {
-      setLoginErrors(prev => ({ ...prev, general: undefined }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loginEmail, loginPassword]);
+    setLoginErrors(prev => {
+      if (!prev.email && !prev.general) return prev;
+      const next = { ...prev };
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      // Limpiar error de email si ahora es válido
+      if (prev.email && loginEmail.trim() && emailRegex.test(loginEmail.trim())) {
+        next.email = undefined;
+      }
+      // Limpiar el error general (credenciales / servidor) en cuanto el usuario corrige
+      if (prev.general) next.general = undefined;
+      return next;
+    });
+  }, [loginEmail]);
 
-  // Limpiar el error general del registro cuando el usuario edita un campo
+  // Revalidación inline de la contraseña del login en tiempo real
+  useEffect(() => {
+    setLoginErrors(prev => {
+      if (!prev.password && !prev.general) return prev;
+      const next = { ...prev };
+      if (prev.password && loginPassword.length > 0) {
+        next.password = undefined;
+      }
+      if (prev.general) next.general = undefined;
+      return next;
+    });
+  }, [loginPassword]);
+
+  // Limpiar errores específicos del registro cuando el usuario corrige el campo
   useEffect(() => {
     if (generalError) setGeneralError("");
+    setErrors((prev: any) => {
+      if (!prev || Object.keys(prev).length === 0) return prev;
+      const next = { ...prev };
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (next.nombre && regNombre.trim()) delete next.nombre;
+      if (next.apellido && regApellido.trim()) delete next.apellido;
+      if (next.nacionalidad && nacionalidad) delete next.nacionalidad;
+      if (next.email && regEmail.trim() && emailRegex.test(regEmail.trim())) delete next.email;
+      if (next.password && isStrongPassword(regPassword)) delete next.password;
+      if (next.confirmPassword && regPassword === regConfirmPassword && regConfirmPassword.length > 0) delete next.confirmPassword;
+      return next;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [regEmail, regPassword, regConfirmPassword, regNombre, regApellido, nacionalidad]);
 
@@ -603,6 +636,7 @@ if (!isOpen) return null;
         {/* --- LADO IZQUIERDO: INICIAR SESIÓN --- */}
         <form 
           onSubmit={(e) => { e.preventDefault(); handleLogin(); }}
+          noValidate
           className={`w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white transition-opacity duration-300 ${!isLogin && typeof window !== 'undefined' && window.innerWidth < 768 ? 'hidden opacity-0' : 'flex opacity-100'}`}
         >
           <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-8 font-black text-center" style={{ fontFamily: 'var(--font-jockey)' }}>
@@ -612,7 +646,9 @@ if (!isOpen) return null;
             <div className="relative text-left">
               <FiMail color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
               <input
-                type="email"
+                type="text"
+                inputMode="email"
+                autoComplete="email"
                 placeholder={t('email')}
                 className={`${inputClass} pl-14 ${loginErrors.email ? 'border-red-500 bg-red-50' : ''}`}
                 value={loginEmail}
@@ -681,6 +717,7 @@ if (!isOpen) return null;
         {/* --- LADO DERECHO: CREAR CUENTA --- */}
         <form
           onSubmit={(e) => { e.preventDefault(); showVerification ? handleVerifyCode() : handleRegister(); }}
+          noValidate
           className={`w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white border-l border-gray-100 overflow-y-auto transition-opacity duration-300 ${isLogin && typeof window !== 'undefined' && window.innerWidth < 768 ? 'hidden opacity-0' : 'flex opacity-100'}`}
         >
           <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-6 font-black text-center uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>
