@@ -644,8 +644,15 @@ const AdminNegociosPage = () => {
               cargarNegocios();
             } catch (e: any) {
               const status = e?.status;
+              const isAuth = status === 401 || status === 403;
               const isTimeout = status === 504 || /tiempo de espera|timeout/i.test(String(e?.message || ""));
               const detail = e?.message ? `\n\n${e.message}` : "";
+              if (isAuth) {
+                alert("Tu sesión expiró. Vuelve a iniciar sesión para continuar.");
+                try { localStorage.removeItem("pitzbol_token"); } catch { /* ignore */ }
+                window.location.href = "/login?next=" + encodeURIComponent(window.location.pathname);
+                return;
+              }
               alert(
                 isTimeout
                   ? `La operación tardó demasiado en el servidor. El negocio puede haberse archivado igualmente; recarga para verificar.${detail}`
