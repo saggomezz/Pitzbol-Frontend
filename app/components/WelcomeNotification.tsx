@@ -38,24 +38,26 @@ export default function WelcomeNotification({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.95 }}
           transition={{ duration: 0.4, type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50"
+          className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100vw-1.5rem)] max-w-md px-0"
+          role="status"
+          aria-live="polite"
         >
-          <div className="relative bg-gradient-to-r from-[#0D601E] to-[#0a4620] rounded-xl shadow-2xl overflow-hidden border-2 border-green-400 max-w-md">
+          <div className="relative bg-gradient-to-r from-[#0D601E] to-[#0a4620] rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border-2 border-green-400 w-full">
             {/* Efecto de fondo animado */}
-            <div className="absolute inset-0 opacity-20">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-green-400 rounded-full blur-3xl transform translate-x-1/3 -translate-y-1/3"></div>
+            <div className="absolute inset-0 opacity-20 pointer-events-none">
+              <div className="absolute top-0 right-0 w-32 h-32 sm:w-40 sm:h-40 bg-green-400 rounded-full blur-3xl transform translate-x-1/3 -translate-y-1/3"></div>
             </div>
 
             {/* Contenido */}
-            <div className="relative p-6 flex items-center gap-4">
+            <div className="relative p-3 sm:p-5 md:p-6 flex items-center gap-3 sm:gap-4">
               {/* Icono de éxito */}
               <motion.div
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
-                className="flex-shrink-0 w-12 h-12 bg-green-400 rounded-full flex items-center justify-center"
+                className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-green-400 rounded-full flex items-center justify-center"
               >
-                <FiCheck size={24} className="text-[#0D601E] font-bold" />
+                <FiCheck className="text-[#0D601E] font-bold w-5 h-5 sm:w-6 sm:h-6" />
               </motion.div>
 
               {/* Texto */}
@@ -63,12 +65,12 @@ export default function WelcomeNotification({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
-                className="flex-1"
+                className="flex-1 min-w-0"
               >
-                <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-jockey)' }}>
+                <h3 className="text-sm sm:text-base md:text-lg font-bold text-white leading-tight" style={{ fontFamily: 'var(--font-jockey)' }}>
                   {isNew ? "¡Bienvenido!" : "¡Bienvenido de nuevo!"}
                 </h3>
-                <p className="text-green-100 text-sm">
+                <p className="text-green-100 text-[11px] sm:text-xs md:text-sm leading-snug mt-0.5 break-words">
                   {isNew ? (
                     <>Tu cuenta ha sido creada exitosamente, <span className="font-semibold">{userName}</span></>
                   ) : (
@@ -86,9 +88,10 @@ export default function WelcomeNotification({
                   setShow(false);
                   onClose();
                 }}
-                className="flex-shrink-0 p-2 text-green-100 hover:text-white hover:bg-[#0a4620] rounded-lg transition-colors"
+                aria-label="Cerrar notificación"
+                className="flex-shrink-0 p-1.5 sm:p-2 text-green-100 hover:text-white hover:bg-[#0a4620] rounded-lg transition-colors"
               >
-                <FiX size={20} />
+                <FiX className="w-4 h-4 sm:w-5 sm:h-5" />
               </motion.button>
             </div>
 

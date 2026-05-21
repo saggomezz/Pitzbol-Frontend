@@ -479,6 +479,21 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     }
   }, [isOpen]);
 
+  // Detectar categoría especial (Fútbol/Cultura/Eventos) desde el nombre — limpiar selector y activar revisión
+  useEffect(() => {
+    const nombreLower = form.nombre.toLowerCase().trim();
+    const isSpecial =
+      nombreLower.includes('futbol') || nombreLower.includes('fútbol') ||
+      nombreLower.includes('soccer') || nombreLower.includes('cancha') || nombreLower.includes('estadio') ||
+      nombreLower.includes('museo') || nombreLower.includes('galería') || nombreLower.includes('galeria') ||
+      nombreLower.includes('teatro') || nombreLower.includes('cultural') || nombreLower.includes('arte') ||
+      nombreLower.includes('evento') || nombreLower.includes('concierto') || nombreLower.includes('festival') ||
+      nombreLower.includes('espectaculo') || nombreLower.includes('espectáculo');
+    if (isSpecial) {
+      setForm(f => ({ ...f, categoria: "", solicitaRevisionAdmin: true }));
+    }
+  }, [form.nombre]);
+
   // Permite cerrar con Escape: primero el submodal de horario y luego el modal principal.
   useEffect(() => {
     if (!isOpen) return;
@@ -1147,8 +1162,16 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       hasErrors = true;
     }
 
-    // Validar categoría
-    if (!form.categoria.trim()) {
+    // Validar categoría (omitir si el nombre indica categoría especial gestionada por Pitzbol)
+    const _nombreLower = form.nombre.toLowerCase().trim();
+    const _isSpecialCategory =
+      _nombreLower.includes('futbol') || _nombreLower.includes('fútbol') ||
+      _nombreLower.includes('soccer') || _nombreLower.includes('cancha') || _nombreLower.includes('estadio') ||
+      _nombreLower.includes('museo') || _nombreLower.includes('galería') || _nombreLower.includes('galeria') ||
+      _nombreLower.includes('teatro') || _nombreLower.includes('cultural') || _nombreLower.includes('arte') ||
+      _nombreLower.includes('evento') || _nombreLower.includes('concierto') || _nombreLower.includes('festival') ||
+      _nombreLower.includes('espectaculo') || _nombreLower.includes('espectáculo');
+    if (!_isSpecialCategory && !form.categoria.trim()) {
       setCategoriaError("Debes seleccionar una categoría");
       hasErrors = true;
     }
@@ -1700,11 +1723,6 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             const isEventos = nombre.includes('evento') || nombre.includes('concierto') || nombre.includes('festival') || nombre.includes('espectaculo') || nombre.includes('espectáculo');
                             
                             const shouldDisable = isFutbol || isCultura || isEventos;
-                            
-                            // Auto-enable admin review if detected
-                            if (shouldDisable && !form.solicitaRevisionAdmin) {
-                              setForm((f: FormState) => ({ ...f, solicitaRevisionAdmin: true }));
-                            }
                             
                             return (
                               <>

@@ -79,6 +79,9 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<any>({});
   const [generalError, setGeneralError] = useState("");
+  const [showLoginSuccess, setShowLoginSuccess] = useState(false);
+  const [successUserName, setSuccessUserName] = useState("");
+  const [isNewAccount, setIsNewAccount] = useState(false);
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
   // Verificación de email
@@ -94,6 +97,55 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [loginErrors, setLoginErrors] = useState<{ email?: string; password?: string; general?: string }>({});
+  const [loginSubmitting, setLoginSubmitting] = useState(false);
+
+  // Revalidación inline del email del login en tiempo real
+  useEffect(() => {
+    setLoginErrors(prev => {
+      if (!prev.email && !prev.general) return prev;
+      const next = { ...prev };
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      // Limpiar error de email si ahora es válido
+      if (prev.email && loginEmail.trim() && emailRegex.test(loginEmail.trim())) {
+        next.email = undefined;
+      }
+      // Limpiar el error general (credenciales / servidor) en cuanto el usuario corrige
+      if (prev.general) next.general = undefined;
+      return next;
+    });
+  }, [loginEmail]);
+
+  // Revalidación inline de la contraseña del login en tiempo real
+  useEffect(() => {
+    setLoginErrors(prev => {
+      if (!prev.password && !prev.general) return prev;
+      const next = { ...prev };
+      if (prev.password && loginPassword.length > 0) {
+        next.password = undefined;
+      }
+      if (prev.general) next.general = undefined;
+      return next;
+    });
+  }, [loginPassword]);
+
+  // Limpiar errores específicos del registro cuando el usuario corrige el campo
+  useEffect(() => {
+    if (generalError) setGeneralError("");
+    setErrors((prev: any) => {
+      if (!prev || Object.keys(prev).length === 0) return prev;
+      const next = { ...prev };
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (next.nombre && regNombre.trim()) delete next.nombre;
+      if (next.apellido && regApellido.trim()) delete next.apellido;
+      if (next.nacionalidad && nacionalidad) delete next.nacionalidad;
+      if (next.email && regEmail.trim() && emailRegex.test(regEmail.trim())) delete next.email;
+      if (next.password && isStrongPassword(regPassword)) delete next.password;
+      if (next.confirmPassword && regPassword === regConfirmPassword && regConfirmPassword.length > 0) delete next.confirmPassword;
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regEmail, regPassword, regConfirmPassword, regNombre, regApellido, nacionalidad]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -215,11 +267,13 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   const doActualRegister = async () => {
     try {
       if (!regEmail || !regPassword || !regNombre) {
-        alert("Por favor completa los campos obligatorios");
+        setGeneralError("Por favor completa los campos obligatorios.");
+        setShowVerification(false);
         return;
       }
       if (regPassword !== regConfirmPassword) {
-        alert("Las contraseñas no coinciden.");
+        setGeneralError("Las contraseñas no coinciden.");
+        setShowVerification(false);
         return;
       }
       // Paso 1: Registrar en el backend directamente
@@ -242,7 +296,12 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        alert("Error: " + (data?.msg || "Error al registrar"));
+        const msg = data?.msg || data?.message || data?.error;
+        if (response.status === 409 || /existe|already|registrad/i.test(String(msg))) {
+          setErrors((prev: any) => ({ ...prev, email: msg || "Este correo ya está registrado." }));
+        }
+        setGeneralError(msg || "No se pudo completar el registro. Intenta de nuevo.");
+        setShowVerification(false);
         return;
       }
 
@@ -256,8 +315,8 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
       const loginData = await loginRes.json().catch(() => ({}));
 
       if (!loginRes.ok) {
-        alert("Registro completado, pero fallo al iniciar sesión.");
-        onClose();
+        setGeneralError(loginData?.msg || "Registro completado, pero fallo al iniciar sesión. Inicia sesión manualmente.");
+        setShowVerification(false);
         return;
       }
 
@@ -295,26 +354,50 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
       window.dispatchEvent(new Event("storage"));
 
       // Redirección según rol deseado
+      const registeredName = loginData.user?.nombre || regNombre;
       if (intendedRole === "guia") {
-        alert("Cuenta creada. Ahora completa tu información para ser guía.");
         onClose();
         window.onAuthSuccessShowGuide?.();
       } else if (intendedRole === "negocio") {
-        alert("Cuenta creada. Ahora completa tu información de negocio.");
         onClose();
         window.onAuthSuccessShowBusiness?.();
       } else {
+        // Mostrar pantalla de bienvenida y redirigir tras 2 segundos
+        setSuccessUserName(loginData.user?.nombre || regNombre);
+        setIsNewAccount(true);
+        setShowLoginSuccess(true);
         sessionStorage.setItem("justRegistered", "true");
-        onClose();
-        window.location.href = redirectTo || "/";
+        setTimeout(() => {
+          onClose();
+          window.location.href = redirectTo || "/";
+        }, 2200);
       }
     } catch (error: any) {
       console.error("Register error:", error);
-      alert("Error de conexión con el servidor.");
+      setGeneralError("Error de conexión con el servidor. Verifica tu conexión e intenta de nuevo.");
+      setShowVerification(false);
     }
   };
   
   const handleLogin = async () => {
+    // Validación local en tiempo real antes de pegarle al backend
+    const nextErrors: { email?: string; password?: string; general?: string } = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!loginEmail.trim()) {
+      nextErrors.email = "Ingresa tu correo electrónico.";
+    } else if (!emailRegex.test(loginEmail.trim())) {
+      nextErrors.email = "El correo no tiene un formato válido.";
+    }
+    if (!loginPassword) {
+      nextErrors.password = "Ingresa tu contraseña.";
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setLoginErrors(nextErrors);
+      return;
+    }
+
+    setLoginErrors({});
+    setLoginSubmitting(true);
     try {
       // Autenticar directamente contra el backend
       const response = await fetch(`${BACKEND_URL}/login`, {
@@ -348,7 +431,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         }
       } catch (parseError) {
         console.error("❌ Error al parsear respuesta:", parseError);
-        alert("El servidor no está respondiendo correctamente. Por favor, verifica que el servidor esté corriendo.");
+        setLoginErrors({ general: "El servidor no está respondiendo correctamente. Verifica tu conexión e intenta de nuevo." });
         return;
       }
       
@@ -394,16 +477,23 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         // Flag para mostrar notificación de bienvenida en la página principal
         sessionStorage.setItem("justLoggedIn", "true");
 
+        // Mostrar pantalla de bienvenida dentro del modal
+        setSuccessUserName(data.user.nombre || data.user["01_nombre"] || "Usuario");
+        setIsNewAccount(false);
+        setShowLoginSuccess(true);
+
         window.dispatchEvent(new Event("storage"));
         window.dispatchEvent(new Event("authStateChanged"));
 
-        onClose();
-
-        if (userRole === "admin" || userRole === "admins") {
-          window.location.href = "/admin";
-        } else {
-          window.location.href = redirectTo || "/";
-        }
+        // Redirigir después de mostrar la animación (2 segundos)
+        setTimeout(() => {
+          onClose();
+          if (userRole === "admin" || userRole === "admins") {
+            window.location.href = "/admin";
+          } else {
+            window.location.href = redirectTo || "/";
+          }
+        }, 2200);
 
       } else {
         // Mostrar mensaje de error específico del servidor
@@ -411,31 +501,58 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         console.error("❌ Status code:", response.status);
         console.error("❌ Response headers:", Object.fromEntries(response.headers.entries()));
         
-        // Intentar diferentes campos del error
-        let errorMsg = data?.msg || data?.message || data?.error;
-        
-        // Si no hay mensaje del servidor, usar uno basado en el status code
-        if (!errorMsg) {
-          switch (response.status) {
-            case 401:
-              errorMsg = "Credenciales inválidas. Verifica tu correo y contraseña.";
-              break;
-            case 404:
-              errorMsg = "Usuario no encontrado. Verifica tu correo electrónico.";
-              break;
-            case 500:
-              errorMsg = "Error en el servidor. Por favor, intenta más tarde.";
-              break;
-            default:
-              errorMsg = `Error al iniciar sesión (código ${response.status}). Por favor, intenta de nuevo.`;
-          }
+        // Intentar diferentes campos del error provenientes del backend
+        const backendMsg: string | undefined = data?.msg || data?.message || data?.error;
+        const fieldErrors: { email?: string; password?: string; general?: string } = {};
+
+        switch (response.status) {
+          case 400:
+            // Validación del backend → suele venir lista de errores
+            if (Array.isArray(data?.errors) && data.errors.length > 0) {
+              data.errors.forEach((err: any) => {
+                const field = (err?.path || err?.param || "").toString();
+                const msg = (err?.msg || err?.message || "").toString();
+                if (field === "email") fieldErrors.email = msg || "Correo inválido.";
+                else if (field === "password") fieldErrors.password = msg || "Contraseña inválida.";
+                else fieldErrors.general = msg || backendMsg || "Datos inválidos.";
+              });
+            } else {
+              fieldErrors.general = backendMsg || "Solicitud inválida.";
+            }
+            break;
+          case 401:
+            // Credenciales incorrectas: marcar ambos campos para feedback claro
+            fieldErrors.email = " ";
+            fieldErrors.password = " ";
+            fieldErrors.general = backendMsg || "Correo o contraseña incorrectos.";
+            break;
+          case 403:
+            fieldErrors.general = backendMsg || "Esta cuenta ha sido deshabilitada.";
+            break;
+          case 404:
+            fieldErrors.email = backendMsg || "Usuario no encontrado. Verifica tu correo electrónico.";
+            break;
+          case 429:
+            fieldErrors.general = backendMsg || "Demasiados intentos. Por favor espera unos minutos e intenta de nuevo.";
+            break;
+          case 500:
+          case 502:
+          case 503:
+            fieldErrors.general = backendMsg || "Error en el servidor. Por favor, intenta más tarde.";
+            break;
+          default:
+            fieldErrors.general = backendMsg || `Error al iniciar sesión (código ${response.status}).`;
         }
-        
-        alert(errorMsg);
+
+        setLoginErrors(fieldErrors);
       }
     } catch (error: any) {
       console.error("❌ Login error completo:", error);
-      alert("Error de conexión con el servidor. Por favor, intenta de nuevo.");
+      setLoginErrors({
+        general: "No se pudo conectar con el servidor. Verifica tu conexión a internet e intenta de nuevo.",
+      });
+    } finally {
+      setLoginSubmitting(false);
     }
   };
 
@@ -453,11 +570,59 @@ if (!isOpen) return null;
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className="relative bg-white w-full max-w-[500px] md:max-w-[950px] rounded-t-[30px] md:rounded-[50px] overflow-hidden shadow-2xl flex flex-col md:flex-row border border-white/20"
         style={{
-          height: typeof window !== 'undefined' && window.innerWidth < 768
-            ? (isLogin ? "75vh" : "85vh")
-            : "600px"
+          height: showLoginSuccess
+            ? typeof window !== 'undefined' && window.innerWidth < 768
+              ? "400px"
+              : "280px"
+            : typeof window !== 'undefined' && window.innerWidth < 768
+              ? (isLogin ? "75vh" : "85vh")
+              : "600px"
         }}
       >
+        {showLoginSuccess ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="absolute inset-0 bg-gradient-to-br from-[#0D601E] to-[#0a4620] flex flex-col items-center justify-center z-50 rounded-t-[30px] md:rounded-[50px] text-center px-6"
+          >
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: 0.1, type: "spring", stiffness: 300 }}
+              className="w-16 h-16 md:w-18 md:h-18 bg-green-400 rounded-full flex items-center justify-center mb-5 shadow-lg shadow-black/20"
+            >
+              <svg className="w-9 h-9 text-[#0D601E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </motion.div>
+            <motion.h2
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-2xl md:text-3xl font-black text-white mb-2"
+              style={{ fontFamily: 'var(--font-jockey)' }}
+            >
+              {isNewAccount ? t('accountCreated').replace('exitosamente', '').replace('successfully', '') : t('welcomeBack')}
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-green-100 text-lg md:text-xl font-semibold"
+            >
+              {successUserName}
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-green-200 text-sm md:text-base mt-4"
+            >
+              Redirigiendo...
+            </motion.p>
+          </motion.div>
+        ) : (
         <>
         {/* Barra de arrastre visual solo móvil */}
         <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-4 md:hidden mb-2" />
@@ -471,6 +636,7 @@ if (!isOpen) return null;
         {/* --- LADO IZQUIERDO: INICIAR SESIÓN --- */}
         <form 
           onSubmit={(e) => { e.preventDefault(); handleLogin(); }}
+          noValidate
           className={`w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white transition-opacity duration-300 ${!isLogin && typeof window !== 'undefined' && window.innerWidth < 768 ? 'hidden opacity-0' : 'flex opacity-100'}`}
         >
           <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-8 font-black text-center" style={{ fontFamily: 'var(--font-jockey)' }}>
@@ -479,7 +645,22 @@ if (!isOpen) return null;
           <div className="w-full max-w-sm space-y-5 text-center">
             <div className="relative text-left">
               <FiMail color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
-              <input type="email" placeholder={t('email')} className={`${inputClass} pl-14`} value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+              <input
+                type="text"
+                inputMode="email"
+                autoComplete="email"
+                placeholder={t('email')}
+                className={`${inputClass} pl-14 ${loginErrors.email ? 'border-red-500 bg-red-50' : ''}`}
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                aria-invalid={!!loginErrors.email}
+                aria-describedby={loginErrors.email ? "login-email-error" : undefined}
+              />
+              {loginErrors.email && loginErrors.email.trim() !== "" && (
+                <p id="login-email-error" className="text-[11px] text-red-500 font-semibold ml-4 mt-1">
+                  {loginErrors.email}
+                </p>
+              )}
             </div>
             <div className="text-left">
               <div className="relative">
@@ -487,20 +668,44 @@ if (!isOpen) return null;
                 <input 
                   type={showLoginPassword ? "text" : "password"} 
                   placeholder={t('password')} 
-                  className={`${inputClass} pl-14 pr-14`} 
+                  className={`${inputClass} pl-14 pr-14 ${loginErrors.password ? 'border-red-500 bg-red-50' : ''}`} 
                   style={{ fontFamily: 'Inter, sans-serif' }} 
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
+                  aria-invalid={!!loginErrors.password}
+                  aria-describedby={loginErrors.password ? "login-password-error" : undefined}
                 />
                 <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E]">
                   {showLoginPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                 </button>
               </div>
+              {loginErrors.password && loginErrors.password.trim() !== "" && (
+                <p id="login-password-error" className="text-[11px] text-red-500 font-semibold ml-4 mt-1">
+                  {loginErrors.password}
+                </p>
+              )}
               <div className="text-right mt-2 px-4">
                 <Link href="/forgot-password" onClick={onClose} className="text-[11px] md:text-[13px] text-gray-500 hover:text-[#0D601E] transition-colors italic">{t('forgotPassword')}</Link>
               </div>
             </div>
-            <button type="submit" className="w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium mt-4">{t('login')}</button>
+            {loginErrors.general && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                role="alert"
+                aria-live="assertive"
+                className="text-xs md:text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2 text-center font-medium"
+              >
+                {loginErrors.general}
+              </motion.div>
+            )}
+            <button
+              type="submit"
+              disabled={loginSubmitting}
+              className="w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium mt-4 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loginSubmitting ? "Iniciando sesión..." : t('login')}
+            </button>
             
             {/* Alternar a Registro en móvil*/}
             <div className="md:hidden mt-8 ">
@@ -512,6 +717,7 @@ if (!isOpen) return null;
         {/* --- LADO DERECHO: CREAR CUENTA --- */}
         <form
           onSubmit={(e) => { e.preventDefault(); showVerification ? handleVerifyCode() : handleRegister(); }}
+          noValidate
           className={`w-full md:w-1/2 h-full p-8 md:p-12 flex flex-col items-center justify-center bg-white border-l border-gray-100 overflow-y-auto transition-opacity duration-300 ${isLogin && typeof window !== 'undefined' && window.innerWidth < 768 ? 'hidden opacity-0' : 'flex opacity-100'}`}
         >
           <h2 className="text-[32px] md:text-[42px] text-[#8B0000] mb-6 font-black text-center uppercase" style={{ fontFamily: 'var(--font-jockey)' }}>
@@ -704,6 +910,7 @@ if (!isOpen) return null;
           </div>
         </motion.div>
         </>
+        )}
       </motion.div>
     </div>
   );

@@ -1,4 +1,4 @@
-import axios from "axios";
+import { fetchWithAuth } from "./fetchWithAuth";
 import { getBackendOrigin } from "./backendUrl";
 
 export async function gestionarNegocioPendiente({
@@ -15,10 +15,17 @@ export async function gestionarNegocioPendiente({
   categoriaEspecial?: string;
 }) {
   const backendUrl = getBackendOrigin();
-  const res = await axios.post(
+  const res = await fetchWithAuth(
     `${backendUrl}/api/admin/negocios/gestionar`,
-    { negocioId, accion, adminUid, motivoRechazo, categoriaEspecial },
-    { withCredentials: true }
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ negocioId, accion, adminUid, motivoRechazo, categoriaEspecial }),
+    }
   );
-  return res.data;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as any)?.message || `Error ${res.status}`);
+  }
+  return res.json();
 }
