@@ -97,6 +97,22 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [loginErrors, setLoginErrors] = useState<{ email?: string; password?: string; general?: string }>({});
+  const [loginSubmitting, setLoginSubmitting] = useState(false);
+
+  // Limpiar el error general del login en cuanto el usuario edita algún campo
+  useEffect(() => {
+    if (loginErrors.general) {
+      setLoginErrors(prev => ({ ...prev, general: undefined }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loginEmail, loginPassword]);
+
+  // Limpiar el error general del registro cuando el usuario edita un campo
+  useEffect(() => {
+    if (generalError) setGeneralError("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regEmail, regPassword, regConfirmPassword, regNombre, regApellido, nacionalidad]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -218,11 +234,13 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   const doActualRegister = async () => {
     try {
       if (!regEmail || !regPassword || !regNombre) {
-        alert("Por favor completa los campos obligatorios");
+        setGeneralError("Por favor completa los campos obligatorios.");
+        setShowVerification(false);
         return;
       }
       if (regPassword !== regConfirmPassword) {
-        alert("Las contraseñas no coinciden.");
+        setGeneralError("Las contraseñas no coinciden.");
+        setShowVerification(false);
         return;
       }
       // Paso 1: Registrar en el backend directamente
@@ -245,7 +263,12 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        alert("Error: " + (data?.msg || "Error al registrar"));
+        const msg = data?.msg || data?.message || data?.error;
+        if (response.status === 409 || /existe|already|registrad/i.test(String(msg))) {
+          setErrors((prev: any) => ({ ...prev, email: msg || "Este correo ya está registrado." }));
+        }
+        setGeneralError(msg || "No se pudo completar el registro. Intenta de nuevo.");
+        setShowVerification(false);
         return;
       }
 
@@ -259,8 +282,8 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
       const loginData = await loginRes.json().catch(() => ({}));
 
       if (!loginRes.ok) {
-        alert("Registro completado, pero fallo al iniciar sesión.");
-        onClose();
+        setGeneralError(loginData?.msg || "Registro completado, pero fallo al iniciar sesión. Inicia sesión manualmente.");
+        setShowVerification(false);
         return;
       }
 
@@ -300,11 +323,9 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
       // Redirección según rol deseado
       const registeredName = loginData.user?.nombre || regNombre;
       if (intendedRole === "guia") {
-        alert("Cuenta creada. Ahora completa tu información para ser guía.");
         onClose();
         window.onAuthSuccessShowGuide?.();
       } else if (intendedRole === "negocio") {
-        alert("Cuenta creada. Ahora completa tu información de negocio.");
         onClose();
         window.onAuthSuccessShowBusiness?.();
       } else {
@@ -320,11 +341,30 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
       }
     } catch (error: any) {
       console.error("Register error:", error);
-      alert("Error de conexión con el servidor.");
+      setGeneralError("Error de conexión con el servidor. Verifica tu conexión e intenta de nuevo.");
+      setShowVerification(false);
     }
   };
   
   const handleLogin = async () => {
+    // Validación local en tiempo real antes de pegarle al backend
+    const nextErrors: { email?: string; password?: string; general?: string } = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!loginEmail.trim()) {
+      nextErrors.email = "Ingresa tu correo electrónico.";
+    } else if (!emailRegex.test(loginEmail.trim())) {
+      nextErrors.email = "El correo no tiene un formato válido.";
+    }
+    if (!loginPassword) {
+      nextErrors.password = "Ingresa tu contraseña.";
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setLoginErrors(nextErrors);
+      return;
+    }
+
+    setLoginErrors({});
+    setLoginSubmitting(true);
     try {
       // Autenticar directamente contra el backend
       const response = await fetch(`${BACKEND_URL}/login`, {
@@ -358,7 +398,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         }
       } catch (parseError) {
         console.error("❌ Error al parsear respuesta:", parseError);
-        alert("El servidor no está respondiendo correctamente. Por favor, verifica que el servidor esté corriendo.");
+        setLoginErrors({ general: "El servidor no está respondiendo correctamente. Verifica tu conexión e intenta de nuevo." });
         return;
       }
       
@@ -428,31 +468,58 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         console.error("❌ Status code:", response.status);
         console.error("❌ Response headers:", Object.fromEntries(response.headers.entries()));
         
-        // Intentar diferentes campos del error
-        let errorMsg = data?.msg || data?.message || data?.error;
-        
-        // Si no hay mensaje del servidor, usar uno basado en el status code
-        if (!errorMsg) {
-          switch (response.status) {
-            case 401:
-              errorMsg = "Credenciales inválidas. Verifica tu correo y contraseña.";
-              break;
-            case 404:
-              errorMsg = "Usuario no encontrado. Verifica tu correo electrónico.";
-              break;
-            case 500:
-              errorMsg = "Error en el servidor. Por favor, intenta más tarde.";
-              break;
-            default:
-              errorMsg = `Error al iniciar sesión (código ${response.status}). Por favor, intenta de nuevo.`;
-          }
+        // Intentar diferentes campos del error provenientes del backend
+        const backendMsg: string | undefined = data?.msg || data?.message || data?.error;
+        const fieldErrors: { email?: string; password?: string; general?: string } = {};
+
+        switch (response.status) {
+          case 400:
+            // Validación del backend → suele venir lista de errores
+            if (Array.isArray(data?.errors) && data.errors.length > 0) {
+              data.errors.forEach((err: any) => {
+                const field = (err?.path || err?.param || "").toString();
+                const msg = (err?.msg || err?.message || "").toString();
+                if (field === "email") fieldErrors.email = msg || "Correo inválido.";
+                else if (field === "password") fieldErrors.password = msg || "Contraseña inválida.";
+                else fieldErrors.general = msg || backendMsg || "Datos inválidos.";
+              });
+            } else {
+              fieldErrors.general = backendMsg || "Solicitud inválida.";
+            }
+            break;
+          case 401:
+            // Credenciales incorrectas: marcar ambos campos para feedback claro
+            fieldErrors.email = " ";
+            fieldErrors.password = " ";
+            fieldErrors.general = backendMsg || "Correo o contraseña incorrectos.";
+            break;
+          case 403:
+            fieldErrors.general = backendMsg || "Esta cuenta ha sido deshabilitada.";
+            break;
+          case 404:
+            fieldErrors.email = backendMsg || "Usuario no encontrado. Verifica tu correo electrónico.";
+            break;
+          case 429:
+            fieldErrors.general = backendMsg || "Demasiados intentos. Por favor espera unos minutos e intenta de nuevo.";
+            break;
+          case 500:
+          case 502:
+          case 503:
+            fieldErrors.general = backendMsg || "Error en el servidor. Por favor, intenta más tarde.";
+            break;
+          default:
+            fieldErrors.general = backendMsg || `Error al iniciar sesión (código ${response.status}).`;
         }
-        
-        alert(errorMsg);
+
+        setLoginErrors(fieldErrors);
       }
     } catch (error: any) {
       console.error("❌ Login error completo:", error);
-      alert("Error de conexión con el servidor. Por favor, intenta de nuevo.");
+      setLoginErrors({
+        general: "No se pudo conectar con el servidor. Verifica tu conexión a internet e intenta de nuevo.",
+      });
+    } finally {
+      setLoginSubmitting(false);
     }
   };
 
@@ -544,7 +611,20 @@ if (!isOpen) return null;
           <div className="w-full max-w-sm space-y-5 text-center">
             <div className="relative text-left">
               <FiMail color={iconColor} size={18} className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
-              <input type="email" placeholder={t('email')} className={`${inputClass} pl-14`} value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+              <input
+                type="email"
+                placeholder={t('email')}
+                className={`${inputClass} pl-14 ${loginErrors.email ? 'border-red-500 bg-red-50' : ''}`}
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                aria-invalid={!!loginErrors.email}
+                aria-describedby={loginErrors.email ? "login-email-error" : undefined}
+              />
+              {loginErrors.email && loginErrors.email.trim() !== "" && (
+                <p id="login-email-error" className="text-[11px] text-red-500 font-semibold ml-4 mt-1">
+                  {loginErrors.email}
+                </p>
+              )}
             </div>
             <div className="text-left">
               <div className="relative">
@@ -552,20 +632,44 @@ if (!isOpen) return null;
                 <input 
                   type={showLoginPassword ? "text" : "password"} 
                   placeholder={t('password')} 
-                  className={`${inputClass} pl-14 pr-14`} 
+                  className={`${inputClass} pl-14 pr-14 ${loginErrors.password ? 'border-red-500 bg-red-50' : ''}`} 
                   style={{ fontFamily: 'Inter, sans-serif' }} 
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
+                  aria-invalid={!!loginErrors.password}
+                  aria-describedby={loginErrors.password ? "login-password-error" : undefined}
                 />
                 <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0D601E]">
                   {showLoginPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                 </button>
               </div>
+              {loginErrors.password && loginErrors.password.trim() !== "" && (
+                <p id="login-password-error" className="text-[11px] text-red-500 font-semibold ml-4 mt-1">
+                  {loginErrors.password}
+                </p>
+              )}
               <div className="text-right mt-2 px-4">
                 <Link href="/forgot-password" onClick={onClose} className="text-[11px] md:text-[13px] text-gray-500 hover:text-[#0D601E] transition-colors italic">{t('forgotPassword')}</Link>
               </div>
             </div>
-            <button type="submit" className="w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium mt-4">{t('login')}</button>
+            {loginErrors.general && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                role="alert"
+                aria-live="assertive"
+                className="text-xs md:text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2 text-center font-medium"
+              >
+                {loginErrors.general}
+              </motion.div>
+            )}
+            <button
+              type="submit"
+              disabled={loginSubmitting}
+              className="w-full md:w-3/4 mx-auto bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] transition-all shadow-md text-sm tracking-wide font-medium mt-4 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loginSubmitting ? "Iniciando sesión..." : t('login')}
+            </button>
             
             {/* Alternar a Registro en móvil*/}
             <div className="md:hidden mt-8 ">
