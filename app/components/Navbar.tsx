@@ -480,7 +480,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     )}
                                 </Link>
                             )}
-                            {(role === "turista" || role === "admin") && (
+                            {(role === "turista" || role === "admin" || role === "guia") && (
                                 <Link href="/tours" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium transition-all text-left hover:text-[#F00808]">
                                     <FiCompass /> {t('tours')}
                                 </Link>
@@ -518,6 +518,28 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     <Link href="/guide/solicitudes" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left hover:text-[#F00808] transition-colors">
                                         <FiCreditCard /> {t('myPayments')}
                                     </Link>
+                                    <div className="h-[1px] bg-gray-100 my-3 mx-2" />
+                                    <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('opportunities')}</p>
+                                    <button
+                                        onClick={() => {
+                                            setIsMenuOpen(false);
+                                            user ? onOpenBusiness() : onOpenAuthAsBusiness();
+                                        }}
+                                        className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group hover:text-[#F00808] transition-colors"
+                                    >
+                                        <FiBriefcase className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
+                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('publishBusiness')}</span>
+                                    </button>
+                                    {hasBusinessRequests && (
+                                        <Link
+                                            href="/negocio/mis-solicitudes"
+                                            onClick={() => setIsMenuOpen(false)}
+                                            className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group hover:text-[#F00808] transition-colors"
+                                        >
+                                            <FiShoppingBag className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
+                                            <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Gestionar mis negocios</span>
+                                        </Link>
+                                    )}
                                 </>
                             ) : (
                                 <>

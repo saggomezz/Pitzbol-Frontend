@@ -167,8 +167,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               }}
               onOpenAuthAsBusiness={() => { setPendingRole("negocio"); setIsAuthOpen(true); }}
               onOpenBusiness={() => {
-                const role = getRoleFromStorage();
-                if (role === "guia") { setRoleConflict("negocio"); return; }
+                // Guías también pueden publicar negocios (tienen todas las capacidades de turista)
                 setIsBusinessOpen(true);
               }}
             />
