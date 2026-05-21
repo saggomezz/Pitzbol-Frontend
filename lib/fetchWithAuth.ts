@@ -129,6 +129,13 @@ export async function fetchWithAuth(
     // Refresh failed — solo limpiar el token expirado, NO los datos del usuario.
     // Borrar pitzbol_user causaría que el perfil (rol, especialidades, etc.) desaparezca.
     localStorage.removeItem('pitzbol_token');
+    // Notificar a la UI que la sesión expiró para que pueda mostrar el modal de login
+    // o redirigir. Las páginas pueden escuchar `pitzbol:auth-expired`.
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('pitzbol:auth-expired'));
+      } catch { /* ignore */ }
+    }
     return response;
   }
 
