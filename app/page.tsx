@@ -40,7 +40,7 @@ const DEFAULT_RECOMMENDATIONS: RecommendedPlace[] = [];
 const ALL_CATEGORIES: Category[] = [
   { name: "Fútbol", img: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&q=80&w=2070" },
   { name: "Gastronomía", img: "https://images.unsplash.com/photo-1711306722944-70b776bb4394?auto=format&fit=crop&q=80&w=1528" },
-  { name: "Cultura", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Voladores_de_Papantla.png/1200px-Voladores_de_Papantla.png" },
+  { name: "Cultura", img: "https://www.entornoturistico.com/wp-content/uploads/2023/06/Bailes-y-danzas-tradicionales-de-Jalisco.jpg" },
   { name: "Eventos", img: "https://www.buenosviajes.co/wp-content/uploads/2024/03/Guadalajara2.jpg" },
   { name: "Clubs", img: "https://res.cloudinary.com/dckbtxa4a/image/upload/v1777408875/469537367_122208595754073762_1280570453325883698_n_chbzu8.jpg" },
   { name: "Tours", img: "https://res.cloudinary.com/ddgkagn4y/image/upload/v1776484529/a2_go8rka.jpg" },
@@ -422,7 +422,7 @@ function HomeContent() {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="relative text-center mb-1 md:mb-2">
-            {/* Saludo animado inline � lado izquierdo */}
+            {/* Saludo animado inline → lado izquierdo */}
             <AnimatePresence>
               {showWelcome && (
                 <motion.div
