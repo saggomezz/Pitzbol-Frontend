@@ -71,8 +71,19 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ proxy: 
   const cookie = req.headers.get("cookie");
   if (cookie) headers["Cookie"] = cookie;
 
+<<<<<<< Updated upstream
   const accept = req.headers.get("accept");
   if (accept) headers["Accept"] = accept;
+=======
+    const res = await fetch(backendUrl, {
+      method: req.method,
+      headers,
+      body: hasBody ? req.body : undefined,
+      signal: AbortSignal.timeout(30000),
+      // @ts-ignore
+      duplex: hasBody ? "half" : undefined,
+    });
+>>>>>>> Stashed changes
 
   const acceptLang = req.headers.get("accept-language");
   if (acceptLang) headers["Accept-Language"] = acceptLang;

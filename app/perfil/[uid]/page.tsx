@@ -209,6 +209,9 @@ export default function GuidePublicProfilePage() {
   const [paqueteHoraInicio, setPaqueteHoraInicio] = useState("09:00");
   const [paqueteNumPersonas, setPaqueteNumPersonas] = useState(1);
   const [paqueteSubmittingId, setPaqueteSubmittingId] = useState<string | null>(null);
+  const [guideRatingStats, setGuideRatingStats] = useState<any>(null);
+  const [guideBookingExp, setGuideBookingExp] = useState<any[]>([]);
+  const [expandedExpId, setExpandedExpId] = useState<string | null>(null);
   const isAdminViewer = user?.role === "admin";
 
   useEffect(() => {
@@ -269,6 +272,22 @@ export default function GuidePublicProfilePage() {
               const paqData = await paquetesRes.json();
               setGuidePaquetes(paqData.paquetes || []);
             }
+            // Fetch rating stats (public)
+            try {
+              const ratingStatsRes = await fetch(`${BACKEND_URL}/api/ratings/guide/${encodeURIComponent(uid)}/stats`);
+              if (ratingStatsRes.ok) {
+                const ratingData = await ratingStatsRes.json();
+                if (ratingData.success) setGuideRatingStats(ratingData.stats);
+              }
+            } catch {}
+            // Fetch booking experiences (public)
+            try {
+              const expPubRes = await fetch(`/api/bookings/guia/${encodeURIComponent(uid)}/experiencias/public`);
+              if (expPubRes.ok) {
+                const expData = await expPubRes.json();
+                if (expData.success) setGuideBookingExp(expData.experiencias || []);
+              }
+            } catch {}
           } catch (err) {
             console.error("Error cargando datos del guía:", err);
           }
@@ -736,8 +755,8 @@ export default function GuidePublicProfilePage() {
               >
                 <div className="mb-6 flex justify-between items-end">
                   <div>
-                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Experiencias</h3>
-                    <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">Tours completados</p>
+                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Paquetes</h3>
+                    <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">Paquetes disponibles</p>
                   </div>
                   <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
                     {guideTours.length} publicados
@@ -790,132 +809,182 @@ export default function GuidePublicProfilePage() {
               </motion.div>
             )}
 
-            {/* Paquetes del guía */}
-            {isGuide && guidePaquetes.length > 0 && (
+            {/* Mis Experiencias - booking experiences con fotos y descripción del guía */}
+            {isGuide && guideBookingExp.length > 0 && (
               <motion.div
-                id="paquetes"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.22 }}
+                transition={{ delay: 0.23 }}
                 className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]"
               >
                 <div className="mb-6 flex justify-between items-end">
                   <div>
-                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Paquetes</h3>
+                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Experiencias</h3>
                     <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
-                      Paquetes disponibles
+                      Cómo fueron los tours
                     </p>
                   </div>
                   <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
-                    {guidePaquetes.length} disponibles
+                    {guideBookingExp.length} {guideBookingExp.length === 1 ? "experiencia" : "experiencias"}
                   </span>
                 </div>
                 <div className="space-y-4">
-                  {guidePaquetes.map((paq: any, idx: number) => (
-                    <motion.div
-                      key={paq.id || idx}
-                      id={`paquete-${paq.id}`}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.25 + idx * 0.05 }}
-                      className="rounded-2xl border-2 border-[#1A4D2E]/15 bg-gradient-to-r from-white to-[#FDFCF9] hover:from-[#F6F0E6] hover:to-white transition-all hover:shadow-md hover:border-[#1A4D2E]/40 overflow-hidden"
-                    >
-                      {/* Photo strip */}
-                      {(paq.fotos?.length > 0 || paq.fotoPrincipal) && (
-                        <div className="flex gap-0.5 h-28 overflow-hidden">
-                          {(paq.fotos?.length > 0 ? paq.fotos : [paq.fotoPrincipal]).slice(0, 3).map((src: string, fi: number) => (
-                            <div key={fi} className="relative overflow-hidden flex-1">
-                              <img src={src} alt="" className="w-full h-full object-cover" />
+                  {guideBookingExp.map((exp: any, idx: number) => {
+                    const thumbnail = exp.fotosExperiencia?.[0] || exp.tourFoto || null;
+                    const isExpanded = expandedExpId === exp.id;
+                    const fechaStr = exp.fecha
+                      ? new Date(exp.fecha + "T00:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
+                      : "";
+                    return (
+                      <motion.div
+                        key={exp.id || idx}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.05 * idx }}
+                        className="rounded-2xl border-2 border-[#1A4D2E]/15 bg-linear-to-r from-white to-[#FDFCF9] overflow-hidden hover:border-[#1A4D2E]/30 transition-all"
+                      >
+                        {/* Photo strip preview */}
+                        {exp.fotosExperiencia?.length > 0 && !isExpanded && (
+                          <div className="flex gap-0.5 h-28 overflow-hidden">
+                            {exp.fotosExperiencia.slice(0, 3).map((src: string, fi: number) => (
+                              <div key={fi} className="relative overflow-hidden flex-1">
+                                <img src={src} alt="" className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {/* Card header row */}
+                        <div className="flex items-center gap-4 p-4">
+                          {!exp.fotosExperiencia?.length && thumbnail && (
+                            <img src={thumbnail} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0 border border-[#1A4D2E]/10" />
+                          )}
+                          {!thumbnail && !exp.fotosExperiencia?.length && (
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9] border border-[#1A4D2E]/10">
+                              <FiMap size={22} className="text-[#0D601E]" />
                             </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-[#1A4D2E] truncate">{exp.tourTitulo}</p>
+                            {fechaStr && (
+                              <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                                <FiCalendar size={11} /> {fechaStr}
+                              </p>
+                            )}
+                            {exp.fotosExperiencia?.length > 0 && (
+                              <p className="text-xs text-[#81C784] mt-0.5">{exp.fotosExperiencia.length} foto{exp.fotosExperiencia.length !== 1 ? "s" : ""}</p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setExpandedExpId(prev => (prev === exp.id ? null : exp.id))}
+                            className="shrink-0 text-xs font-bold px-3 py-2 rounded-full bg-[#0D601E] text-white hover:bg-[#094d18] transition-colors"
+                          >
+                            {isExpanded ? "Ocultar" : "Ver más detalle"}
+                          </button>
+                        </div>
+                        {/* Expanded panel */}
+                        {isExpanded && (
+                          <div className="border-t border-[#1A4D2E]/10 bg-white/80 px-4 py-5 space-y-4">
+                            {exp.fotosExperiencia?.length > 0 && (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 rounded-xl overflow-hidden">
+                                {exp.fotosExperiencia.map((src: string, fi: number) => (
+                                  <div key={fi} className="relative overflow-hidden aspect-square">
+                                    <img
+                                      src={src}
+                                      alt={`Foto ${fi + 1}`}
+                                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {exp.descripcionExperiencia && (
+                              <p className="text-sm text-[#1A4D2E]/80 leading-relaxed">{exp.descripcionExperiencia}</p>
+                            )}
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Calificaciones de Turistas */}
+            {isGuide && guideRatingStats && guideRatingStats.totalCalificaciones > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.24 }}
+                className="bg-white rounded-2xl shadow-md border border-[#E0F2F1] overflow-hidden"
+              >
+                <div className="px-7 pt-7 pb-5">
+                  <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Calificaciones</h3>
+                  <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
+                    Lo que los turistas dicen
+                  </p>
+                </div>
+
+                {/* Score summary */}
+                <div className="mx-7 mb-5 rounded-2xl bg-gradient-to-br from-[#1A4D2E] to-[#0D601E] p-5 text-white flex items-center gap-5">
+                  <div className="text-center shrink-0">
+                    <p className="text-5xl font-black leading-none">{guideRatingStats.promedioEstrellas.toFixed(1)}</p>
+                    <div className="flex items-center justify-center gap-0.5 mt-2">
+                      {[1,2,3,4,5].map((s: number) => (
+                        <svg key={s} viewBox="0 0 20 20" className={`w-4 h-4 ${s <= Math.round(guideRatingStats.promedioEstrellas) ? 'text-amber-400' : 'text-white/30'}`} fill="currentColor">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                      ))}
+                    </div>
+                    <p className="text-xs text-white/60 mt-1">{guideRatingStats.totalCalificaciones} {guideRatingStats.totalCalificaciones === 1 ? 'reseña' : 'reseñas'}</p>
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    {[5,4,3,2,1].map((star: number) => {
+                      const count = guideRatingStats.distribucion?.[`estrellas${star}`] || 0;
+                      const pct = guideRatingStats.totalCalificaciones > 0 ? (count / guideRatingStats.totalCalificaciones) * 100 : 0;
+                      return (
+                        <div key={star} className="flex items-center gap-2 text-xs">
+                          <span className="text-white/70 w-2 text-right">{star}</span>
+                          <svg viewBox="0 0 20 20" className="w-3 h-3 text-amber-400 shrink-0" fill="currentColor">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                          </svg>
+                          <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                            <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-white/50 w-5 text-right">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Reviews list */}
+                <div className="px-7 pb-7 space-y-3">
+                  {guideRatingStats.ultimasCalificaciones?.map((r: any) => (
+                    <div key={r.id} className="rounded-xl border border-[#E0F2F1] p-4 bg-[#FAFAF7]">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-[#E8F5E9] flex items-center justify-center shrink-0">
+                            {r.touristFotoPerfil ? (
+                              <img src={r.touristFotoPerfil} alt={r.touristName} className="w-8 h-8 rounded-full object-cover" />
+                            ) : (
+                              <FiUser size={14} className="text-[#1A4D2E]" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#1A4D2E]">{r.touristName}</p>
+                            <p className="text-[10px] text-gray-400">{new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          {[1,2,3,4,5].map((s: number) => (
+                            <svg key={s} viewBox="0 0 20 20" className={`w-3.5 h-3.5 ${s <= r.estrellas ? 'text-amber-400' : 'text-gray-200'}`} fill="currentColor">
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                            </svg>
                           ))}
                         </div>
-                      )}
-                      <div className="flex items-center gap-4 p-4">
-                        {!paq.fotoPrincipal && !paq.fotos?.length && (
-                          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9] border border-[#1A4D2E]/10">
-                            <FiMap size={24} className="text-[#0D601E]" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-[#1A4D2E] truncate">{paq.titulo}</p>
-                          <p className="text-sm text-gray-500 truncate">{paq.destino}</p>
-                          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[#6C8870]">
-                            {paq.duracion && <span>{paq.duracion}</span>}
-                            {paq.precio && <span className="font-semibold text-[#0D601E]">{paq.precio}</span>}
-                            {parseCapacidadPaquete(paq.capacidad) > 0 && (
-                              <span className="flex items-center gap-1">
-                                <FiUser size={12} /> Maximo {parseCapacidadPaquete(paq.capacidad)}
-                              </span>
-                            )}
-                            {Array.isArray(paq.idiomas) && paq.idiomas.length > 0 && (
-                              <span>{paq.idiomas.slice(0, 2).join(" · ")}</span>
-                            )}
-                          </div>
-                        </div>
-                        {isGuide && (
-                          <button
-                            onClick={() => handleTogglePaquete(paq.id)}
-                            className="flex-shrink-0 text-xs font-bold px-3 py-2 rounded-full bg-[#0D601E] text-white hover:bg-[#094d18] transition-colors"
-                          >
-                            {selectedPaqueteId === paq.id ? "Elegir fecha" : "Seleccionar"}
-                          </button>
-                        )}
                       </div>
-                      {selectedPaqueteId === paq.id && (
-                        <div className="border-t border-[#1A4D2E]/10 bg-white/70 px-4 py-4">
-                          <div className="flex flex-col gap-3">
-                            <label className="text-xs font-semibold text-[#1A4D2E] flex items-center gap-2">
-                              <FiCalendar size={14} /> Elige el dia para tu paquete
-                            </label>
-                            <div className="flex flex-col sm:flex-row gap-3">
-                              <div className="flex flex-1 flex-col sm:flex-row gap-3">
-                                <input
-                                  type="date"
-                                  value={paqueteFecha}
-                                  onChange={(e) => setPaqueteFecha(e.target.value)}
-                                  min={new Date().toISOString().split("T")[0]}
-                                  className="flex-1 px-3 py-2 border border-[#1A4D2E]/20 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
-                                  style={{ colorScheme: "light" }}
-                                />
-                                <div className="relative flex-1">
-                                  <FiClock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1A4D2E]" />
-                                  <input
-                                    type="time"
-                                    value={paqueteHoraInicio}
-                                    onChange={(e) => setPaqueteHoraInicio(e.target.value)}
-                                    className="w-full pl-9 pr-3 py-2 border border-[#1A4D2E]/20 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
-                                  />
-                                </div>
-                                <div className="relative flex-1">
-                                  <FiUser size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1A4D2E]" />
-                                  <input
-                                    type="number"
-                                    min={1}
-                                    max={parseCapacidadPaquete(paq.capacidad) || undefined}
-                                    value={paqueteNumPersonas}
-                                    onChange={(e) => setPaqueteNumPersonas(Number(e.target.value))}
-                                    className="w-full pl-9 pr-3 py-2 border border-[#1A4D2E]/20 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
-                                    placeholder="Personas"
-                                  />
-                                  {parseCapacidadPaquete(paq.capacidad) > 0 && (
-                                    <span className="mt-1 block text-[10px] text-[#6C8870]">
-                                      Maximo {parseCapacidadPaquete(paq.capacidad)} personas
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => handleReservePaquete(paq)}
-                                disabled={paqueteSubmittingId === paq.id}
-                                className="px-4 py-2 rounded-xl text-sm font-bold bg-[#1A4D2E] text-white hover:bg-[#0D601E] transition-colors disabled:opacity-60"
-                              >
-                                {paqueteSubmittingId === paq.id ? "Procesando..." : "Reservar"}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
+                      {r.comentario && <p className="text-xs text-gray-600 italic">&ldquo;{r.comentario}&rdquo;</p>}
+                    </div>
                   ))}
                 </div>
               </motion.div>

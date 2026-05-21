@@ -114,6 +114,11 @@ export default function PerfilDetallado() {
   const [guiaRatingStats, setGuiaRatingStats] = useState<any>(null);
   const [paquetes, setPaquetes] = useState<any[]>([]);
   const [experiencias, setExperiencias] = useState<any[]>([]);
+  const [editingExpId, setEditingExpId] = useState<string | null>(null);
+  const [editExpTitulo, setEditExpTitulo] = useState("");
+  const [editExpDescripcion, setEditExpDescripcion] = useState("");
+  const [editExpNewFiles, setEditExpNewFiles] = useState<File[]>([]);
+  const [savingExpId, setSavingExpId] = useState<string | null>(null);
   const [tipoGuia, setTipoGuia] = useState<string>(() => {
     if (typeof window !== "undefined") {
       const u = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
@@ -165,6 +170,85 @@ export default function PerfilDetallado() {
       setCancelandoReservaId(null);
       setConfirmCancelId(null);
     }
+  };
+
+  const handleSaveExperiencia = async (exp: any) => {
+    setSavingExpId(exp.id);
+    try {
+      // Convert new files to base64
+      const fotosBase64: string[] = await Promise.all(
+        editExpNewFiles.map(
+          (file) =>
+            new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            })
+        )
+      );
+
+      const token = localStorage.getItem("pitzbol_token");
+      const res = await fetch(`${API_BASE}/bookings/${exp.id}/experiencia`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          descripcion: editExpDescripcion,
+          titulo: editExpTitulo.trim() || undefined,
+          fotosBase64: fotosBase64.length > 0 ? fotosBase64 : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setExperiencias((prev) =>
+          prev.map((e) =>
+            e.id === exp.id
+              ? {
+                  ...e,
+                  tourTitulo: data.updates?.tourTitulo ?? e.tourTitulo,
+                  descripcionExperiencia: data.updates?.descripcionExperiencia ?? e.descripcionExperiencia,
+                  fotosExperiencia: data.updates?.fotosExperiencia ?? e.fotosExperiencia,
+                }
+              : e
+          )
+        );
+        setEditingExpId(null);
+        setEditExpNewFiles([]);
+        setEditExpDescripcion("");
+        setEditExpTitulo("");
+      } else {
+        alert(data.message || "Error al guardar");
+      }
+    } catch {
+      alert("Error de conexión al guardar la experiencia");
+    } finally {
+      setSavingExpId(null);
+    }
+  };
+
+  const handleDeleteExpFoto = async (exp: any, fotoUrl: string) => {
+    const token = localStorage.getItem("pitzbol_token");
+    try {
+      const res = await fetch(`${API_BASE}/bookings/${exp.id}/experiencia/foto`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ fotoUrl }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setExperiencias((prev) =>
+          prev.map((e) =>
+            e.id === exp.id ? { ...e, fotosExperiencia: data.fotosExperiencia } : e
+          )
+        );
+      }
+    } catch {}
   };
 
   const [editandoNacionalidad, setEditandoNacionalidad] = useState(false);
@@ -2232,32 +2316,178 @@ export default function PerfilDetallado() {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {experiencias.map((exp: any, i: number) => {
                       const tourTitulo = exp.tourTitulo || exp.titulo || "Tour";
                       const tourFoto = exp.tourFoto || exp.fotoPrincipal || null;
+                      const fotosExp: string[] = exp.fotosExperiencia || [];
+                      const isEditing = editingExpId === exp.id;
                       return (
                         <motion.div
                           key={exp.id || i}
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.05 }}
-                          className="flex items-center gap-3 p-3 rounded-xl border border-[#E0F2F1] hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
+                          className="rounded-xl border border-[#E0F2F1] overflow-hidden"
                         >
-                          {tourFoto ? (
-                            <img src={tourFoto} alt={tourTitulo} className="h-12 w-12 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
-                          ) : (
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
-                              <FiMap size={16} className="text-[#66BB6A]" />
+                          {/* Header row */}
+                          <div className="flex items-center gap-3 p-3 hover:bg-[#F7FBF7] transition-all">
+                            {tourFoto ? (
+                              <img src={tourFoto} alt={tourTitulo} className="h-12 w-12 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
+                            ) : (
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
+                                <FiMap size={16} className="text-[#66BB6A]" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-[#1A4D2E]">{tourTitulo}</p>
+                              <p className="text-[11px] text-gray-500">{exp.fecha || ""} {exp.horaInicio ? `· ${exp.horaInicio}` : ""}</p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32] mr-2">
+                              Completado
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (isEditing) {
+                                  setEditingExpId(null);
+                                  setEditExpNewFiles([]);
+                                  setEditExpDescripcion("");
+                                } else {
+                                  setEditingExpId(exp.id);
+                                  setEditExpTitulo(exp.tourTitulo || exp.titulo || "");
+                                  setEditExpDescripcion(exp.descripcionExperiencia || "");
+                                  setEditExpNewFiles([]);
+                                }
+                              }}
+                              className="shrink-0 p-2 rounded-lg bg-[#F1F8F6] hover:bg-[#E0F2F1] text-[#1A4D2E] transition-colors"
+                              title="Editar experiencia"
+                            >
+                              {isEditing ? <FiX size={14} /> : <FiEdit2 size={14} />}
+                            </button>
+                          </div>
+
+                          {/* Fotos existentes (preview) */}
+                          {!isEditing && fotosExp.length > 0 && (
+                            <div className="flex gap-1 px-3 pb-3">
+                              {fotosExp.map((src, fi) => (
+                                <div key={fi} className="relative h-20 w-20 rounded-lg overflow-hidden shrink-0">
+                                  <img src={src} alt="" className="w-full h-full object-cover" />
+                                </div>
+                              ))}
                             </div>
                           )}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-[#1A4D2E]">{tourTitulo}</p>
-                            <p className="text-[11px] text-gray-500">{exp.fecha || ""} {exp.horaInicio ? `· ${exp.horaInicio}` : ""}</p>
-                          </div>
-                          <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
-                            Completado
-                          </span>
+                          {!isEditing && exp.descripcionExperiencia && (
+                            <p className="px-3 pb-3 text-xs text-[#1A4D2E]/70 italic">{exp.descripcionExperiencia}</p>
+                          )}
+
+                          {/* Edit form */}
+                          {isEditing && (
+                            <div className="border-t border-[#E0F2F1] bg-[#FAFAF7] px-4 py-4 space-y-4">
+                              {/* Existing photos with delete */}
+                              {fotosExp.length > 0 && (
+                                <div>
+                                  <p className="text-[11px] font-semibold text-[#1A4D2E] mb-2 uppercase tracking-wide">Fotos actuales</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {fotosExp.map((src, fi) => (
+                                      <div key={fi} className="relative h-20 w-20 rounded-lg overflow-hidden shrink-0 group">
+                                        <img src={src} alt="" className="w-full h-full object-cover" />
+                                        <button
+                                          onClick={() => handleDeleteExpFoto(exp, src)}
+                                          className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center text-white rounded-lg"
+                                        >
+                                          <FiTrash2 size={16} />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* New photos */}
+                              {fotosExp.length + editExpNewFiles.length < 5 && (
+                                <div>
+                                  <p className="text-[11px] font-semibold text-[#1A4D2E] mb-2 uppercase tracking-wide">
+                                    Agregar fotos ({fotosExp.length + editExpNewFiles.length}/5)
+                                  </p>
+                                  <label className="flex items-center gap-2 cursor-pointer w-fit px-4 py-2 rounded-xl border-2 border-dashed border-[#A5D6A7] hover:border-[#1A4D2E] text-[#1A4D2E] text-xs font-medium transition-colors">
+                                    <FiCamera size={14} />
+                                    Seleccionar fotos
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      multiple
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const files = Array.from(e.target.files || []);
+                                        const remaining = 5 - fotosExp.length - editExpNewFiles.length;
+                                        setEditExpNewFiles((prev) => [...prev, ...files].slice(0, prev.length + remaining));
+                                      }}
+                                    />
+                                  </label>
+                                  {editExpNewFiles.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                      {editExpNewFiles.map((file, fi) => (
+                                        <div key={fi} className="relative h-20 w-20 rounded-lg overflow-hidden shrink-0 group">
+                                          <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
+                                          <button
+                                            onClick={() => setEditExpNewFiles((prev) => prev.filter((_, idx) => idx !== fi))}
+                                            className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center text-white rounded-lg"
+                                          >
+                                            <FiX size={16} />
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Tour title */}
+                              <div>
+                                <p className="text-[11px] font-semibold text-[#1A4D2E] mb-2 uppercase tracking-wide">Nombre del tour</p>
+                                <input
+                                  type="text"
+                                  value={editExpTitulo}
+                                  onChange={(e) => setEditExpTitulo(e.target.value)}
+                                  placeholder={exp.tourTitulo || exp.titulo || "Nombre del tour"}
+                                  className="w-full px-3 py-2 text-sm border border-[#E0F2F1] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-[#1A4D2E]"
+                                />
+                              </div>
+
+                              {/* Description */}
+                              <div>
+                                <p className="text-[11px] font-semibold text-[#1A4D2E] mb-2 uppercase tracking-wide">Descripción</p>
+                                <textarea
+                                  value={editExpDescripcion}
+                                  onChange={(e) => setEditExpDescripcion(e.target.value)}
+                                  rows={3}
+                                  placeholder="Cuéntale a los turistas cómo fue este tour..."
+                                  className="w-full px-3 py-2 text-sm border border-[#E0F2F1] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] resize-none text-[#1A4D2E]"
+                                />
+                              </div>
+
+                              {/* Save / Cancel */}
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  onClick={() => { setEditingExpId(null); setEditExpNewFiles([]); setEditExpDescripcion(""); setEditExpTitulo(""); }}
+                                  className="px-4 py-2 text-xs font-semibold rounded-xl border border-[#E0F2F1] text-[#1A4D2E] hover:bg-[#F1F8F6] transition-colors"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  onClick={() => handleSaveExperiencia(exp)}
+                                  disabled={savingExpId === exp.id}
+                                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-[#1A4D2E] text-white hover:bg-[#0D601E] disabled:opacity-60 transition-colors flex items-center gap-1.5"
+                                >
+                                  {savingExpId === exp.id ? (
+                                    <><span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />Guardando...</>
+                                  ) : (
+                                    <><FiCheck size={13} />Guardar</>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </motion.div>
                       );
                     })}
