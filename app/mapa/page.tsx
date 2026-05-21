@@ -525,22 +525,6 @@ export default function MapaPage() {
 
                                 loadPlaces();
                             }, [getFavorites, isAuthenticated, syncLocalFavorites]);
-                                                src={placeImages[lugar.nombre] || getPlaceImageUrlSync({
-                                                    nombre: lugar.nombre,
-                                                    categoria: lugar.categoria,
-                                                    ubicacion: lugar.ubicacion,
-                                                    latitud: lugar.latitud,
-                                                    longitud: lugar.longitud
-                                                })}
-                                                alt={lugar.nombre}
-                                                className={styles.placeImage}
-                                                loading="lazy"
-                                                onError={(e) => {
-                                                    // Fallback garantizado: usar imagen por categoría
-                                                    // Esto SIEMPRE funciona porque usa Unsplash
-                                                    (e.target as HTMLImageElement).src = getPlaceImageByCategory(lugar.categoria);
-                                                }}
-                                            />
                                             <div className={styles.placeContent}>
                                                 <div className={styles.placeHeader}>
                                                     <div>
