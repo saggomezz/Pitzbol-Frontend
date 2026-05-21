@@ -12,7 +12,7 @@ import DeletedBusinessModal from "./DeletedBusinessModal";
 
 interface Notification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado' | 'negocio_eliminado' | 'negocio_desarchivado' | 'negocio_pendiente' | 'ver_negocio_publicado' | 'nueva_reserva' | 'reserva_confirmada' | 'pago_confirmado';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado' | 'negocio_eliminado' | 'negocio_desarchivado' | 'negocio_pendiente' | 'ver_negocio_publicado' | 'nueva_reserva' | 'reserva_confirmada' | 'reserva_rechazada' | 'tour_completado' | 'tour_cancelado_guia' | 'reserva_cancelada_turista' | 'pago_confirmado';
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -63,6 +63,10 @@ type BusinessStatusApiResponse = {
     deletedAt?: string | null;
   } | null;
 };
+
+/** Elimina caracteres emoji de un texto */
+const stripEmojis = (text: string): string =>
+  text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').replace(/\s{2,}/g, ' ').trim();
 
 function extractBusinessIdFromNotification(notif: Notification): string | undefined {
   const fromFields = notif.solicitudId || notif.negocioId || notif.uidSolicitante;
@@ -1003,6 +1007,14 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return <FiCalendar className="text-[#0D601E]" size={20} />;
       case 'reserva_confirmada':
         return <FiCheckCircle className="text-emerald-600" size={20} />;
+      case 'reserva_rechazada':
+        return <FiAlertCircle className="text-red-600" size={20} />;
+      case 'tour_completado':
+        return <FiCheckCircle className="text-emerald-600" size={20} />;
+      case 'tour_cancelado_guia':
+        return <FiX className="text-red-600" size={20} />;
+      case 'reserva_cancelada_turista':
+        return <FiX className="text-red-600" size={20} />;
       case 'pago_confirmado':
         return <FiCreditCard className="text-purple-600" size={20} />;
       default:
@@ -1040,6 +1052,14 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return 'bg-[#F0F7F1] border-[#C9D4CB]';
       case 'reserva_confirmada':
         return 'bg-emerald-50 border-emerald-100';
+      case 'reserva_rechazada':
+        return 'bg-red-50 border-red-100';
+      case 'tour_completado':
+        return 'bg-emerald-50 border-emerald-100';
+      case 'tour_cancelado_guia':
+        return 'bg-red-50 border-red-100';
+      case 'reserva_cancelada_turista':
+        return 'bg-red-50 border-red-100';
       case 'pago_confirmado':
         return 'bg-purple-50 border-purple-100';
       default:
@@ -1309,7 +1329,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
                             <h4 className="font-bold text-sm text-gray-800 wrap-break-word pr-2 sm:pr-0">
-                              {notif.titulo}
+                              {stripEmojis(notif.titulo)}
                             </h4>
                             <span className="text-[11px] sm:text-xs text-gray-500 shrink-0">
                               {formatearFecha(notif.fecha)}

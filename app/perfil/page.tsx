@@ -114,6 +114,9 @@ export default function PerfilDetallado() {
   const [guiaRatingStats, setGuiaRatingStats] = useState<any>(null);
   const [paquetes, setPaquetes] = useState<any[]>([]);
   const [experiencias, setExperiencias] = useState<any[]>([]);
+  const [editingTourId, setEditingTourId] = useState<string | null>(null);
+  const [editingTourTitle, setEditingTourTitle] = useState("");
+  const [savingTourTitle, setSavingTourTitle] = useState(false);
   const [editingExpId, setEditingExpId] = useState<string | null>(null);
   const [editExpTitulo, setEditExpTitulo] = useState("");
   const [editExpDescripcion, setEditExpDescripcion] = useState("");
@@ -904,6 +907,28 @@ export default function PerfilDetallado() {
       });
       if (res.ok) setTours(prev => prev.filter(t => t.id !== tourId));
     } catch {}
+  };
+
+  const handleSaveTourTitle = async (tourId: string) => {
+    const trimmed = editingTourTitle.trim();
+    if (!trimmed) return;
+    setSavingTourTitle(true);
+    const token = localStorage.getItem("pitzbol_token");
+    const backendUrl = getBackendOrigin();
+    try {
+      const fd = new FormData();
+      fd.append("titulo", trimmed);
+      const res = await fetch(`${backendUrl}/api/paquetes/${tourId}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      if (res.ok) {
+        setTours(prev => prev.map(t => t.id === tourId ? { ...t, titulo: trimmed } : t));
+        setEditingTourId(null);
+      }
+    } catch {}
+    finally { setSavingTourTitle(false); }
   };
 
   const handleDeletePaquete = async (paqId: string) => {
@@ -2014,34 +2039,71 @@ export default function PerfilDetallado() {
                               transition={{ delay: i * 0.05 }}
                               className="relative flex items-center gap-3 rounded-xl border border-[#E0F2F1] p-3 transition-all group hover:border-[#A5D6A7] hover:bg-[#F7FBF7]"
                             >
-                              <a href={`/tours/${tour.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                                {foto ? (
-                                  <img src={foto} alt={tour.titulo || "Paquete"} className="h-14 w-14 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
-                                ) : (
-                                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
-                                    <FiMap size={18} className="text-[#66BB6A]" />
-                                  </div>
-                                )}
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold text-[#1A4D2E] group-hover:text-[#0D601E]">{tour.titulo || "Paquete"}</p>
-                                  <p className="truncate text-[11px] text-gray-500">{tour.destino || "Destino por definir"}</p>
-                                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
-                                    {tour.duracion && <span>{tour.duracion}</span>}
-                                    {tour.precio && <span>{tour.precio}</span>}
-                                    {idiomasTour && <span>{idiomasTour}</span>}
-                                  </div>
+                              {editingTourId === tour.id ? (
+                                <div className="flex flex-1 items-center gap-2 min-w-0">
+                                  <input
+                                    autoFocus
+                                    value={editingTourTitle}
+                                    onChange={e => setEditingTourTitle(e.target.value)}
+                                    onKeyDown={e => { if (e.key === "Enter") handleSaveTourTitle(tour.id); if (e.key === "Escape") setEditingTourId(null); }}
+                                    className="flex-1 min-w-0 px-3 py-1.5 border border-[#1A4D2E] rounded-lg text-sm text-[#1A4D2E] focus:outline-none focus:ring-2 focus:ring-[#1A4D2E]/30"
+                                    maxLength={120}
+                                  />
+                                  <button
+                                    onClick={() => handleSaveTourTitle(tour.id)}
+                                    disabled={savingTourTitle || !editingTourTitle.trim()}
+                                    className="shrink-0 p-1.5 rounded-lg text-[#1A4D2E] hover:bg-[#E8F5E9] disabled:opacity-40 transition-colors"
+                                    title="Guardar nombre"
+                                  >
+                                    <FiCheck size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingTourId(null)}
+                                    className="shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    title="Cancelar"
+                                  >
+                                    <FiX size={14} />
+                                  </button>
                                 </div>
-                              </a>
-                              <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
-                                Activo
-                              </span>
-                              <button
-                                onClick={() => handleDeleteTour(tour.id)}
-                                className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                title="Eliminar paquete"
-                              >
-                                <FiTrash2 size={14} />
-                              </button>
+                              ) : (
+                                <>
+                                  <a href={`/tours/${tour.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                                    {foto ? (
+                                      <img src={foto} alt={tour.titulo || "Paquete"} className="h-14 w-14 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
+                                    ) : (
+                                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
+                                        <FiMap size={18} className="text-[#66BB6A]" />
+                                      </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-sm font-semibold text-[#1A4D2E] group-hover:text-[#0D601E]">{tour.titulo || "Paquete"}</p>
+                                      <p className="truncate text-[11px] text-gray-500">{tour.destino || "Destino por definir"}</p>
+                                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
+                                        {tour.duracion && <span>{tour.duracion}</span>}
+                                        {tour.precio && <span>{tour.precio}</span>}
+                                        {idiomasTour && <span>{idiomasTour}</span>}
+                                      </div>
+                                    </div>
+                                  </a>
+                                  <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
+                                    Activo
+                                  </span>
+                                  <button
+                                    onClick={() => { setEditingTourId(tour.id); setEditingTourTitle(tour.titulo || ""); }}
+                                    className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-[#1A4D2E] hover:bg-[#E8F5E9] transition-colors"
+                                    title="Editar nombre del paquete"
+                                  >
+                                    <FiEdit2 size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTour(tour.id)}
+                                    className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    title="Eliminar paquete"
+                                  >
+                                    <FiTrash2 size={14} />
+                                  </button>
+                                </>
+                              )}
                             </motion.div>
                           );
                         })}
