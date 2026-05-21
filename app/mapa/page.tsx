@@ -525,7 +525,6 @@ export default function MapaPage() {
 
                                 loadPlaces();
                             }, [getFavorites, isAuthenticated, syncLocalFavorites]);
-                            useEffect(() => {
                                                 src={placeImages[lugar.nombre] || getPlaceImageUrlSync({
                                                     nombre: lugar.nombre,
                                                     categoria: lugar.categoria,
