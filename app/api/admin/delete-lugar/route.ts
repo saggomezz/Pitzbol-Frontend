@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
-const AUTHORIZED_EMAIL = "cua@hotmail.com";
+const AUTHORIZED_EMAILS = ["cua@hotmail.com", "pilarmorag2004@hotmail.com"];
 const CSV_PATH = path.join(process.cwd(), "public", "datosLugares.csv");
 
 export async function POST(req: NextRequest) {
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     if (!meRes || !meRes.ok) return NextResponse.json({ error: "Token inválido" }, { status: 401 });
     const meData = await meRes.json().catch(() => null);
-    if (meData?.email !== AUTHORIZED_EMAIL) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    if (!AUTHORIZED_EMAILS.includes(meData?.email)) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
     // Remove from CSV
     if (fs.existsSync(CSV_PATH)) {

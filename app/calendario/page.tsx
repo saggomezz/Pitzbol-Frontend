@@ -1,11 +1,17 @@
 "use client";
-import { AnimatePresence, motion } from "framer-motion";
-import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
-import {
-  FiChevronLeft, FiChevronRight, FiPlus, FiSun, FiX, FiTrash2, FiClock, FiMapPin, FiDollarSign
-} from "react-icons/fi";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
+import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import {
+    FiChevronLeft, FiChevronRight,
+    FiClock,
+    FiDollarSign,
+    FiMapPin,
+    FiPlus, FiSun,
+    FiTrash2,
+    FiX
+} from "react-icons/fi";
 
 interface SavedStop {
   place: {
@@ -28,6 +34,16 @@ interface CalendarEntry {
   stops: SavedStop[];
 }
 
+interface BookingEntry {
+  id: string;
+  fecha: string;
+  horaInicio?: string;
+  touristName?: string;
+  numPersonas?: number;
+  status?: string;
+  notas?: string;
+}
+
 function formatTime12(t: string) {
   if (!t) return t;
   const [hStr, mStr] = t.split(":");
@@ -36,6 +52,17 @@ function formatTime12(t: string) {
   const ampm = h >= 12 ? "PM" : "AM";
   h = h % 12 || 12;
   return `${h}:${m} ${ampm}`;
+}
+
+function getReservaTipo(notas?: string) {
+  if (!notas) return "Guia";
+  return notas.includes("Paquete:") ? "Paquete" : "Guia";
+}
+
+function getPaqueteTitulo(notas?: string) {
+  if (!notas) return "";
+  const match = notas.match(/Paquete:\s*([^·]+)/i);
+  return match ? match[1].trim() : "";
 }
 
 interface FirestoreEntry {
@@ -57,9 +84,10 @@ export default function CalendarioPage() {
   const [notas, setNotas] = useState<{ [key: string]: string[] }>({});
   const [firestoreEntries, setFirestoreEntries] = useState<FirestoreEntry[]>([]);
   const [notasFirestore, setNotasFirestore] = useState<Array<{id: string; fecha: string; texto: string}>>([]);
+  const [guideBookings, setGuideBookings] = useState<BookingEntry[]>([]);
 
   const user = usePitzbolUser();
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://69.30.204.56:3001';
+  const BACKEND = '';
   const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
 
   const getToken = () => {
@@ -89,6 +117,20 @@ export default function CalendarioPage() {
           notasMap[e.fecha].push(e.texto || '');
         });
         setNotas(notasMap);
+      }
+    } catch {}
+  };
+
+  const fetchGuideBookings = async () => {
+    const token = getToken();
+    if (!token || !user?.uid || user?.role !== 'guia') return;
+    try {
+      const res = await fetch(`${BACKEND}/api/bookings/guide/${user.uid}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGuideBookings(data.bookings || []);
       }
     } catch {}
   };
@@ -154,10 +196,16 @@ export default function CalendarioPage() {
       try { handleHashEntry(JSON.parse(saveParam), token); } catch { loadLocal(); }
     } else if (token) {
       fetchFirestore();
+      fetchGuideBookings();
     } else {
       loadLocal();
     }
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchGuideBookings();
+  }, [user]);
 
   const deleteItinerario = async (id: string) => {
     const token = getToken();
@@ -227,7 +275,19 @@ export default function CalendarioPage() {
       .map(e => parseInt(e.fecha.split('-')[2]))
   );
 
+  const daysWithBooking = new Set(
+    guideBookings
+      .filter(b => {
+        const [y, m] = b.fecha.split('-').map(Number);
+        return y === currentDate.getFullYear() && m - 1 === currentDate.getMonth();
+      })
+      .map(b => parseInt(b.fecha.split('-')[2]))
+  );
+
   const selectedNotas = selectedDateStr ? (notas[selectedDateStr] || []) : [];
+  const selectedBookings = selectedDateStr
+    ? guideBookings.filter(b => b.fecha === selectedDateStr)
+    : [];
 
   return (
     <div className="h-screen bg-[#FDFCF9] flex flex-col font-sans overflow-hidden">
@@ -275,6 +335,7 @@ export default function CalendarioPage() {
                 const dateKey = `${currentDate.getMonth() + 1}-${day}`;
                 const events = currentDate.getFullYear() === 2026 ? worldCupEvents[dateKey] : null;
                 const hasItinerary = daysWithItinerary.has(day);
+                const hasBooking = daysWithBooking.has(day);
                 const isSelected = selectedDay === day;
 
                 return (
@@ -287,8 +348,8 @@ export default function CalendarioPage() {
                       setNoteText('');
                     }}
                     className={`rounded-[25px] p-2 transition-all cursor-pointer relative flex flex-col justify-between border
-                      ${isSelected && hasItinerary ? 'bg-[#1A4D2E] border-[#1A4D2E]' : ''}
-                      ${!isSelected && hasItinerary ? 'bg-[#E0F2F1] border-[#81C784]' : ''}
+                      ${isSelected && (hasItinerary || hasBooking) ? 'bg-[#1A4D2E] border-[#1A4D2E]' : ''}
+                      ${!isSelected && (hasItinerary || hasBooking) ? 'bg-[#E0F2F1] border-[#81C784]' : ''}
                       ${events && !hasItinerary ? 'bg-[#FDF2F2] border-[#F00808]/20' : ''}
                       ${!hasItinerary && !events ? 'bg-white border-[#FDFCF9]' : ''}
                       ${isSelected ? 'ring-2 ring-[#1A4D2E] ring-offset-1' : ''}
@@ -300,7 +361,12 @@ export default function CalendarioPage() {
                       ${events && !hasItinerary ? 'text-[#F00808]' : ''}
                       ${!hasItinerary && !events ? 'text-[#1A4D2E]/20' : ''}
                     `}>{day}</span>
-                    {hasItinerary && (
+                    {hasBooking && (
+                      <div className={`mt-1 mb-0.5 text-[8px] font-black uppercase tracking-widest rounded-full px-2 py-0.5 text-center ${isSelected ? 'bg-white text-[#1A4D2E]' : 'bg-[#1A4D2E] text-white'}`}>
+                        Reserva
+                      </div>
+                    )}
+                    {!hasBooking && hasItinerary && (
                       <div className={`w-1.5 h-1.5 rounded-full mx-auto mb-0.5 ${isSelected ? 'bg-white' : 'bg-[#1A4D2E]'}`} />
                     )}
                     {events && !hasItinerary && (
@@ -364,6 +430,30 @@ export default function CalendarioPage() {
           <section className="bg-[#1A4D2E] rounded-[35px] p-5 text-white shadow-xl flex-1 overflow-y-auto">
             <h3 className="text-xl mb-3 uppercase flex-shrink-0" style={{ fontFamily: "'Jockey One', sans-serif" }}>Mi itinerario</h3>
 
+            {selectedBookings.length > 0 && (
+              <div className="mb-4 space-y-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-green-200">Reservas</p>
+                {selectedBookings.map((booking) => (
+                  <div key={booking.id} className="bg-white/10 rounded-2xl p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold">Reserva {getReservaTipo(booking.notas)}</p>
+                      {booking.horaInicio && (
+                        <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full">⏱ {formatTime12(booking.horaInicio)}</span>
+                      )}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[9px] text-green-200">
+                      {booking.touristName && <span>Turista: {booking.touristName}</span>}
+                      {getReservaTipo(booking.notas) === "Paquete" && getPaqueteTitulo(booking.notas) && (
+                        <span>Paquete: {getPaqueteTitulo(booking.notas)}</span>
+                      )}
+                      {booking.numPersonas && <span>Personas: {booking.numPersonas}</span>}
+                      {booking.status && <span>Estado: {booking.status}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {selectedItinerarios.length > 0 ? (
               <div className="space-y-4">
                 {selectedItinerarios.map(entry => (
@@ -426,7 +516,9 @@ export default function CalendarioPage() {
               <p className="text-green-200 text-xs">
                 {!selectedDateStr
                   ? 'Selecciona un día para ver tu itinerario.'
-                  : 'No tienes itinerarios para este día.'}
+                  : selectedBookings.length > 0
+                    ? 'No tienes itinerarios para este día.'
+                    : 'No tienes itinerarios ni reservas para este día.'}
               </p>
             )}
           </section>

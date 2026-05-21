@@ -134,7 +134,7 @@ const mergeTimelineEventData = (primary: TimelineEvent, secondary: TimelineEvent
   };
 };
 
-const API_BASE = "/api";
+const API_BASE = '/api';
 
 const actionLabelMap: Record<MovementKind, string> = {
   creado: "Solicitud creada",

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 
-import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase, FiMapPin } from "react-icons/fi";
+import { FiBell, FiCheck, FiX, FiAlertCircle, FiChevronRight, FiLoader, FiBriefcase, FiMapPin, FiCalendar, FiCheckCircle, FiCreditCard } from "react-icons/fi";
 import { marcarNotificacionComoLeida } from "@/lib/notificaciones";
 import { ensureValidAuthToken, fetchWithAuth } from "@/lib/fetchWithAuth";
 import { getApiBaseUrl, getSocketBackendOrigin } from "@/lib/backendUrl";
@@ -12,7 +12,7 @@ import DeletedBusinessModal from "./DeletedBusinessModal";
 
 interface Notification {
   id: string;
-  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado' | 'negocio_eliminado' | 'negocio_desarchivado' | 'negocio_pendiente' | 'ver_negocio_publicado';
+  tipo: 'aprobado' | 'rechazado' | 'info' | 'solicitud_guia_pendiente' | 'contacto' | 'llamada' | 'nueva_solicitud_negocio' | 'solicitud_negocio_enviada' | 'negocio_aprobado' | 'negocio_rechazado' | 'negocio_archivado' | 'negocio_editado' | 'negocio_eliminado' | 'negocio_desarchivado' | 'negocio_pendiente' | 'ver_negocio_publicado' | 'nueva_reserva' | 'reserva_confirmada' | 'pago_confirmado';
   titulo: string;
   mensaje: string;
   fecha: string;
@@ -33,7 +33,7 @@ interface NotificationsPanelProps {
 const BACKEND_URL = getSocketBackendOrigin();
 const API_BASE = getApiBaseUrl();
 const DIRECT_API_BASE = BACKEND_URL ? `${BACKEND_URL}/api` : API_BASE;
-const NOTIFICATIONS_FALLBACK_SYNC_MS = 5 * 60 * 1000;
+const NOTIFICATIONS_FALLBACK_SYNC_MS = 20 * 1000;
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
 
@@ -685,7 +685,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       // Actualizar localStorage
       localStorage.setItem(key, JSON.stringify(notificacionesCombinadas));
     } catch (error) {
-      console.error("Error al cargar notificaciones del backend:", error);
+      console.warn("Error al cargar notificaciones del backend:", error);
       // Cargar solo del localStorage si el backend falla
       cargarNotificacionesLocal();
     } finally {
@@ -714,18 +714,38 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
     }
   }, [userId, getNotificationBucketId]);
 
+  useEffect(() => {
+    if (!userId || !isOpen) return;
+    void cargarNotificacionesDelBackend();
+  }, [isOpen, userId, getNotificationBucketId]);
+
   // Fallback de sincronización: si Socket.IO no logra conectar en deploy/local,
   // seguimos refrescando desde backend para que las notificaciones aparezcan sin recargar.
   useEffect(() => {
     if (!userId) return;
 
-    const intervalId = window.setInterval(() => {
+    const syncFromBackend = () => {
       if (document.hidden) return;
       void cargarNotificacionesDelBackend();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        syncFromBackend();
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      syncFromBackend();
     }, NOTIFICATIONS_FALLBACK_SYNC_MS);
+
+    window.addEventListener("focus", syncFromBackend);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       window.clearInterval(intervalId);
+      window.removeEventListener("focus", syncFromBackend);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [userId, getNotificationBucketId]);
 
@@ -979,6 +999,12 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return <FiAlertCircle className="text-red-600" size={20} />;
       case 'ver_negocio_publicado':
         return <FiMapPin className="text-[#0D601E]" size={20} />;
+      case 'nueva_reserva':
+        return <FiCalendar className="text-[#0D601E]" size={20} />;
+      case 'reserva_confirmada':
+        return <FiCheckCircle className="text-emerald-600" size={20} />;
+      case 'pago_confirmado':
+        return <FiCreditCard className="text-purple-600" size={20} />;
       default:
         return <FiBell className="text-blue-600" size={20} />;
     }
@@ -1010,6 +1036,12 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         return 'bg-red-50 border-red-100';
       case 'ver_negocio_publicado':
         return 'bg-[#F0F7F1] border-[#C9D4CB]';
+      case 'nueva_reserva':
+        return 'bg-[#F0F7F1] border-[#C9D4CB]';
+      case 'reserva_confirmada':
+        return 'bg-emerald-50 border-emerald-100';
+      case 'pago_confirmado':
+        return 'bg-purple-50 border-purple-100';
       default:
         return 'bg-blue-50 border-blue-100';
     }
@@ -1202,16 +1234,24 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
       {/* Panel de Notificaciones */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="absolute top-[120%] right-0 sm:right-0 left-3 sm:left-auto w-[calc(100%-24px)] sm:w-96 max-h-[500px] sm:max-h-[600px] bg-white rounded-[28px] shadow-2xl border border-gray-100 flex flex-col z-[120] overflow-hidden"
-          >
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-black/10 z-115 md:hidden"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="fixed top-18 left-2 right-2 w-auto max-h-[calc(100vh-5.5rem)] bg-white rounded-3xl shadow-2xl border border-gray-100 flex flex-col z-120 overflow-hidden md:absolute md:top-[120%] md:right-0 md:left-auto md:w-96 md:max-h-150 md:rounded-[28px]"
+            >
             {/* Encabezado */}
-            <div className="bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white px-6 py-5 flex justify-between items-center">
-              <div>
-                <h3 className="font-normal text-lg">Notificaciones</h3>
+            <div className="bg-linear-to-r from-[#0D601E] to-[#1A4D2E] text-white px-4 py-4 sm:px-6 sm:py-5 flex justify-between items-center gap-3">
+              <div className="min-w-0">
+                <h3 className="font-normal text-base sm:text-lg wrap-break-word">Notificaciones</h3>
                 <p className="text-white/70 text-xs font-light mt-0.5">
                   {noLeidas > 0 ? `${noLeidas} sin leer` : 'Todo al día'}
                 </p>
@@ -1228,7 +1268,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
             {/* Contenido */}
             <div className="flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {cargando && notificaciones.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 px-6">
+                <div className="flex flex-col items-center justify-center py-14 px-5 sm:py-16 sm:px-6">
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -1237,7 +1277,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                   <p className="text-gray-500 font-medium text-sm">Cargando notificaciones...</p>
                 </div>
               ) : notificaciones.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                <div className="flex flex-col items-center justify-center py-14 px-5 text-center sm:py-16 sm:px-6">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                     <FiBell size={32} className="text-gray-300" />
                   </div>
@@ -1254,28 +1294,28 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                       whileHover={{ y: -2, scale: 1.01, boxShadow: "0 12px 28px rgba(13, 96, 30, 0.12)" }}
                       whileTap={{ scale: 0.995 }}
                       transition={{ delay: index * 0.05 }}
-                      className={`group relative p-4 border-l-4 ${getColorNotificacion(notif.tipo)} cursor-pointer transition-all duration-300 ${
+                      className={`group relative p-3.5 sm:p-4 border-l-4 ${getColorNotificacion(notif.tipo)} cursor-pointer transition-all duration-300 overflow-hidden ${
                         !notif.leido ? 'border-l-[#F00808] bg-opacity-60' : 'border-l-gray-200'
                       }`}
                       onClick={() => {
                         void handleNotificationClick(notif);
                       }}
                     >
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0D601E]/0 via-[#0D601E]/[0.06] to-[#0D601E]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="flex gap-3">
-                        <div className="flex-shrink-0 mt-1 transition-transform duration-300 group-hover:-translate-y-0.5">
+                      <div className="pointer-events-none absolute inset-0 bg-linear-to-r from-[#0D601E]/0 via-[#0D601E]/6 to-[#0D601E]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="flex gap-3 items-start">
+                        <div className="shrink-0 mt-1 transition-transform duration-300 group-hover:-translate-y-0.5">
                           {getIconoNotificacion(notif.tipo)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <h4 className="font-bold text-sm text-gray-800">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                            <h4 className="font-bold text-sm text-gray-800 wrap-break-word pr-2 sm:pr-0">
                               {notif.titulo}
                             </h4>
-                            <span className="text-xs text-gray-500 flex-shrink-0">
+                            <span className="text-[11px] sm:text-xs text-gray-500 shrink-0">
                               {formatearFecha(notif.fecha)}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-3 wrap-break-word">
                             {notif.mensaje}
                           </p>
                           {/* Botón para revisar solicitud de guía pendiente */}
@@ -1317,7 +1357,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
                             e.stopPropagation();
                             eliminarNotificacion(notif.id);
                           }}
-                          className="flex-shrink-0 p-1 hover:bg-red-100 rounded transition-colors text-gray-400 hover:text-red-600"
+                          className="shrink-0 p-1 hover:bg-red-100 rounded transition-colors text-gray-400 hover:text-red-600 self-start"
                         >
                           <FiX size={16} />
                         </button>
@@ -1329,7 +1369,8 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
             </div>
 
 
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 

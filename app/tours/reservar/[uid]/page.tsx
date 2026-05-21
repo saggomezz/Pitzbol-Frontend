@@ -10,9 +10,12 @@ import {
   FiUsers,
   FiCheckCircle,
   FiAlertCircle,
+  FiPackage,
+  FiX,
 } from "react-icons/fi";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
 import { getBackendOrigin } from "@/lib/backendUrl";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 const BACKEND_URL = getBackendOrigin();
 
@@ -22,6 +25,19 @@ interface GuideInfo {
   fotoPerfil?: string;
   tarifa: number;
   tarifaCompleta?: number;
+}
+
+interface PaqueteInfo {
+  id: string;
+  titulo: string;
+  descripcion?: string;
+  duracion?: string;
+  precio: number | string;
+  destino?: string;
+  fotos?: string[];
+  capacidad?: number | string;
+  disponibilidad?: string;
+  horaInicio?: string;
 }
 
 export default function BookTourPage() {
@@ -34,6 +50,11 @@ export default function BookTourPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [userChecked, setUserChecked] = useState(false);
+
+  // Paquetes del guía
+  const [paquetes, setPaquetes] = useState<PaqueteInfo[]>([]);
+  const [paqueteSeleccionado, setPaqueteSeleccionado] = useState<PaqueteInfo | null>(null);
+  const [loadingPaquetes, setLoadingPaquetes] = useState(false);
 
   // Datos del formulario
   const [fecha, setFecha] = useState("");
@@ -63,6 +84,19 @@ export default function BookTourPage() {
 
         if (data.success) {
           setGuide(data.guide);
+          // Cargar paquetes del guía
+          setLoadingPaquetes(true);
+          try {
+            const paqRes = await fetch(`/api/tours/guia/${guideId}`);
+            const paqData = await paqRes.json();
+            if (paqData.success) {
+              setPaquetes(paqData.tours || []);
+            }
+          } catch {
+            // Si falla, simplemente no mostrar paquetes
+          } finally {
+            setLoadingPaquetes(false);
+          }
         } else {
           alert("No se pudo cargar la información del guía");
           router.push("/tours");
@@ -81,15 +115,21 @@ export default function BookTourPage() {
     }
   }, [guideId, user, userChecked, router]);
 
+  const parsePrecio = (precio: number | string): number => {
+    if (typeof precio === "number") return precio;
+    const cleaned = String(precio).replace(/[$\s,]/g, "").replace(/MXN/gi, "").trim();
+    return parseFloat(cleaned) || 0;
+  };
+
   const calcularTotal = () => {
-    if (!guide) return 0;
-    
-    if (duracion === "completo" && guide.tarifaCompleta) {
-      return guide.tarifaCompleta;
+    if (paqueteSeleccionado) {
+      return parsePrecio(paqueteSeleccionado.precio) * numPersonas;
     }
-    
-    // Para medio día, calcular 4 horas
-    return guide.tarifa * 4;
+    if (!guide) return 0;
+    const tarifaBase = duracion === "completo" && guide.tarifaCompleta
+      ? guide.tarifaCompleta
+      : guide.tarifa;
+    return tarifaBase * numPersonas;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,14 +155,18 @@ export default function BookTourPage() {
     setSubmitting(true);
 
     try {
-      const reserva = {
+      const reserva: Record<string, unknown> = {
         guideId: guide.uid,
         guideName: guide.nombre,
         touristId: user.uid,
         touristName: user.nombre || "Turista",
         fecha,
-        duracion,
-        horaInicio,
+        duracion: paqueteSeleccionado ? "completo" : duracion,
+        horaInicio: paqueteSeleccionado
+          ? (paqueteSeleccionado.horaInicio ||
+             paqueteSeleccionado.disponibilidad?.match(/\u00b7\s*(\d{1,2}:\d{2})/)?.[1] ||
+             "09:00")
+          : horaInicio,
         numPersonas,
         notas,
         total: calcularTotal(),
@@ -130,7 +174,12 @@ export default function BookTourPage() {
         createdAt: new Date().toISOString(),
       };
 
-      const response = await fetch(`/api/bookings/create`, {
+      if (paqueteSeleccionado) {
+        reserva.paqueteId = paqueteSeleccionado.id;
+        reserva.paqueteTitulo = paqueteSeleccionado.titulo;
+      }
+
+      const response = await fetchWithAuth(`/api/bookings/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -179,24 +228,106 @@ export default function BookTourPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 py-6 sm:py-8">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl shadow-lg p-8"
+          className="bg-white rounded-2xl sm:rounded-3xl shadow-lg p-5 sm:p-8 overflow-hidden"
         >
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-[#1A4D2E] mb-2">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#1A4D2E] mb-2 leading-tight wrap-break-word">
               Reservar Tour con {guide.nombre}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-base sm:text-lg text-gray-600">
               Completa la información para tu reserva
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Selector de paquete */}
+            {(loadingPaquetes || paquetes.length > 0) && (
+              <div>
+                <label className="flex items-center gap-2 text-gray-700 font-semibold mb-3">
+                  <FiPackage size={20} />
+                  Selecciona un Paquete
+                </label>
+
+                {loadingPaquetes ? (
+                  <div className="flex items-center gap-2 text-gray-500 text-sm py-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#1A4D2E] border-t-transparent"></div>
+                    Cargando paquetes...
+                  </div>
+                ) : (
+                  <>
+                    {paqueteSeleccionado ? (
+                      <div className="border-2 border-[#1A4D2E] bg-[#F6F0E6] rounded-2xl p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-[#1A4D2E] text-base wrap-break-word">{paqueteSeleccionado.titulo}</p>
+                            {paqueteSeleccionado.destino && (
+                              <p className="text-sm text-gray-600 mt-0.5 wrap-break-word">{paqueteSeleccionado.destino}</p>
+                            )}
+                            {paqueteSeleccionado.descripcion && (
+                              <p className="text-sm text-gray-500 mt-1 line-clamp-2 wrap-break-word">{paqueteSeleccionado.descripcion}</p>
+                            )}
+                            <div className="flex flex-wrap gap-3 mt-2">
+                              {paqueteSeleccionado.disponibilidad && (
+                                <span className="inline-flex items-center gap-1 text-xs bg-white border border-[#1A4D2E]/20 text-[#1A4D2E] px-2 py-1 rounded-lg">
+                                  <FiClock size={12} /> {paqueteSeleccionado.disponibilidad}
+                                </span>
+                              )}
+                              {paqueteSeleccionado.duracion && (
+                                <span className="inline-flex items-center gap-1 text-xs bg-white border border-[#1A4D2E]/20 text-[#1A4D2E] px-2 py-1 rounded-lg">
+                                  {paqueteSeleccionado.duracion}
+                                </span>
+                              )}
+                              <span className="inline-flex items-center gap-1 text-xs bg-white border border-[#1A4D2E]/20 text-[#1A4D2E] px-2 py-1 rounded-lg font-semibold">
+                                ${parsePrecio(paqueteSeleccionado.precio).toLocaleString("es-MX")} MXN / persona
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPaqueteSeleccionado(null)}
+                            className="self-end text-gray-400 hover:text-red-500 transition-colors p-1 shrink-0 sm:self-start"
+                            aria-label="Quitar paquete"
+                          >
+                            <FiX size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3">
+                        {paquetes.map((paq) => (
+                          <button
+                            key={paq.id}
+                            type="button"
+                            onClick={() => setPaqueteSeleccionado(paq)}
+                            className="text-left w-full border-2 border-gray-200 hover:border-[#1A4D2E] hover:bg-[#F6F0E6]/50 rounded-xl p-4 transition-all overflow-hidden"
+                          >
+                            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-800 text-sm wrap-break-word">{paq.titulo}</p>
+                                {paq.destino && <p className="text-xs text-gray-500 mt-0.5 truncate">{paq.destino}</p>}
+                                {paq.descripcion && <p className="text-xs text-gray-400 mt-1 line-clamp-1">{paq.descripcion}</p>}
+                              </div>
+                              <div className="shrink-0 text-left sm:text-right">
+                                <p className="font-bold text-[#1A4D2E] text-sm">${parsePrecio(paq.precio).toLocaleString("es-MX")}</p>
+                                <p className="text-[10px] text-gray-400">por persona</p>
+                                {paq.duracion && <p className="text-[10px] text-gray-500 mt-0.5">{paq.duracion}</p>}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Fecha */}
             <div>
               <label className="flex items-center gap-2 text-gray-700 font-semibold mb-2">
@@ -208,65 +339,6 @@ export default function BookTourPage() {
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
                 min={new Date().toISOString().split("T")[0]}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
-                style={{ colorScheme: "light" }}
-                required
-              />
-            </div>
-
-            {/* Duración */}
-            <div>
-              <label className="flex items-center gap-2 text-gray-700 font-semibold mb-2">
-                <FiClock size={20} />
-                Duración
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setDuracion("medio")}
-                  className={`p-4 border-2 rounded-xl font-semibold transition-all ${
-                    duracion === "medio"
-                      ? "border-[#1A4D2E] bg-[#F6F0E6] text-[#1A4D2E]"
-                      : "border-gray-300 hover:border-gray-400"
-                  }`}
-                >
-                  <p className="text-lg">Medio Día</p>
-                  <p className="text-sm text-gray-600">4 horas</p>
-                  <p className="text-xl font-bold mt-2">
-                    ${(guide.tarifa * 4).toLocaleString("es-MX")} MXN
-                  </p>
-                </button>
-
-                {guide.tarifaCompleta && (
-                  <button
-                    type="button"
-                    onClick={() => setDuracion("completo")}
-                    className={`p-4 border-2 rounded-xl font-semibold transition-all ${
-                      duracion === "completo"
-                        ? "border-[#1A4D2E] bg-[#F6F0E6] text-[#1A4D2E]"
-                        : "border-gray-300 hover:border-gray-400"
-                    }`}
-                  >
-                    <p className="text-lg">Día Completo</p>
-                    <p className="text-sm text-gray-600">8 horas</p>
-                    <p className="text-xl font-bold mt-2">
-                      ${guide.tarifaCompleta.toLocaleString("es-MX")} MXN
-                    </p>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Hora de inicio */}
-            <div>
-              <label className="flex items-center gap-2 text-gray-700 font-semibold mb-2">
-                <FiClock size={20} />
-                Hora de Inicio
-              </label>
-              <input
-                type="time"
-                value={horaInicio}
-                onChange={(e) => setHoraInicio(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
                 style={{ colorScheme: "light" }}
                 required
@@ -308,7 +380,7 @@ export default function BookTourPage() {
             </div>
 
             {/* Resumen */}
-            <div className="bg-gradient-to-br from-[#F6F0E6] to-white p-6 rounded-2xl border-2 border-[#1A4D2E]">
+            <div className="bg-linear-to-br from-[#F6F0E6] to-white p-6 rounded-2xl border-2 border-[#1A4D2E]">
               <h3 className="text-xl font-bold text-[#1A4D2E] mb-4 flex items-center gap-2">
                 <FiDollarSign size={24} />
                 Resumen de Reserva
@@ -319,12 +391,12 @@ export default function BookTourPage() {
                   <span>Guía:</span>
                   <span className="font-semibold">{guide.nombre}</span>
                 </div>
-                <div className="flex justify-between text-gray-700">
-                  <span>Duración:</span>
-                  <span className="font-semibold">
-                    {duracion === "medio" ? "Medio Día (4h)" : "Día Completo (8h)"}
-                  </span>
-                </div>
+                {paqueteSeleccionado && (
+                  <div className="flex justify-between text-gray-700">
+                    <span>Paquete:</span>
+                    <span className="font-semibold text-right max-w-[60%]">{paqueteSeleccionado.titulo}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-700">
                   <span>Personas:</span>
                   <span className="font-semibold">{numPersonas}</span>
@@ -343,7 +415,7 @@ export default function BookTourPage() {
 
             {/* Info importante */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-              <FiAlertCircle className="text-blue-600 mt-1 flex-shrink-0" size={20} />
+              <FiAlertCircle className="text-blue-600 mt-1 shrink-0" size={20} />
               <div className="text-sm text-blue-800">
                 <p className="font-semibold mb-1">Información importante:</p>
                 <ul className="list-disc list-inside space-y-1">
@@ -367,7 +439,7 @@ export default function BookTourPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] hover:from-[#1A4D2E] hover:to-[#0D601E] text-white py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 bg-linear-to-r from-[#0D601E] to-[#1A4D2E] hover:from-[#1A4D2E] hover:to-[#0D601E] text-white py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>

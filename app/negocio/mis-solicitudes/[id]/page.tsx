@@ -19,7 +19,7 @@ import {
   FiShare2,
 } from "react-icons/fi";
 
-const API_BASE = "/api";
+const API_BASE = '/api';
 
 // ─── Status config (matches preview page) ────────────────────────────────────
 

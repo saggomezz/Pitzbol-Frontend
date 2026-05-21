@@ -1,8 +1,8 @@
 "use client";
-import { AnimatePresence, motion } from "framer-motion";
-import { useState, useRef } from "react";
-import { FiX, FiPlus, FiTrash2, FiUpload, FiPackage } from "react-icons/fi";
 import { getBackendOrigin } from "@/lib/backendUrl";
+import { AnimatePresence, motion } from "framer-motion";
+import { useRef, useState } from "react";
+import { FiPackage, FiPlus, FiTrash2, FiUpload, FiX } from "react-icons/fi";
 
 async function compressImage(file: File, maxWidth = 1200, quality = 0.82): Promise<File> {
   return new Promise((resolve) => {
@@ -128,7 +128,7 @@ export default function PaqueteFormModal({ isOpen, onClose, onCreated, guiaId }:
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-0 md:p-4"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-start md:items-center justify-center p-0 md:p-4 pt-20 md:pt-28 lg:pt-32"
         onClick={handleClose}
       >
         <motion.div
@@ -224,8 +224,15 @@ export default function PaqueteFormModal({ isOpen, onClose, onCreated, guiaId }:
                 <input value={puntoSalida} onChange={e => setPuntoSalida(e.target.value)} placeholder="Ej. Plaza Tapatía" className={inputCls} />
               </div>
               <div>
-                <label className="text-xs font-bold text-[#81C784] uppercase tracking-wide mb-1 block">Capacidad</label>
-                <input value={capacidad} onChange={e => setCapacidad(e.target.value)} placeholder="Ej. 10 personas" className={inputCls} />
+                <label className="text-xs font-bold text-[#81C784] uppercase tracking-wide mb-1 block">Maximo de personas</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={capacidad}
+                  onChange={e => setCapacidad(e.target.value)}
+                  placeholder="Ej. 10"
+                  className={inputCls}
+                />
               </div>
             </div>
 

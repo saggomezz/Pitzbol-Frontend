@@ -13,11 +13,11 @@ export default function Footer() {
         <footer className="bg-[#F6F0E6] border-t border-[#1A4D2E]/10 pt-16 pb-8 px-6 md:px-20 text-[#1A4D2E]">
             {/* LADO IZQUIERDO: LOGO Y SIGNIFICADO */}
             <div className="lg:col-span-5 flex flex-col md:flex-row items-center gap-6">
-                <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0">
+                <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0 overflow-visible">
                     <motion.div
                         whileHover={{ rotate: 190 }}
                         transition={{ duration: 2.0, ease: "easeInOut" }}
-                        className="absolute inset-0 cursor-pointer"
+                        className="absolute inset-0 cursor-pointer scale-110 md:scale-125 lg:scale-150 origin-center"
                     >
                         <Image
                             src={imglogo}

@@ -14,7 +14,7 @@ type WeeklySchedule = Record<WeekDayKey, DaySchedule>;
 const CATEGORY_CONFIG: Record<string, { descripcion: string; subcategorias: string[] }> = {
   "Restaurante / Cafetería": {
     descripcion: "Restaurantes de cocina mexicana e internacional, cafeterías, postrerías, comida de calle, opciones veganas y todo tipo de experiencias gastronómicas.",
-    subcategorias: ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana", "Internacional"],
+    subcategorias: ["Mexicana", "Cafeterías", "Comida de calle", "Postres & Dulces", "Vegana", "Internacional"],
   },
   "Artesanías / Souvenirs": {
     descripcion: "Tiendas de artesanías locales, souvenirs, arte popular, joyería artesanal, textiles típicos y productos hechos a mano que representan la cultura de Guadalajara y Jalisco.",

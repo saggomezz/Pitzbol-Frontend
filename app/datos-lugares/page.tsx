@@ -7,11 +7,13 @@ import {
 } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 
-const EMAIL_AUTORIZADO = "cua@hotmail.com";
-const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
+const EMAILS_AUTORIZADOS = ["cua@hotmail.com", "pilarmorag2004@hotmail.com"];
+const BACKEND = '/api';
+const IA_URL = process.env.NEXT_PUBLIC_IA_URL || 'http://69.30.204.56:3003';
+const invalidarCacheIA = () => fetch(`${IA_URL}/api/places`, { method: 'DELETE' }).catch(() => {});
 
 const CATEGORY_CONFIG: Record<string, string[]> = {
-  "Restaurante / Cafetería": ["Gastronomía mexicana", "Cafeterías", "Comida calle", "Postre", "Vegana", "Internacional"],
+  "Restaurante / Cafetería": ["Mexicana", "Cafeterías", "Comida de calle", "Postres & Dulces", "Vegana", "Internacional"],
   "Artesanías / Souvenirs": ["Artesanías", "Souvenirs", "Arte popular", "Joyería artesanal", "Textiles", "Talavera"],
   "Clubs / Bar": ["Club / Antro", "Bar", "Cantina", "Pub", "Música en vivo"],
   "Casas de cambio": ["Cambio de divisas", "Transferencias internacionales"],
@@ -22,6 +24,22 @@ const CATEGORY_CONFIG: Record<string, string[]> = {
   "Transporte": ["Metro", "Bus", "Aeropuerto"],
   "Parques / Naturaleza": ["Parque", "Jardín", "Bosque"],
 };
+
+// Intereses del motor IA — deben coincidir con INTEREST_MAP en ia-engine.ts
+const IA_INTERESTS = [
+  { id: 'cultura',       label: 'Cultura / Historia', emoji: '🏛️' },
+  { id: 'gastronomia',   label: 'Gastronomía',         emoji: '🍽️' },
+  { id: 'cafeterias',    label: 'Cafeterías',           emoji: '☕' },
+  { id: 'fotografia',    label: 'Fotografía',           emoji: '📷' },
+  { id: 'arquitectura',  label: 'Arquitectura',         emoji: '🏗️' },
+  { id: 'arte',          label: 'Arte e historia',      emoji: '🎨' },
+  { id: 'naturaleza',    label: 'Naturaleza',           emoji: '🌿' },
+  { id: 'compras',       label: 'Compras',              emoji: '🛍️' },
+  { id: 'vida-nocturna', label: 'Clubs / Bar',          emoji: '🍹' },
+  { id: 'futbol',        label: 'Fútbol',               emoji: '⚽' },
+  { id: 'callejera',     label: 'Comida de calle',      emoji: '🌮' },
+  { id: 'mercados',      label: 'Mercados Locales',     emoji: '🏪' },
+] as const;
 
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'] as const;
 type DiaSemana = typeof DIAS[number];
@@ -70,10 +88,13 @@ export default function DatosLugaresPage() {
   const [guardandoNuevo, setGuardandoNuevo] = useState(false);
   const [mensajeNuevo, setMensajeNuevo] = useState("");
   const nuevoFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  // Switch IA
+  const [agregarAIA, setAgregarAIA] = useState(false);
+  const [interesesIA, setInteresesIA] = useState<string[]>([]);
 
   useEffect(() => {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-    if (userLocal.email !== EMAIL_AUTORIZADO) {
+    if (!EMAILS_AUTORIZADOS.includes(userLocal.email)) {
       router.replace("/");
       return;
     }
@@ -105,11 +126,24 @@ export default function DatosLugaresPage() {
         const descripcionM: Record<string, boolean> = {};
         const firebaseSoloLugares: { nombre: string; categoria: string; horaApertura?: string }[] = [];
 
+        // Helper: normaliza nombre quitando ", Ciudad" al final para comparar variantes
+        const normNombre = (n: string) => n.toLowerCase()
+          .replace(/,\s*(guadalajara|zapopan|tlaquepaque|tonala|tonalá)[^,]*$/i, '').trim();
+
         (data.lugares || []).forEach((l: any) => {
           if (!l.nombre) return;
-          if (l.fotos?.length) fotosM[l.nombre] = l.fotos;
-          if (l.horariosJson) horarioM[l.nombre] = true;
-          if (l.descripcion?.trim()) descripcionM[l.nombre] = true;
+          if (l.fotos?.length) {
+            fotosM[l.nombre] = l.fotos;
+            fotosM[normNombre(l.nombre)] = l.fotos;
+          }
+          if (l.horariosJson) {
+            horarioM[l.nombre] = true;
+            horarioM[normNombre(l.nombre)] = true;
+          }
+          if (l.descripcion?.trim()) {
+            descripcionM[l.nombre] = true;
+            descripcionM[normNombre(l.nombre)] = true;
+          }
           firebaseSoloLugares.push({ nombre: l.nombre, categoria: l.categoria || '' });
         });
 
@@ -201,6 +235,7 @@ export default function DatosLugaresPage() {
       setExpandido(null);
       setConfirmDelete(null);
       setMensaje("✓ Lugar eliminado");
+      invalidarCacheIA();
       setTimeout(() => setMensaje(""), 3000);
     } catch (e: any) {
       setMensaje(`Error de conexión: ${e.message}`);
@@ -208,9 +243,13 @@ export default function DatosLugaresPage() {
   };
 
   const guardarFotos = async (nombre: string) => {
+    const fotosLimpias = inputFotos.filter(u => u.trim().startsWith("http"));
+    if (fotosLimpias.length === 0) {
+      setMensaje("Sube o pega al menos una imagen antes de guardar");
+      return;
+    }
     setGuardando(true);
     setMensaje("");
-    const fotosLimpias = inputFotos.filter(u => u.trim().startsWith("http"));
     const token = localStorage.getItem("pitzbol_token");
     try {
       const res = await fetch(`${BACKEND}/lugares/${encodeURIComponent(nombre)}/fotos`, {
@@ -224,12 +263,14 @@ export default function DatosLugaresPage() {
       });
       if (res.ok) {
         setFotosMap(prev => ({ ...prev, [nombre]: fotosLimpias }));
-        setMensaje("✓ Guardado");
+        setMensaje(`✓ ${fotosLimpias.length} foto(s) guardada(s)`);
+        invalidarCacheIA();
       } else {
-        setMensaje("Error al guardar");
+        const body = await res.json().catch(() => ({}));
+        setMensaje(`Error ${res.status}: ${body.message || body.msg || "sin guardar"}`);
       }
-    } catch {
-      setMensaje("Error de conexión");
+    } catch (err: any) {
+      setMensaje(`Error de conexión: ${err.message}`);
     } finally {
       setGuardando(false);
     }
@@ -349,23 +390,30 @@ export default function DatosLugaresPage() {
           }, nuevoHorario[diasAbiertos[0]].cierre)
         : '';
 
-      await fetch('/api/ia-place', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre: nombre,
-          categoria: nuevaCategoria,
-          latitud: nuevaLat,
-          longitud: nuevaLng,
-          horaApertura,
-          horaCierre,
-          diasCerrado,
-          imagen: fotosLimpias[0] || '',
-          tiempoEstancia: nuevoTiempo || '60',
-        }),
-      }).catch(() => {});
+      // Agregar al motor IA solo si el switch está activado y hay intereses seleccionados
+      if (agregarAIA && interesesIA.length > 0) {
+        await fetch('/api/ia-place', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nombre: nombre,
+            // Se pasan los intereses IA como categoría para que el motor los reconozca
+            categoria: interesesIA.join(', '),
+            latitud: nuevaLat,
+            longitud: nuevaLng,
+            horaApertura,
+            horaCierre,
+            diasCerrado,
+            imagen: fotosLimpias[0] || '',
+            tiempoEstancia: nuevoTiempo || '60',
+          }),
+        }).catch(() => {});
+        invalidarCacheIA();
+      }
 
       setMensajeNuevo("✓ Lugar creado correctamente");
+      // Notificar al Navbar para que refresque el buscador sin recargar la página
+      window.dispatchEvent(new CustomEvent('lugar-creado'));
       // Añadir a la lista sin recargar
       setLugares(prev => [...prev, { nombre, categoria: nuevaCategoria }]);
       if (fotosLimpias.length) setFotosMap(prev => ({ ...prev, [nombre]: fotosLimpias }));
@@ -376,6 +424,7 @@ export default function DatosLugaresPage() {
       setNuevaDescripcion(""); setNuevaDireccion(""); setNuevaLat(""); setNuevaLng("");
       setNuevoCosto(""); setNuevoTiempo("60");
       setNuevoHorario(defaultHorario()); setNuevoInputFotos(["", "", ""]);
+      setAgregarAIA(false); setInteresesIA([]);
       setTimeout(() => { setMostrarFormNuevo(false); setMensajeNuevo(""); }, 2000);
 
     } catch {
@@ -395,12 +444,19 @@ export default function DatosLugaresPage() {
     });
   };
 
+  const normNombreFilter = (n: string) => n.toLowerCase()
+    .replace(/,\s*(guadalajara|zapopan|tlaquepaque|tonala|tonalá)[^,]*$/i, '').trim();
+
   const lugaresFiltrados = lugares.filter(l => {
     const q = busqueda.toLowerCase();
     if (q && !l.nombre.toLowerCase().includes(q) && !l.categoria.toLowerCase().includes(q)) return false;
-    if (filtros.has('sinImagen') && (fotosMap[l.nombre]?.length || 0) > 0) return false;
-    if (filtros.has('sinHorario') && horarioMap[l.nombre]) return false;
-    if (filtros.has('sinDescripcion') && descripcionMap[l.nombre]) return false;
+    const nn = normNombreFilter(l.nombre);
+    const tieneImagen = (fotosMap[l.nombre]?.length || 0) > 0 || (fotosMap[nn]?.length || 0) > 0;
+    const tieneHorario = !!(horarioMap[l.nombre] || horarioMap[nn]);
+    const tieneDescripcion = !!(descripcionMap[l.nombre] || descripcionMap[nn]);
+    if (filtros.has('sinImagen') && tieneImagen) return false;
+    if (filtros.has('sinHorario') && tieneHorario) return false;
+    if (filtros.has('sinDescripcion') && tieneDescripcion) return false;
     return true;
   });
 
@@ -653,11 +709,61 @@ export default function DatosLugaresPage() {
               </button>
             </div>
 
+            {/* Switch: ¿Agregar a recomendaciones IA? */}
+            <div className="border border-dashed border-[#1A4D2E]/30 rounded-xl p-3 space-y-3 bg-[#F7FAF7]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-[#1A4D2E]">¿Agregar a las recomendaciones del motor IA?</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">El motor de itinerarios podrá incluir este lugar en sus sugerencias</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setAgregarAIA(v => !v); if (agregarAIA) setInteresesIA([]); }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none flex-shrink-0 ${agregarAIA ? 'bg-[#1A4D2E]' : 'bg-gray-200'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${agregarAIA ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+
+              {agregarAIA && (
+                <div>
+                  <p className="text-[11px] font-medium text-[#1A4D2E] mb-2">
+                    Selecciona en qué intereses aparecerá este lugar <span className="text-gray-400">(selecciona todos los que apliquen)</span>
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {IA_INTERESTS.map(opt => {
+                      const active = interesesIA.includes(opt.id);
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setInteresesIA(prev =>
+                            prev.includes(opt.id) ? prev.filter(i => i !== opt.id) : [...prev, opt.id]
+                          )}
+                          className={`flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-full border transition-colors ${
+                            active
+                              ? 'bg-[#1A4D2E] text-white border-[#1A4D2E]'
+                              : 'bg-white text-gray-600 border-gray-200 hover:border-[#1A4D2E]'
+                          }`}
+                        >
+                          <span>{opt.emoji}</span>
+                          <span>{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {interesesIA.length === 0 && (
+                    <p className="text-[11px] text-amber-500 mt-1.5">Selecciona al menos un interés para guardar en la IA</p>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Botón guardar */}
             <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
               <button
                 onClick={agregarLugar}
-                disabled={guardandoNuevo || nuevoUploadProgress.some(p => p !== null)}
+                disabled={guardandoNuevo || nuevoUploadProgress.some(p => p !== null) || (agregarAIA && interesesIA.length === 0)}
                 className="flex items-center gap-1.5 bg-[#1A4D2E] text-white text-sm px-5 py-2 rounded-lg hover:bg-[#0D601E] disabled:opacity-50 transition-colors"
               >
                 <FiSave size={13} />
@@ -756,50 +862,63 @@ export default function DatosLugaresPage() {
                   <div className="px-3 pb-3 border-t border-gray-50">
                     <p className="text-xs text-gray-400 mt-2 mb-2">Imágenes — pega un URL o sube un archivo</p>
                     {inputFotos.map((foto, i) => (
-                      <div key={i} className="flex items-center gap-2 mb-2">
-                        <FiImage size={13} className="text-gray-400 flex-shrink-0" />
-                        <input
-                          type="url"
-                          placeholder={`URL imagen ${i + 1}`}
-                          value={foto}
-                          onChange={e => {
-                            const nuevo = [...inputFotos];
-                            nuevo[i] = e.target.value;
-                            setInputFotos(nuevo);
-                          }}
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-black focus:outline-none focus:border-[#1A4D2E]"
-                        />
-                        <input
-                          ref={el => { fileInputRefsArray.current[i] = el; }}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) handleFileUpload(i, file);
-                            e.target.value = "";
-                          }}
-                        />
-                        <button
-                          onClick={() => fileInputRefsArray.current[i]?.click()}
-                          disabled={uploadProgress[i] !== null}
-                          title="Subir imagen"
-                          className="flex-shrink-0 p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                        >
-                          {uploadProgress[i] !== null
-                            ? <span className="text-[10px] text-[#1A4D2E] font-medium w-7 text-center block">{uploadProgress[i]}%</span>
-                            : <FiUpload size={13} className="text-gray-500" />
-                          }
-                        </button>
-                        {inputFotos.length > 1 && (
-                          <button
-                            onClick={() => eliminarSlot(i)}
-                            title="Eliminar este campo"
-                            className="flex-shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors"
-                          >
-                            <FiX size={13} />
-                          </button>
+                      <div key={i} className="mb-3">
+                        {/* Preview */}
+                        {foto && foto.startsWith("http") && (
+                          <div className="mb-1.5 rounded-lg overflow-hidden border border-gray-100 h-24 w-full bg-gray-50">
+                            <img
+                              src={foto}
+                              alt={`Foto ${i + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                            />
+                          </div>
                         )}
+                        <div className="flex items-center gap-2">
+                          <FiImage size={13} className="text-gray-400 flex-shrink-0" />
+                          <input
+                            type="url"
+                            placeholder={`URL imagen ${i + 1}`}
+                            value={foto}
+                            onChange={e => {
+                              const nuevo = [...inputFotos];
+                              nuevo[i] = e.target.value;
+                              setInputFotos(nuevo);
+                            }}
+                            className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-black focus:outline-none focus:border-[#1A4D2E]"
+                          />
+                          <input
+                            ref={el => { fileInputRefsArray.current[i] = el; }}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={e => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload(i, file);
+                              e.target.value = "";
+                            }}
+                          />
+                          <button
+                            onClick={() => fileInputRefsArray.current[i]?.click()}
+                            disabled={uploadProgress[i] !== null}
+                            title="Subir imagen"
+                            className="flex-shrink-0 p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                          >
+                            {uploadProgress[i] !== null
+                              ? <span className="text-[10px] text-[#1A4D2E] font-medium w-7 text-center block">↑</span>
+                              : <FiUpload size={13} className="text-gray-500" />
+                            }
+                          </button>
+                          {inputFotos.length > 1 && (
+                            <button
+                              onClick={() => eliminarSlot(i)}
+                              title="Eliminar este campo"
+                              className="flex-shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors"
+                            >
+                              <FiX size={13} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                     <button

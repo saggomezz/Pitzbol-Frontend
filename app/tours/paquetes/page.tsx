@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { getBackendOrigin } from "@/lib/backendUrl";
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import { FiSearch, FiCompass, FiClock, FiDollarSign, FiMapPin, FiUser } from "react-icons/fi";
+import { useEffect, useState } from "react";
 import { FaBoxOpen } from "react-icons/fa";
-import { getBackendOrigin } from "@/lib/backendUrl";
+import { FiClock, FiCompass, FiDollarSign, FiMapPin, FiSearch, FiUser } from "react-icons/fi";
 
 interface Paquete {
   id: string;
@@ -16,6 +16,7 @@ interface Paquete {
   fotos?: string[];
   duracion: string;
   precio: string;
+  capacidad?: string | number;
   queIncluye: string[];
   descripcion: string;
   guiaNombre: string;
@@ -40,6 +41,14 @@ export default function PaquetesPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const parseCapacidad = (capacidad: any) => {
+    if (typeof capacidad === "number" && Number.isFinite(capacidad)) return capacidad;
+    if (typeof capacidad !== "string") return 0;
+    const cleaned = capacidad.replace(/[^0-9]/g, "");
+    const value = Number.parseInt(cleaned, 10);
+    return Number.isFinite(value) ? value : 0;
+  };
 
   const filtered = paquetes.filter(paq => {
     const matchesQuery =
@@ -204,6 +213,11 @@ export default function PaquetesPage() {
                           {paq.precio && (
                             <span className="text-[11px] text-[#0D601E] font-bold flex items-center gap-1">
                               <FiDollarSign size={10} /> {paq.precio}
+                            </span>
+                          )}
+                          {parseCapacidad(paq.capacidad) > 0 && (
+                            <span className="text-[11px] text-gray-500 flex items-center gap-1">
+                              <FiUser size={10} className="text-[#0D601E]" /> Maximo {parseCapacidad(paq.capacidad)}
                             </span>
                           )}
                         </div>

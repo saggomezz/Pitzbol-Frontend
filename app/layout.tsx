@@ -1,18 +1,18 @@
 "use client";
-import { ensureFaceApiReady } from "./initTF";
-import { useState, useEffect } from "react";
-import { Geist, Geist_Mono, Jockey_One, JetBrains_Mono, Roboto } from "next/font/google";
 import { AnimatePresence } from "framer-motion";
-import dynamic from "next/dynamic";
 import { NextIntlClientProvider } from 'next-intl';
-import "./globals.css";
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
+import dynamic from "next/dynamic";
+import { Geist, Geist_Mono, JetBrains_Mono, Jockey_One, Roboto } from "next/font/google";
+import { useEffect, useState } from "react";
 import AuthModal from "./components/AuthModal";
 import BecomeGuideFlow from "./components/BecomeGuideFlow";
+import Footer from "./components/Footer";
 import InstallPWAPrompt from "./components/InstallPWAPrompt";
 import LocationPermissionModal from "./components/LocationPermissionModal";
+import Navbar from "./components/Navbar";
 import { PWAInstallProvider } from "./context/PWAInstallContext";
+import "./globals.css";
+import { ensureFaceApiReady } from "./initTF";
 const PublishBusinessFlow = dynamic(() => import("./components/PublishBusinessFlow"), { ssr: false });
 
 declare global {
@@ -159,8 +159,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang={locale}>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        <link rel="icon" href="/icon-192.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/icon-512.png" />
+        <link rel="icon" href="/icon-512.png" type="image/png" />
         <meta name="theme-color" content="#FDFCF9" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

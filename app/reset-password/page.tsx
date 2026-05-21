@@ -26,6 +26,13 @@ function ResetPasswordPageInner() {
 
   const oobCode = searchParams.get("oobCode");
 
+  const isStrongPassword = (value: string) =>
+    value.length >= 8 &&
+    /[a-z]/.test(value) &&
+    /[A-Z]/.test(value) &&
+    /[0-9]/.test(value) &&
+    /[^A-Za-z0-9]/.test(value);
+
   const handleReset = async () => {
     console.log("oobCode recibido:", oobCode);
     console.log("URL completa:", window.location.href);
@@ -33,8 +40,8 @@ function ResetPasswordPageInner() {
       setStatus({ type: 'error', msg: "El código de recuperación es inválido o ha expirado." });
       return;
     }
-    if (newPassword.length < 6) {
-      setStatus({ type: 'error', msg: "La contraseña debe tener al menos 6 caracteres." });
+    if (!isStrongPassword(newPassword)) {
+      setStatus({ type: 'error', msg: "Usa una contraseña fuerte: 8+ caracteres, mayúscula, minúscula, número y símbolo." });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -62,7 +69,7 @@ function ResetPasswordPageInner() {
         } else if (code.includes("INVALID_OOB_CODE")) {
           setStatus({ type: 'error', msg: "El enlace ya fue usado o es inválido. Solicita uno nuevo." });
         } else if (code.includes("WEAK_PASSWORD")) {
-          setStatus({ type: 'error', msg: "La contraseña es muy débil. Usa al menos 6 caracteres." });
+          setStatus({ type: 'error', msg: "La contraseña es muy débil. Usa una contraseña fuerte con 8+ caracteres, mayúscula, minúscula, número y símbolo." });
         } else {
           setStatus({ type: 'error', msg: `Error (${code}). Solicita un nuevo enlace.` });
         }
@@ -99,6 +106,7 @@ function ResetPasswordPageInner() {
               className="w-full pl-12 pr-12 py-3.5 bg-[#FDFCF9] border border-[#F6F0E6] rounded-full outline-none text-[#1A4D2E] focus:border-[#0D601E]"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
             />
             <button
               type="button"
@@ -116,6 +124,7 @@ function ResetPasswordPageInner() {
               className="w-full pl-12 pr-12 py-3.5 bg-[#FDFCF9] border border-[#F6F0E6] rounded-full outline-none text-[#1A4D2E] focus:border-[#0D601E]"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
             />
             <button
               type="button"
@@ -132,6 +141,10 @@ function ResetPasswordPageInner() {
           >
             Actualizar contraseña
           </button>
+
+          <p className="text-[11px] text-[#769C7B] font-medium px-2 leading-relaxed">
+            La nueva contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.
+          </p>
 
           {status.type && (
             <div className={`flex items-center justify-center gap-2 text-[11px] font-bold uppercase mt-4 ${status.type === 'error' ? "text-[#F00808]" : "text-[#0D601E]"}`}>

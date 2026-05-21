@@ -1,6 +1,7 @@
 import Papa from "papaparse";
 
-const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
+// Usamos el proxy interno de Next.js para evitar CORS y redirect loops del rewrite de Vercel
+const API_BASE = '/api/lugares-proxy';
 
 export interface PlaceRecord {
   nombre: string;
@@ -172,15 +173,30 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
   });
 
   try {
-    let firestoreResponse = await fetch(`${API_BASE}/lugares?includeApprovedBusinesses=true`);
+    let firestoreResponse: Response | undefined;
 
-    // Fallback defensivo: si la integración con negocios aprobados falla,
-    // intentamos al menos recuperar lugares base con fotos manuales.
-    if (!firestoreResponse.ok) {
-      firestoreResponse = await fetch(`${API_BASE}/lugares`);
+    try {
+      firestoreResponse = await fetch(
+        `${API_BASE}?includeApprovedBusinesses=true`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+    } catch {
+      // error de red o timeout — intentamos el fallback
     }
 
-    if (!firestoreResponse.ok) {
+    // Fallback defensivo: si la petición principal falla, intentar sin negocios aprobados
+    if (!firestoreResponse || !firestoreResponse.ok) {
+      try {
+        firestoreResponse = await fetch(
+          `${API_BASE}`,
+          { signal: AbortSignal.timeout(8000) }
+        );
+      } catch {
+        // timeout o error de red en fallback — usamos datos CSV
+      }
+    }
+
+    if (!firestoreResponse || !firestoreResponse.ok) {
       return Array.from(mergedByName.values());
     }
 
@@ -288,7 +304,7 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
       mergedByName.set(nombre, nextValue);
     });
   } catch (error) {
-    console.error("Error obteniendo lugares de Firestore:", error);
+    console.warn("Error obteniendo lugares de Firestore:", error);
   }
 
   return Array.from(mergedByName.values());

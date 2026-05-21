@@ -121,6 +121,7 @@ function InlineCardForm({
           payment_method: {
             card: cardElement,
           },
+          return_url: window.location.href,
         });
 
         if (result.error) {
@@ -175,6 +176,7 @@ function InlineCardForm({
 
       const result = await stripe.confirmCardSetup(clientSecret, {
         payment_method: { card: cardElement },
+        return_url: window.location.href,
       });
 
       if (result.error) {
@@ -289,10 +291,29 @@ export default function TourPaymentPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
+  const [invalidCard, setInvalidCard] = useState(false);
+  const [deletingCard, setDeletingCard] = useState(false);
+
+  const handleDeleteInvalidCard = async () => {
+    if (!selectedCard || !user) return;
+    const card = savedCards.find(c => c.stripePaymentMethodId === selectedCard);
+    if (!card) return;
+    setDeletingCard(true);
+    try {
+      await fetchWithAuth(`${BACKEND_URL}/api/perfil/card/${card.id}`, { method: 'DELETE' });
+      setInvalidCard(false);
+      setError(null);
+      await fetchCards();
+    } catch {
+      setError('No se pudo eliminar la tarjeta. Inténtalo desde tu perfil.');
+    } finally {
+      setDeletingCard(false);
+    }
+  };
 
   const handlePaymentSuccess = () => {
     setSuccess(true);
-    setTimeout(() => router.push(`/tours/confirmacion/${bookingId}`), 2000);
+    setTimeout(() => router.push(`/perfil`), 2000);
   };
 
   const fetchCards = async () => {
@@ -364,7 +385,7 @@ export default function TourPaymentPage() {
     setError(null);
 
     try {
-      // 1. Crear Payment Intent (sin confirmar)
+      // 1. Crear Payment Intent (sin confirmar en servidor)
       const paymentResponse = await fetchWithAuth(
         `${BACKEND_URL}/api/payments/create-payment-intent`,
         {
@@ -375,7 +396,6 @@ export default function TourPaymentPage() {
             userId: user?.uid,
             amount: booking.total,
             currency: "mxn",
-            paymentMethodId: selectedCard,
           }),
         }
       );
@@ -386,24 +406,42 @@ export default function TourPaymentPage() {
         throw new Error(paymentData.message || "Error al crear el pago");
       }
 
-      // 2. Confirmar pago con tarjeta guardada
-      const confirmResponse = await fetchWithAuth(
-        `${BACKEND_URL}/api/payments/confirm-with-saved-card`,
+      // 2. Confirmar con Stripe.js en el cliente (el cliente está presente)
+      const stripe = await stripePromise;
+      if (!stripe) throw new Error("Stripe no está disponible");
+
+      const result = await stripe.confirmCardPayment(paymentData.clientSecret, {
+        payment_method: selectedCard,
+        return_url: window.location.href,
+      });
+
+      if (result.error) {
+        if (result.error.code === 'card_declined' || result.error.code === 'invalid_number') {
+          setInvalidCard(true);
+        }
+        throw new Error(result.error.message || "Error al procesar el pago");
+      }
+
+      if (result.paymentIntent?.status !== "succeeded") {
+        throw new Error("El pago no se completó correctamente");
+      }
+
+      // 3. Finalizar en el backend (actualiza reserva, envía recibo)
+      const finalizeResponse = await fetchWithAuth(
+        `${BACKEND_URL}/api/payments/finalize-payment-intent`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            paymentIntentId: paymentData.paymentIntentId,
-            paymentMethodId: selectedCard,
+            paymentIntentId: result.paymentIntent.id,
             userId: user?.uid,
           }),
         }
       );
 
-      const confirmData = await confirmResponse.json();
-
-      if (!confirmData.success) {
-        throw new Error(confirmData.message || "Error al confirmar el pago");
+      const finalizeData = await finalizeResponse.json();
+      if (!finalizeData.success) {
+        throw new Error(finalizeData.message || "Error al finalizar el pago");
       }
 
       handlePaymentSuccess();
@@ -596,7 +634,7 @@ export default function TourPaymentPage() {
                   </div>
                 )}
               </motion.div>
-            ) : savedCards.length > 0 ? (
+            ) : savedCards.length > 0 && !invalidCard ? (
               <motion.div
                 key="cards"
                 initial={{ opacity: 0 }}
@@ -693,12 +731,27 @@ export default function TourPaymentPage() {
               className="text-red-600 mt-0.5 shrink-0"
               size={18}
             />
-            <p className="text-red-800 text-sm">{error}</p>
+            <div className="flex-1">
+              <p className="text-red-800 text-sm">{error}</p>
+              {invalidCard && (
+                <button
+                  onClick={handleDeleteInvalidCard}
+                  disabled={deletingCard}
+                  className="mt-3 w-full bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {deletingCard ? (
+                    <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" /> Eliminando...</>
+                  ) : (
+                    'Eliminar tarjeta inválida y agregar una nueva'
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         )}
 
         {/* Action Buttons */}
-        {savedCards.length > 0 && (
+        {savedCards.length > 0 && !invalidCard && (
           <div className="flex gap-3">
             <button
               onClick={() => router.push(`/tours/reservar/${booking.guideId}`)}

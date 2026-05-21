@@ -4,7 +4,7 @@ import ItineraryCard from "@/app/components/ItineraryCard";
 import { useState } from "react";
 
 const CATEGORIAS = ["Gastronomía", "Cultura", "Fútbol", "Vida Nocturna", "Museos", "Naturaleza"];
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://69.30.204.56:3001";
+const BACKEND_URL = '';
 
 export default function IAPitzbolPage() {
   const [itinerary, setItinerary] = useState<any>(null);

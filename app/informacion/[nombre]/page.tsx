@@ -16,6 +16,123 @@ import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
 import type { GeoPoint } from "@/lib/geoClient";
 import { getPlaceImageUrlSync } from "@/lib/placeImages";
 
+/* ─── Layout informativo para Avisos (sin calificación, horario, costo ni mapa) ─ */
+function AvisoLayout({ lugar, fotos, onBack }: { lugar: Lugar; fotos: string[]; onBack: () => void }) {
+  // notaIA contiene la descripción — mapPlaceToPublicDetail lo mapea desde place.descripcion
+  const parrafos = (lugar.notaIA || "")
+    .split(/\n+/)
+    .map((p: string) => p.trim())
+    .filter(Boolean);
+
+  return (
+    <div className="min-h-screen bg-[#FDFCF9]">
+      {/* Nav sticky */}
+      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-[#F0EDE8]">
+        <div className="max-w-5xl mx-auto px-5 py-4 flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-[#1A4D2E] font-bold text-sm hover:opacity-70 transition-opacity"
+          >
+            <FiArrowLeft size={18} /> Fútbol
+          </button>
+          <span className="text-gray-300 select-none">/</span>
+          <span className="text-sm text-[#769C7B] font-medium truncate max-w-[240px]">
+            {lugar.nombre}
+          </span>
+        </div>
+      </div>
+
+      <main className="max-w-5xl mx-auto px-5 py-10">
+        {/* Encabezado */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10"
+        >
+          <span className="inline-block bg-[#E8F5E9] text-[#1A4D2E] text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full mb-4">
+            {lugar.categoria}
+          </span>
+          <h1
+            className="text-3xl md:text-4xl font-black text-[#1A4D2E] leading-tight mb-3"
+            style={{ fontFamily: "'Jockey One', sans-serif" }}
+          >
+            {lugar.nombre}
+          </h1>
+          {lugar.direccion && lugar.direccion !== "Ubicacion no disponible" && (
+            <p className="text-sm text-gray-400 flex items-center gap-1.5">
+              <FiMapPin size={12} /> {lugar.direccion}
+            </p>
+          )}
+        </motion.div>
+
+        {/* Contenido principal: texto izquierda + fotos derecha */}
+        <div className="flex flex-col lg:flex-row gap-10 items-start">
+          {/* Descripción */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex-1 min-w-0"
+          >
+            {parrafos.length > 0 ? (
+              parrafos.map((p, i) => (
+                <p key={i} className="text-[15px] text-[#444] leading-[1.9] mb-5">
+                  {p}
+                </p>
+              ))
+            ) : (
+              <p className="text-[#aaa] italic text-sm">Sin descripción disponible.</p>
+            )}
+          </motion.div>
+
+          {/* Fotos en grid compacto — derecha en desktop, abajo en mobile */}
+          {fotos.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="w-full lg:w-80 xl:w-96 shrink-0"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                {fotos.map((src, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-2xl overflow-hidden shadow-sm border border-[#F0EDE8] ${
+                      fotos.length === 1 || (i === 0 && fotos.length % 2 === 1) ? "col-span-2" : ""
+                    }`}
+                  >
+                    <img
+                      src={src}
+                      alt=""
+                      className={`w-full object-cover ${
+                        fotos.length === 1 || (i === 0 && fotos.length % 2 === 1) ? "h-52" : "h-36"
+                      }`}
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-14 pt-6 border-t border-[#EDE9E4] flex items-center justify-between">
+          <span className="text-[11px] text-[#B0BEC5] uppercase tracking-widest font-semibold">
+            {lugar.categoria} · Guadalajara 2026
+          </span>
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 text-sm font-bold text-[#1A4D2E] hover:opacity-70 transition-opacity"
+          >
+            <FiArrowLeft size={14} /> Volver
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 const APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY = "pitzbol_approved_business_toast_dismissed_by_business_v2";
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
@@ -129,6 +246,8 @@ interface Lugar {
   fotos: string[];
   negocioId?: string;
   horariosJson?: string;
+  subcategoria?: string;
+  subcategorias?: string[];
 }
 
 function normalizeName(value: string): string {
@@ -202,7 +321,24 @@ function mapPlaceToPublicDetail(place: PlaceRecord): Lugar {
     fotos: Array.isArray(place.fotos) ? place.fotos : [],
     negocioId: place.negocioId,
     horariosJson: (place as any).horariosJson || undefined,
+    subcategoria: place.subcategoria,
+    subcategorias: place.subcategorias,
   };
+}
+
+const NOMBRES_AVISO_NORM = [
+  "capacidad y logistica en el estadio akron",
+  "cuanto cuestan los boletos oficiales para guadalajara",
+];
+function normForAviso(s: string) {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[¿?]/g,"").toLowerCase().trim();
+}
+function esAvisoLugar(lugar: Lugar): boolean {
+  return (
+    lugar.subcategoria === "Aviso" ||
+    (lugar.subcategorias || []).includes("Aviso") ||
+    NOMBRES_AVISO_NORM.some(n => normForAviso(lugar.nombre).includes(n.split(" ").slice(0, 4).join(" ")))
+  );
 }
 
 function getMapEmbedSrc(lugar: Lugar): string {
@@ -239,7 +375,8 @@ function getGalleryPhotos(lugar: Lugar): string[] {
   return savedPhotos.length > 0 ? savedPhotos : [getFallbackPhoto(lugar)];
 }
 
-const EMAIL_ADMIN_LUGARES = "cua@hotmail.com";
+const EMAILS_ADMIN_LUGARES = ["cua@hotmail.com", "pilarmorag2004@hotmail.com"];
+const BACKEND_API = '/api';
 
 const TODAS_CATEGORIAS = [
   "Gastronomía", "Cultura", "Vida Nocturna", "Cafetería", "Futbol",
@@ -409,7 +546,7 @@ export default function InformacionLugar() {
         }
 
         const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-        setEsAdminLugares(userLocal.email === EMAIL_ADMIN_LUGARES);
+        setEsAdminLugares(EMAILS_ADMIN_LUGARES.includes(userLocal.email));
 
         // Verificar si esta en favoritos
         try {
@@ -553,7 +690,7 @@ export default function InformacionLugar() {
     setMensajeDesc('');
     const token = localStorage.getItem('pitzbol_token');
     try {
-      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}/info`, {
+      const res = await fetch(`${BACKEND_API}/lugares/${encodeURIComponent(nombreLugar)}/info`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         credentials: 'include',
@@ -579,7 +716,7 @@ export default function InformacionLugar() {
       horarioObj[dia] = d?.cerrado ? 'cerrado' : { apertura: d?.apertura || '09:00', cierre: d?.cierre || '18:00' };
     }
     try {
-      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}/info`, {
+      const res = await fetch(`${BACKEND_API}/lugares/${encodeURIComponent(nombreLugar)}/info`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         credentials: 'include',
@@ -599,7 +736,7 @@ export default function InformacionLugar() {
     setEliminando(true);
     const token = localStorage.getItem('pitzbol_token');
     try {
-      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}`, {
+      const res = await fetch(`${BACKEND_API}/lugares/${encodeURIComponent(nombreLugar)}`, {
         method: 'DELETE',
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         credentials: 'include',
@@ -633,7 +770,7 @@ export default function InformacionLugar() {
     const hasTiempo = editTiempo.trim() !== '' && Number.isFinite(tiempoParsed) && tiempoParsed > 0;
     const hasCosto = editCosto.trim() !== '';
     try {
-      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}/info`, {
+      const res = await fetch(`${BACKEND_API}/lugares/${encodeURIComponent(nombreLugar)}/info`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -701,10 +838,26 @@ export default function InformacionLugar() {
   }
 
   const lugarSeguro = lugar as Lugar;
+
+  // Layout editorial para avisos — sin calificación, horario ni costo
+  if (esAvisoLugar(lugarSeguro)) {
+    return (
+      <AvisoLayout
+        lugar={lugarSeguro}
+        fotos={fotos}
+        onBack={() => router.push("/futbol?tab=avisos")}
+      />
+    );
+  }
+
   const horarioLugar = getHorarioActivo(lugarSeguro.nombre, lugarSeguro.horariosJson);
-  const mostrarHorario = esAdminLugares || !!horarioLugar;
+  const esHospital = [lugarSeguro.categoria, ...((lugarSeguro as any).categorias || [])]
+    .some(c => typeof c === "string" && (c.toLowerCase().includes("hospital") || c.toLowerCase().includes("médico") || c.toLowerCase().includes("medico")));
+  const mostrarHorario = esAdminLugares || !!horarioLugar || esHospital;
   const tieneTiempo = typeof lugarSeguro.tiempoEstancia === "number" && lugarSeguro.tiempoEstancia > 0;
   const tieneCosto = !!(lugarSeguro.costoEstimado && lugarSeguro.costoEstimado.trim());
+  const ocultarTiempoCosto = [lugarSeguro.categoria, ...((lugarSeguro as any).categorias || [])]
+    .some(c => typeof c === "string" && (c.toLowerCase().includes("cambio") || c.toLowerCase().includes("hospital") || c.toLowerCase().includes("médico") || c.toLowerCase().includes("medico")));
 
   return (
     <div className={styles.container}>
@@ -1069,7 +1222,17 @@ export default function InformacionLugar() {
                           </div>
                         );
                       })}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.4rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => {
+                            const h24: Record<string, any> = {};
+                            DIAS_ES.forEach(d => { h24[d] = { apertura: '00:00', cierre: '23:59', cerrado: false }; });
+                            setEditHorarios(h24);
+                          }}
+                          style={{ fontSize: '0.72rem', fontWeight: 600, color: '#0D601E', background: '#E8F5E9', border: '1px solid #81C784', borderRadius: '0.4rem', padding: '0.25rem 0.7rem', cursor: 'pointer' }}
+                        >
+                          🕐 24 horas
+                        </button>
                         <button onClick={guardarHorarios} disabled={guardandoHorarios} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#1A4D2E', color: 'white', border: 'none', fontSize: '0.72rem', fontWeight: 600, padding: '0.35rem 0.85rem', borderRadius: '0.4rem', cursor: 'pointer', opacity: guardandoHorarios ? 0.6 : 1 }}>
                           <FiCheck size={11} /> {guardandoHorarios ? 'Guardando...' : 'Guardar'}
                         </button>
@@ -1097,12 +1260,17 @@ export default function InformacionLugar() {
                         );
                       })}
                     </div>
+                  ) : esHospital ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.35rem', background: '#E8F5E9', borderRadius: '0.5rem' }}>
+                      <span style={{ fontSize: '1rem' }}>🕐</span>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0D601E' }}>Abierto 24 horas</span>
+                    </div>
                   ) : null}
                 </div>
               )}
 
               <div className={styles.quickInfoStack}>
-                {(esAdminLugares || editandoInfo || tieneTiempo) && (
+                {!ocultarTiempoCosto && (esAdminLugares || editandoInfo || tieneTiempo) && (
                 <div className={styles.statCard}>
                   <div className={styles.statIcon}>
                     <FiClock />
@@ -1124,7 +1292,7 @@ export default function InformacionLugar() {
                 </div>
                 )}
 
-                {(esAdminLugares || editandoInfo || tieneCosto) && (
+                {!ocultarTiempoCosto && (esAdminLugares || editandoInfo || tieneCosto) && (
                 <div className={styles.statCard}>
                   <div className={styles.statIcon}>
                     <FiDollarSign />

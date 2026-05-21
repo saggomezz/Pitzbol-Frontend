@@ -121,7 +121,7 @@ export default function SoportePage() {
         }
 
         try {
-            const API_BASE = "/api";
+            const API_BASE = '/api';
             const response = await fetch(`${API_BASE}/support/contact-form`, {
                 method: "POST",
                 headers: {
@@ -159,7 +159,7 @@ export default function SoportePage() {
         }
 
         try {
-            const API_BASE = "/api";
+            const API_BASE = '/api';
             const response = await fetch(`${API_BASE}/support/call-request`, {
                 method: "POST",
                 headers: {

@@ -1,4 +1,4 @@
-const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443') + '/api';
+const API_BASE = '/api';
 
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
@@ -94,6 +94,7 @@ export async function fetchWithAuth(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
+  const resolvedUrl = url;
   let token = (await ensureValidAuthToken()) || '';
 
   const headers: Record<string, string> = {
@@ -103,7 +104,7 @@ export async function fetchWithAuth(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
+  const response = await fetch(resolvedUrl, {
     ...options,
     credentials: 'include',
     headers,
@@ -125,15 +126,15 @@ export async function fetchWithAuth(
   const newToken = await refreshPromise;
 
   if (!newToken) {
-    // Refresh failed — limpiar estado local y dejar que el flujo llamador maneje el 401.
+    // Refresh failed — solo limpiar el token expirado, NO los datos del usuario.
+    // Borrar pitzbol_user causaría que el perfil (rol, especialidades, etc.) desaparezca.
     localStorage.removeItem('pitzbol_token');
-    localStorage.removeItem('pitzbol_user');
     return response;
   }
 
   // Retry original request with new token
   headers['Authorization'] = `Bearer ${newToken}`;
-  return fetch(url, {
+  return fetch(resolvedUrl, {
     ...options,
     credentials: 'include',
     headers,

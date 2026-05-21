@@ -66,6 +66,7 @@ function CheckoutForm() {
         payment_method: {
           card: elements.getElement(CardElement)!,
         },
+        return_url: window.location.href,
       });
 
       if (result.error) {

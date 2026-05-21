@@ -6,8 +6,8 @@ import {
   FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
   FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
 } from "react-icons/fa";
-import { FiCamera, FiCheck, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
-  FiPlus, FiShield, FiUser, FiX, FiCreditCard, FiDollarSign, FiTrash2
+import { FiCalendar, FiCamera, FiCheck, FiChevronRight, FiClock, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
+  FiPlus, FiShield, FiUser, FiUsers, FiX, FiCreditCard, FiDollarSign, FiTrash2, FiAlertTriangle
 } from "react-icons/fi";
 import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
 import { useFavoritesSync } from "@/lib/favoritesApi";
@@ -18,7 +18,7 @@ import WalletModal from "@/app/components/WalletModal";
 import PersonaTourFormModal from "@/app/components/PersonaTourFormModal";
 import PaqueteFormModal from "@/app/components/PaqueteFormModal";
 
-const API_BASE = "/api";
+const API_BASE = '/api';
 
 // Función auxiliar para capitalizar texto
 const capitalizarPrimera = (texto: string): string => {
@@ -104,8 +104,16 @@ export default function PerfilDetallado() {
   const [perfil, setPerfil] = useState<any>(null);
   const [tours, setTours] = useState<any[]>([]);
   const [showTourModal, setShowTourModal] = useState(false);
+  const [reservasHistorial, setReservasHistorial] = useState<any[]>([]);
+  const [showHistorialModal, setShowHistorialModal] = useState(false);
+  const [cancelandoReservaId, setCancelandoReservaId] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [bookingRatings, setBookingRatings] = useState<Record<string, any>>({});
+  const [ratingDraft, setRatingDraft] = useState<Record<string, { estrellas: number; comentario: string }>>({});
+  const [submittingRating, setSubmittingRating] = useState<string | null>(null);
+  const [guiaRatingStats, setGuiaRatingStats] = useState<any>(null);
   const [paquetes, setPaquetes] = useState<any[]>([]);
-  const [showPaqueteModal, setShowPaqueteModal] = useState(false);
+  const [experiencias, setExperiencias] = useState<any[]>([]);
   const [tipoGuia, setTipoGuia] = useState<string>(() => {
     if (typeof window !== "undefined") {
       const u = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
@@ -133,7 +141,31 @@ export default function PerfilDetallado() {
       }));
       setEspecialidadesTemp(intereses);
     }
-  }; 
+  };
+
+  const BACKEND_URL_PERFIL = getBackendOrigin();
+
+  const cancelarReserva = async (bookingId: string) => {
+    setCancelandoReservaId(bookingId);
+    try {
+      const res = await fetchWithAuth(`${BACKEND_URL_PERFIL}/api/bookings/${bookingId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.message || 'Error al cancelar la reserva');
+        return;
+      }
+      setReservasHistorial(prev =>
+        prev.map(r => r.id === bookingId ? { ...r, status: 'cancelado' } : r)
+      );
+    } catch {
+      alert('Error de conexión al cancelar la reserva');
+    } finally {
+      setCancelandoReservaId(null);
+      setConfirmCancelId(null);
+    }
+  };
 
   const [editandoNacionalidad, setEditandoNacionalidad] = useState(false);
   const [nacionalidadTemp, setNacionalidadTemp] = useState("");
@@ -183,8 +215,8 @@ export default function PerfilDetallado() {
 
   const guardarTarifa = async () => {
     const valor = parseFloat(tarifaTemp);
-    if (isNaN(valor) || valor <= 0) {
-      setErrorTarifa("Ingresa una tarifa válida mayor a 0");
+    if (isNaN(valor) || valor < 350) {
+      setErrorTarifa("La tarifa mínima es de $350 MXN / hora");
       return;
     }
     setGuardando(true);
@@ -236,12 +268,45 @@ export default function PerfilDetallado() {
   };
 
   useEffect(() => {
-    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    let userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
     const cargarDatos = async () => {
       if (!userLocal.uid) {
         setLoading(false);
         return;
       }
+
+      // Refrescar datos desde Firestore via /api/auth/me
+      try {
+        const token = localStorage.getItem("pitzbol_token");
+        if (token) {
+          const meRes = await fetch(`${API_BASE}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "include",
+          });
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            if (meData.success && meData.user) {
+              // Mezclar datos frescos: solo sobreescribir campos no vacíos
+              // (evita que un campo vacío de Firestore borre datos válidos en localStorage)
+              const fresh = meData.user as Record<string, any>;
+              const merged: Record<string, any> = { ...userLocal };
+              for (const key of Object.keys(fresh)) {
+                const val = fresh[key];
+                if (val !== null && val !== undefined && val !== "") {
+                  // No degradar role: si el local dice "guia" y el fresco dice "turista", conservar "guia"
+                  if ((key === "role" || key === "03_rol") && val === "turista" &&
+                      (merged.role === "guia" || merged["03_rol"] === "guia")) {
+                    continue;
+                  }
+                  merged[key] = val;
+                }
+              }
+              userLocal = merged;
+              localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+            }
+          }
+        }
+      } catch {}
 
       const initialEspecialidades =
         (userLocal["07_intereses"]?.length > 0 ? userLocal["07_intereses"] : null) ||
@@ -349,10 +414,10 @@ export default function PerfilDetallado() {
 
         const resolvedGuideType = userLocal.guia_tipo || tipoGuia || "persona";
 
-        // Cargar experiencias del guía individual o solicitudes del flujo empresarial
-        try {
-          const token = localStorage.getItem("pitzbol_token");
-          if (rol === "guia" && resolvedGuideType !== "empresa") {
+        // Cargar paquetes publicados del guía (tours activos)
+        if (rol === "guia" && resolvedGuideType !== "empresa") {
+          try {
+            const token = localStorage.getItem("pitzbol_token");
             const toursRes = await fetch(`${API_BASE}/tours/guia/${userLocal.uid}`, {
               credentials: "include",
               headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -361,7 +426,9 @@ export default function PerfilDetallado() {
               const toursData = await toursRes.json();
               if (toursData.success) setTours(toursData.tours || []);
             }
-          } else {
+          } catch {}
+        } else if (rol === "guia") {
+          try {
             const solRes = await fetchWithAuth(`${API_BASE}/business/my-requests`, {
               cache: "no-store",
               headers: { "Content-Type": "application/json" },
@@ -370,17 +437,44 @@ export default function PerfilDetallado() {
               const solData = await solRes.json();
               if (solData.success) setTours(solData.solicitudes || []);
             }
-          }
-        } catch {}
+          } catch {}
+        }
 
-        // Cargar paquetes del guía
+        // Cargar historial de experiencias completadas del guía
+        if (rol === "guia" && resolvedGuideType !== "empresa") {
+          try {
+            const token = localStorage.getItem("pitzbol_token");
+            const expRes = await fetch(`${API_BASE}/bookings/guia/${userLocal.uid}/experiencias`, {
+              credentials: "include",
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            if (expRes.ok) {
+              const expData = await expRes.json();
+              if (expData.success) setExperiencias(expData.experiencias || []);
+            }
+          } catch {}
+        }
+
+        // Cargar historial de reservas (solo turistas)
+        if (rol !== "guia") {
+          try {
+            const reservasRes = await fetchWithAuth(`${API_BASE}/bookings/tourist/${userLocal.uid}`, {
+              cache: "no-store",
+            });
+            if (reservasRes.ok) {
+              const reservasData = await reservasRes.json();
+              if (reservasData.success) setReservasHistorial(reservasData.bookings || []);
+            }
+          } catch {}
+        }
+
+        // Cargar calificaciones del guía (solo guías)
         if (rol === "guia") {
           try {
-            const backendUrlPaq = getBackendOrigin();
-            const paqRes = await fetch(`${backendUrlPaq}/api/paquetes/guia/${userLocal.uid}`);
-            if (paqRes.ok) {
-              const paqData = await paqRes.json();
-              if (paqData.success) setPaquetes(paqData.paquetes || []);
+            const statsRes = await fetch(`${API_BASE}/ratings/guide/${userLocal.uid}/stats`);
+            if (statsRes.ok) {
+              const statsData = await statsRes.json();
+              if (statsData.success) setGuiaRatingStats(statsData.stats);
             }
           } catch {}
         }
@@ -430,7 +524,7 @@ export default function PerfilDetallado() {
       window.removeEventListener("favoritesChanged", handleFavoritesChanged);
       window.removeEventListener("storage", handleFavoritesChanged);
     };
-  }, [syncLocalFavorites]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Escuchar cambios en el localStorage (cuando se cierren modales)
   useEffect(() => {
@@ -751,49 +845,64 @@ export default function PerfilDetallado() {
   const guardarEspecialidades = async () => {
     setGuardando(true);
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    const rolLocal = userLocal["03_rol"] || userLocal.role || "turista";
+    const esGuiaSave = rolLocal === "guia";
 
     try {
-      // Determinar si es guía o turista
-      const role = userLocal.role || userLocal.rol || userLocal["03_rol"] || "turista";
-      const endpoint = role === "guia" ? '/api/guides/update' : '/api/auth/update-profile';
-      const fieldName = role === "guia" ? "categorias" : "especialidades";
-      
-      const response = await fetch(endpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uid: userLocal.uid,
-          [fieldName]: especialidadesTemp 
-        })
-      });
-      
+      let response: Response;
+
+      if (esGuiaSave) {
+        // Guías: endpoint específico de guías (requiere rol guía)
+        const token = localStorage.getItem("pitzbol_token");
+        const backendUrl = getBackendOrigin();
+        response = await fetch(`${backendUrl}/api/guides/update`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ uid: userLocal.uid, categorias: especialidadesTemp }),
+        });
+      } else {
+        // Turistas: endpoint general de perfil
+        const token = localStorage.getItem("pitzbol_token");
+        const backendUrl = getBackendOrigin();
+        response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ especialidades: especialidadesTemp }),
+        });
+      }
+
       if (response.ok) {
         setEspecialidades([...especialidadesTemp]);
         setEditandoEspecialidades(false);
-        const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-
-        const updatedUser = {
-          ...userLocal,
-          "07_intereses": role === "turista" ? especialidadesTemp : userLocal["07_intereses"],
-          "07_especialidades": role === "guia" ? especialidadesTemp : userLocal["07_especialidades"],
-        };
-        
-        localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
+        const userUpdated = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+        localStorage.setItem("pitzbol_user", JSON.stringify({
+          ...userUpdated,
+          "07_intereses": especialidadesTemp,
+          "07_especialidades": especialidadesTemp,
+        }));
         window.dispatchEvent(new Event("storage"));
-        
-        // Emitir evento para actualizar lista de guías
-        console.log('📤 Emitiendo evento: guideProfileUpdated (especialidades)');
-        window.dispatchEvent(new Event('guideProfileUpdated'));
-        
+        if (esGuiaSave) {
+          console.log('📤 Emitiendo evento: guideProfileUpdated (especialidades)');
+          window.dispatchEvent(new Event('guideProfileUpdated'));
+        }
         setExito(t('changesSaved'));
         setTimeout(() => setExito(""), 3000);
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.msg || `Error ${response.status}: No se pudo guardar los intereses`);
+        const errData = await response.json().catch(() => ({}));
+        console.error("Error al guardar intereses:", errData);
+        setErrorEspecialidades(errData.msg || errData.error || "Error al guardar");
       }
-    } catch (error: any) {
-      console.error("❌ Error al guardar intereses:", error);
-      setErrorEspecialidades(error.message || "Error al guardar los intereses");
+    } catch (error) {
+      console.error("Error al guardar intereses", error);
+      setErrorEspecialidades("Error de conexión. Intenta de nuevo.");
     } finally {
       setGuardando(false);
     }
@@ -1317,59 +1426,6 @@ export default function PerfilDetallado() {
                       )}
                     </motion.div>
 
-                    {/* Card de Teléfono */}
-                    <motion.div 
-                      whileHover={{ y: -1 }}
-                      className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="p-2 bg-[#F1F8F6] rounded-lg">
-                            <FiPhone size={16} className="text-[#66BB6A]" />
-                          </div>
-                          <h3 className="text-xs font-medium text-[#81C784] tracking-wide">{t('phoneLabel')}</h3>
-                        </div>
-                        {!editandoTelefono && (
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setEditandoTelefono(true)}
-                            className="px-2.5 py-1 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1"
-                          >
-                            <FiEdit2 size={12} /> {t('edit')}
-                          </motion.button>
-                        )}
-                      </div>
-                      
-                      {editandoTelefono ? (
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <select
-                              value={ladaTemp}
-                              onChange={(e) => setLadaTemp(e.target.value)}
-                              className="sm:col-span-1 text-sm font-medium text-[#1A4D2E] bg-white border-2 rounded-lg px-3 py-2 focus:outline-none border-[#C8E6C9]"
-                            >
-                              {LADAS.map((lada) => (
-                                <option key={lada.code} value={lada.code}>{lada.code}</option>
-                              ))}
-                            </select>
-                            <input
-                              type="tel"
-                              value={numeroTemp}
-                              onChange={(e) => setNumeroTemp(e.target.value)}
-                              className="sm:col-span-2 text-sm font-medium text-[#1A4D2E] bg-white border-2 rounded-lg px-3 py-2 focus:outline-none border-[#C8E6C9]"
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={guardarTelefono} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors">{t('save')}</button>
-                            <button onClick={cancelarTelefono} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors">{tCommon('cancel')}</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-sm font-medium text-[#1A4D2E] pl-12 break-all">{perfil?.telefono}</p>
-                      )}
-                    </motion.div>
-
                     {/* Card de Tarifa por Tour — solo para guías */}
                     {esGuia && (
                       <motion.div
@@ -1421,7 +1477,10 @@ export default function PerfilDetallado() {
                           </div>
                         ) : (
                           <p className="text-sm font-medium text-[#1A4D2E] pl-12">
-                            {perfil?.tarifa ? `$${Number(perfil.tarifa).toLocaleString("es-MX")} MXN / hora` : "Sin tarifa definida"}
+                            {perfil?.tarifa
+                              ? `$${Number(perfil.tarifa).toLocaleString("es-MX")} MXN / hora`
+                              : <span className="text-xs font-medium text-[#E53935] tracking-wide">Agrega tu tarifa para que turistas reserven</span>
+                            }
                           </p>
                         )}
                       </motion.div>
@@ -1816,51 +1875,49 @@ export default function PerfilDetallado() {
               </motion.div>
             )}
 
-            {/* Sección de los Tours */}
-            <motion.div 
+            {/* ── Sección de Paquetes (tours publicados) ── */}
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
             >
-              {/* Encabezado de la sección */}
               <div className="mb-6 flex justify-between items-end">
                 <div>
                   <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">
-                    {esGuia ? t('myExperiences') : t('upcomingDestinations')}
+                    {esGuia ? "Paquetes" : t('upcomingDestinations')}
                   </h3>
                   <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
-                    {esGuia ? t('toursPublished') : t('bookings')}
+                    {esGuia ? "Tours que ofreces a turistas" : t('bookings')}
                   </p>
                 </div>
                 {esGuia && (
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
-                      {tipoGuia !== "empresa" ? tours.length : tours.filter((s: any) => s.estado === 'aprobado').length} {t('published')}
+                      {tipoGuia !== "empresa" ? tours.length : tours.filter((s: any) => s.estado === 'aprobado').length} publicados
                     </span>
                   </div>
                 )}
               </div>
 
-              {/* Contenido condicional por ROL */}
               {esGuia ? (
                 tipoGuia !== "empresa" ? (
                   <div className="space-y-4">
-                    <motion.button 
+                    <motion.button
                       whileHover={{ scale: 1.01, backgroundColor: "#f9fafb" }}
                       whileTap={{ scale: 0.99 }}
-                      onClick={() => setShowTourModal(true)} 
+                      onClick={() => setShowTourModal(true)}
                       className="w-full py-4 border-2 border-dashed border-[#E0F2F1] rounded-lg flex items-center justify-center gap-2 text-[#81C784] hover:text-[#66BB6A] hover:border-[#A5D6A7] transition-all group"
                     >
                       <div className="w-7 h-7 bg-[#E8F5E9] group-hover:bg-[#3A5A40] group-hover:text-white rounded-full flex items-center justify-center transition-colors">
                         <FiPlus size={16} />
                       </div>
-                      <span className="text-sm font-medium tracking-tight">{t('createExperience')}</span>
+                      <span className="text-sm font-medium tracking-tight">Crear paquete</span>
                     </motion.button>
 
                     {tours.length === 0 ? (
                       <p className="text-center text-[11px] text-[#81C784] font-normal py-4">
-                        {t('noExperiencesYet')}
+                        Aún no tienes paquetes. Crea uno para que los turistas puedan reservarlo.
                       </p>
                     ) : (
                       <div className="space-y-3 mt-1">
@@ -1877,14 +1934,14 @@ export default function PerfilDetallado() {
                             >
                               <a href={`/tours/${tour.id}`} className="flex items-center gap-3 flex-1 min-w-0">
                                 {foto ? (
-                                  <img src={foto} alt={tour.titulo || "Experiencia"} className="h-14 w-14 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
+                                  <img src={foto} alt={tour.titulo || "Paquete"} className="h-14 w-14 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
                                 ) : (
                                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
                                     <FiMap size={18} className="text-[#66BB6A]" />
                                   </div>
                                 )}
                                 <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold text-[#1A4D2E] group-hover:text-[#0D601E]">{tour.titulo || "Experiencia"}</p>
+                                  <p className="truncate text-sm font-semibold text-[#1A4D2E] group-hover:text-[#0D601E]">{tour.titulo || "Paquete"}</p>
                                   <p className="truncate text-[11px] text-gray-500">{tour.destino || "Destino por definir"}</p>
                                   <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
                                     {tour.duracion && <span>{tour.duracion}</span>}
@@ -1894,12 +1951,12 @@ export default function PerfilDetallado() {
                                 </div>
                               </a>
                               <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
-                                Completado
+                                Activo
                               </span>
                               <button
                                 onClick={() => handleDeleteTour(tour.id)}
                                 className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                title="Eliminar experiencia"
+                                title="Eliminar paquete"
                               >
                                 <FiTrash2 size={14} />
                               </button>
@@ -1968,27 +2025,184 @@ export default function PerfilDetallado() {
                   </div>
                 )
               ) : (
-                /* Vista para Turista */
-                <div className="relative group cursor-pointer" onClick={() => window.location.href = '/tours'}>
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#E8F5E9] to-white rounded-lg -z-10" />
-                  <div className="py-10 flex flex-col items-center text-center">
-                    <div className="w-14 h-14 bg-[#F1F8F6] rounded-xl shadow-sm flex items-center justify-center mb-3 border border-[#E0F2F1]">
-                      <FiMap size={24} className="text-[#66BB6A]" />
+                /* Vista para Turista - Próximos destinos */
+                (() => {
+                  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+                  const proximos = [...reservasHistorial]
+                    .filter((r: any) => {
+                      const f = new Date(r.fecha + 'T00:00:00'); f.setHours(0, 0, 0, 0);
+                      return f >= hoy && r.status !== 'cancelado' && r.status !== 'completado';
+                    })
+                    .sort((a: any, b: any) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+                    .slice(0, 3);
+
+                  if (proximos.length === 0) {
+                    return (
+                      <div className="relative group cursor-pointer" onClick={() => window.location.href = '/tours'}>
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#E8F5E9] to-white rounded-lg -z-10" />
+                        <div className="py-10 flex flex-col items-center text-center">
+                          <div className="w-14 h-14 bg-[#F1F8F6] rounded-xl shadow-sm flex items-center justify-center mb-3 border border-[#E0F2F1]">
+                            <FiMap size={24} className="text-[#66BB6A]" />
+                          </div>
+                          <h4 className="text-base font-semibold text-[#1A4D2E]">{t('exploreTours')}</h4>
+                          <p className="text-xs text-[#81C784] max-w-[200px] mt-1.5 mb-5 font-normal">
+                            {t('findPerfectTour')}
+                          </p>
+                          <button className="px-5 py-1.5 bg-[#3A5A40] text-white rounded-lg text-xs font-medium tracking-wide shadow-md hover:bg-[#2D4630]">
+                            {t('explore')}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {proximos.map((reserva: any, i: number) => {
+                        const fechaReserva = new Date(reserva.fecha + 'T00:00:00');
+                        fechaReserva.setHours(0, 0, 0, 0);
+                        const esHoy = fechaReserva.getTime() === hoy.getTime();
+                        return (
+                          <motion.div
+                            key={reserva.id || i}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            className="rounded-xl border border-[#E0F2F1] p-4 hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-[#1A4D2E] truncate">{reserva.guideName || 'Guía'}</p>
+                                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-[#6C8870]">
+                                  <span className="flex items-center gap-1">
+                                    <FiCalendar size={11} />
+                                    {fechaReserva.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <FiClock size={11} />
+                                    {reserva.duracion === 'completo' ? 'Día completo' : 'Medio día'}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <FiUsers size={11} />
+                                    {reserva.numPersonas} {reserva.numPersonas === 1 ? 'persona' : 'personas'}
+                                  </span>
+                                  {reserva.total != null && (
+                                    <span className="flex items-center gap-1">
+                                      <FiDollarSign size={11} />
+                                      ${reserva.total.toLocaleString('es-MX')} MXN
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-2 shrink-0">
+                                <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${esHoy ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
+                                  {esHoy ? 'En proceso' : 'Por empezar'}
+                                </span>
+                                {reserva.id && (
+                                  <button
+                                    onClick={() => setConfirmCancelId(reserva.id)}
+                                    disabled={cancelandoReservaId === reserva.id}
+                                    className="text-[10px] font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-0.5 rounded-full transition-colors disabled:opacity-50"
+                                  >
+                                    {cancelandoReservaId === reserva.id ? 'Cancelando...' : 'Cancelar'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                     </div>
-                    <h4 className="text-base font-semibold text-[#1A4D2E]">{t('exploreTours')}</h4>
-                    <p className="text-xs text-[#81C784] max-w-[200px] mt-1.5 mb-5 font-normal">
-                      {t('findPerfectTour')}
-                    </p>
-                    <button className="px-5 py-1.5 bg-[#3A5A40] text-white rounded-lg text-xs font-medium tracking-wide shadow-md hover:bg-[#2D4630]">
-                      {t('explore')}
-                    </button>
-                  </div>
-                </div>
+                  );
+                })()
               )}
             </motion.div>
 
-            {/* ── Sección de Paquetes ── */}
-            {esGuia && (
+            {/* ── Historial de Reservas (solo turistas) ── */}
+            {!esGuia && (
+              reservasHistorial.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
+                >
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
+                    <div className="w-12 h-12 bg-[#E8F5E9] rounded-full flex items-center justify-center mb-3">
+                      <FiCalendar size={20} className="text-[#66BB6A]" />
+                    </div>
+                    <p className="text-sm font-medium text-[#1A4D2E]">Sin historial aún</p>
+                    <p className="text-xs text-[#81C784] mt-1">Tus reservas completadas aparecerán aquí</p>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  onClick={async () => {
+                    setShowHistorialModal(true);
+                    // Load existing ratings for completed bookings
+                    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+                    const completedIds = reservasHistorial
+                      .filter((r: any) => {
+                        const f = new Date(r.fecha + 'T00:00:00'); f.setHours(0,0,0,0);
+                        return (r.status === 'completado' || f < hoy) && r.status !== 'cancelado' && r.id;
+                      })
+                      .map((r: any) => r.id);
+                    const results = await Promise.allSettled(
+                      completedIds.map((id: string) =>
+                        fetch(`${API_BASE}/ratings/booking/${id}`).then(r => r.json()).then(d => ({ id, rating: d.rating || null }))
+                      )
+                    );
+                    const map: Record<string, any> = {};
+                    results.forEach(r => { if (r.status === 'fulfilled' && r.value.rating) map[r.value.id] = r.value.rating; });
+                    setBookingRatings(map);
+                  }}
+                  className="w-full bg-white rounded-2xl shadow-md border border-[#E0F2F1] p-5 text-left hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-11 h-11 bg-[#E8F5E9] rounded-xl flex items-center justify-center shrink-0">
+                        <FiCalendar size={20} className="text-[#2E7D32]" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-semibold text-[#1A4D2E]">Historial de Reservas</h3>
+                        <p className="text-[11px] text-[#81C784] mt-0.5">
+                          {reservasHistorial.length} {reservasHistorial.length === 1 ? 'reserva' : 'reservas'} · Ver todos los tours asistidos
+                        </p>
+                      </div>
+                    </div>
+                    <FiChevronRight size={18} className="text-[#81C784] group-hover:text-[#1A4D2E] transition-colors shrink-0" />
+                  </div>
+                  {(() => {
+                    const ultima = [...reservasHistorial].sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())[0];
+                    if (!ultima) return null;
+                    return (
+                      <div className="mt-3 pt-3 border-t border-[#E0F2F1] flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs text-[#6C8870]">
+                        <span className="flex items-center gap-1.5">
+                          <FiUser size={11} className="shrink-0" />
+                          {ultima.guideName || 'Guía'}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <FiCalendar size={11} />
+                          {new Date(ultima.fecha + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                        {ultima.total != null && (
+                          <span className="flex items-center gap-1.5">
+                            <FiDollarSign size={11} />
+                            ${ultima.total.toLocaleString('es-MX')} MXN
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </motion.button>
+              )
+            )}
+
+            {/* ── Sección de Mis Experiencias (historial de tours completados) ── */}
+            {esGuia && tipoGuia !== "empresa" && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1997,88 +2211,304 @@ export default function PerfilDetallado() {
               >
                 <div className="mb-6 flex justify-between items-end">
                   <div>
-                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Paquetes</h3>
+                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Experiencias</h3>
                     <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
-                      Paquetes que ofreces a turistas
+                      Historial de tours completados
                     </p>
                   </div>
                   <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
-                    {paquetes.length} publicados
+                    {experiencias.length} completados
                   </span>
                 </div>
 
-                <div className="space-y-4">
-                  <motion.button
-                    whileHover={{ scale: 1.01, backgroundColor: "#f9fafb" }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => setShowPaqueteModal(true)}
-                    className="w-full py-4 border-2 border-dashed border-[#E0F2F1] rounded-lg flex items-center justify-center gap-2 text-[#81C784] hover:text-[#66BB6A] hover:border-[#A5D6A7] transition-all group"
-                  >
-                    <div className="w-7 h-7 bg-[#E8F5E9] group-hover:bg-[#3A5A40] group-hover:text-white rounded-full flex items-center justify-center transition-colors">
-                      <FiPlus size={16} />
+                {experiencias.length === 0 ? (
+                  <div className="py-10 flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-[#F1F8F6] rounded-xl flex items-center justify-center mb-3 border border-[#E0F2F1]">
+                      <FiMap size={20} className="text-[#A5D6A7]" />
                     </div>
-                    <span className="text-sm font-medium tracking-tight">Crear paquete</span>
-                  </motion.button>
-
-                  {paquetes.length === 0 ? (
-                    <p className="text-center text-[11px] text-[#81C784] font-normal py-4">
-                      Aún no tienes paquetes. Crea uno para que los turistas puedan reservarlo.
+                    <p className="text-sm font-medium text-[#1A4D2E] mb-1">Sin experiencias aún</p>
+                    <p className="text-[11px] text-[#81C784] max-w-[220px] font-normal">
+                      Una vez que hayas completado un tour, aparecerá aquí y será visible en tu perfil público.
                     </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {paquetes.map((paq: any, i: number) => (
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {experiencias.map((exp: any, i: number) => {
+                      const tourTitulo = exp.tourTitulo || exp.titulo || "Tour";
+                      const tourFoto = exp.tourFoto || exp.fotoPrincipal || null;
+                      return (
                         <motion.div
-                          key={paq.id || i}
+                          key={exp.id || i}
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.05 }}
-                          className="rounded-xl border border-[#E0F2F1] overflow-hidden hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all group"
+                          className="flex items-center gap-3 p-3 rounded-xl border border-[#E0F2F1] hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
                         >
-                          {/* Photo strip */}
-                          {(paq.fotos?.length > 0 || paq.fotoPrincipal) && (
-                            <div className="flex gap-0.5 h-24 overflow-hidden">
-                              {(paq.fotos?.length > 0 ? paq.fotos : [paq.fotoPrincipal]).slice(0, 3).map((src: string, fi: number) => (
-                                <div key={fi} className="relative overflow-hidden flex-1">
-                                  <img src={src} alt="" className="w-full h-full object-cover" />
-                                </div>
-                              ))}
+                          {tourFoto ? (
+                            <img src={tourFoto} alt={tourTitulo} className="h-12 w-12 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
+                          ) : (
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
+                              <FiMap size={16} className="text-[#66BB6A]" />
                             </div>
                           )}
-                          <div className="flex items-center gap-3 p-3">
-                            {!paq.fotoPrincipal && !paq.fotos?.length && (
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
-                                <FiMap size={16} className="text-[#66BB6A]" />
-                              </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-semibold text-[#1A4D2E]">{paq.titulo}</p>
-                              <p className="truncate text-[11px] text-gray-500">{paq.destino}</p>
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
-                                {paq.duracion && <span>{paq.duracion}</span>}
-                                {paq.precio && <span className="font-semibold text-[#0D601E]">{paq.precio}</span>}
-                              </div>
-                            </div>
-                            <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
-                              Activo
-                            </span>
-                            <button
-                              onClick={() => handleDeletePaquete(paq.id)}
-                              className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                              title="Eliminar paquete"
-                            >
-                              <FiTrash2 size={14} />
-                            </button>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-[#1A4D2E]">{tourTitulo}</p>
+                            <p className="text-[11px] text-gray-500">{exp.fecha || ""} {exp.horaInicio ? `· ${exp.horaInicio}` : ""}</p>
                           </div>
+                          <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
+                            Completado
+                          </span>
                         </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* ── Mis Calificaciones (solo guías) ── */}
+            {esGuia && guiaRatingStats && guiaRatingStats.totalCalificaciones > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-white rounded-2xl shadow-md border border-[#E0F2F1] overflow-hidden"
+              >
+                <div className="px-7 pt-7 pb-5">
+                  <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Calificaciones</h3>
+                  <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
+                    Lo que los turistas dicen de ti
+                  </p>
+                </div>
+
+                {/* Score summary */}
+                <div className="mx-7 mb-5 rounded-2xl bg-linear-to-br from-[#1A4D2E] to-[#0D601E] p-5 text-white flex items-center gap-5">
+                  <div className="text-center shrink-0">
+                    <p className="text-5xl font-black leading-none">{guiaRatingStats.promedioEstrellas.toFixed(1)}</p>
+                    <div className="flex items-center justify-center gap-0.5 mt-2">
+                      {[1,2,3,4,5].map((s: number) => (
+                        <svg key={s} viewBox="0 0 20 20" className={`w-4 h-4 ${ s <= Math.round(guiaRatingStats.promedioEstrellas) ? 'text-amber-400' : 'text-white/30'}`} fill="currentColor">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
                       ))}
                     </div>
-                  )}
+                    <p className="text-xs text-white/60 mt-1">{guiaRatingStats.totalCalificaciones} {guiaRatingStats.totalCalificaciones === 1 ? 'reseña' : 'reseñas'}</p>
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    {[5,4,3,2,1].map((star: number) => {
+                      const count = guiaRatingStats.distribucion?.[`estrellas${star}`] || 0;
+                      const pct = guiaRatingStats.totalCalificaciones > 0 ? (count / guiaRatingStats.totalCalificaciones) * 100 : 0;
+                      return (
+                        <div key={star} className="flex items-center gap-2 text-xs">
+                          <span className="text-white/70 w-2 text-right">{star}</span>
+                          <svg viewBox="0 0 20 20" className="w-3 h-3 text-amber-400 shrink-0" fill="currentColor">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                          </svg>
+                          <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                            <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-white/50 w-5 text-right">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Reviews list */}
+                <div className="px-7 pb-7 space-y-3">
+                  {guiaRatingStats.ultimasCalificaciones?.map((r: any) => (
+                    <div key={r.id} className="rounded-xl border border-[#E0F2F1] p-4 bg-[#FAFAF7]">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-[#E8F5E9] flex items-center justify-center shrink-0">
+                            <FiUser size={14} className="text-[#1A4D2E]" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#1A4D2E]">{r.touristName}</p>
+                            <p className="text-[10px] text-gray-400">{new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          {[1,2,3,4,5].map((s: number) => (
+                            <svg key={s} viewBox="0 0 20 20" className={`w-3.5 h-3.5 ${s <= r.estrellas ? 'text-amber-400' : 'text-gray-200'}`} fill="currentColor">
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                            </svg>
+                          ))}
+                        </div>
+                      </div>
+                      {r.comentario && <p className="text-xs text-gray-600 italic">&ldquo;{r.comentario}&rdquo;</p>}
+                    </div>
+                  ))}
                 </div>
               </motion.div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Modal Historial de Reservas */}
+      <AnimatePresence>
+        {showHistorialModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-5"
+            onClick={() => setShowHistorialModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[68vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#E0F2F1] shrink-0">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold text-[#1A4D2E]">Historial de Reservas</h2>
+                  <p className="text-xs text-[#81C784] mt-0.5">
+                    {reservasHistorial.length} {reservasHistorial.length === 1 ? 'experiencia' : 'experiencias'} en total
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowHistorialModal(false)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full bg-[#F1F8F6] hover:bg-[#E0F2F1] transition-colors"
+                >
+                  <FiX size={18} className="text-[#1A4D2E]" />
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 p-4 space-y-3">
+                {[...reservasHistorial]
+                  .sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+                  .map((reserva: any, i: number) => {
+                    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+                    const fechaReserva = new Date(reserva.fecha + 'T00:00:00');
+                    fechaReserva.setHours(0, 0, 0, 0);
+                    let estadoDisplay: { label: string; color: string; bg: string };
+                    if (reserva.status === 'cancelado') {
+                      estadoDisplay = { label: 'Cancelado', color: 'text-red-600', bg: 'bg-red-50' };
+                    } else if (reserva.status === 'completado' || fechaReserva < hoy) {
+                      estadoDisplay = { label: 'Finalizado', color: 'text-[#2E7D32]', bg: 'bg-[#E8F5E9]' };
+                    } else if (fechaReserva.getTime() === hoy.getTime()) {
+                      estadoDisplay = { label: 'En proceso', color: 'text-amber-700', bg: 'bg-amber-50' };
+                    } else {
+                      estadoDisplay = { label: 'Por empezar', color: 'text-blue-700', bg: 'bg-blue-50' };
+                    }
+                    return (
+                      <motion.div
+                        key={reserva.id || i}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="rounded-xl border border-[#E0F2F1] p-4 hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-[#1A4D2E] truncate">{reserva.guideName || 'Guía'}</p>
+                            <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-[#6C8870]">
+                              <span className="flex items-center gap-1">
+                                <FiCalendar size={11} />
+                                {fechaReserva.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <FiClock size={11} />
+                                {reserva.duracion === 'completo' ? 'Día completo' : 'Medio día'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <FiUsers size={11} />
+                                {reserva.numPersonas} {reserva.numPersonas === 1 ? 'persona' : 'personas'}
+                              </span>
+                              {reserva.total != null && (
+                                <span className="flex items-center gap-1">
+                                  <FiDollarSign size={11} />
+                                  ${reserva.total.toLocaleString('es-MX')} MXN
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full ${estadoDisplay.bg} ${estadoDisplay.color}`}>
+                            {estadoDisplay.label}
+                          </span>
+                        </div>
+
+                        {/* Calificar guía — solo tours finalizados */}
+                        {estadoDisplay.label === 'Finalizado' && reserva.id && (() => {
+                          const existing = bookingRatings[reserva.id];
+                          const draft = ratingDraft[reserva.id] || { estrellas: 0, comentario: '' };
+                          if (existing) {
+                            return (
+                              <div className="mt-3 pt-3 border-t border-[#E0F2F1]">
+                                <p className="text-[10px] font-bold text-[#81C784] uppercase mb-1.5">Tu calificaci\u00f3n</p>
+                                <div className="flex items-center gap-1 mb-1">
+                                  {[1,2,3,4,5].map(s => (
+                                    <svg key={s} viewBox="0 0 20 20" className={`w-4 h-4 ${s <= existing.estrellas ? 'text-amber-400' : 'text-gray-200'}`} fill="currentColor">
+                                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                    </svg>
+                                  ))}
+                                </div>
+                                {existing.comentario && <p className="text-xs text-[#6C8870] italic">&ldquo;{existing.comentario}&rdquo;</p>}
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="mt-3 pt-3 border-t border-[#E0F2F1]">
+                              <p className="text-[10px] font-bold text-[#81C784] uppercase mb-2">Califica tu experiencia</p>
+                              <div className="flex items-center gap-1 mb-2">
+                                {[1,2,3,4,5].map(s => (
+                                  <button
+                                    key={s}
+                                    onClick={() => setRatingDraft(prev => ({ ...prev, [reserva.id]: { ...draft, estrellas: s } }))}
+                                    className="focus:outline-none"
+                                    title={`${s} estrella${s > 1 ? 's' : ''}`}
+                                  >
+                                    <svg viewBox="0 0 20 20" className={`w-6 h-6 transition-colors ${s <= draft.estrellas ? 'text-amber-400' : 'text-gray-200 hover:text-amber-200'}`} fill="currentColor">
+                                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                    </svg>
+                                  </button>
+                                ))}
+                              </div>
+                              <textarea
+                                value={draft.comentario}
+                                onChange={e => setRatingDraft(prev => ({ ...prev, [reserva.id]: { ...draft, comentario: e.target.value } }))}
+                                placeholder="Comentario opcional..."
+                                rows={2}
+                                className="w-full text-xs text-black rounded-lg border border-[#E0F2F1] bg-white px-3 py-2 resize-none focus:outline-none focus:border-[#81C784] placeholder-gray-300"
+                              />
+                              <button
+                                disabled={draft.estrellas === 0 || submittingRating === reserva.id}
+                                onClick={async () => {
+                                  if (!draft.estrellas || !reserva.id) return;
+                                  setSubmittingRating(reserva.id);
+                                  try {
+                                    const token = localStorage.getItem('pitzbol_token');
+                                    const userLocal = JSON.parse(localStorage.getItem('pitzbol_user') || '{}');
+                                    const res = await fetch(`${API_BASE}/ratings/create`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                      body: JSON.stringify({ bookingId: reserva.id, guideId: reserva.guideId, touristId: userLocal.uid, estrellas: draft.estrellas, comentario: draft.comentario }),
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                      setBookingRatings(prev => ({ ...prev, [reserva.id]: { estrellas: draft.estrellas, comentario: draft.comentario } }));
+                                    }
+                                  } finally { setSubmittingRating(null); }
+                                }}
+                                className="mt-2 w-full py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 bg-[#1A4D2E] text-white hover:bg-[#0D601E] disabled:cursor-not-allowed"
+                              >
+                                {submittingRating === reserva.id ? 'Enviando...' : 'Enviar calificaci\u00f3n'}
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </motion.div>
+                    );
+                  })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Notificación de Aprobación como Guía */}
       <AnimatePresence>
@@ -2123,28 +2553,67 @@ export default function PerfilDetallado() {
       {/* Wallet Modal */}
       <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
 
-      {/* Modal crear experiencia */}
+      {/* Modal de confirmación de cancelación de reserva */}
+      <AnimatePresence>
+        {confirmCancelId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full"
+            >
+              <div className="flex flex-col items-center text-center gap-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <FiAlertTriangle size={22} className="text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-800">¿Cancelar reserva?</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Esta acción no se puede deshacer. Si el tour estaba pagado, recibirás un reembolso.
+                  </p>
+                </div>
+                <div className="flex gap-3 w-full pt-1">
+                  <button
+                    onClick={() => setConfirmCancelId(null)}
+                    disabled={cancelandoReservaId !== null}
+                    className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors disabled:opacity-50"
+                  >
+                    Volver
+                  </button>
+                  <button
+                    onClick={() => cancelarReserva(confirmCancelId)}
+                    disabled={cancelandoReservaId !== null}
+                    className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {cancelandoReservaId ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      'Sí, cancelar'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal crear paquete (usa el formulario de tour) */}
       {showTourModal && esGuia && tipoGuia !== "empresa" && (
         <PersonaTourFormModal
           guiaId={perfil?.id || ""}
           guiaNombre={`${perfil?.nombre || ""} ${perfil?.apellido || ""}`.trim()}
+          guiaIdiomas={perfil?.idiomas || []}
           onClose={() => setShowTourModal(false)}
           onSuccess={(tour: any) => {
             setTours((prev: any[]) => [tour, ...prev]);
             setShowTourModal(false);
-          }}
-        />
-      )}
-
-      {/* Modal crear paquete */}
-      {showPaqueteModal && esGuia && (
-        <PaqueteFormModal
-          isOpen={showPaqueteModal}
-          guiaId={perfil?.id || ""}
-          onClose={() => setShowPaqueteModal(false)}
-          onCreated={(paquete: any) => {
-            setPaquetes((prev: any[]) => [paquete, ...prev]);
-            setShowPaqueteModal(false);
           }}
         />
       )}

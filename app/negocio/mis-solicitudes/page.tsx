@@ -12,7 +12,7 @@ import {
 import { MdBusiness, MdCategory, MdImage } from "react-icons/md";
 import { FiArrowLeft } from "react-icons/fi";
 
-const API_BASE = "/api";
+const API_BASE = '/api';
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 
 type ApprovedToastPendingPayload = {

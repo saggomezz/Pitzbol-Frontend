@@ -19,7 +19,7 @@ import { usePWAInstall } from "@/app/context/PWAInstallContext";
 import { useMessageNotifications } from "@/lib/useMessageNotifications";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
-const API_BASE = "/api";
+const API_BASE = '/api';
 const PHOTO_HYDRATE_COOLDOWN_KEY = "pitzbol_profile_photo_hydrate_cooldown_until";
 const BUSINESS_REQUESTS_CACHE_KEY_PREFIX = "pitzbol_has_business_requests_";
 
@@ -49,8 +49,8 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const [showHistorialModal, setShowHistorialModal] = useState(false);
     const [hasBusinessRequests, setHasBusinessRequests] = useState(false);
     const [busqueda, setBusqueda] = useState("");
-    const [sugerencias, setSugerencias] = useState<{ nombre: string; categoria: string }[]>([]);
-    const [todosLugares, setTodosLugares] = useState<{ nombre: string; categoria: string }[]>([]);
+    const [sugerencias, setSugerencias] = useState<{ nombre: string; categoria: string; href?: string }[]>([]);
+    const [todosLugares, setTodosLugares] = useState<{ nombre: string; categoria: string; href?: string }[]>([]);
     const [mostrarDropdown, setMostrarDropdown] = useState(false);
     const [idxSeleccionado, setIdxSeleccionado] = useState(-1);
     const searchRef = useRef<HTMLDivElement | null>(null);
@@ -260,21 +260,38 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
     const normalizeStr = (s: string) =>
         s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-    useEffect(() => {
-        fetch("/api/lugares")
+    const cargarLugares = () => {
+        fetch(`/api/lugares`)
             .then(r => r.json())
             .then(data => {
                 const list = (data.lugares || data || []) as { nombre?: string; categoria?: string }[];
-                setTodosLugares(list.filter(l => l.nombre).map(l => ({ nombre: l.nombre!, categoria: l.categoria || "" })));
+                setTodosLugares(list.filter(l => l.nombre).map(l => ({ nombre: l.nombre!, categoria: l.categoria || "", href: `/informacion/${encodeURIComponent(l.nombre!)}` })));
             })
             .catch(() => {});
+    };
+
+    useEffect(() => {
+        cargarLugares();
+        // Refrescar cuando datos-lugares cree un nuevo lugar
+        window.addEventListener('lugar-creado', cargarLugares);
+        return () => window.removeEventListener('lugar-creado', cargarLugares);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Pages to include in navbar search
+    const paginas = [
+        { nombre: 'Itinerarios', categoria: 'Página', href: '/itinerarios' },
+        { nombre: 'Calendario', categoria: 'Página', href: '/calendario' },
+        { nombre: 'Mapa', categoria: 'Página', href: '/mapa' },
+        { nombre: 'Nosotros', categoria: 'Página', href: '/nosotros' }
+    ];
 
     useEffect(() => {
         if (!busqueda.trim()) { setSugerencias([]); return; }
         const q = normalizeStr(busqueda);
-        const filtered = todosLugares
-            .filter(l => normalizeStr(l.nombre).includes(q) || normalizeStr(l.categoria).includes(q))
+        const pool = [...paginas, ...todosLugares];
+        const filtered = pool
+            .filter(l => normalizeStr(l.nombre).includes(q) || normalizeStr((l.categoria || '').toString()).includes(q))
             .slice(0, 8);
         setSugerencias(filtered);
     }, [busqueda, todosLugares]);
@@ -349,7 +366,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                         else if (e.key === "ArrowUp") { e.preventDefault(); setIdxSeleccionado(i => Math.max(i - 1, -1)); }
                         else if (e.key === "Enter") {
                             const target = idxSeleccionado >= 0 ? sugerencias[idxSeleccionado] : sugerencias[0];
-                            if (target) { router.push("/informacion/" + encodeURIComponent(target.nombre)); setBusqueda(""); setMostrarDropdown(false); }
+                            if (target) { router.push(target.href || ("/informacion/" + encodeURIComponent(target.nombre))); setBusqueda(""); setMostrarDropdown(false); }
                         } else if (e.key === "Escape") { setMostrarDropdown(false); setBusqueda(""); }
                     }}
                     placeholder={t('searchPlaceholder')}
@@ -360,8 +377,8 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                     <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-[200]">
                         {sugerencias.map((s, i) => (
                             <button
-                                key={s.nombre}
-                                onMouseDown={() => { router.push("/informacion/" + encodeURIComponent(s.nombre)); setBusqueda(""); setMostrarDropdown(false); }}
+                                key={s.nombre + (s.href || '')}
+                                onMouseDown={() => { router.push(s.href || ("/informacion/" + encodeURIComponent(s.nombre))); setBusqueda(""); setMostrarDropdown(false); }}
                                 className={`flex items-center justify-between w-full px-4 py-3 text-left text-sm hover:bg-[#F6F0E6] transition-colors ${i === idxSeleccionado ? "bg-[#F6F0E6]" : ""}`}
                             >
                                 <span className="flex items-center gap-2 text-[#1A4D2E] font-medium truncate">
@@ -468,7 +485,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     <FiCompass /> {t('tours')}
                                 </Link>
                             )}
-                            {user?.email === "cua@hotmail.com" && (
+                            {["cua@hotmail.com", "pilarmorag2004@hotmail.com"].includes(user?.email || "") && (
                                 <>
                                     <div className="h-[1px] bg-gray-100 my-3 mx-2" />
                                     <Link href="/datos-lugares" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium hover:text-[#F00808] transition-colors">

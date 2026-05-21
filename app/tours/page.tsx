@@ -42,12 +42,6 @@ interface Tour {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const QUICK_FILTERS = ["Todos", "Tequila", "Tlaquepaque", "Tonalá", "Chapala", "Centro Histórico"];
-const TIPO_FILTERS = [
-  { value: "todos", label: "Todos" },
-  { value: "persona", label: "Guía individual" },
-  { value: "empresa", label: "Empresa" },
-];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -62,6 +56,7 @@ export default function ToursPage() {
   // Guides state
   const [guides, setGuides] = useState<Guide[]>([]);
   const [guidesLoading, setGuidesLoading] = useState(true);
+  const [guideRatings, setGuideRatings] = useState<Record<string, { promedio: number; total: number }>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("all");
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");
@@ -71,8 +66,6 @@ export default function ToursPage() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [toursLoading, setToursLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [filterDestino, setFilterDestino] = useState("Todos");
-  const [filterTipo, setFilterTipo] = useState("todos");
 
   // ── Load both data sources in parallel ──────────────────────────────────────
   useEffect(() => {
@@ -82,7 +75,23 @@ export default function ToursPage() {
         const res = await fetch(`/api/guides/verified?t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) { setGuides([]); return; }
         const data = await res.json();
-        setGuides([...(data.guides || [])]);
+        const loadedGuides: Guide[] = data.guides || [];
+        setGuides([...loadedGuides]);
+        // Fetch rating stats for all guides in parallel
+        const ratingResults = await Promise.allSettled(
+          loadedGuides.map((g) =>
+            fetch(`/api/ratings/guide/${g.uid}/stats`)
+              .then((r) => r.json())
+              .then((d) => ({ uid: g.uid, stats: d.stats }))
+          )
+        );
+        const ratingsMap: Record<string, { promedio: number; total: number }> = {};
+        ratingResults.forEach((r) => {
+          if (r.status === 'fulfilled' && r.value.stats?.totalCalificaciones > 0) {
+            ratingsMap[r.value.uid] = { promedio: r.value.stats.promedioEstrellas, total: r.value.stats.totalCalificaciones };
+          }
+        });
+        setGuideRatings(ratingsMap);
       } catch {
         setGuides([]);
       } finally {
@@ -156,10 +165,8 @@ export default function ToursPage() {
       tour.destino.toLowerCase().includes(q) ||
       tour.descripcion.toLowerCase().includes(q) ||
       tour.empresaNombre.toLowerCase().includes(q);
-    const matchesFilter = filterDestino === "Todos" || tour.destino.toLowerCase().includes(filterDestino.toLowerCase());
-    const matchesTipo = filterTipo === "todos" || tour.tipoGuia === filterTipo;
-    return matchesQuery && matchesFilter && matchesTipo;
-  }), [tours, query, filterDestino, filterTipo]);
+    return matchesQuery;
+  }), [tours, query]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -174,7 +181,7 @@ export default function ToursPage() {
           className="object-cover"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0D601E]/70 via-[#1A4D2E]/50 to-black/70" />
+        <div className="absolute inset-0 bg-linear-to-b from-[#0D601E]/70 via-[#1A4D2E]/50 to-black/70" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
           <div className="flex items-center gap-2 text-white/70 text-xs mb-3">
             <FiCompass size={12} /> Turismo • Guadalajara
@@ -314,7 +321,7 @@ export default function ToursPage() {
               ) : (
                 <div className={guideViewMode === "list" ? styles.guidesList : styles.guidesGrid}>
                   {filteredGuides.map(guide => (
-                    <GuideCard key={guide.uid} guide={guide} viewMode={guideViewMode} />
+                    <GuideCard key={guide.uid} guide={guide} rating={guideRatings[guide.uid]} viewMode={guideViewMode} />
                   ))}
                 </div>
               )}
@@ -344,39 +351,6 @@ export default function ToursPage() {
                 />
               </div>
 
-              {/* Quick filters destino */}
-              <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
-                {QUICK_FILTERS.map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setFilterDestino(f)}
-                    className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                      filterDestino === f
-                        ? "bg-[#1A4D2E] text-white border-[#1A4D2E]"
-                        : "bg-white text-[#1A4D2E] border-[#C9D4CB] hover:border-[#1A4D2E]"
-                    }`}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
-
-              {/* Filtro tipo */}
-              <div className="flex gap-2 mb-6">
-                {TIPO_FILTERS.map(f => (
-                  <button
-                    key={f.value}
-                    onClick={() => setFilterTipo(f.value)}
-                    className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                      filterTipo === f.value
-                        ? "bg-[#F6F0E6] text-[#8B0000] border-[#8B0000]"
-                        : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
 
               {/* Content */}
               {toursLoading ? (
@@ -397,16 +371,16 @@ export default function ToursPage() {
                     </p>
                     <p className="text-gray-400 text-sm mt-1">
                       {tours.length === 0
-                        ? "Las empresas verificadas publicarán sus experiencias aquí."
-                        : "Intenta con otro destino o elimina los filtros."}
+                        ? "Los guías verificados publicarán sus paquetes aquí."
+                        : "Intenta con otro término de búsqueda."}
                     </p>
                   </div>
-                  {(query || filterDestino !== "Todos" || filterTipo !== "todos") && (
+                  {query && (
                     <button
-                      onClick={() => { setQuery(""); setFilterDestino("Todos"); setFilterTipo("todos"); }}
+                      onClick={() => setQuery("")}
                       className="text-xs text-[#0D601E] underline mt-1"
                     >
-                      Limpiar filtros
+                      Limpiar búsqueda
                     </button>
                   )}
                 </div>
@@ -443,7 +417,7 @@ export default function ToursPage() {
                                   <FaMapMarkedAlt className="text-[#C9D4CB] text-5xl" />
                                 </div>
                               )}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                              <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
                               <div className="absolute bottom-3 left-3">
                                 <span className="bg-white/20 backdrop-blur-sm text-white text-[11px] px-2.5 py-1 rounded-full font-semibold flex items-center gap-1">
                                   <FiMapPin size={9} /> {tour.destino}
@@ -479,11 +453,11 @@ export default function ToursPage() {
                               )}
                               <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
                                 {tour.empresaLogo ? (
-                                  <div className="relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                                  <div className="relative w-6 h-6 rounded-full overflow-hidden shrink-0">
                                     <Image src={tour.empresaLogo} alt={tour.empresaNombre} fill className="object-cover" />
                                   </div>
                                 ) : (
-                                  <div className="w-6 h-6 rounded-full bg-[#E8F5E9] flex items-center justify-center flex-shrink-0">
+                                  <div className="w-6 h-6 rounded-full bg-[#E8F5E9] flex items-center justify-center shrink-0">
                                     <FaBus className="text-[#1A4D2E] text-[10px]" />
                                   </div>
                                 )}

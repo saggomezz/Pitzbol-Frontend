@@ -185,7 +185,7 @@ export default function AdminPerfil() {
         mostrarNotificacion(
           'exito',
           accion === 'aprobar' 
-            ? 'Guía aprobado exitosamente. El usuario ha sido notificado.' 
+            ? 'Guía aprobada con éxito. El usuario ya fue notificado.' 
             : 'Solicitud rechazada. El usuario permanece como turista.'
         );
       } else {
@@ -512,12 +512,12 @@ export default function AdminPerfil() {
       <AnimatePresence>
         {notificacion && (
           <motion.div
-            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            initial={{ opacity: 0, y: -24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -50, scale: 0.9 }}
-            className="fixed top-8 right-8 z-[600] max-w-md"
+            exit={{ opacity: 0, y: -24, scale: 0.96 }}
+            className="fixed top-24 md:top-28 right-4 md:right-8 z-[600] max-w-md"
           >
-            <div className={`rounded-[24px] shadow-2xl p-6 border-4 border-white ${
+            <div className={`rounded-[24px] shadow-[0_18px_45px_rgba(26,77,46,0.2)] p-6 border border-white/70 backdrop-blur-md ${
               notificacion.tipo === 'exito' 
                 ? 'bg-gradient-to-r from-green-500 to-green-600' 
                 : notificacion.tipo === 'error'
