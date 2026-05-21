@@ -79,9 +79,6 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<any>({});
   const [generalError, setGeneralError] = useState("");
-  const [showLoginSuccess, setShowLoginSuccess] = useState(false);
-  const [successUserName, setSuccessUserName] = useState("");
-  const [isNewAccount, setIsNewAccount] = useState(false);
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
   // Verificación de email
@@ -402,16 +399,10 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
 
         onClose();
 
-        {
-          const userRole = data.user.role || data.user.rol || data.user["03_rol"] || "";
-          const normalizedRole = userRole.toLowerCase();
-                  
-          // Redirección
-          if (userRole === "admin" || userRole === "admins") {
-            window.location.href = "/admin";
-          } else {
-            window.location.href = redirectTo || "/";
-          }
+        if (userRole === "admin" || userRole === "admins") {
+          window.location.href = "/admin";
+        } else {
+          window.location.href = redirectTo || "/";
         }
 
       } else {

@@ -165,9 +165,13 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
       setVerifyingOCR(true);
 
       try {
+        const ocrToken = typeof window !== 'undefined' ? localStorage.getItem('pitzbol_token') || '' : '';
         const response = await fetch('/api/ocr/verify-ine', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(ocrToken ? { 'Authorization': `Bearer ${ocrToken}` } : {}),
+          },
           // Enviamos el tipo al backend para que sepa qué validar
           body: JSON.stringify({ imageBase64: base64, side: tipo }) 
         });
@@ -227,9 +231,13 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
 
       try {
         setVerifyingFace(true);
+        const bioToken = typeof window !== 'undefined' ? localStorage.getItem('pitzbol_token') || '' : '';
         const bioRes = await fetch('/api/ocr/compare-biometry', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(bioToken ? { 'Authorization': `Bearer ${bioToken}` } : {}),
+          },
           body: JSON.stringify({ faceBase64: imgRostro, ineBase64: imgFrenteBase64 })
         });
         
