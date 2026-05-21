@@ -753,17 +753,20 @@ export default function PerfilDetallado() {
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
 
     try {
-      const response = await fetch('/api/guides/update', {
+      // Determinar si es guía o turista
+      const role = userLocal.role || userLocal.rol || userLocal["03_rol"] || "turista";
+      const endpoint = role === "guia" ? '/api/guides/update' : '/api/auth/update-profile';
+      const fieldName = role === "guia" ? "categorias" : "especialidades";
+      
+      const response = await fetch(endpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           uid: userLocal.uid,
-          categorias: especialidadesTemp 
+          [fieldName]: especialidadesTemp 
         })
       });
       
-      // TODO: backend debe proteger este endpoint; incluir credenciales y token si existe
-
       if (response.ok) {
         setEspecialidades([...especialidadesTemp]);
         setEditandoEspecialidades(false);
@@ -771,7 +774,8 @@ export default function PerfilDetallado() {
 
         const updatedUser = {
           ...userLocal,
-          "07_intereses": especialidadesTemp,
+          "07_intereses": role === "turista" ? especialidadesTemp : userLocal["07_intereses"],
+          "07_especialidades": role === "guia" ? especialidadesTemp : userLocal["07_especialidades"],
         };
         
         localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
@@ -783,9 +787,13 @@ export default function PerfilDetallado() {
         
         setExito(t('changesSaved'));
         setTimeout(() => setExito(""), 3000);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.msg || `Error ${response.status}: No se pudo guardar los intereses`);
       }
-    } catch (error) {
-      console.error("Error al guardar intereses");
+    } catch (error: any) {
+      console.error("❌ Error al guardar intereses:", error);
+      setErrorEspecialidades(error.message || "Error al guardar los intereses");
     } finally {
       setGuardando(false);
     }

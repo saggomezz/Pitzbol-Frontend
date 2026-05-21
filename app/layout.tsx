@@ -105,6 +105,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     window.onAuthSuccessByRole = (role: string) => {
       setIsAuthOpen(false);
       
+      // Mostrar mensaje de bienvenida si el usuario acaba de registrarse
+      const justRegistered = sessionStorage.getItem("justRegistered") === "true";
+      if (justRegistered) {
+        sessionStorage.removeItem("justRegistered");
+        try {
+          const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+          const userName = userLocal.nombre || "Bienvenido";
+          setTimeout(() => {
+            alert(`¡Bienvenido a Pitzbol, ${userName}! Tu cuenta ha sido creada exitosamente.`);
+          }, 500);
+        } catch (e) {
+          console.error("Error displaying welcome message:", e);
+        }
+      }
+      
       setTimeout(() => {
         if (role === "admin") {
           window.location.href = "/admin"; 

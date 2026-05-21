@@ -1206,7 +1206,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="absolute top-[120%] right-0 w-96 max-h-[600px] bg-white rounded-[28px] shadow-2xl border border-gray-100 flex flex-col z-[120] overflow-hidden"
+            className="absolute top-[120%] right-0 sm:right-0 left-3 sm:left-auto w-[calc(100%-24px)] sm:w-96 max-h-[500px] sm:max-h-[600px] bg-white rounded-[28px] shadow-2xl border border-gray-100 flex flex-col z-[120] overflow-hidden"
           >
             {/* Encabezado */}
             <div className="bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white px-6 py-5 flex justify-between items-center">
