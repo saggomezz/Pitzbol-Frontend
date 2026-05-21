@@ -23,6 +23,25 @@ const HEAVY_PATH_PATTERNS: RegExp[] = [
   /^business\/register/,
 ];
 
+// Endpoints donde es seguro reintentar automáticamente cuando el upstream responde
+// 502/503/504 (típico de un servidor en cold start). Solo idempotentes o acciones
+// admin que ya validan el estado del recurso antes de mutarlo.
+const RETRY_SAFE_PATH_PATTERNS: RegExp[] = [
+  /^admin\/negocios\/[^/]+\/archivar$/,
+  /^admin\/negocios\/[^/]+\/desarchivar$/,
+  /^admin\/negocios\/[^/]+\/regresar-pendientes$/,
+  /^admin\/negocios\/[^/]+\/eliminar-permanente$/,
+  /^admin\/negocios\/[^/]+\/mover-imagenes$/,
+  /^admin\/negocios\/[^/]+\/actualizar-notificaciones$/,
+  /^admin\/negocios\/gestionar$/,
+];
+
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
+const MAX_UPSTREAM_RETRIES = 2; // 1 intento + 2 reintentos = 3 totales
+const RETRY_DELAY_MS = 1500;
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 // Proxy catch-all: reenvía CUALQUIER /api/* al backend server-side
 // Esto elimina la necesidad de llamar a api.pitzbol.me directamente desde el browser:
 // - Sin DNS resolution en el cliente
@@ -39,77 +58,138 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ proxy: 
 
   const joinedPath = proxy.join("/");
   const isHeavy = HEAVY_PATH_PATTERNS.some((rx) => rx.test(joinedPath));
+  const isRetrySafe = RETRY_SAFE_PATH_PATTERNS.some((rx) => rx.test(joinedPath));
   const timeoutMs = isHeavy ? PROXY_FETCH_TIMEOUT_MS : 30_000;
 
-  try {
-    const headers: Record<string, string> = {
-      "Content-Type": req.headers.get("content-type") || "application/json",
-    };
+  const headers: Record<string, string> = {
+    "Content-Type": req.headers.get("content-type") || "application/json",
+  };
 
-    const auth = req.headers.get("authorization");
-    if (auth) headers["Authorization"] = auth;
+  const auth = req.headers.get("authorization");
+  if (auth) headers["Authorization"] = auth;
 
-    const cookie = req.headers.get("cookie");
-    if (cookie) headers["Cookie"] = cookie;
+  const cookie = req.headers.get("cookie");
+  if (cookie) headers["Cookie"] = cookie;
 
-    const accept = req.headers.get("accept");
-    if (accept) headers["Accept"] = accept;
+  const accept = req.headers.get("accept");
+  if (accept) headers["Accept"] = accept;
 
-    const acceptLang = req.headers.get("accept-language");
-    if (acceptLang) headers["Accept-Language"] = acceptLang;
+  const acceptLang = req.headers.get("accept-language");
+  if (acceptLang) headers["Accept-Language"] = acceptLang;
 
-    const hasBody = ["POST", "PUT", "PATCH"].includes(req.method);
+  const hasBody = ["POST", "PUT", "PATCH"].includes(req.method);
 
-    const res = await fetch(backendUrl, {
-      method: req.method,
-      headers,
-      body: hasBody ? req.body : undefined,
-      signal: AbortSignal.timeout(timeoutMs),
-      // @ts-ignore - duplex es válido en undici/Node 18+
-      duplex: hasBody ? "half" : undefined,
-    });
+  // Si vamos a poder reintentar y hay body, necesitamos bufferizar para poder
+  // reenviarlo en cada intento (los ReadableStream solo se consumen una vez).
+  let bufferedBody: ArrayBuffer | undefined;
+  if (hasBody && isRetrySafe && req.body) {
+    try {
+      bufferedBody = await req.arrayBuffer();
+    } catch {
+      bufferedBody = undefined;
+    }
+  }
 
-    const responseHeaders = new Headers();
-    const ct = res.headers.get("content-type");
-    if (ct) responseHeaders.set("content-type", ct);
-    responseHeaders.set("cache-control", "no-cache, no-store, must-revalidate");
+  const maxAttempts = isRetrySafe ? MAX_UPSTREAM_RETRIES + 1 : 1;
+  let lastError: any = null;
+  let lastResponse: Response | null = null;
+  let lastBody: ArrayBuffer | null = null;
 
-    // Reenviar el body y el status real del backend para que el frontend
-    // pueda mostrar el error específico (401/403/404/409/500…) en lugar de
-    // un 503 genérico.
-    const body = await res.arrayBuffer();
-    return new NextResponse(body, {
-      status: res.status,
-      headers: responseHeaders,
-    });
-  } catch (err: any) {
-    const isAbort =
-      err?.name === "TimeoutError" ||
-      err?.name === "AbortError" ||
-      /aborted|timeout/i.test(String(err?.message || ""));
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(backendUrl, {
+        method: req.method,
+        headers,
+        body: hasBody ? (bufferedBody ?? req.body) : undefined,
+        signal: AbortSignal.timeout(timeoutMs),
+        // @ts-ignore - duplex es válido en undici/Node 18+
+        duplex: hasBody && !bufferedBody ? "half" : undefined,
+      });
 
-    console.error(
-      `[proxy] ${isAbort ? "Timeout" : "Error"} forwarding to ${backendUrl} (${timeoutMs}ms):`,
-      err?.message
-    );
+      // Si el upstream devuelve un código retryable y todavía nos quedan intentos,
+      // esperamos y volvemos a intentar (cold start típico de Render/Railway).
+      if (RETRYABLE_STATUS.has(res.status) && attempt < maxAttempts) {
+        console.warn(
+          `[proxy] Upstream ${res.status} en ${joinedPath} (intento ${attempt}/${maxAttempts}). Reintentando en ${RETRY_DELAY_MS * attempt}ms...`
+        );
+        // Consumimos el body para liberar la conexión.
+        try { await res.arrayBuffer(); } catch { /* ignore */ }
+        await sleep(RETRY_DELAY_MS * attempt);
+        continue;
+      }
 
-    if (isAbort) {
-      // 504 Gateway Timeout es el código correcto cuando el upstream no respondió a tiempo.
+      const responseHeaders = new Headers();
+      const ct = res.headers.get("content-type");
+      if (ct) responseHeaders.set("content-type", ct);
+      responseHeaders.set("cache-control", "no-cache, no-store, must-revalidate");
+
+      const body = await res.arrayBuffer();
+      lastResponse = res;
+      lastBody = body;
+
+      return new NextResponse(body, {
+        status: res.status,
+        headers: responseHeaders,
+      });
+    } catch (err: any) {
+      lastError = err;
+      const isAbort =
+        err?.name === "TimeoutError" ||
+        err?.name === "AbortError" ||
+        /aborted|timeout/i.test(String(err?.message || ""));
+
+      // Si es un error de red/timeout y todavía nos quedan intentos, reintentamos.
+      if (isRetrySafe && attempt < maxAttempts) {
+        console.warn(
+          `[proxy] ${isAbort ? "Timeout" : "Error de red"} en ${joinedPath} (intento ${attempt}/${maxAttempts}): ${err?.message}. Reintentando...`
+        );
+        await sleep(RETRY_DELAY_MS * attempt);
+        continue;
+      }
+
+      console.error(
+        `[proxy] ${isAbort ? "Timeout" : "Error"} forwarding to ${backendUrl} (${timeoutMs}ms):`,
+        err?.message
+      );
+
+      if (isAbort) {
+        return NextResponse.json(
+          {
+            error: "Tiempo de espera agotado",
+            message:
+              "La operación tardó demasiado en el servidor. Inténtalo de nuevo en unos segundos.",
+          },
+          { status: 504 }
+        );
+      }
+
       return NextResponse.json(
-        {
-          error: "Tiempo de espera agotado",
-          message:
-            "La operación tardó demasiado en el servidor. Inténtalo de nuevo en unos segundos.",
-        },
-        { status: 504 }
+        { error: "Backend no disponible" },
+        { status: 502 }
       );
     }
-
-    return NextResponse.json(
-      { error: "Backend no disponible" },
-      { status: 502 }
-    );
   }
+
+  // Si salimos del loop por agotar reintentos sin éxito, devolvemos lo último que tuvimos.
+  if (lastResponse && lastBody) {
+    const responseHeaders = new Headers();
+    const ct = lastResponse.headers.get("content-type");
+    if (ct) responseHeaders.set("content-type", ct);
+    responseHeaders.set("cache-control", "no-cache, no-store, must-revalidate");
+    console.error(
+      `[proxy] Upstream sigue devolviendo ${lastResponse.status} en ${joinedPath} tras ${maxAttempts} intentos.`
+    );
+    return new NextResponse(lastBody, {
+      status: lastResponse.status,
+      headers: responseHeaders,
+    });
+  }
+
+  console.error(`[proxy] Fall\u00f3 ${joinedPath} tras ${maxAttempts} intentos:`, lastError?.message);
+  return NextResponse.json(
+    { error: "Backend no disponible" },
+    { status: 502 }
+  );
 }
 
 export const GET = handler;
