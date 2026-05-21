@@ -1,11 +1,17 @@
 "use client";
-import { AnimatePresence, motion } from "framer-motion";
-import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
-import {
-  FiChevronLeft, FiChevronRight, FiPlus, FiSun, FiX, FiTrash2, FiClock, FiMapPin, FiDollarSign
-} from "react-icons/fi";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
+import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import {
+    FiChevronLeft, FiChevronRight,
+    FiClock,
+    FiDollarSign,
+    FiMapPin,
+    FiPlus, FiSun,
+    FiTrash2,
+    FiX
+} from "react-icons/fi";
 
 interface SavedStop {
   place: {

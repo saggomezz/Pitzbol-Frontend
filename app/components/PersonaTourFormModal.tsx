@@ -258,13 +258,13 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, guiaIdiomas =
   const STEP_TITLES = ["Tu Paquete", "Detalles", "Fotos"];
 
   return (
-    <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-300 flex items-end justify-center bg-black/40 backdrop-blur-sm p-4 lg:items-start lg:pt-28">
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="relative bg-white w-full max-w-150 max-h-[90vh] rounded-[30px] overflow-hidden shadow-2xl flex flex-col"
+        className="relative bg-white w-full max-w-[96vw] lg:max-w-[1100px] xl:max-w-[1240px] max-h-[90vh] rounded-[30px] overflow-hidden shadow-2xl flex flex-col"
       >
         {/* HEADER */}
           <div className="w-full bg-white z-10 pt-5 px-8 border-b border-gray-50 shrink-0">
@@ -463,7 +463,7 @@ export default function PersonaTourFormModal({ guiaId, guiaNombre, guiaIdiomas =
         <div className="px-6 md:px-10 py-4 border-t border-gray-100 shrink-0">
           {step < 2
             ? <button type="button" onClick={nextStep} className="w-full md:w-3/4 mx-auto block bg-[#0D601E] text-white py-3 rounded-full font-bold text-sm tracking-wide hover:bg-[#094d18] transition-all shadow-md">
-                Siguiente →
+              Siguiente
               </button>
             : <button type="button" onClick={handleSubmit as any} disabled={submitting} className="w-full md:w-3/4 mx-auto block bg-[#0D601E] text-white py-3 rounded-full font-bold text-sm tracking-wide hover:bg-[#094d18] disabled:opacity-60 transition-all shadow-md">
                 {submitting ? "Publicando..." : "Publicar Paquete"}

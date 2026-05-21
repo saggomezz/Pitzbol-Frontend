@@ -103,6 +103,13 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     setIsLogin(defaultLogin || (typeof window !== 'undefined' && window.innerWidth < 768));
   }, [defaultLogin, isOpen]);
 
+  const isStrongPassword = (value: string) =>
+    value.length >= 8 &&
+    /[a-z]/.test(value) &&
+    /[A-Z]/.test(value) &&
+    /[0-9]/.test(value) &&
+    /[^A-Za-z0-9]/.test(value);
+
 
   const handleRegister = async () => {
     setErrors({});
@@ -113,7 +120,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     if (!nacionalidad) newErrors.nacionalidad = true;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(regEmail)) newErrors.email = t('invalidEmail');
-    if (regPassword.length < 6) newErrors.password = t('minCharacters');
+    if (!isStrongPassword(regPassword)) newErrors.password = 'Usa una contraseña fuerte: 8+ caracteres, mayúscula, minúscula, número y símbolo.';
     if (regPassword !== regConfirmPassword) newErrors.confirmPassword = t('passwordsNotMatch');
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
 
@@ -606,6 +613,7 @@ if (!isOpen) return null;
                   className={`${inputClass} pl-14 pr-12 ${errors.password ? 'border-red-500 bg-red-50' : ''}`} 
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
+                  autoComplete="new-password"
                 />
                 <button 
                   type="button" 
@@ -620,6 +628,9 @@ if (!isOpen) return null;
                 {errors.password && <ErrorMsg text={errors.password} />}
               </div>
             </div>
+            <p className="-mt-2 text-[11px] text-[#769C7B] px-1">
+              Debe tener al menos 8 caracteres, con mayúscula, minúscula, número y símbolo.
+            </p>
 
             {/* Fila 5: Confirmar Contraseña */}
             <div className="relative">

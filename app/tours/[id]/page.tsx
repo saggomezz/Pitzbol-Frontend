@@ -1,16 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { usePitzbolUser } from "@/lib/usePitzbolUser";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import {
-  FiArrowLeft, FiMapPin, FiClock, FiDollarSign, FiUsers,
-  FiCheckCircle, FiCalendar, FiUser, FiGlobe, FiStar,
-} from "react-icons/fi";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { FaBus, FaMapMarkedAlt } from "react-icons/fa";
-import { usePitzbolUser } from "@/lib/usePitzbolUser";
+import {
+    FiArrowLeft,
+    FiCalendar,
+    FiCheckCircle,
+    FiClock, FiDollarSign,
+    FiGlobe,
+    FiMapPin,
+    FiStar,
+    FiUser,
+    FiUsers,
+} from "react-icons/fi";
 
 const BACKEND = '/api';
 

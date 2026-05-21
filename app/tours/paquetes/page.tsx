@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { getBackendOrigin } from "@/lib/backendUrl";
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import { FiSearch, FiCompass, FiClock, FiDollarSign, FiMapPin, FiUser } from "react-icons/fi";
+import { useEffect, useState } from "react";
 import { FaBoxOpen } from "react-icons/fa";
-import { getBackendOrigin } from "@/lib/backendUrl";
+import { FiClock, FiCompass, FiDollarSign, FiMapPin, FiSearch, FiUser } from "react-icons/fi";
 
 interface Paquete {
   id: string;

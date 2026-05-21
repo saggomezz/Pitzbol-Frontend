@@ -1,19 +1,27 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { 
-  FiMapPin, FiGlobe, FiAward, FiStar, FiMessageSquare, 
-  FiCalendar, FiCheckCircle, FiClock, FiDollarSign, FiUser, FiMail, FiPhone, FiShield, FiDatabase, FiShoppingBag, FiMap
-} from "react-icons/fi";
-import {
-  FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
-  FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
-} from "react-icons/fa";
-import { usePitzbolUser } from "@/lib/usePitzbolUser";
 import ChatModal from "@/app/components/ChatModal";
 import { getBackendOrigin } from "@/lib/backendUrl";
+import { usePitzbolUser } from "@/lib/usePitzbolUser";
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+    FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
+    FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
+} from "react-icons/fa";
+import {
+    FiCalendar, FiCheckCircle, FiClock,
+    FiDatabase,
+    FiDollarSign,
+    FiGlobe,
+    FiMap,
+    FiMapPin,
+    FiMessageSquare,
+    FiPhone, FiShield,
+    FiStar,
+    FiUser
+} from "react-icons/fi";
 
 const BACKEND_URL = getBackendOrigin();
 

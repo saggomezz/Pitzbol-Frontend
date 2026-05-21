@@ -1,8 +1,8 @@
 "use client";
-import { AnimatePresence, motion } from "framer-motion";
-import { useState, useRef } from "react";
-import { FiX, FiPlus, FiTrash2, FiUpload, FiPackage } from "react-icons/fi";
 import { getBackendOrigin } from "@/lib/backendUrl";
+import { AnimatePresence, motion } from "framer-motion";
+import { useRef, useState } from "react";
+import { FiPackage, FiPlus, FiTrash2, FiUpload, FiX } from "react-icons/fi";
 
 async function compressImage(file: File, maxWidth = 1200, quality = 0.82): Promise<File> {
   return new Promise((resolve) => {
