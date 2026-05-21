@@ -17,113 +17,119 @@ import { ALL_ADMIN_TAGS } from "@/lib/categories";
 import type { GeoPoint } from "@/lib/geoClient";
 import { getPlaceImageUrlSync } from "@/lib/placeImages";
 
-/* ─── Layout editorial para Avisos FIFA ─────────────────────────────────── */
-function AvisoLayout({ lugar, fotos, onBack }: { lugar: any; fotos: string[]; onBack: () => void }) {
-  const parrafos = (lugar.descripcion || "")
+/* ─── Layout informativo para Avisos (sin calificación, horario, costo ni mapa) ─ */
+function AvisoLayout({ lugar, fotos, onBack }: { lugar: Lugar; fotos: string[]; onBack: () => void }) {
+  // notaIA contiene la descripción — mapPlaceToPublicDetail lo mapea desde place.descripcion
+  const parrafos = (lugar.notaIA || "")
     .split(/\n+/)
     .map((p: string) => p.trim())
     .filter(Boolean);
 
-  // Fotos: primera es hero, el resto se intercalan con el texto
-  const [hero, ...restFotos] = fotos.length ? fotos : [null];
-
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
-      {/* Nav top */}
+    <div className="min-h-screen bg-[#FDFCF9]">
+      {/* Nav sticky */}
       <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-[#F0EDE8]">
-        <div className="max-w-4xl mx-auto px-5 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-5 py-4 flex items-center gap-3">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-[#1A4D2E] font-bold text-sm hover:text-[#F00808] transition-colors"
+            className="flex items-center gap-2 text-[#1A4D2E] font-bold text-sm hover:opacity-70 transition-opacity"
           >
-            <FiArrowLeft size={18} /> Volver
+            <FiArrowLeft size={18} /> Fútbol
           </button>
-          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#F00808] bg-[#FFF0F0] px-3 py-1 rounded-full">
-            ⚽ AVISO FIFA 2026
+          <span className="text-gray-300 select-none">/</span>
+          <span className="text-sm text-[#769C7B] font-medium truncate max-w-[240px]">
+            {lugar.nombre}
           </span>
         </div>
       </div>
 
-      <article className="max-w-4xl mx-auto px-5 py-10">
-        {/* Título */}
-        <motion.h1
-          initial={{ opacity: 0, y: 16 }}
+      <main className="max-w-5xl mx-auto px-5 py-10">
+        {/* Encabezado */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-3xl md:text-5xl font-black text-[#1A4D2E] leading-tight mb-8"
-          style={{ fontFamily: "'Jockey One', sans-serif" }}
+          className="mb-10"
         >
-          {lugar.nombre}
-        </motion.h1>
-
-        {/* Imagen hero */}
-        {hero && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            className="rounded-3xl overflow-hidden mb-10 shadow-[0_20px_60px_rgba(26,77,46,0.12)]"
+          <span className="inline-block bg-[#E8F5E9] text-[#1A4D2E] text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full mb-4">
+            {lugar.categoria}
+          </span>
+          <h1
+            className="text-3xl md:text-4xl font-black text-[#1A4D2E] leading-tight mb-3"
+            style={{ fontFamily: "'Jockey One', sans-serif" }}
           >
-            <img src={hero} alt={lugar.nombre} className="w-full max-h-[520px] object-cover" />
-          </motion.div>
-        )}
+            {lugar.nombre}
+          </h1>
+          {lugar.direccion && lugar.direccion !== "Ubicacion no disponible" && (
+            <p className="text-sm text-gray-400 flex items-center gap-1.5">
+              <FiMapPin size={12} /> {lugar.direccion}
+            </p>
+          )}
+        </motion.div>
 
-        {/* Descripción + fotos intercaladas */}
-        <div className="space-y-8 text-[15px] md:text-[16px] text-[#3D5241] leading-[1.85]">
-          {parrafos.map((parrafo: string, i: number) => {
-            const fotoIntercalada = restFotos[i];
-            const esImpar = i % 2 === 1;
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 + i * 0.05 }}
-              >
-                {fotoIntercalada ? (
-                  <div className={`flex flex-col ${esImpar ? "md:flex-row-reverse" : "md:flex-row"} gap-6 items-start`}>
-                    <div className="md:w-2/5 shrink-0">
-                      <div className="rounded-2xl overflow-hidden shadow-md">
-                        <img
-                          src={fotoIntercalada}
-                          alt=""
-                          className="w-full h-56 md:h-64 object-cover"
-                        />
-                      </div>
-                    </div>
-                    <p className="flex-1">{parrafo}</p>
+        {/* Contenido principal: texto izquierda + fotos derecha */}
+        <div className="flex flex-col lg:flex-row gap-10 items-start">
+          {/* Descripción */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex-1 min-w-0"
+          >
+            {parrafos.length > 0 ? (
+              parrafos.map((p, i) => (
+                <p key={i} className="text-[15px] text-[#444] leading-[1.9] mb-5">
+                  {p}
+                </p>
+              ))
+            ) : (
+              <p className="text-[#aaa] italic text-sm">Sin descripción disponible.</p>
+            )}
+          </motion.div>
+
+          {/* Fotos en grid compacto — derecha en desktop, abajo en mobile */}
+          {fotos.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="w-full lg:w-80 xl:w-96 shrink-0"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                {fotos.map((src, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-2xl overflow-hidden shadow-sm border border-[#F0EDE8] ${
+                      fotos.length === 1 || (i === 0 && fotos.length % 2 === 1) ? "col-span-2" : ""
+                    }`}
+                  >
+                    <img
+                      src={src}
+                      alt=""
+                      className={`w-full object-cover ${
+                        fotos.length === 1 || (i === 0 && fotos.length % 2 === 1) ? "h-52" : "h-36"
+                      }`}
+                      loading="lazy"
+                    />
                   </div>
-                ) : (
-                  <p>{parrafo}</p>
-                )}
-              </motion.div>
-            );
-          })}
+                ))}
+              </div>
+            </motion.div>
+          )}
         </div>
 
-        {/* Fotos restantes en grid (si hay más que párrafos) */}
-        {restFotos.length > parrafos.length && (
-          <div className="mt-12 grid grid-cols-2 md:grid-cols-3 gap-4">
-            {(restFotos.slice(parrafos.length).filter(Boolean) as string[]).map((src: string, i: number) => (
-              <div key={i} className="rounded-2xl overflow-hidden shadow-md aspect-video">
-                <img src={src} alt="" className="w-full h-full object-cover" />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Footer del aviso */}
-        <div className="mt-14 pt-8 border-t border-[#E8E4DF] flex items-center justify-between">
-          <span className="text-[11px] text-[#A0B5A5] uppercase tracking-widest font-bold">
-            Fútbol · Guadalajara 2026
+        {/* Footer */}
+        <div className="mt-14 pt-6 border-t border-[#EDE9E4] flex items-center justify-between">
+          <span className="text-[11px] text-[#B0BEC5] uppercase tracking-widest font-semibold">
+            {lugar.categoria} · Guadalajara 2026
           </span>
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-sm font-bold text-[#1A4D2E] hover:text-[#F00808] transition-colors"
+            className="flex items-center gap-1.5 text-sm font-bold text-[#1A4D2E] hover:opacity-70 transition-opacity"
           >
-            <FiArrowLeft size={14} /> Volver a Fútbol
+            <FiArrowLeft size={14} /> Volver
           </button>
         </div>
-      </article>
+      </main>
     </div>
   );
 }

@@ -124,9 +124,12 @@ export default function FutbolPage() {
         const term = normalizeText(searchTerm);
         const quickTerms = activeQuickFilter ? (quickFilterKeywords[activeQuickFilter] || [activeQuickFilter]) : [];
 
+        const AVISO_NAMES = ["capacidad y logistica en el estadio akron", "cuanto cuestan los boletos oficiales para guadalajara"];
+        const normAviso = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[¿?]/g,"").toLowerCase().trim();
         const isAviso = (place: PlaceRecord) =>
             place.subcategoria === "Aviso" ||
-            (place.subcategorias || []).includes("Aviso");
+            (place.subcategorias || []).includes("Aviso") ||
+            AVISO_NAMES.some(n => normAviso(place.nombre).startsWith(n.split(" ").slice(0,4).join(" ")));
 
         const matchesQuickFilter = (place: PlaceRecord) => {
             if (!quickTerms.length) return true;

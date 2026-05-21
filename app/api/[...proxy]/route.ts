@@ -9,7 +9,9 @@ const BACKEND = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACK
 // - Sin redirect loops del rewrite de Vercel
 async function handler(req: NextRequest, { params }: { params: Promise<{ proxy: string[] }> }) {
   const { proxy } = await params;
-  const path = proxy.join("/");
+  // Re-encodear cada segmento para que caracteres especiales (¿, ?, etc.)
+  // no sean interpretados como separadores de query string por Express
+  const path = proxy.map(encodeURIComponent).join("/");
   const url = new URL(req.url);
   const query = url.search;
   const backendUrl = `${BACKEND}/api/${path}${query}`;
