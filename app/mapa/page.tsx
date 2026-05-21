@@ -421,6 +421,15 @@ export default function MapaPage() {
                         // Guardar lugares del CSV temporalmente
                         const lugaresCSV = parsed;
                         
+                        // Establecer lugares iniciales del CSV para que se muestren aunque falle el API
+                        const lugaresInicialesConViews = lugaresCSV.map((lugar) => ({
+                            ...lugar,
+                            views: typeof lugar.views === 'number' ? lugar.views : 0,
+                        }));
+                        setLugares(lugaresInicialesConViews);
+                        setFilteredLugares(lugaresInicialesConViews);
+                        console.log(`📊 Lugares iniciales establecidos desde CSV: ${lugaresInicialesConViews.length}`);
+                        
                         // Buscar lugares y fotos guardadas en Firestore (lugares creados manualmente + fotos)
                         fetch(`/api/lugares?includeApprovedBusinesses=true`)
                             .then(response => {
@@ -475,8 +484,9 @@ export default function MapaPage() {
                                     views: viewsByName[lugar.nombre] ?? (typeof lugar.views === 'number' ? lugar.views : 0),
                                 }));
                                 
-                                console.log(`📊 Total lugares: ${lugaresCSV.length} (${parsed.length} del CSV + ${lugaresCSV.length - parsed.length} creados manualmente)`);
+                                console.log(`📊 Total lugares actualizados: ${lugaresCSV.length} (${parsed.length} del CSV + ${lugaresCSV.length - parsed.length} creados manualmente)`);
                                 
+                                // Actualizar con los datos completos de Firestore
                                 setLugares(lugaresConViews);
                                 setFilteredLugares(lugaresConViews);
                                 
@@ -516,7 +526,7 @@ export default function MapaPage() {
                             })
                             .catch(error => {
                                 console.error("Error obteniendo fotos guardadas:", error);
-                                // Continuar con imágenes por categoría si falla
+                                // Los lugares ya están establecidos desde el CSV, continuar
                             })
                             .finally(() => {
                                 setLoading(false);
