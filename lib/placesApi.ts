@@ -200,7 +200,14 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
       return Array.from(mergedByName.values());
     }
 
-    const firestoreData = await firestoreResponse.json();
+    let firestoreData: { lugares?: FirestorePlace[] };
+    try {
+      firestoreData = await firestoreResponse.json();
+    } catch {
+      // El timeout disparó mientras se leía el body (headers llegaron antes de los 8s)
+      // Usamos datos CSV como fallback
+      return Array.from(mergedByName.values());
+    }
     const firestorePlaces: FirestorePlace[] = firestoreData.lugares || [];
 
     firestorePlaces.forEach((firestorePlace) => {
@@ -304,7 +311,13 @@ export async function getMergedPlaces(): Promise<PlaceRecord[]> {
       mergedByName.set(nombre, nextValue);
     });
   } catch (error) {
-    console.warn("Error obteniendo lugares de Firestore:", error);
+    // AbortError / TimeoutError son esperados (timeout o navegación del usuario) — no son bugs
+    const isExpected =
+      error instanceof DOMException &&
+      (error.name === "AbortError" || error.name === "TimeoutError");
+    if (!isExpected) {
+      console.warn("Error obteniendo lugares de Firestore:", error);
+    }
   }
 
   return Array.from(mergedByName.values());
