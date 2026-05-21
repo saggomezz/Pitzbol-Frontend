@@ -237,7 +237,7 @@ export default function GuideCard({ guide, rating, viewMode = "grid" }: GuideCar
           guideName={guide.nombre}
           touristId={user.uid}
           touristName={user.nombre || "Turista"}
-          currentUserType="tourist"
+          currentUserType={(user.role === "guia" || user.role === "guide") ? "guide" : "tourist"}
           currentUserId={user.uid}
           currentUserName={user.nombre + " " + user.apellido}
         />

@@ -455,18 +455,16 @@ export default function PerfilDetallado() {
           } catch {}
         }
 
-        // Cargar historial de reservas (solo turistas)
-        if (rol !== "guia") {
-          try {
-            const reservasRes = await fetchWithAuth(`${API_BASE}/bookings/tourist/${userLocal.uid}`, {
-              cache: "no-store",
-            });
-            if (reservasRes.ok) {
-              const reservasData = await reservasRes.json();
-              if (reservasData.success) setReservasHistorial(reservasData.bookings || []);
-            }
-          } catch {}
-        }
+        // Cargar historial de reservas (todos los usuarios autenticados, incluidos guías que reservan con otros guías)
+        try {
+          const reservasRes = await fetchWithAuth(`${API_BASE}/bookings/tourist/${userLocal.uid}`, {
+            cache: "no-store",
+          });
+          if (reservasRes.ok) {
+            const reservasData = await reservasRes.json();
+            if (reservasData.success) setReservasHistorial(reservasData.bookings || []);
+          }
+        } catch {}
 
         // Cargar calificaciones del guía (solo guías)
         if (rol === "guia") {
@@ -2118,9 +2116,10 @@ export default function PerfilDetallado() {
               )}
             </motion.div>
 
-            {/* ── Historial de Reservas (solo turistas) ── */}
-            {!esGuia && (
+            {/* ── Historial de Reservas (visible para cualquier usuario que reserve, incluidos guías) ── */}
+            {(
               reservasHistorial.length === 0 ? (
+                !esGuia ? (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -2135,6 +2134,7 @@ export default function PerfilDetallado() {
                     <p className="text-xs text-[#81C784] mt-1">Tus reservas completadas aparecerán aquí</p>
                   </div>
                 </motion.div>
+                ) : null
               ) : (
                 <motion.button
                   initial={{ opacity: 0, y: 20 }}
