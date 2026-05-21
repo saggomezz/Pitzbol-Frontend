@@ -24,8 +24,27 @@ export async function gestionarNegocioPendiente({
     }
   );
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as any)?.message || `Error ${res.status}`);
+    let message = `Error ${res.status}`;
+    try {
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const data: any = await res.json();
+        message =
+          data?.message ||
+          data?.msg ||
+          data?.error ||
+          (Array.isArray(data?.errors) && data.errors[0]?.msg) ||
+          message;
+      } else {
+        const text = await res.text();
+        if (text?.trim()) message = text.trim();
+      }
+    } catch {
+      /* ignore */
+    }
+    const error: any = new Error(message);
+    error.status = res.status;
+    throw error;
   }
   return res.json();
 }

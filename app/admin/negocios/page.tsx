@@ -642,8 +642,15 @@ const AdminNegociosPage = () => {
               setModalOpen(false);
               setNegocioAEliminar(null);
               cargarNegocios();
-            } catch (e) {
-              alert("Error al archivar negocio. Intenta de nuevo.");
+            } catch (e: any) {
+              const status = e?.status;
+              const isTimeout = status === 504 || /tiempo de espera|timeout/i.test(String(e?.message || ""));
+              const detail = e?.message ? `\n\n${e.message}` : "";
+              alert(
+                isTimeout
+                  ? `La operación tardó demasiado en el servidor. El negocio puede haberse archivado igualmente; recarga para verificar.${detail}`
+                  : `Error al archivar negocio.${detail}`
+              );
               setLoading(false);
             }
           }}
