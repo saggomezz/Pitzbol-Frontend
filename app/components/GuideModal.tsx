@@ -220,6 +220,35 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
     }
   };
   
+  // Función para analizar biometría en background (sin bloquear)
+  const analyzeAndUpdateBiometry = async () => {
+    try {
+      setVerifyingFace(true);
+      const bioToken = typeof window !== 'undefined' ? localStorage.getItem('pitzbol_token') || '' : '';
+      const bioRes = await fetch('/api/ocr/compare-biometry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(bioToken ? { 'Authorization': `Bearer ${bioToken}` } : {}),
+        },
+        body: JSON.stringify({ faceBase64: imgRostro, ineBase64: imgFrenteBase64 })
+      });
+      
+      if (!bioRes.ok) {
+        console.warn("⚠️ Biometría no disponible, se requiere revisión manual");
+      } else {
+        const data = await bioRes.json();
+        if (data.success) {
+          console.log("✅ Análisis de similitud facial completado en background:", data);
+        }
+      }
+    } catch (e) { 
+      console.error("⚠️ Biometría omitida en background, se requiere revisión manual:", e); 
+    } finally {
+      setVerifyingFace(false);
+    }
+  };
+
   const handleFinish = async () => {
     const stored = localStorage.getItem("pitzbol_user");
     const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
@@ -227,33 +256,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
     setErrorMsg("");
 
     try {
-      let bioData = { confidence: "0", nivelPrioridad: "BAJA", isMatch: false };
-
-      try {
-        setVerifyingFace(true);
-        const bioToken = typeof window !== 'undefined' ? localStorage.getItem('pitzbol_token') || '' : '';
-        const bioRes = await fetch('/api/ocr/compare-biometry', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(bioToken ? { 'Authorization': `Bearer ${bioToken}` } : {}),
-          },
-          body: JSON.stringify({ faceBase64: imgRostro, ineBase64: imgFrenteBase64 })
-        });
-        
-        if (!bioRes.ok) {
-          console.warn("Biometría no disponible, usando validación manual");
-        } else {
-          const data = await bioRes.json();
-          if (data.success) bioData = data;
-        }
-      } catch (e) { 
-        console.error("Biometría omitida, se requiere revisión manual.", e); 
-      } finally {
-        setVerifyingFace(false);
-      }
-
-      console.log("📤 Enviando datos de registro de guía...");
+      console.log("📤 Enviando datos de registro de guía al admin inmediatamente...");
       
       const fd = new FormData();
       fd.append("uid", userLocal?.uid || "");
@@ -284,7 +287,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
 
       if (response.ok) {
         const responseData = await response.json();
-        console.log("✅ Registro exitoso:", responseData);
+        console.log("✅ Registro exitoso - Solicitud enviada al admin:", responseData);
         
         // Guardar timestamp de cuándo se envió la solicitud
         const timestamp = new Date().toISOString();
@@ -314,6 +317,10 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         // Hacer dispatch del evento para notificar que el registro de guía fue completado
         window.dispatchEvent(new Event("guideSubmissionCompleted"));
         window.dispatchEvent(new Event("storage"));
+        
+        // Iniciar análisis facial en background (sin bloquear - fire and forget)
+        console.log("🔄 Iniciando análisis de similitud facial en background...");
+        analyzeAndUpdateBiometry();
         
         setShowConfirmation(true);
       } else {
