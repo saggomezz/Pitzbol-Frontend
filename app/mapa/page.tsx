@@ -463,234 +463,69 @@ export default function MapaPage() {
                                         const categoriasFirestore = categoriaFirestore
                                             .split(",")
                                             .map((c) => c.trim())
-                                            .filter(Boolean);
+                                };
 
-                                        lugaresCSV.push({
-                                            nombre: lugarFirestore.nombre,
-                                            categoria: categoriasFirestore[0] || categoriaFirestore || 'Cultura',
-                                            categorias: categoriasFirestore,
-                                            descripcion: lugarFirestore.descripcion || '',
-                                            ubicacion: lugarFirestore.ubicacion || '',
-                                            latitud: lugarFirestore.latitud || '',
-                                            longitud: lugarFirestore.longitud || '',
-            loadInitialData();
+                                const loadPlaces = async () => {
+                                    try {
+                                        if (isAuthenticated()) {
+                                            await syncLocalFavorites();
+                                        }
+                                        const favs = await getFavorites();
+                                        setFavorites(favs);
+                                    } catch (error) {
+                                        console.error("Error al cargar favoritos:", error);
+                                        const storedFavorites = localStorage.getItem("pitzbol_favorites");
+                                        if (storedFavorites) {
+                                            setFavorites(JSON.parse(storedFavorites));
+                                        }
+                                    }
 
-            const loadPlaces = async () => {
-                try {
-                    const mergedPlaces = await getMergedPlaces();
-                    const normalizedPlaces: Lugar[] = mergedPlaces.map((place) => {
-                        const photos = Array.isArray(place.fotos) ? place.fotos.filter(Boolean) : [];
-                        return {
-                            nombre: place.nombre,
-                            categoria: place.categoria || place.rawCategoria || "Cultura",
-                            categorias: place.rawCategoria
-                                ? place.rawCategoria.split(",").map((item) => item.trim()).filter(Boolean)
-                                : [place.categoria || "Cultura"],
-                            descripcion: place.descripcion || "",
-                            ubicacion: place.ubicacion || "",
-                            latitud: place.latitud || "",
-                            longitud: place.longitud || "",
-                            views: typeof place.views === "number" ? place.views : 0,
-                            fotos: photos,
-                        };
-                    });
+                                    try {
+                                        const mergedPlaces = await getMergedPlaces();
+                                        const normalizedPlaces: Lugar[] = mergedPlaces.map((place) => {
+                                            const photos = Array.isArray(place.fotos) ? place.fotos.filter(Boolean) : [];
+                                            return {
+                                                nombre: place.nombre,
+                                                categoria: place.categoria || place.rawCategoria || "Cultura",
+                                                categorias: place.rawCategoria
+                                                    ? place.rawCategoria.split(",").map((item) => item.trim()).filter(Boolean)
+                                                    : [place.categoria || "Cultura"],
+                                                descripcion: place.descripcion || "",
+                                                ubicacion: place.ubicacion || "",
+                                                latitud: place.latitud || "",
+                                                longitud: place.longitud || "",
+                                                views: typeof place.views === "number" ? place.views : 0,
+                                                fotos: photos,
+                                            };
+                                        });
 
-                    const initialImages: Record<string, string> = {};
-                    const fotosMap: Record<string, string[]> = {};
+                                        const initialImages: Record<string, string> = {};
+                                        const fotosMap: Record<string, string[]> = {};
 
-                    normalizedPlaces.forEach((lugar) => {
-                        const photos = lugar.fotos || [];
-                        if (photos.length > 0) {
-                            fotosMap[lugar.nombre] = photos;
-                            initialImages[lugar.nombre] = photos[0];
-                        } else {
-                            initialImages[lugar.nombre] = getPlaceImageByCategory(lugar.categoria);
-                        }
-                    });
+                                        normalizedPlaces.forEach((lugar) => {
+                                            const photos = lugar.fotos || [];
+                                            if (photos.length > 0) {
+                                                fotosMap[lugar.nombre] = photos;
+                                                initialImages[lugar.nombre] = photos[0];
+                                            } else {
+                                                initialImages[lugar.nombre] = getPlaceImageByCategory(lugar.categoria);
+                                            }
+                                        });
 
-                    setLugares(normalizedPlaces);
-                    setFilteredLugares(normalizedPlaces);
-                    setPlaceImages(initialImages);
-                    setPlaceAllPhotos(fotosMap);
-                } catch (error) {
-                    console.error("Error loading map places:", error);
-                } finally {
-                    setLoading(false);
-                }
-            };
+                                        setLugares(normalizedPlaces);
+                                        setFilteredLugares(normalizedPlaces);
+                                        setPlaceImages(initialImages);
+                                        setPlaceAllPhotos(fotosMap);
+                                    } catch (error) {
+                                        console.error("Error loading map places:", error);
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                };
 
-            loadPlaces();
-    useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === "Escape" && selectedPlace) {
-                handleClearSelection();
-            }
-        };
-        
-        window.addEventListener("keydown", handleEscape);
-        return () => window.removeEventListener("keydown", handleEscape);
-    }, [selectedPlace]);
-
-    const toggleFavorite = async (e: React.MouseEvent, nombre: string) => {
-        e.stopPropagation();
-        const isRemoving = favorites.includes(nombre);
-        
-        try {
-            const updated = isRemoving
-                ? await removeFavoriteApi(nombre)
-                : await addFavorite(nombre);
-            setFavorites(updated);
-            
-            // Mostrar notificación
-            setFavoriteToastMessage(isRemoving ? "Eliminado de favoritos" : "Agregado a favoritos");
-            setShowFavoriteToast(true);
-            setTimeout(() => setShowFavoriteToast(false), 2000);
-        } catch (error) {
-            console.error("Error al actualizar favorito:", error);
-            // Fallback: actualizar solo localmente
-            const updated = isRemoving
-                ? favorites.filter((n) => n !== nombre)
-                : [...favorites, nombre];
-            setFavorites(updated);
-            localStorage.setItem("pitzbol_favorites", JSON.stringify(updated));
-            
-            setFavoriteToastMessage(isRemoving ? "Eliminado de favoritos" : "Agregado a favoritos");
-            setShowFavoriteToast(true);
-            setTimeout(() => setShowFavoriteToast(false), 2000);
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className={styles.container}>
-                <div className={styles.wrapper}>
-                    <div className={styles.loading}>
-                        <div className={styles.loadingSpinner}></div>
-                        <p style={{ marginTop: "1rem", color: "#769C7B", fontWeight: 600 }}>
-                            Cargando lugares...
-                        </p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className={styles.container}>
-            <div className={styles.wrapper}>
-                {/* HEADER */}
-                <div className={styles.header}>
-                    <div className={styles.badge}>
-                        <GiSoccerBall style={{ display: "inline", marginRight: "0.5rem" }} />
-                        EXPLORA MÉXICO
-                    </div>
-                    <h1 className={styles.title}>
-                        MAPA DE <span className={styles.titleAccent}>LUGARES</span>
-                    </h1>
-                    <p className={styles.subtitle}>
-                        Descubre los mejores destinos deportivos, culturales y gastronómicos
-                    </p>
-                </div>
-
-                {/* FILTERS */}
-                <div className={styles.filters}>
-                    <div 
-                        className={styles.filtersHeader}
-                        onClick={() => setFiltersExpanded(!filtersExpanded)}
-                        style={{ cursor: 'pointer' }}
-                    >
-                        <div className={styles.filtersTitle}>
-                            <FiMapPin size={24} />
-                            <span>Explora Guadalajara</span>
-                            <FiChevronDown 
-                                size={24} 
-                                className={`${styles.chevronIcon} ${filtersExpanded ? styles.expanded : ''}`}
-                            />
-                        </div>
-                        <div className={styles.filtersSubtitle}>
-                            Selecciona una categoría para descubrir lugares increíbles
-                        </div>
-                    </div>
-
-                    <div className={`${styles.filtersContent} ${filtersExpanded ? styles.expanded : styles.collapsed}`}>
-                    <div className={styles.categoryGrid}>
-                        {categories.map((cat) => {
-                            const IconComponent = cat.icon;
-                            return (
-                                <button
-                                    key={cat.name}
-                                    className={`${styles.categoryCard} ${
-                                        selectedCategory === cat.name ? styles.active : ""
-                                    }`}
-                                    onClick={() => setSelectedCategory(cat.name)}
-                                >
-                                    <div className={styles.categoryIcon}>
-                                        <IconComponent size={28} />
-                                    </div>
-                                    <span className={styles.categoryName}>{cat.name}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                    </div>
-
-                    <div className={styles.searchContainer}>
-                        <div className={styles.searchBox}>
-                            <FiSearch className={styles.searchIcon} size={20} />
-                            <input
-                                type="text"
-                                className={styles.searchInput}
-                                placeholder="Buscar por nombre, descripción o ubicación..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                            {searchTerm && (
-                                <button 
-                                    className={styles.clearButton}
-                                    onClick={() => setSearchTerm("")}
-                                >
-                                    ×
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* MAIN LAYOUT */}
-                <div className={styles.mainLayout}>
-                    {/* LEFT PANEL */}
-                    <div className={styles.leftPanel}>
-                        <div className={styles.results}>
-                            <div className={styles.resultsHeader}>
-                                <span className={styles.resultsCount}>
-                                    LUGARES ENCONTRADOS
-                                </span>
-                            </div>
-
-                            {filteredLugares.length === 0 ? (
-                                <div className={styles.emptyState}>
-                                    <div className={styles.emptyIcon}>
-                                        <FiMapPin />
-                                    </div>
-                                    <div className={styles.emptyTitle}>Sin resultados</div>
-                                    <div className={styles.emptyDescription}>
-                                        Intenta con otros filtros o palabras clave
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className={styles.placesListMap}>
-                                    {filteredLugares.map((lugar, idx) => (
-                                        <motion.div
-                                            key={idx}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: idx * 0.05 }}
-                                            className={`${styles.placeCardMap} ${
-                                                selectedPlace?.nombre === lugar.nombre ? styles.selected : ""
-                                            }`}
-                                            onClick={() => handleSelectPlace(lugar)}
-                                        >
-                                            <img
+                                loadPlaces();
+                            }, [getFavorites, isAuthenticated, syncLocalFavorites]);
+                            useEffect(() => {
                                                 src={placeImages[lugar.nombre] || getPlaceImageUrlSync({
                                                     nombre: lugar.nombre,
                                                     categoria: lugar.categoria,
