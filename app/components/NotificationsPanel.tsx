@@ -32,7 +32,9 @@ interface NotificationsPanelProps {
 
 const BACKEND_URL = getSocketBackendOrigin();
 const API_BASE = getApiBaseUrl();
-const DIRECT_API_BASE = BACKEND_URL ? `${BACKEND_URL}/api` : API_BASE;
+// Always use the Next.js proxy for HTTP API calls from the browser.
+// getApiBaseUrl() already returns '/api' in the browser and the full URL server-side.
+const DIRECT_API_BASE = API_BASE;
 const NOTIFICATIONS_FALLBACK_SYNC_MS = 20 * 1000;
 const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
 const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";

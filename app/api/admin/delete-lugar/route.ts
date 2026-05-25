@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     // Verify admin via backend
     if (!token) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const backendUrl = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.pitzbol.me:8443";
+    const backendUrl = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.pitzbol.me";
     const meRes = await fetch(`${backendUrl}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => null);
