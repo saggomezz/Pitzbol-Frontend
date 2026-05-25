@@ -3,9 +3,9 @@ import type { NextConfig } from 'next';
 
 const connectSrc = [
   "'self'",
-  'https://api.pitzbol.me:8443',
-  'https://ia.pitzbol.me:8443',
-  'wss://api.pitzbol.me:8443',
+  'https://api.pitzbol.me',
+  'https://ia.pitzbol.me',
+  'wss://api.pitzbol.me',
   'https://res.cloudinary.com',
   'https://firebaseinstallations.googleapis.com',
   'https://identitytoolkit.googleapis.com',
@@ -38,7 +38,7 @@ const nextConfig: NextConfig = {
     },
   },
   env: {
-    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me:8443',
+    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me',
     NEXT_PUBLIC_IA_URL: process.env.NEXT_PUBLIC_IA_URL || 'https://ia.pitzbol.me',
   },
   async headers() {
@@ -80,7 +80,7 @@ const nextConfig: NextConfig = {
     const backendUrl =
       process.env.BACKEND_INTERNAL_URL ||
       process.env.NEXT_PUBLIC_BACKEND_URL ||
-      'https://api.pitzbol.me:8443';
+      'https://api.pitzbol.me';
     return {
       fallback: [
         {
