@@ -4,6 +4,8 @@ import type { NextConfig } from 'next';
 const connectSrc = [
   "'self'",
   'https://api.pitzbol.me',
+  'https://pitzbol-backend.onrender.com',
+  'wss://pitzbol-backend.onrender.com',
   'https://ia.pitzbol.me',
   'wss://api.pitzbol.me',
   'https://res.cloudinary.com',
@@ -38,7 +40,7 @@ const nextConfig: NextConfig = {
     },
   },
   env: {
-    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me',
+    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://pitzbol-backend.onrender.com',
     NEXT_PUBLIC_IA_URL: process.env.NEXT_PUBLIC_IA_URL || 'https://ia.pitzbol.me',
   },
   async headers() {
@@ -80,7 +82,7 @@ const nextConfig: NextConfig = {
     const backendUrl =
       process.env.BACKEND_INTERNAL_URL ||
       process.env.NEXT_PUBLIC_BACKEND_URL ||
-      'https://api.pitzbol.me';
+      'https://pitzbol-backend.onrender.com';
     return {
       fallback: [
         {

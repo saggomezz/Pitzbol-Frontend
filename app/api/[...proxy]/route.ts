@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.pitzbol.me";
+const BACKEND = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "https://pitzbol-backend.onrender.com";
 
 // Forzar Node.js runtime (no edge) para soportar fetch streaming + maxDuration largo
 export const runtime = "nodejs";

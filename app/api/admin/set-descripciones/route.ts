@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.pitzbol.me";
+const BACKEND = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "https://pitzbol-backend.onrender.com";
 const EMAILS_ADMIN = ["cua@hotmail.com", "pilarmorag2004@hotmail.com"];
 
 const DESCRIPCIONES: Record<string, string> = {
