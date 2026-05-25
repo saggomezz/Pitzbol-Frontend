@@ -1,0 +1,1521 @@
+"use client";
+
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { FiMapPin, FiClock, FiDollarSign, FiInfo, FiArrowLeft, FiNavigation, FiHeart, FiShare2, FiPhone, FiGlobe, FiMail, FiPlus, FiX, FiCheck, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { getHorarioActivo, getDiaIdx, formatRango, DIAS_ES, NOMBRE_DIA, DaySchedule } from "../horariosData";
+import styles from "../informacion.module.css";
+import { useFavoritesSync } from "@/lib/favoritesApi";
+import DeletedBusinessModal from "@/app/components/DeletedBusinessModal";
+import PlaceRating from "@/app/components/PlaceRating";
+import { NavigationPanel, type MapOriginEvent, type NavigationMapAlert, type OriginMarkerMeta, type TransportMode } from "../../components/NavigationPanel";
+import PlaceDetailNavigationMap, { type OriginChangeMeta } from "@/app/components/PlaceDetailNavigationMap";
+import { usePlaceView } from "@/lib/usePlaceView";
+import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
+import type { GeoPoint } from "@/lib/geoClient";
+import { getPlaceImageUrlSync } from "@/lib/placeImages";
+
+/* ─── Layout informativo para Avisos (sin calificación, horario, costo ni mapa) ─ */
+function AvisoLayout({ lugar, fotos, onBack }: { lugar: Lugar; fotos: string[]; onBack: () => void }) {
+  // notaIA contiene la descripción — mapPlaceToPublicDetail lo mapea desde place.descripcion
+  const parrafos = (lugar.notaIA || "")
+    .split(/\n+/)
+    .map((p: string) => p.trim())
+    .filter(Boolean);
+
+  return (
+    <div className="min-h-screen bg-[#FDFCF9]">
+      {/* Nav sticky */}
+      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-[#F0EDE8]">
+        <div className="max-w-5xl mx-auto px-5 py-4 flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-[#1A4D2E] font-bold text-sm hover:opacity-70 transition-opacity"
+          >
+            <FiArrowLeft size={18} /> Fútbol
+          </button>
+          <span className="text-gray-300 select-none">/</span>
+          <span className="text-sm text-[#769C7B] font-medium truncate max-w-[240px]">
+            {lugar.nombre}
+          </span>
+        </div>
+      </div>
+
+      <main className="max-w-5xl mx-auto px-5 py-10">
+        {/* Encabezado */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10"
+        >
+          <span className="inline-block bg-[#E8F5E9] text-[#1A4D2E] text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full mb-4">
+            {lugar.categoria}
+          </span>
+          <h1
+            className="text-3xl md:text-4xl font-black text-[#1A4D2E] leading-tight mb-3"
+            style={{ fontFamily: "'Jockey One', sans-serif" }}
+          >
+            {lugar.nombre}
+          </h1>
+          {lugar.direccion && lugar.direccion !== "Ubicacion no disponible" && (
+            <p className="text-sm text-gray-400 flex items-center gap-1.5">
+              <FiMapPin size={12} /> {lugar.direccion}
+            </p>
+          )}
+        </motion.div>
+
+        {/* Contenido principal: texto izquierda + fotos derecha */}
+        <div className="flex flex-col lg:flex-row gap-10 items-start">
+          {/* Descripción */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex-1 min-w-0"
+          >
+            {parrafos.length > 0 ? (
+              parrafos.map((p, i) => (
+                <p key={i} className="text-[15px] text-[#444] leading-[1.9] mb-5">
+                  {p}
+                </p>
+              ))
+            ) : (
+              <p className="text-[#aaa] italic text-sm">Sin descripción disponible.</p>
+            )}
+          </motion.div>
+
+          {/* Fotos en grid compacto — derecha en desktop, abajo en mobile */}
+          {fotos.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="w-full lg:w-80 xl:w-96 shrink-0"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                {fotos.map((src, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-2xl overflow-hidden shadow-sm border border-[#F0EDE8] ${
+                      fotos.length === 1 || (i === 0 && fotos.length % 2 === 1) ? "col-span-2" : ""
+                    }`}
+                  >
+                    <img
+                      src={src}
+                      alt=""
+                      className={`w-full object-cover ${
+                        fotos.length === 1 || (i === 0 && fotos.length % 2 === 1) ? "h-52" : "h-36"
+                      }`}
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-14 pt-6 border-t border-[#EDE9E4] flex items-center justify-between">
+          <span className="text-[11px] text-[#B0BEC5] uppercase tracking-widest font-semibold">
+            {lugar.categoria} · Guadalajara 2026
+          </span>
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 text-sm font-bold text-[#1A4D2E] hover:opacity-70 transition-opacity"
+          >
+            <FiArrowLeft size={14} /> Volver
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+const APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY = "pitzbol_approved_business_toast_dismissed_by_business_v2";
+const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
+const DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX = "pitzbol_deleted_business_notifications_";
+
+type ApprovedToastPendingPayload = {
+  businessId?: string;
+  businessName?: string;
+};
+
+type DeletedBusinessNotification = {
+  titulo: string;
+  mensaje: string;
+  fecha: string;
+};
+
+function getApprovedToastPendingPayload(): ApprovedToastPendingPayload | null {
+  if (typeof window === "undefined") return null;
+
+  const raw = localStorage.getItem(APPROVED_TOAST_PENDING_KEY);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as ApprovedToastPendingPayload;
+    if (!parsed || (typeof parsed !== "object")) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function getApprovedToastDismissedMap(): Record<string, true> {
+  if (typeof window === "undefined") return {};
+
+  const raw = localStorage.getItem(APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY);
+  if (!raw) return {};
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, true>;
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+const DETALLES_DESCRIPTIONS: Record<string, string> = {
+  "Julieta Venegas - Teatro Diana":
+    "Julieta Venegas regresa a Guadalajara con dos fechas en el histórico Teatro Diana. La noche del 20 de junio está completamente agotada (sold out); para la segunda función del 21 de junio aún hay boletos disponibles en Ticketmaster. La artista tijuanense presentará un show íntimo con su catálogo completo: Eres para Mí, Me Voy, Lento, Limón y Sal y sus más recientes producciones. El Teatro Diana, inaugurado en 1939, tiene capacidad para 1,200 personas y es uno de los recintos más emblemáticos de la vida cultural tapatía.",
+  "Sebastián Yatra - Auditorio Telmex":
+    "Sebastián Yatra lleva su 'Entre tanta gente Tour' al Auditorio Telmex de Guadalajara el sábado 20 de junio, en plena apertura de la temporada mundialista. El artista colombiano presentará su más reciente material discográfico junto a sus grandes éxitos: Tacones Rojos, Pareja del Año, Un Año y Robarte un Beso. El Auditorio Telmex tiene capacidad para 10,000 personas y es el principal recinto de espectáculos de la Zona Metropolitana. Boletos disponibles en Ticketmaster y taquilla del auditorio.",
+  "Conciertos en el Fan Fest 2026":
+    "El Gobierno de Jalisco acordó con la FIFA una programación especial de conciertos gratuitos durante los 39 días del Mundial (11 jun – 19 jul 2026). El cartel confirma presentaciones de Maná, la banda de rock más importante de habla hispana originaria de Guadalajara; Carlos Santana, leyenda del rock latinoamericano; Alejandro Fernández 'El Potrillo', máximo referente de la música ranchera y pop; y el Mariachi Vargas de Tecalitlán, agrupación con más de 125 años de historia. También se analiza la realización de un palomazo especial en la icónica Glorieta de la Minerva. Todos los eventos son de acceso gratuito.",
+  "Programa LATE 2026":
+    "Guadalajara LATE 2026 es el programa cultural más ambicioso en la historia de la ciudad, diseñado para acompañar la celebración del Mundial con más de 75 actividades artísticas y recreativas distribuidas en museos, barrios históricos y espacios públicos. A lo largo del año incluye exposiciones temporales, intervenciones de arte urbano, conciertos en plazas, festivales gastronómicos, recorridos nocturnos por el Centro Histórico, talleres creativos y performances en colonias como Americana, Chapalita y Tlaquepaque. El capítulo especial del Mundial concentra actividades durante junio y julio para recibir a los aficionados internacionales con la cultura y el arte jalisciense.",
+  "Orquesta Filarmónica de Jalisco - Teatro Degollado":
+    "La Orquesta Filarmónica de Jalisco presenta tres eventos imperdibles en el Teatro Degollado durante el verano 2026. En junio llega el Ballet Giselle con coreografía de Irina Marcano y dirección de José Luis Castillo, uno de los ballets más emotivos del repertorio clásico. El 5 de julio se realiza el 'Concierto de Campeones', programa mundialista con obras de Brahms, Villa-Lobos, Offenbach, Elgar y el icónico Huapango de Moncayo. El 12 de julio cierra con el Programa 5 de la Segunda Temporada, transmitido por UdeG TV. Boletos en taquilla del Teatro Degollado con 30% de descuento para estudiantes, maestros y adultos mayores.",
+  "FIFA Fan Festival Guadalajara 2026":
+    "El FIFA Fan Festival es el evento oficial de la FIFA para aficionados sin entrada al estadio. En Guadalajara 2026 se instala en el Parque Agua Azul con capacidad para miles de personas. Ofrece transmisiones en vivo de todos los partidos del Mundial en pantallas gigantes, zonas de juegos interactivos, experiencias de realidad aumentada con el trofeo FIFA, food trucks con gastronomía internacional y mexicana, conciertos y activaciones de patrocinadores. El acceso es gratuito previa registro en la plataforma oficial de FIFA. Abre todos los días del torneo desde la fase de grupos hasta la final.",
+  "Noche de Museos Guadalajara":
+    "Noche de Museos es una iniciativa cultural mensual que transforma el centro histórico de Guadalajara en un circuito nocturno de arte y cultura. Cada primer miércoles del mes más de 15 museos y galerías abren gratuitamente de 18:00 a 22:00 horas. El recorrido conecta el Museo Regional, el Instituto Cabañas, el MUSA, el Museo del Periodismo y varios espacios independientes. Durante junio y julio 2026 el evento incluye exposiciones temáticas del Mundial, proyecciones en fachadas históricas y guías turísticos especializados en inglés para los visitantes internacionales.",
+  "Mercado del Arte Tlaquepaque":
+    "El Mercado del Arte de Tlaquepaque es uno de los eventos culturales más auténticos de la Zona Metropolitana de Guadalajara. Cada fin de semana artistas y artesanos de Jalisco instalan sus puestos en el Jardín Hidalgo para exhibir pintura, fotografía, escultura, joyería y textiles. El ambiente está acompañado de mariachi en vivo, degustaciones de comida típica y talleres de arte para niños. Durante el verano 2026 se suman piezas temáticas del Mundial y artistas internacionales invitados. La entrada es libre y las piezas van desde $100 MXN hasta obras de colección.",
+  "Conciertos de Verano Parque Colomos":
+    "Los Conciertos de Verano del Bosque Colomos son una tradición tapatía organizada por el Ayuntamiento de Guadalajara. Cada fin de semana de junio y julio artistas de jazz, música regional mexicana, pop y rock se presentan en el foro al aire libre del parque, rodeados de arboledas y áreas verdes. El evento es completamente gratuito y familiar. Se recomienda llegar temprano para conseguir lugar en el pasto, llevar cobija y alimentos. El Bosque Colomos también ofrece rutas de senderismo, áreas de pic nic y el Jardín Japonés.",
+  "Feria de San Juan de Dios":
+    "La Feria de San Juan de Dios es una de las celebraciones populares más queridas de Guadalajara, organizada en junio en los alrededores del mercado cubierto más grande de América Latina. Durante varias semanas el área se transforma con puestos de artesanías, antojitos, dulces típicos, juegos mecánicos y entretenimiento en vivo. Es una experiencia auténticamente tapatía donde conviven locales y turistas. El mercado interior ofrece además electrónica, ropa, productos regionales y una zona de mariscos y comida muy popular entre los visitantes.",
+  "Exposición de Arte Contemporáneo Jalisco":
+    "La Exposición de Arte Contemporáneo Jalisco es la muestra de verano más importante del estado, celebrada en los espacios del Instituto Cultural Cabañas, Patrimonio de la Humanidad por la UNESCO. La edición 2026 reúne a más de 40 artistas jaliscienses con instalaciones, video arte, pintura y escultura que dialogan con el fútbol, la identidad cultural y el encuentro de naciones que representa el Mundial. Algunos espacios del Cabañas que normalmente están cerrados al público abren especialmente para esta muestra. Se ofrecen visitas guiadas en español e inglés.",
+};
+
+const ESTADIO_SEDE_DESCRIPTIONS: Record<string, string> = {
+  "Estadio Akron, Guadalajara":
+    "El Estadio Akron fue seleccionado por la FIFA como una de las sedes oficiales de la Copa del Mundo 2026, el torneo más grande en la historia del fútbol con 48 selecciones participantes. Inaugurado en 2010, el recinto tiene capacidad para más de 49,000 espectadores y es considerado uno de los estadios más modernos e icónicos de Latinoamérica. Para el Mundial, el estadio fue sometido a una profunda renovación en infraestructura, accesibilidad y tecnología, convirtiéndose en el punto de encuentro del mundo en Guadalajara. Albergará partidos de la fase de grupos y rondas eliminatorias, marcando un hito histórico para la Zona Metropolitana de Guadalajara y todo el estado de Jalisco.",
+};
+
+const CULTURA_DESCRIPTIONS: Record<string, string> = {
+  "Instituto Cultural Cabañas, Guadalajara":
+    "Declarado Patrimonio de la Humanidad por la UNESCO en 1997, el Hospicio Cabañas fue fundado en 1810 por el obispo Juan Cruz Ruiz de Cabañas como casa de beneficencia. Su capilla alberga los célebres murales de José Clemente Orozco pintados entre 1938 y 1939, considerados una de las obras cumbres del muralismo mexicano. La figura del Hombre de Fuego en la cúpula central es su imagen más emblemática.",
+  "Teatro Degollado, Guadalajara":
+    "Inaugurado en 1866, el Teatro Degollado es el principal recinto escénico de Guadalajara y uno de los teatros neoclásicos más importantes de México. Su fachada está coronada por un friso que representa el cuarto acto de Dante en la Divina Comedia. Desde su apertura ha sido sede de la Orquesta Filarmónica de Jalisco y del Ballet Folclórico de la Universidad de Guadalajara, siendo escenario de cientos de eventos culturales internacionales.",
+  "Catedral Metropolitana, Guadalajara":
+    "Construida entre 1558 y 1618, la Catedral de Guadalajara combina estilos gótico, barroco y neoclásico, resultado de más de cuatro siglos de intervenciones arquitectónicas. Sus torres gemelas son el ícono por excelencia de la ciudad y fueron reconstruidas tras el terremoto de 1818. En su interior se conservan retablos coloniales, pinturas de Murillo y la cripta donde reposan varios obispos y arzobispos de Jalisco.",
+  "Palacio de Gobierno de Jalisco, Guadalajara":
+    "Edificado a finales del siglo XVII, el Palacio de Gobierno es el centro administrativo del estado de Jalisco y uno de los recintos históricos más significativos de México. En 1810, el cura Miguel Hidalgo firmó aquí el primer decreto de abolición de la esclavitud en América. Su escalinata principal está decorada con el monumental mural de José Clemente Orozco que representa a Hidalgo como figura libertaria.",
+  "Plaza de Armas, Guadalajara":
+    "Corazón histórico de Guadalajara desde su fundación en 1542, la Plaza de Armas fue durante siglos el espacio público central de la vida colonial tapatía. Flanqueada por la Catedral Metropolitana y el Palacio de Gobierno, fue escenario de proclamaciones, ferias y eventos políticos clave. Su quiosco modernista de hierro, traído desde Francia en 1898, es uno de los elementos más fotogénicos del centro histórico.",
+  "Museo del Periodismo y las Artes Gráficas, Guadalajara":
+    "Ubicado en la Casa de los Perros, un edificio del siglo XVIII declarado monumento histórico, este museo documenta la historia del periodismo en México desde la época colonial. Aquí se imprimió en 1810 el primer periódico insurgente: El Despertador Americano, voz de la lucha de Independencia. Sus salas exhiben prensas tipográficas históricas, primeras ediciones y la evolución del diseño editorial en Jalisco.",
+  "Expiatorio del Santísimo Sacramento, Guadalajara":
+    "Considerada la iglesia más bella de Guadalajara, el Expiatorio es un templo neogótico cuya construcción comenzó en 1897 y no concluyó sino hasta 1972, con más de 70 años de trabajo artesanal. Sus vitrales de origen alemán, sus arbotantes y su cripta la convierten en un referente arquitectónico único en México. Cada viernes se realiza el tradicional mercado de artesanías en su atrio, uno de los más populares de la ciudad.",
+  "Centro Histórico de Tlaquepaque, Guadalajara":
+    "San Pedro Tlaquepaque es reconocido mundialmente como uno de los centros artesanales más importantes de México. Desde el siglo XIX ha sido cuna de maestros vidrieros, alfareros y artesanos textiles cuyas obras llegan a colecciones de todo el mundo. Su centro histórico, con calles empedradas y casonas coloniales, fue declarado Zona de Monumentos Históricos y alberga galerías, talleres y el emblemático El Parián, mercado de artesanías y mariachi.",
+  "El Parián de Tlaquepaque, Guadalajara":
+    "El Parián en Tlaquepaque es principalmente un lugar emblemático y un complejo turístico, conocido como la cantina más grande del mundo. Se trata de un edificio histórico rodeado de arcadas que alberga en su interior 18 o 19 restaurantes y bares distintos alrededor de un quiosco central. Es un punto de encuentro clásico para escuchar mariachi, comer platillos típicos y beber cazuelas de tequila.",
+};
+
+interface Lugar {
+  nombre: string;
+  categoria: string;
+  etiquetas: string[];
+  direccion: string;
+  latitud: number;
+  longitud: number;
+  telefono?: string;
+  website?: string;
+  email?: string;
+  codigoPostal?: string;
+  tiempoEstancia?: number;
+  costoEstimado?: string;
+  notaIA: string;
+  fotos: string[];
+  negocioId?: string;
+  horariosJson?: string;
+  subcategoria?: string;
+  subcategorias?: string[];
+}
+
+function normalizeName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function getDeletedBusinessNotificationsStorageKey(userId: string): string {
+  return `${DELETED_BUSINESS_NOTIFICATIONS_KEY_PREFIX}${userId}`;
+}
+
+function getPersistedDeletedBusinessNotification(businessName: string): DeletedBusinessNotification | null {
+  if (typeof window === "undefined") return null;
+
+  const storedUser = localStorage.getItem("pitzbol_user");
+  if (!storedUser) return null;
+
+  try {
+    const parsedUser = JSON.parse(storedUser);
+    const userId = parsedUser?.uid;
+    if (!userId) return null;
+
+    const raw = localStorage.getItem(getDeletedBusinessNotificationsStorageKey(userId));
+    if (!raw) return null;
+
+    const map = JSON.parse(raw) as Record<string, DeletedBusinessNotification>;
+    const businessKey = `name:${normalizeName(businessName)}`;
+    return map[businessKey] || null;
+  } catch {
+    return null;
+  }
+}
+
+function mapPlaceToPublicDetail(place: PlaceRecord): Lugar {
+  const lat = parseFloat(place.latitud || "");
+  const lng = parseFloat(place.longitud || "");
+  const placeAsAny = place as PlaceRecord & {
+    tiempoEstancia?: number;
+    costoEstimado?: string;
+  };
+
+  const etiquetas = (place as PlaceRecord & { rawCategoria?: string }).rawCategoria
+    ? (place as PlaceRecord & { rawCategoria?: string }).rawCategoria!
+        .split(",")
+        .map((e) => e.trim())
+        .filter(Boolean)
+    : place.categoria
+    ? [place.categoria]
+    : [];
+
+  return {
+    nombre: place.nombre,
+    categoria: place.categoria || "Negocio",
+    etiquetas,
+    direccion: place.ubicacion || "Ubicacion no disponible",
+    latitud: Number.isFinite(lat) ? lat : 0,
+    longitud: Number.isFinite(lng) ? lng : 0,
+    telefono: place.telefono || (place as PlaceRecord & { phone?: string }).phone,
+    website: place.website,
+    email:
+      place.email ||
+      (place as PlaceRecord & { ownerEmail?: string; contactEmail?: string }).ownerEmail ||
+      (place as PlaceRecord & { ownerEmail?: string; contactEmail?: string }).contactEmail,
+    codigoPostal: place.codigoPostal,
+    tiempoEstancia: placeAsAny.tiempoEstancia && placeAsAny.tiempoEstancia > 0 ? placeAsAny.tiempoEstancia : undefined,
+    costoEstimado: placeAsAny.costoEstimado && String(placeAsAny.costoEstimado).trim() ? String(placeAsAny.costoEstimado).trim() : undefined,
+    notaIA: place.descripcion || "",
+    fotos: Array.isArray(place.fotos) ? place.fotos : [],
+    negocioId: place.negocioId,
+    horariosJson: (place as any).horariosJson || undefined,
+    subcategoria: place.subcategoria,
+    subcategorias: place.subcategorias,
+  };
+}
+
+const NOMBRES_AVISO_NORM = [
+  "capacidad y logistica en el estadio akron",
+  "cuanto cuestan los boletos oficiales para guadalajara",
+];
+function normForAviso(s: string) {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[¿?]/g,"").toLowerCase().trim();
+}
+function esAvisoLugar(lugar: Lugar): boolean {
+  return (
+    lugar.subcategoria === "Aviso" ||
+    (lugar.subcategorias || []).includes("Aviso") ||
+    NOMBRES_AVISO_NORM.some(n => normForAviso(lugar.nombre).includes(n.split(" ").slice(0, 4).join(" ")))
+  );
+}
+
+function getMapEmbedSrc(lugar: Lugar): string {
+  const hasCoordinates = lugar.latitud !== 0 && lugar.longitud !== 0;
+  if (hasCoordinates) {
+    const delta = 0.005;
+    const left = lugar.longitud - delta;
+    const right = lugar.longitud + delta;
+    const top = lugar.latitud + delta;
+    const bottom = lugar.latitud - delta;
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lugar.latitud}%2C${lugar.longitud}`;
+  }
+
+  const query = encodeURIComponent(lugar.direccion || lugar.nombre);
+  return `https://www.openstreetmap.org/export/embed.html?bbox=-103.45%2C20.59%2C-103.25%2C20.76&layer=mapnik&query=${query}`;
+}
+
+function getFallbackPhoto(lugar: Lugar): string {
+  return getPlaceImageUrlSync({
+    nombre: lugar.nombre,
+    categoria: lugar.categoria,
+    ubicacion: lugar.direccion,
+    latitud: lugar.latitud,
+    longitud: lugar.longitud,
+  });
+}
+
+function getGalleryPhotos(lugar: Lugar): string[] {
+  const savedPhotos = (lugar.fotos || [])
+    .map((foto) => String(foto || "").trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  return savedPhotos.length > 0 ? savedPhotos : [getFallbackPhoto(lugar)];
+}
+
+const EMAILS_ADMIN_LUGARES = ["cua@hotmail.com", "pilarmorag2004@hotmail.com"];
+const BACKEND_API = '/api';
+
+const TODAS_CATEGORIAS = [
+  "Gastronomía", "Cultura", "Vida Nocturna", "Cafetería", "Futbol",
+  "Arte", "Deporte", "Turismo", "Compras", "Hotel", "Transporte",
+  "Salud", "Hospital", "Entretenimiento", "Museos", "Naturaleza",
+  "Mercado", "Bar", "Restaurante", "Museo", "Parque", "Estadio",
+];
+
+export default function InformacionLugar() {
+  const params = useParams();
+  const router = useRouter();
+  const [lugar, setLugar] = useState<Lugar | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [fotoIdx, setFotoIdx] = useState(0);
+  const [deletedBusinessNotification, setDeletedBusinessNotification] = useState<DeletedBusinessNotification | null>(null);
+  const [showDeletedBusinessModal, setShowDeletedBusinessModal] = useState(false);
+  const [esAdminLugares, setEsAdminLugares] = useState(false);
+  const [etiquetasEdit, setEtiquetasEdit] = useState<string[]>([]);
+  const [mostrarSelector, setMostrarSelector] = useState(false);
+  const [guardandoCats, setGuardandoCats] = useState(false);
+  const [mensajeCats, setMensajeCats] = useState("");
+  const [editTiempo, setEditTiempo] = useState('');
+  const [editCosto, setEditCosto] = useState('');
+  const [editandoInfo, setEditandoInfo] = useState(false);
+  const [guardandoInfo, setGuardandoInfo] = useState(false);
+  const [mensajeInfo, setMensajeInfo] = useState('');
+  const [editDescripcion, setEditDescripcion] = useState('');
+  const [editandoDesc, setEditandoDesc] = useState(false);
+  const [guardandoDesc, setGuardandoDesc] = useState(false);
+  const [mensajeDesc, setMensajeDesc] = useState('');
+  type DiaEdit = { apertura: string; cierre: string; cerrado: boolean };
+  const [editHorarios, setEditHorarios] = useState<Record<string, DiaEdit>>({});
+  const [editandoHorarios, setEditandoHorarios] = useState(false);
+  const [guardandoHorarios, setGuardandoHorarios] = useState(false);
+  const [mensajeHorarios, setMensajeHorarios] = useState('');
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+  const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
+  const [isDrivingMode, setIsDrivingMode] = useState(false);
+  const [originMarkerPoint, setOriginMarkerPoint] = useState<GeoPoint | null>(null);
+  const [mapOriginEvent, setMapOriginEvent] = useState<MapOriginEvent | null>(null);
+  const [mapRoutes, setMapRoutes] = useState<{
+    polyline: string;
+    travelMode?: TransportMode;
+    trafficSegments?: { coordinates: [number, number][]; level: 'free' | 'moderate' | 'heavy' }[];
+  }[]>([]);
+  const [mapSelectedRouteIdx, setMapSelectedRouteIdx] = useState(0);
+  const [liveNavPos, setLiveNavPos] = useState<{ lat: number; lng: number; bearing: number | null } | null>(null);
+  const [navigationMapAlert, setNavigationMapAlert] = useState<NavigationMapAlert | null>(null);
+  // Registrar vista del lugar
+  const nombreRaw = params.nombre;
+  const nombreLugar = typeof nombreRaw === "string" ? decodeURIComponent(nombreRaw) : null;
+  const normalizedBusinessName = nombreLugar ? normalizeName(nombreLugar) : "";
+  usePlaceView(nombreLugar);
+
+  const [showApprovedToast, setShowApprovedToast] = useState(false);
+  // Estado de depuración para mostrar condiciones del toast
+  const [debugToast, setDebugToast] = useState({
+    cameFromBusinessManagement: false,
+    hasPendingTrigger: false,
+    dismissed: false,
+    nombreLugar: nombreLugar || '',
+    urlParams: '',
+    localStoragePending: '',
+    localStorageDismissed: '',
+  });
+
+  const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
+
+  useEffect(() => {
+    if (fotos.length <= 1) return;
+    const timer = setInterval(() => setFotoIdx(i => (i + 1) % fotos.length), 4000);
+    return () => clearInterval(timer);
+  }, [fotos.length]);
+
+  useEffect(() => {
+    setFotoIdx(0);
+  }, [nombreLugar]);
+
+  useEffect(() => {
+    if (fotos.length > 0 && fotoIdx >= fotos.length) {
+      setFotoIdx(0);
+    }
+  }, [fotoIdx, fotos.length]);
+
+
+  useEffect(() => {
+    if (!nombreLugar || typeof window === "undefined") return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const cameFromBusinessManagement = urlParams.get("origen") === "gestion-negocios-activo";
+    const pendingPayload = getApprovedToastPendingPayload();
+    const pendingBusinessName = pendingPayload?.businessName ? normalizeName(pendingPayload.businessName) : "";
+    const hasPendingTrigger = !!pendingBusinessName && pendingBusinessName === normalizedBusinessName;
+    const dismissedMap = getApprovedToastDismissedMap();
+    const dismissed = !!dismissedMap[normalizedBusinessName];
+
+    setDebugToast({
+      cameFromBusinessManagement,
+      hasPendingTrigger,
+      dismissed,
+      nombreLugar: nombreLugar || '',
+      urlParams: window.location.search,
+      localStoragePending: localStorage.getItem(APPROVED_TOAST_PENDING_KEY) || '',
+      localStorageDismissed: dismissed ? "1" : "",
+    });
+
+    if ((cameFromBusinessManagement || hasPendingTrigger) && !dismissed) {
+      setShowApprovedToast(true);
+    }
+
+    if (pendingPayload) {
+      localStorage.removeItem(APPROVED_TOAST_PENDING_KEY);
+    }
+  }, [nombreLugar, normalizedBusinessName]);
+
+  const dismissApprovedToast = () => {
+    setShowApprovedToast(false);
+    if (typeof window !== "undefined") {
+      const dismissedMap = getApprovedToastDismissedMap();
+      dismissedMap[normalizedBusinessName] = true;
+      localStorage.setItem(APPROVED_TOAST_DISMISSED_BY_BUSINESS_KEY, JSON.stringify(dismissedMap));
+    }
+  };
+
+  useEffect(() => {
+    const cargarLugar = async () => {
+      setLoading(true);
+      setLugar(null);
+      setFotos([]);
+      setFotoIdx(0);
+
+      if (!nombreLugar) {
+        setLugar(null);
+        setFotos([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const mergedPlaces = await getMergedPlaces();
+        const normalizedQuery = normalizeName(nombreLugar);
+        const lugarRecord =
+          mergedPlaces.find((c) => normalizeName(c.nombre) === normalizedQuery) ||
+          mergedPlaces.find((c) => normalizeName(c.nombre).startsWith(normalizedQuery + ',')) ||
+          mergedPlaces.find((c) => normalizeName(c.nombre).startsWith(normalizedQuery + ' '));
+
+        const lugarEncontrado = lugarRecord ? mapPlaceToPublicDetail(lugarRecord) : null;
+        setLugar(lugarEncontrado);
+  setFotos(lugarEncontrado ? getGalleryPhotos(lugarEncontrado) : []);
+        if (lugarEncontrado) {
+          setEtiquetasEdit(lugarEncontrado.etiquetas);
+          setEditTiempo(String(lugarEncontrado.tiempoEstancia ?? ''));
+          setEditCosto(lugarEncontrado.costoEstimado || '');
+          setEditDescripcion(lugarEncontrado.notaIA || '');
+          const h = getHorarioActivo(lugarEncontrado.nombre, lugarEncontrado.horariosJson);
+          const initDias: Record<string, DiaEdit> = {};
+          for (const dia of DIAS_ES) {
+            const ds: DaySchedule = h?.[dia] ?? { apertura: '09:00', cierre: '18:00' };
+            initDias[dia] = ds === 'cerrado'
+              ? { apertura: '09:00', cierre: '18:00', cerrado: true }
+              : { apertura: (ds as any).apertura, cierre: (ds as any).cierre, cerrado: false };
+          }
+          setEditHorarios(initDias);
+        }
+
+        const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+        setEsAdminLugares(EMAILS_ADMIN_LUGARES.includes(userLocal.email));
+
+        // Verificar si esta en favoritos
+        try {
+          if (isAuthenticated()) {
+            await syncLocalFavorites();
+          }
+          const favorites = await getFavorites();
+          setIsFavorite(favorites.includes(nombreLugar));
+        } catch (error) {
+          console.error("Error al cargar favoritos:", error);
+          // Fallback a localStorage
+          const storedFavorites = localStorage.getItem("pitzbol_favorites");
+          if (storedFavorites) {
+            const favorites = JSON.parse(storedFavorites);
+            setIsFavorite(favorites.includes(nombreLugar));
+          }
+        }
+      } catch (error) {
+        console.error("Error al cargar el lugar:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarLugar();
+  }, [nombreLugar, getFavorites, isAuthenticated, syncLocalFavorites]);
+
+  useEffect(() => {
+    if (!nombreLugar || typeof window === "undefined") return;
+
+    const deletedNotification = getPersistedDeletedBusinessNotification(nombreLugar);
+    if (deletedNotification) {
+      setDeletedBusinessNotification(deletedNotification);
+      setShowDeletedBusinessModal(true);
+      return;
+    }
+
+    setDeletedBusinessNotification(null);
+    setShowDeletedBusinessModal(false);
+  }, [nombreLugar, lugar]);
+
+  const toggleFavorite = async () => {
+    if (!nombreLugar) return;
+    
+    try {
+      if (isFavorite) {
+        await removeFavoriteApi(nombreLugar);
+        setIsFavorite(false);
+      } else {
+        await addFavorite(nombreLugar);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error("Error al actualizar favorito:", error);
+      // Fallback: actualizar solo localmente
+      const storedFavorites = localStorage.getItem("pitzbol_favorites");
+      const favorites = storedFavorites ? JSON.parse(storedFavorites) : [];
+      
+      if (isFavorite) {
+        const updated = favorites.filter((n: string) => n !== nombreLugar);
+        localStorage.setItem("pitzbol_favorites", JSON.stringify(updated));
+        setIsFavorite(false);
+      } else {
+        favorites.push(nombreLugar);
+        localStorage.setItem("pitzbol_favorites", JSON.stringify(favorites));
+        setIsFavorite(true);
+      }
+      
+      window.dispatchEvent(new Event('favoritesChanged'));
+    }
+  };
+
+  const compartir = async () => {
+    if (navigator.share && lugar) {
+      try {
+        await navigator.share({
+          title: lugar.nombre,
+          text: `¡Mira este lugar en Pitzbol! ${lugar.nombre}`,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.log("Error al compartir:", error);
+      }
+    }
+  };
+
+  const normalizedWebsite = lugar?.website
+    ? (lugar.website.startsWith("http://") || lugar.website.startsWith("https://")
+        ? lugar.website
+        : `https://${lugar.website}`)
+    : null;
+
+  const handlePanelOriginMarkerChange = (point: GeoPoint | null, _meta: OriginMarkerMeta) => {
+    setOriginMarkerPoint(point);
+  };
+
+  const handleMapOriginChange = (point: GeoPoint, meta: OriginChangeMeta) => {
+    setOriginMarkerPoint(point);
+    if (!meta.manual) return;
+
+    setMapOriginEvent({
+      point,
+      manual: true,
+      eventId: Date.now() + Math.random(),
+    });
+  };
+
+  const guardarCategorias = async () => {
+    if (!nombreLugar || etiquetasEdit.length === 0) return;
+    setGuardandoCats(true);
+    setMensajeCats("");
+    const token = localStorage.getItem("pitzbol_token");
+    try {
+      const res = await fetch(`/api/lugares/${encodeURIComponent(nombreLugar)}/categorias`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({ categorias: etiquetasEdit }),
+      });
+      if (res.ok) {
+        setLugar(prev => prev ? { ...prev, etiquetas: etiquetasEdit } : prev);
+        setMensajeCats("✓ Guardado");
+        setMostrarSelector(false);
+      } else {
+        setMensajeCats("Error al guardar");
+      }
+    } catch {
+      setMensajeCats("Error de conexión");
+    } finally {
+      setGuardandoCats(false);
+      setTimeout(() => setMensajeCats(""), 3000);
+    }
+  };
+
+  const guardarDescripcion = async () => {
+    if (!nombreLugar) return;
+    setGuardandoDesc(true);
+    setMensajeDesc('');
+    const token = localStorage.getItem('pitzbol_token');
+    try {
+      const res = await fetch(`${BACKEND_API}/lugares/${encodeURIComponent(nombreLugar)}/info`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify({ descripcion: editDescripcion }),
+      });
+      if (res.ok) {
+        setLugar(prev => prev ? { ...prev, notaIA: editDescripcion } : prev);
+        setMensajeDesc('✓ Guardado');
+        setEditandoDesc(false);
+      } else setMensajeDesc('Error al guardar');
+    } catch { setMensajeDesc('Error de conexión'); }
+    finally { setGuardandoDesc(false); setTimeout(() => setMensajeDesc(''), 3000); }
+  };
+
+  const guardarHorarios = async () => {
+    if (!nombreLugar) return;
+    setGuardandoHorarios(true);
+    setMensajeHorarios('');
+    const token = localStorage.getItem('pitzbol_token');
+    const horarioObj: Record<string, any> = {};
+    for (const dia of DIAS_ES) {
+      const d = editHorarios[dia];
+      horarioObj[dia] = d?.cerrado ? 'cerrado' : { apertura: d?.apertura || '09:00', cierre: d?.cierre || '18:00' };
+    }
+    try {
+      const res = await fetch(`${BACKEND_API}/lugares/${encodeURIComponent(nombreLugar)}/info`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify({ horariosJson: JSON.stringify(horarioObj) }),
+      });
+      if (res.ok) {
+        setLugar(prev => prev ? { ...prev, horariosJson: JSON.stringify(horarioObj) } : prev);
+        setMensajeHorarios('✓ Guardado');
+        setEditandoHorarios(false);
+      } else setMensajeHorarios('Error al guardar');
+    } catch { setMensajeHorarios('Error de conexión'); }
+    finally { setGuardandoHorarios(false); setTimeout(() => setMensajeHorarios(''), 3000); }
+  };
+
+  const eliminarLugar = async () => {
+    if (!nombreLugar) return;
+    setEliminando(true);
+    const token = localStorage.getItem('pitzbol_token');
+    try {
+      const res = await fetch(`${BACKEND_API}/lugares/${encodeURIComponent(nombreLugar)}`, {
+        method: 'DELETE',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setMensajeInfo(`Error al eliminar: ${body.message || res.status}`);
+        return;
+      }
+      // Also remove from CSV
+      await fetch('/api/admin/delete-lugar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: nombreLugar, token }),
+      }).catch(() => {});
+      router.replace('/datos-lugares');
+    } catch (e: any) {
+      setMensajeInfo(`Error de conexi\u00f3n: ${e.message}`);
+    } finally {
+      setEliminando(false);
+      setConfirmandoEliminar(false);
+    }
+  };
+
+  const guardarInfo = async () => {
+    if (!nombreLugar) return;
+    setGuardandoInfo(true);
+    setMensajeInfo("");
+    const token = localStorage.getItem("pitzbol_token");
+    const tiempoParsed = Number(editTiempo);
+    const hasTiempo = editTiempo.trim() !== '' && Number.isFinite(tiempoParsed) && tiempoParsed > 0;
+    const hasCosto = editCosto.trim() !== '';
+    try {
+      const res = await fetch(`${BACKEND_API}/lugares/${encodeURIComponent(nombreLugar)}/info`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          tiempoEstancia: hasTiempo ? tiempoParsed : null,
+          costoEstimado: hasCosto ? editCosto.trim() : null,
+        }),
+      });
+      if (res.ok) {
+        setLugar(prev => prev ? {
+          ...prev,
+          tiempoEstancia: hasTiempo ? tiempoParsed : undefined,
+          costoEstimado: hasCosto ? editCosto.trim() : undefined,
+        } : prev);
+        setMensajeInfo("✓ Guardado");
+        setEditandoInfo(false);
+      } else {
+        setMensajeInfo("Error al guardar");
+      }
+    } catch {
+      setMensajeInfo("Error de conexión");
+    } finally {
+      setGuardandoInfo(false);
+      setTimeout(() => setMensajeInfo(""), 3000);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loader}>
+          <div className={styles.spinner}></div>
+          <p>Cargando información...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!lugar && !showDeletedBusinessModal) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.notFound}>
+          <h1>Lugar o negocio no encontrado</h1>
+          <p>No pudimos encontrar informacion publica sobre este lugar.</p>
+          <button onClick={() => router.push("/mapa")} className={styles.backButton}>
+            <FiArrowLeft /> Volver al mapa
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (showDeletedBusinessModal && deletedBusinessNotification) {
+    return (
+      <DeletedBusinessModal
+        isOpen={showDeletedBusinessModal}
+        onClose={() => router.push("/negocio/mis-solicitudes")}
+        notification={deletedBusinessNotification}
+        businessName={nombreLugar || undefined}
+      />
+    );
+  }
+
+  const lugarSeguro = lugar as Lugar;
+
+  // Layout editorial para avisos — sin calificación, horario ni costo
+  if (esAvisoLugar(lugarSeguro)) {
+    return (
+      <AvisoLayout
+        lugar={lugarSeguro}
+        fotos={fotos}
+        onBack={() => router.push("/futbol?tab=avisos")}
+      />
+    );
+  }
+
+  const horarioLugar = getHorarioActivo(lugarSeguro.nombre, lugarSeguro.horariosJson);
+  const esHospital = [lugarSeguro.categoria, ...((lugarSeguro as any).categorias || [])]
+    .some(c => typeof c === "string" && (c.toLowerCase().includes("hospital") || c.toLowerCase().includes("médico") || c.toLowerCase().includes("medico")));
+  const mostrarHorario = esAdminLugares || !!horarioLugar || esHospital;
+  const tieneTiempo = typeof lugarSeguro.tiempoEstancia === "number" && lugarSeguro.tiempoEstancia > 0;
+  const tieneCosto = !!(lugarSeguro.costoEstimado && lugarSeguro.costoEstimado.trim());
+  const ocultarTiempoCosto = [lugarSeguro.categoria, ...((lugarSeguro as any).categorias || [])]
+    .some(c => typeof c === "string" && (c.toLowerCase().includes("cambio") || c.toLowerCase().includes("hospital") || c.toLowerCase().includes("médico") || c.toLowerCase().includes("medico")));
+
+  return (
+    <div className={styles.container}>
+      {showApprovedToast && (
+        <motion.div
+          initial={{ opacity: 0, y: -24, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 320, damping: 24 }}
+          className={styles.toastAprobado}
+          role="status"
+          aria-live="polite"
+        >
+          <div className={styles.toastAprobadoIcon}>✓</div>
+          <div className={styles.toastAprobadoContent}>
+            <p className={styles.toastAprobadoTitle}>Negocio aprobado y publicado</p>
+            <p className={styles.toastAprobadoMessage}>
+              Tu negocio fue aprobado por el admin y ahora se encuentra visible para todos los usuarios.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={dismissApprovedToast}
+            className={styles.toastAprobadoClose}
+            aria-label="Cerrar mensaje"
+          >
+            ×
+          </button>
+        </motion.div>
+      )}
+
+
+      {/* Header con imagen de fondo */}
+      <div className={styles.heroHeader}>
+        {fotos.length > 0 && (
+          <img
+            src={fotos[0]}
+            alt={lugarSeguro.nombre}
+            onError={(e) => {
+              const fallbackPhoto = getFallbackPhoto(lugarSeguro);
+              if (e.currentTarget.getAttribute('src') !== fallbackPhoto) {
+                e.currentTarget.src = fallbackPhoto;
+              }
+            }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6, zIndex: 0 }}
+          />
+        )}
+        <div className={styles.heroOverlay} style={{ zIndex: 1 }}></div>
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '1.25rem',
+            left: 0,
+            right: 0,
+            textAlign: 'center',
+            zIndex: 2,
+            padding: '0 5rem',
+            pointerEvents: 'none',
+          }}
+        >
+          <p style={{ color: 'white', fontSize: '1.25rem', fontWeight: 700, margin: 0, textShadow: '0 2px 8px rgba(0,0,0,0.5)', lineHeight: 1.3 }}>
+            {lugarSeguro.nombre}
+          </p>
+        </div>
+        <div className={styles.heroContent}>
+          <button onClick={() => router.back()} className={styles.backBtn}>
+            <FiArrowLeft />
+          </button>
+          <div className={styles.heroActions}>
+            <motion.button 
+              onClick={toggleFavorite} 
+              className={`${styles.iconBtn} ${isFavorite ? styles.iconBtnActive : ''}`}
+              title={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.85 }}
+              animate={{ 
+                scale: isFavorite ? [1, 1.2, 1] : 1,
+                rotate: isFavorite ? [0, -10, 10, 0] : 0
+              }}
+              transition={{ duration: 0.4 }}
+            >
+              <FiHeart fill={isFavorite ? "currentColor" : "none"} />
+            </motion.button>
+            <button onClick={compartir} className={styles.iconBtn} title="Compartir">
+              <FiShare2 />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.wrapper}>
+        {/* Información principal */}
+        <div className={`${styles.mainContent} ${isNavigationExpanded || isDrivingMode ? styles.mainContentStickyMap : ''}`}>
+          <div className={styles.titleSection}>
+            <div className={styles.titleTopRow}>
+              <span className={styles.categoryBadge}>{lugarSeguro.categoria}</span>
+              {lugarSeguro.categoria === "Transporte" && lugarSeguro.negocioId && (
+                <a
+                  href={`/empresa/transportes/${lugarSeguro.negocioId}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1A4D2E] text-white text-xs font-semibold hover:bg-[#0D601E] transition-colors"
+                >
+                  Ver perfil de empresa
+                </a>
+              )}
+              <div className={styles.titleRatingCorner}>
+                <PlaceRating
+                  placeName={lugarSeguro.nombre}
+                  showLabel={true}
+                  size="large"
+                  displayMode="split"
+                />
+              </div>
+            </div>
+            <h1 className={styles.title}>{lugarSeguro.nombre}</h1>
+          </div>
+
+          {/* Galería: carrusel + miniaturas */}
+          <section className={styles.gallerySplit}>
+            {/* Carrusel */}
+            <div className={styles.galleryViewer} style={{ position: 'relative' }}>
+              {fotos.length > 0 ? (
+                <img
+                  key={fotoIdx}
+                  src={fotos[fotoIdx]}
+                  alt={`${lugarSeguro.nombre} imagen ${fotoIdx + 1}`}
+                  className={styles.galleryMainImage}
+                  onError={(e) => {
+                    const fallbackPhoto = getFallbackPhoto(lugarSeguro);
+                    if (e.currentTarget.getAttribute('src') !== fallbackPhoto) {
+                      e.currentTarget.src = fallbackPhoto;
+                    }
+                  }}
+                  style={{ animation: 'flipPhoto 0.45s ease' }}
+                />
+              ) : (
+                <div style={{ width: '100%', height: '100%', minHeight: 180, background: '#E0F2F1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.875rem' }}>
+                  <span style={{ fontSize: '2.5rem' }}>📷</span>
+                </div>
+              )}
+              {fotos.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setFotoIdx(i => (i - 1 + fotos.length) % fotos.length)}
+                    aria-label="Imagen anterior"
+                    style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
+                  >
+                    <FiChevronLeft size={18} />
+                  </button>
+                  <button
+                    onClick={() => setFotoIdx(i => (i + 1) % fotos.length)}
+                    aria-label="Imagen siguiente"
+                    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
+                  >
+                    <FiChevronRight size={18} />
+                  </button>
+                  <div style={{ position: 'absolute', bottom: 8, right: 10, background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '999px' }}>
+                    {fotoIdx + 1}/{fotos.length}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Miniaturas (estilo anterior) */}
+            <div className={styles.galleryThumbsColumn}>
+              {fotos.map((foto, idx) => (
+                <button
+                  key={`${foto}-${idx}`}
+                  type="button"
+                  onClick={() => setFotoIdx(idx)}
+                  className={`${styles.galleryThumbButton} ${idx === fotoIdx ? styles.galleryThumbButtonActive : ''}`}
+                  aria-label={`Ver imagen ${idx + 1}`}
+                >
+                  <img
+                    src={foto}
+                    alt={`${lugarSeguro.nombre} miniatura ${idx + 1}`}
+                    className={styles.galleryThumbImage}
+                    loading="lazy"
+                    onError={(e) => {
+                      const fallbackPhoto = getFallbackPhoto(lugarSeguro);
+                      if (e.currentTarget.getAttribute('src') !== fallbackPhoto) {
+                        e.currentTarget.src = fallbackPhoto;
+                      }
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Etiquetas + panel derecho (tiempo/costo/contacto) */}
+          <div className={styles.overviewLayout}>
+            <section className={styles.descriptionColumn}>
+              {(lugarSeguro.etiquetas.length > 0 || esAdminLugares) && (
+                <div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
+                    {(esAdminLugares ? etiquetasEdit : lugarSeguro.etiquetas).map((etiqueta) => (
+                      <span
+                        key={etiqueta}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.3rem",
+                          background: "#E0F2F1",
+                          color: "#1A4D2E",
+                          fontWeight: 600,
+                          fontSize: "0.75rem",
+                          padding: "0.3rem 0.65rem",
+                          borderRadius: "999px",
+                          letterSpacing: "0.01em",
+                        }}
+                      >
+                        {etiqueta}
+                        {esAdminLugares && (
+                          <button
+                            onClick={() => setEtiquetasEdit(prev => prev.filter(e => e !== etiqueta))}
+                            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "#1A4D2E", display: "flex", alignItems: "center" }}
+                            title="Eliminar etiqueta"
+                          >
+                            <FiX size={11} />
+                          </button>
+                        )}
+                      </span>
+                    ))}
+
+                    {esAdminLugares && (
+                      <div style={{ position: "relative" }}>
+                        <button
+                          onClick={() => setMostrarSelector(prev => !prev)}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: "0.3rem",
+                            background: "#1A4D2E", color: "white", border: "none",
+                            fontWeight: 600, fontSize: "0.75rem", padding: "0.3rem 0.65rem",
+                            borderRadius: "999px", cursor: "pointer",
+                          }}
+                          title="Agregar etiqueta"
+                        >
+                          <FiPlus size={11} /> Agregar
+                        </button>
+
+                        {mostrarSelector && (
+                          <div style={{
+                            position: "absolute", top: "2rem", left: 0, zIndex: 50,
+                            background: "white", border: "1px solid #e5e7eb",
+                            borderRadius: "0.75rem", padding: "0.75rem",
+                            boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+                            display: "flex", flexWrap: "wrap", gap: "0.4rem", maxWidth: "280px",
+                          }}>
+                            {TODAS_CATEGORIAS.filter(c => !etiquetasEdit.includes(c)).map(cat => (
+                              <button
+                                key={cat}
+                                onClick={() => { setEtiquetasEdit(prev => [...prev, cat]); }}
+                                style={{
+                                  background: "#f3f4f6", color: "#374151", border: "none",
+                                  fontSize: "0.72rem", fontWeight: 600, padding: "0.25rem 0.6rem",
+                                  borderRadius: "999px", cursor: "pointer",
+                                }}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {esAdminLugares && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginTop: "0.75rem" }}>
+                      <button
+                        onClick={guardarCategorias}
+                        disabled={guardandoCats}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: "0.4rem",
+                          background: "#1A4D2E", color: "white", border: "none",
+                          fontSize: "0.75rem", fontWeight: 600, padding: "0.4rem 1rem",
+                          borderRadius: "0.5rem", cursor: "pointer", opacity: guardandoCats ? 0.6 : 1,
+                        }}
+                      >
+                        <FiCheck size={12} /> {guardandoCats ? "Guardando..." : "Guardar categorías"}
+                      </button>
+                      {mensajeCats && (
+                        <span style={{ fontSize: "0.75rem", fontWeight: 600, color: mensajeCats.startsWith("✓") ? "#16a34a" : "#dc2626" }}>
+                          {mensajeCats}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(lugarSeguro.notaIA || esAdminLugares) && (
+                <div style={{ marginTop: '1rem', padding: '1rem 1.1rem', background: '#F7F9F4', borderRadius: '0.875rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <FiInfo color="#1A4D2E" size={14} />
+                      <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.83rem' }}>Descripción</span>
+                    </div>
+                    {esAdminLugares && !editandoDesc && (
+                      <button onClick={() => setEditandoDesc(true)} style={{ fontSize: '0.7rem', fontWeight: 600, color: '#1A4D2E', background: 'none', border: '1px solid #1A4D2E', borderRadius: '0.4rem', padding: '0.18rem 0.55rem', cursor: 'pointer' }}>
+                        ✏️ Editar
+                      </button>
+                    )}
+                  </div>
+                  {editandoDesc ? (
+                    <div>
+                      <textarea
+                        value={editDescripcion}
+                        onChange={e => setEditDescripcion(e.target.value)}
+                        rows={4}
+                        style={{ width: '100%', fontSize: '0.8rem', border: '1px solid #1A4D2E', borderRadius: '0.5rem', padding: '0.45rem', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginTop: '0.45rem' }}>
+                        <button onClick={guardarDescripcion} disabled={guardandoDesc} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#1A4D2E', color: 'white', border: 'none', fontSize: '0.72rem', fontWeight: 600, padding: '0.35rem 0.9rem', borderRadius: '0.45rem', cursor: 'pointer', opacity: guardandoDesc ? 0.6 : 1 }}>
+                          <FiCheck size={11} /> {guardandoDesc ? 'Guardando...' : 'Guardar'}
+                        </button>
+                        <button onClick={() => { setEditandoDesc(false); setEditDescripcion(lugarSeguro.notaIA || ''); }} style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          Cancelar
+                        </button>
+                        {mensajeDesc && <span style={{ fontSize: '0.72rem', fontWeight: 600, color: mensajeDesc.startsWith('✓') ? '#16a34a' : '#dc2626' }}>{mensajeDesc}</span>}
+                      </div>
+                    </div>
+                  ) : lugarSeguro.notaIA ? (
+                    <p style={{ fontSize: '0.8rem', color: '#4b5563', margin: 0, lineHeight: 1.6 }}>{lugarSeguro.notaIA}</p>
+                  ) : (
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: 0 }}>Sin descripción disponible</p>
+                  )}
+                </div>
+              )}
+            </section>
+
+            <aside className={styles.quickInfoColumn}>
+              {mostrarHorario && (
+                <div style={{ background: '#F7F9F4', borderRadius: '0.875rem', padding: '1.1rem 1.15rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <FiClock color="#1A4D2E" size={16} />
+                      <span style={{ fontWeight: 700, color: '#1A4D2E', fontSize: '0.88rem' }}>Horario</span>
+                    </div>
+                    {esAdminLugares && !editandoHorarios && (
+                      <button onClick={() => setEditandoHorarios(true)} style={{ fontSize: '0.72rem', fontWeight: 600, color: '#1A4D2E', background: 'none', border: '1px solid #1A4D2E', borderRadius: '0.4rem', padding: '0.2rem 0.6rem', cursor: 'pointer' }}>
+                        ✏️ Editar
+                      </button>
+                    )}
+                  </div>
+                  {editandoHorarios ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      {DIAS_ES.map(dia => {
+                        const d = editHorarios[dia] || { apertura: '09:00', cierre: '18:00', cerrado: false };
+                        return (
+                          <div key={dia} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#4b5563', minWidth: 68 }}>{NOMBRE_DIA[dia]}</span>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: '#6b7280', cursor: 'pointer' }}>
+                              <input type="checkbox" checked={d.cerrado} onChange={e => setEditHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], cerrado: e.target.checked } }))} />
+                              Cerrado
+                            </label>
+                            {!d.cerrado && (
+                              <>
+                                <input type="time" value={d.apertura} onChange={e => setEditHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], apertura: e.target.value } }))} style={{ fontSize: '0.7rem', border: '1px solid #d1d5db', borderRadius: '0.3rem', padding: '1px 4px' }} />
+                                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>–</span>
+                                <input type="time" value={d.cierre} onChange={e => setEditHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], cierre: e.target.value } }))} style={{ fontSize: '0.7rem', border: '1px solid #d1d5db', borderRadius: '0.3rem', padding: '1px 4px' }} />
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => {
+                            const h24: Record<string, any> = {};
+                            DIAS_ES.forEach(d => { h24[d] = { apertura: '00:00', cierre: '23:59', cerrado: false }; });
+                            setEditHorarios(h24);
+                          }}
+                          style={{ fontSize: '0.72rem', fontWeight: 600, color: '#0D601E', background: '#E8F5E9', border: '1px solid #81C784', borderRadius: '0.4rem', padding: '0.25rem 0.7rem', cursor: 'pointer' }}
+                        >
+                          🕐 24 horas
+                        </button>
+                        <button onClick={guardarHorarios} disabled={guardandoHorarios} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#1A4D2E', color: 'white', border: 'none', fontSize: '0.72rem', fontWeight: 600, padding: '0.35rem 0.85rem', borderRadius: '0.4rem', cursor: 'pointer', opacity: guardandoHorarios ? 0.6 : 1 }}>
+                          <FiCheck size={11} /> {guardandoHorarios ? 'Guardando...' : 'Guardar'}
+                        </button>
+                        <button onClick={() => setEditandoHorarios(false)} style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          Cancelar
+                        </button>
+                        {mensajeHorarios && <span style={{ fontSize: '0.72rem', fontWeight: 600, color: mensajeHorarios.startsWith('✓') ? '#16a34a' : '#dc2626' }}>{mensajeHorarios}</span>}
+                      </div>
+                    </div>
+                  ) : horarioLugar ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem' }}>
+                      {DIAS_ES.map(dia => {
+                        const esHoy = dia === getDiaIdx();
+                        const rango = formatRango(horarioLugar[dia]);
+                        const cerrado = rango === 'Cerrado';
+                        return (
+                          <div key={dia} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0.18rem 0.35rem', borderRadius: '0.4rem', background: esHoy ? '#E8F5E9' : 'transparent' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: esHoy ? 700 : 500, color: esHoy ? '#1A4D2E' : '#4b5563', minWidth: 72 }}>
+                              {NOMBRE_DIA[dia]}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: esHoy ? 700 : 400, color: cerrado ? '#dc2626' : esHoy ? '#0D601E' : '#374151', textAlign: 'right' }}>
+                              {rango}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : esHospital ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.35rem', background: '#E8F5E9', borderRadius: '0.5rem' }}>
+                      <span style={{ fontSize: '1rem' }}>🕐</span>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0D601E' }}>Abierto 24 horas</span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              <div className={styles.quickInfoStack}>
+                {!ocultarTiempoCosto && (esAdminLugares || editandoInfo || tieneTiempo) && (
+                <div className={styles.statCard}>
+                  <div className={styles.statIcon}>
+                    <FiClock />
+                  </div>
+                  <div className={styles.statInfo}>
+                    <span className={styles.statLabel}>Tiempo sugerido</span>
+                    {esAdminLugares && editandoInfo ? (
+                      <input
+                        type="number"
+                        value={editTiempo}
+                        onChange={e => setEditTiempo(e.target.value)}
+                        min={1}
+                        style={{ width: "80px", fontSize: "0.9rem", fontWeight: 700, border: "1px solid #1A4D2E", borderRadius: "6px", padding: "2px 6px", color: "#1A4D2E" }}
+                      />
+                    ) : (
+                      <span className={styles.statValue}>{lugarSeguro.tiempoEstancia} min</span>
+                    )}
+                  </div>
+                </div>
+                )}
+
+                {!ocultarTiempoCosto && (esAdminLugares || editandoInfo || tieneCosto) && (
+                <div className={styles.statCard}>
+                  <div className={styles.statIcon}>
+                    <FiDollarSign />
+                  </div>
+                  <div className={styles.statInfo}>
+                    <span className={styles.statLabel}>Costo estimado</span>
+                    {esAdminLugares && editandoInfo ? (
+                      <input
+                        type="text"
+                        value={editCosto}
+                        onChange={e => setEditCosto(e.target.value)}
+                        placeholder="ej. $100 – $300"
+                        style={{ width: "120px", fontSize: "0.9rem", fontWeight: 700, border: "1px solid #1A4D2E", borderRadius: "6px", padding: "2px 6px", color: "#1A4D2E" }}
+                      />
+                    ) : (
+                      <span className={styles.statValue}>{lugarSeguro.costoEstimado}</span>
+                    )}
+                  </div>
+                </div>
+                )}
+              </div>
+
+              {esAdminLugares && (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginTop: "0.75rem" }}>
+                  {editandoInfo ? (
+                    <>
+                      <button
+                        onClick={guardarInfo}
+                        disabled={guardandoInfo}
+                        style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", background: "#1A4D2E", color: "white", border: "none", fontSize: "0.75rem", fontWeight: 600, padding: "0.4rem 1rem", borderRadius: "0.5rem", cursor: "pointer", opacity: guardandoInfo ? 0.6 : 1 }}
+                      >
+                        <FiCheck size={12} /> {guardandoInfo ? "Guardando..." : "Guardar info"}
+                      </button>
+                      <button
+                        onClick={() => { setEditandoInfo(false); setEditTiempo(String(lugarSeguro.tiempoEstancia ?? '')); setEditCosto(lugarSeguro.costoEstimado || ''); }}
+                        style={{ fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}
+                      >
+                        Cancelar
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setEditandoInfo(true)}
+                      style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", background: "#f3f4f6", color: "#1A4D2E", border: "1px solid #d1d5db", fontSize: "0.75rem", fontWeight: 600, padding: "0.4rem 1rem", borderRadius: "0.5rem", cursor: "pointer" }}
+                    >
+                      ✏️ Editar tiempo / costo
+                    </button>
+                  )}
+                  {mensajeInfo && (
+                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: mensajeInfo.startsWith("✓") ? "#16a34a" : "#dc2626" }}>
+                      {mensajeInfo}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {(lugarSeguro.telefono || normalizedWebsite || lugarSeguro.email) && (
+                <div className={styles.quickContactCard}>
+                  <div className={styles.infoHeader}>
+                    <FiInfo />
+                    <h2>Contacto</h2>
+                  </div>
+                  <div style={{ display: "grid", gap: "0.75rem" }}>
+                    {lugarSeguro.telefono && (
+                      <a
+                        href={`tel:${lugarSeguro.telefono}`}
+                        style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1A4D2E", fontWeight: 600 }}
+                      >
+                        <FiPhone /> {lugarSeguro.telefono}
+                      </a>
+                    )}
+
+                    {normalizedWebsite && (
+                      <a
+                        href={normalizedWebsite}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1A4D2E", fontWeight: 600, wordBreak: "break-all" }}
+                      >
+                        <FiGlobe /> {lugarSeguro.website}
+                      </a>
+                    )}
+
+                    {lugarSeguro.email && (
+                      <a
+                        href={`mailto:${lugarSeguro.email}`}
+                        style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1A4D2E", fontWeight: 600, wordBreak: "break-all" }}
+                      >
+                        <FiMail /> {lugarSeguro.email}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </aside>
+          </div>
+
+          {/* Detalles del evento */}
+          {DETALLES_DESCRIPTIONS[lugarSeguro.nombre] && (
+            <div className={styles.infoCard}>
+              <div className={styles.infoHeader}>
+                <FiInfo />
+                <h2>Detalles</h2>
+              </div>
+              <p className={styles.infoText}>{DETALLES_DESCRIPTIONS[lugarSeguro.nombre]}</p>
+            </div>
+          )}
+
+          {/* Acerca del Estadio Sede */}
+          {ESTADIO_SEDE_DESCRIPTIONS[lugarSeguro.nombre] && (
+            <div className={styles.infoCard}>
+              <div className={styles.infoHeader}>
+                <FiInfo />
+                <h2>Acerca del Estadio Sede</h2>
+              </div>
+              <p className={styles.infoText}>{ESTADIO_SEDE_DESCRIPTIONS[lugarSeguro.nombre]}</p>
+            </div>
+          )}
+
+          {/* Descripción cultural */}
+          {CULTURA_DESCRIPTIONS[lugarSeguro.nombre] && (
+            <div className={styles.infoCard}>
+              <div className={styles.infoHeader}>
+                <FiInfo />
+                <h2>Significado cultural</h2>
+              </div>
+              <p className={styles.infoText}>{CULTURA_DESCRIPTIONS[lugarSeguro.nombre]}</p>
+            </div>
+          )}
+
+          {/* Eliminar lugar (solo cua) */}
+          {esAdminLugares && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+              {confirmandoEliminar ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>¿Eliminar este lugar?</span>
+                  <button
+                    onClick={eliminarLugar}
+                    disabled={eliminando}
+                    style={{ background: '#dc2626', color: 'white', border: 'none', borderRadius: '0.5rem', padding: '0.35rem 0.9rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', opacity: eliminando ? 0.6 : 1 }}
+                  >
+                    {eliminando ? 'Eliminando...' : 'Sí, eliminar'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmandoEliminar(false)}
+                    style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '0.5rem', padding: '0.35rem 0.9rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmandoEliminar(true)}
+                  style={{ background: 'none', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '0.5rem', padding: '0.35rem 0.9rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  🗑 Eliminar lugar
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Mapa + Sidebar de ubicacion */}
+          <section className={`${styles.mapSection} ${isDrivingMode ? styles.mapSectionDriving : ''}`}>
+            <h2 className={styles.mapTitle}>Mapa</h2>
+            <div className={`${styles.mapAndSidebar} ${isNavigationExpanded ? styles.mapAndSidebarExpanded : ''} ${isDrivingMode ? styles.mapAndSidebarDriving : ''}`}>
+              <div className={styles.mapColumn}>
+                <div className={styles.mapContainer}>
+                  <PlaceDetailNavigationMap
+                    destination={{ lat: lugarSeguro.latitud, lng: lugarSeguro.longitud }}
+                    destinationName={lugarSeguro.nombre}
+                    origin={originMarkerPoint}
+                    onOriginChange={handleMapOriginChange}
+                    isNavigationMode={isNavigationExpanded}
+                    routes={mapRoutes}
+                    selectedRouteIndex={mapSelectedRouteIdx}
+                    liveNavPosition={liveNavPos}
+                    navigationAlert={navigationMapAlert}
+                  />
+                </div>
+              </div>
+
+              <aside className={styles.sidebarColumn}>
+                {!isNavigationExpanded && (
+                  <div className={styles.locationCard}>
+                    <div className={styles.locationHeader}>
+                      <FiMapPin />
+                      <h2>Ubicación</h2>
+                    </div>
+                    <p className={styles.locationAddress}>{lugarSeguro.direccion}</p>
+                    {lugarSeguro.codigoPostal && (
+                      <p className={styles.locationMeta}>CP: {lugarSeguro.codigoPostal}</p>
+                    )}
+                  </div>
+                )}
+                <NavigationPanel
+                    placeName={lugarSeguro.nombre}
+                    placeAddress={lugarSeguro.direccion}
+                    destination={{ lat: lugarSeguro.latitud, lng: lugarSeguro.longitud }}
+                    placeCost={lugarSeguro.costoEstimado}
+                    placeCategory={lugarSeguro.categoria}
+                    onExpandedChange={setIsNavigationExpanded}
+                    onOriginMarkerChange={handlePanelOriginMarkerChange}
+                    mapOriginEvent={mapOriginEvent}
+                    onRouteChange={(routes, idx, mode) => {
+                      setMapRoutes(routes.map(r => ({
+                        polyline: r.polyline ?? '',
+                        travelMode: mode,
+                        trafficSegments: r.trafficSegments,
+                      })));
+                      setMapSelectedRouteIdx(idx);
+                    }}
+                    onLivePosition={setLiveNavPos}
+                    onDrivingModeChange={setIsDrivingMode}
+                    onMapAlertChange={setNavigationMapAlert}
+                    onNavigationStart={() => {
+                      console.log(`Starting navigation to ${lugarSeguro.nombre}`);
+                    }}
+                  />
+              </aside>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}

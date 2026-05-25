@@ -1,0 +1,2914 @@
+"use client";
+import { useTranslations } from 'next-intl';
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import {
+  FaBuilding, FaCamera, FaChurch, FaFutbol, FaLandmark, FaMapMarkedAlt,
+  FaMoon, FaMountain, FaMusic, FaPalette, FaShoppingBag, FaStore, FaTree, FaUtensils
+} from "react-icons/fa";
+import { FiCalendar, FiCamera, FiCheck, FiChevronRight, FiClock, FiEdit2, FiGlobe, FiMail, FiMap, FiPhone,
+  FiPlus, FiShield, FiUser, FiUsers, FiX, FiCreditCard, FiDollarSign, FiTrash2, FiAlertTriangle
+} from "react-icons/fi";
+import { notificarAprobacionGuia, notificarRechazoGuia, registrarAccionSolicitud } from "@/lib/notificaciones";
+import { useFavoritesSync } from "@/lib/favoritesApi";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import { getBackendOrigin } from "@/lib/backendUrl";
+
+import WalletModal from "@/app/components/WalletModal";
+import PersonaTourFormModal from "@/app/components/PersonaTourFormModal";
+import PaqueteFormModal from "@/app/components/PaqueteFormModal";
+
+const API_BASE = '/api';
+
+// Función auxiliar para capitalizar texto
+const capitalizarPrimera = (texto: string): string => {
+  if (!texto || texto.length === 0) return texto;
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+};
+
+const NACIONALIDADES = [
+  "Mexicana", "Argentina", "Brasileña", "Chilena", "Colombiana", "Peruana", "Uruguaya", "Venezolana",
+  "Estadounidense", "Canadiense", "Española", "Francesa", "Alemana", "Italiana", "Inglesa", "Portuguesa",
+  "Japonesa", "China", "Coreana", "India", "Australiana", "Rusa", "Otra"
+];
+
+const IDIOMAS_DISPONIBLES = [
+  "Espa\u00f1ol", "Ingl\u00e9s", "Portugu\u00e9s", "Franc\u00e9s", "Alem\u00e1n", "Italiano",
+  "Japon\u00e9s", "Chino Mandar\u00edn", "\u00c1rabe", "Ruso", "Coreano", "Hindi",
+  "Turco", "Holand\u00e9s", "Polaco", "Sueco", "Noruego", "Dan\u00e9s",
+  "Griego", "Hebreo", "Tailand\u00e9s", "Indonesio", "Vietnamita",
+  "Catal\u00e1n", "Rumano", "H\u00fangaro", "Checo", "Ucraniano",
+];
+
+const NACIONALIDAD_A_IDIOMA: Record<string, string> = {
+  "Mexicana": "Espa\u00f1ol", "Argentina": "Espa\u00f1ol", "Brasile\u00f1a": "Portugu\u00e9s",
+  "Chilena": "Espa\u00f1ol", "Colombiana": "Espa\u00f1ol", "Peruana": "Espa\u00f1ol",
+  "Uruguaya": "Espa\u00f1ol", "Venezolana": "Espa\u00f1ol", "Espa\u00f1ola": "Espa\u00f1ol",
+  "Francesa": "Franc\u00e9s", "Alemana": "Alem\u00e1n", "Italiana": "Italiano",
+  "Inglesa": "Ingl\u00e9s", "Portuguesa": "Portugu\u00e9s", "Japonesa": "Japon\u00e9s",
+  "China": "Chino Mandar\u00edn", "Coreana": "Coreano", "Estadounidense": "Ingl\u00e9s",
+  "Canadiense": "Ingl\u00e9s", "India": "Hindi", "Australiana": "Ingl\u00e9s", "Rusa": "Ruso",
+};
+
+const LADAS = [
+  { code: "+1", country: "USA/Canad\u00e1" },
+  { code: "+52", country: "México" },
+  { code: "+54", country: "Argentina" },
+  { code: "+55", country: "Brasil" },
+  { code: "+56", country: "Chile" },
+  { code: "+57", country: "Colombia" },
+  { code: "+51", country: "Perú" },
+  { code: "+58", country: "Venezuela" },
+  { code: "+598", country: "Uruguay" },
+  { code: "+34", country: "España" },
+  { code: "+33", country: "Francia" },
+  { code: "+49", country: "Alemania" },
+  { code: "+39", country: "Italia" },
+  { code: "+44", country: "Reino Unido" },
+  { code: "+351", country: "Portugal" },
+  { code: "+81", country: "Japón" },
+  { code: "+86", country: "China" },
+  { code: "+82", country: "Corea del Sur" },
+  { code: "+91", country: "India" },
+  { code: "+61", country: "Australia" },
+  { code: "+7", country: "Rusia" },
+];
+
+const INTERESES_DISPONIBLES = [
+  { nombre: "Arte e Historia", icono: FaPalette, color: "from-purple-500 to-pink-500" },
+  { nombre: "Arquitectura", icono: FaBuilding, color: "from-gray-600 to-gray-800" },
+  { nombre: "Cultura", icono: FaLandmark, color: "from-blue-500 to-indigo-600" },
+  { nombre: "Gastronomía", icono: FaUtensils, color: "from-orange-500 to-red-500" },
+  { nombre: "Deporte Fútbol", icono: FaFutbol, color: "from-green-600 to-green-800" },
+  { nombre: "Música", icono: FaMusic, color: "from-purple-600 to-pink-600" },
+  { nombre: "Naturaleza", icono: FaTree, color: "from-green-500 to-emerald-600" },
+  { nombre: "Fotografía", icono: FaCamera, color: "from-cyan-500 to-blue-500" },
+  { nombre: "Vida Nocturna", icono: FaMoon, color: "from-indigo-600 to-purple-700" },
+  { nombre: "Compras", icono: FaShoppingBag, color: "from-pink-500 to-rose-500" },
+  { nombre: "Museos", icono: FaLandmark, color: "from-amber-600 to-yellow-700" },
+  { nombre: "Tours Guiados", icono: FaMapMarkedAlt, color: "from-teal-500 to-cyan-600" },
+  { nombre: "Aventura", icono: FaMountain, color: "from-orange-600 to-red-600" },
+  { nombre: "Religión", icono: FaChurch, color: "from-slate-600 to-gray-700" },
+  { nombre: "Mercados Locales", icono: FaStore, color: "from-yellow-600 to-orange-600" }
+];
+
+const getInteresData = (nombre: string) => {
+  return INTERESES_DISPONIBLES.find(i => i.nombre === nombre) || INTERESES_DISPONIBLES[0];
+};
+
+export default function PerfilDetallado() {
+  const t = useTranslations('profile');
+  const tCommon = useTranslations('common');
+  const { syncLocalFavorites } = useFavoritesSync();
+  
+  const [perfil, setPerfil] = useState<any>(null);
+  const [tours, setTours] = useState<any[]>([]);
+  const [showTourModal, setShowTourModal] = useState(false);
+  const [reservasHistorial, setReservasHistorial] = useState<any[]>([]);
+  const [showHistorialModal, setShowHistorialModal] = useState(false);
+  const [cancelandoReservaId, setCancelandoReservaId] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [bookingRatings, setBookingRatings] = useState<Record<string, any>>({});
+  const [ratingDraft, setRatingDraft] = useState<Record<string, { estrellas: number; comentario: string }>>({});
+  const [submittingRating, setSubmittingRating] = useState<string | null>(null);
+  const [guiaRatingStats, setGuiaRatingStats] = useState<any>(null);
+  const [paquetes, setPaquetes] = useState<any[]>([]);
+  const [experiencias, setExperiencias] = useState<any[]>([]);
+  const [editingTourId, setEditingTourId] = useState<string | null>(null);
+  const [editingTourTitle, setEditingTourTitle] = useState("");
+  const [savingTourTitle, setSavingTourTitle] = useState(false);
+  const [editingExpId, setEditingExpId] = useState<string | null>(null);
+  const [editExpTitulo, setEditExpTitulo] = useState("");
+  const [editExpDescripcion, setEditExpDescripcion] = useState("");
+  const [editExpNewFiles, setEditExpNewFiles] = useState<File[]>([]);
+  const [savingExpId, setSavingExpId] = useState<string | null>(null);
+  const [tipoGuia, setTipoGuia] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const u = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      return u.guia_tipo || "persona";
+    }
+    return "persona";
+  });
+  const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [guardadosCount, setGuardadosCount] = useState(0);
+  const [especialidades, setEspecialidades] = useState<string[]>([]);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+
+  // Función para refrescar los datos del perfil desde localStorage
+  const refrescarEspecialidades = () => {
+    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    const intereses = userLocal["07_intereses"] || userLocal.especialidades || userLocal["07_especialidades"] || [];
+    if (intereses.length > 0) {
+      setEspecialidades(intereses);
+      setPerfil((prev: any) => ({
+        ...prev,
+        especialidades: intereses
+      }));
+      setEspecialidadesTemp(intereses);
+    }
+  };
+
+  const BACKEND_URL_PERFIL = getBackendOrigin();
+
+  const cancelarReserva = async (bookingId: string) => {
+    setCancelandoReservaId(bookingId);
+    try {
+      const res = await fetchWithAuth(`${BACKEND_URL_PERFIL}/api/bookings/${bookingId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.message || 'Error al cancelar la reserva');
+        return;
+      }
+      setReservasHistorial(prev =>
+        prev.map(r => r.id === bookingId ? { ...r, status: 'cancelado' } : r)
+      );
+    } catch {
+      alert('Error de conexión al cancelar la reserva');
+    } finally {
+      setCancelandoReservaId(null);
+      setConfirmCancelId(null);
+    }
+  };
+
+  const handleSaveExperiencia = async (exp: any) => {
+    setSavingExpId(exp.id);
+    try {
+      // Convert new files to base64
+      const fotosBase64: string[] = await Promise.all(
+        editExpNewFiles.map(
+          (file) =>
+            new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            })
+        )
+      );
+
+      const token = localStorage.getItem("pitzbol_token");
+      const res = await fetch(`${API_BASE}/bookings/${exp.id}/experiencia`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          descripcion: editExpDescripcion,
+          titulo: editExpTitulo.trim() || undefined,
+          fotosBase64: fotosBase64.length > 0 ? fotosBase64 : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setExperiencias((prev) =>
+          prev.map((e) =>
+            e.id === exp.id
+              ? {
+                  ...e,
+                  tourTitulo: data.updates?.tourTitulo ?? e.tourTitulo,
+                  descripcionExperiencia: data.updates?.descripcionExperiencia ?? e.descripcionExperiencia,
+                  fotosExperiencia: data.updates?.fotosExperiencia ?? e.fotosExperiencia,
+                }
+              : e
+          )
+        );
+        setEditingExpId(null);
+        setEditExpNewFiles([]);
+        setEditExpDescripcion("");
+        setEditExpTitulo("");
+      } else {
+        alert(data.message || "Error al guardar");
+      }
+    } catch {
+      alert("Error de conexión al guardar la experiencia");
+    } finally {
+      setSavingExpId(null);
+    }
+  };
+
+  const handleDeleteExpFoto = async (exp: any, fotoUrl: string) => {
+    const token = localStorage.getItem("pitzbol_token");
+    try {
+      const res = await fetch(`${API_BASE}/bookings/${exp.id}/experiencia/foto`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ fotoUrl }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setExperiencias((prev) =>
+          prev.map((e) =>
+            e.id === exp.id ? { ...e, fotosExperiencia: data.fotosExperiencia } : e
+          )
+        );
+      }
+    } catch {}
+  };
+
+  const [editandoNacionalidad, setEditandoNacionalidad] = useState(false);
+  const [nacionalidadTemp, setNacionalidadTemp] = useState("");
+  const [errorNacionalidad, setErrorNacionalidad] = useState("");
+  
+  const [editandoNombre, setEditandoNombre] = useState(false);
+  const [nombreTemp, setNombreTemp] = useState("");
+  const [apellidoTemp, setApellidoTemp] = useState("");
+  const [errorNombre, setErrorNombre] = useState("");
+  
+  const [editandoTelefono, setEditandoTelefono] = useState(false);
+  const [ladaTemp, setLadaTemp] = useState("+52");
+  const [numeroTemp, setNumeroTemp] = useState("");
+  const [errorTelefono, setErrorTelefono] = useState("");
+
+  const [editandoTarifa, setEditandoTarifa] = useState(false);
+  const [tarifaTemp, setTarifaTemp] = useState<string>("");
+  const [errorTarifa, setErrorTarifa] = useState("");
+  
+  const [editandoDescripcion, setEditandoDescripcion] = useState(false);
+  const [descripcionTemp, setDescripcionTemp] = useState("");
+  const [errorDescripcion, setErrorDescripcion] = useState("");
+  
+  const [editandoEspecialidades, setEditandoEspecialidades] = useState(false);
+  const [especialidadesTemp, setEspecialidadesTemp] = useState<string[]>([]);
+  const [nuevoInteres, setNuevoInteres] = useState("");
+  const [errorEspecialidades, setErrorEspecialidades] = useState("");
+  
+  const [editandoIdiomas, setEditandoIdiomas] = useState(false);
+  const [idiomasTemp, setIdiomasTemp] = useState<string[]>([]);
+  const [errorIdiomas, setErrorIdiomas] = useState("");
+  const [idiomas, setIdiomas] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!editandoIdiomas || idiomasTemp.length > 0) return;
+    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    const nac: string = userLocal["05_nacionalidad"] || userLocal.nacionalidad || "";
+    const defaultIdioma = NACIONALIDAD_A_IDIOMA[nac];
+    if (defaultIdioma) setIdiomasTemp([defaultIdioma]);
+  }, [editandoIdiomas]);
+  
+  const [guardando, setGuardando] = useState(false);
+  const [exito, setExito] = useState("");
+  const [error, setError] = useState("");
+  const [mostrarNotificacionAprobado, setMostrarNotificacionAprobado] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
+
+  const guardarTarifa = async () => {
+    const valor = parseFloat(tarifaTemp);
+    if (isNaN(valor) || valor < 350) {
+      setErrorTarifa("La tarifa mínima es de $350 MXN / hora");
+      return;
+    }
+    setGuardando(true);
+    setErrorTarifa("");
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = getBackendOrigin();
+      if (!token) throw new Error("No hay sesión activa");
+      const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tarifa: valor }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || data.msg || "Error al actualizar tarifa");
+      setPerfil((prev: any) => ({ ...prev, tarifa: valor }));
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal.tarifa = valor;
+      userLocal["17_tarifa_mxn"] = valor;
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+      window.dispatchEvent(new Event("guideProfileUpdated"));
+      setExito("Tarifa actualizada exitosamente");
+      setTimeout(() => setExito(""), 3000);
+      setEditandoTarifa(false);
+    } catch (err: any) {
+      setErrorTarifa(err.message || "Error al actualizar");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarTarifa = () => {
+    setTarifaTemp("");
+    setErrorTarifa("");
+    setEditandoTarifa(false);
+  };
+
+  const refrescarFavoritos = async () => {
+    try {
+      const favoritos = await syncLocalFavorites();
+      setGuardadosCount(Array.isArray(favoritos) ? favoritos.length : 0);
+    } catch (error) {
+      console.error("Error al cargar favoritos del perfil:", error);
+      const stored = localStorage.getItem("pitzbol_favorites");
+      const favoritosLocales = stored ? JSON.parse(stored) : [];
+      setGuardadosCount(Array.isArray(favoritosLocales) ? favoritosLocales.length : 0);
+    }
+  };
+
+  useEffect(() => {
+    let userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    const cargarDatos = async () => {
+      if (!userLocal.uid) {
+        setLoading(false);
+        return;
+      }
+
+      // Refrescar datos desde Firestore via /api/auth/me
+      try {
+        const token = localStorage.getItem("pitzbol_token");
+        if (token) {
+          const meRes = await fetch(`${API_BASE}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "include",
+          });
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            if (meData.success && meData.user) {
+              // Mezclar datos frescos: solo sobreescribir campos no vacíos
+              // (evita que un campo vacío de Firestore borre datos válidos en localStorage)
+              const fresh = meData.user as Record<string, any>;
+              const merged: Record<string, any> = { ...userLocal };
+              for (const key of Object.keys(fresh)) {
+                const val = fresh[key];
+                if (val !== null && val !== undefined && val !== "") {
+                  // No degradar role: si el local dice "guia" y el fresco dice "turista", conservar "guia"
+                  if ((key === "role" || key === "03_rol") && val === "turista" &&
+                      (merged.role === "guia" || merged["03_rol"] === "guia")) {
+                    continue;
+                  }
+                  merged[key] = val;
+                }
+              }
+              userLocal = merged;
+              localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+            }
+          }
+        }
+      } catch {}
+
+      const initialEspecialidades =
+        (userLocal["07_intereses"]?.length > 0 ? userLocal["07_intereses"] : null) ||
+        (userLocal.especialidades?.length > 0 ? userLocal.especialidades : null) ||
+        userLocal["07_especialidades"] ||
+        [];
+      const descripcionInicial = userLocal.descripcion ? capitalizarPrimera(userLocal.descripcion) : "";
+      
+      const initialIdiomas = userLocal.idiomas || userLocal["09_idiomas"] || [];
+      
+      const rol = userLocal["03_rol"] || userLocal.role || "turista";
+      const guideStatus = userLocal["16_status"] || userLocal.guide_status || "ninguno";
+      
+      console.log("👤 Estado del usuario:");
+      console.log("   - Rol:", rol);
+      console.log("   - Guide Status:", guideStatus);
+      console.log("   - UID:", userLocal.uid);
+      
+      if (rol === "guia" || guideStatus === "aprobado") {
+        console.log("✅ Usuario es guía VERIFICADO - Aparecerá en /tours");
+      } else if (guideStatus === "en_revision" || guideStatus === "pendiente") {
+        console.log("⏳ Usuario es guía EN REVISIÓN - NO aparecerá en /tours hasta ser aprobado");
+      } else {
+        console.log("ℹ️ Usuario es turista - NO aparecerá en /tours");
+      }
+      
+      setPerfil({
+        id: userLocal.uid,
+        nombre: userLocal["01_nombre"] || userLocal.nombre || "Usuario",
+        apellido: userLocal["02_apellido"] || userLocal.apellido || "",
+        rol: rol,
+        email: userLocal["04_correo"] || userLocal.email || "",
+        telefono: userLocal["06_telefono"] || userLocal.telefono, 
+        especialidades: userLocal["07_intereses"] || userLocal["07_especialidades"] || [],
+        idiomas: initialIdiomas,
+        nacionalidad: userLocal["05_nacionalidad"] || userLocal.nacionalidad,
+        descripcion: userLocal["15_descripcion"] || userLocal.descripcion || "",
+        fotoUrl: userLocal["14_foto_perfil"]?.url || userLocal.fotoPerfil || null,
+        guide_status: guideStatus,
+        tarifa: userLocal["17_tarifa_mxn"] || userLocal.tarifa || 0,
+            });
+
+      setEspecialidades(initialEspecialidades);
+      setEspecialidadesTemp(initialEspecialidades);
+      setIdiomas(initialIdiomas);
+      setIdiomasTemp(initialIdiomas);
+      setDescripcionTemp(descripcionInicial);
+
+      try {
+        const tokenHeader = localStorage.getItem("pitzbol_token");
+        const estadoResponse = await fetch(`${API_BASE}/admin/verificar-estado/${userLocal.uid}`, {
+          credentials: 'include',
+          headers: tokenHeader ? { 'Authorization': `Bearer ${tokenHeader}` } : undefined,
+        });
+        
+        if (estadoResponse.ok) {
+          const estadoData = await estadoResponse.json();
+          
+          // Actualizar el rol y guide_status si cambió
+          if (estadoData.success) {
+            const nuevoRol = estadoData.rol;
+            const nuevoGuideStatus = estadoData.guide_status;
+            
+            // Si cambió el rol o el estado, actualizar localStorage
+            if (nuevoRol !== userLocal.role || nuevoGuideStatus !== userLocal.guide_status) {
+              const updatedUser = {
+                ...userLocal,
+                role: nuevoRol,
+                "03_rol": nuevoRol,
+                guide_status: nuevoGuideStatus,
+                ...estadoData.userData
+              };
+              
+              localStorage.setItem("pitzbol_user", JSON.stringify(updatedUser));
+              window.dispatchEvent(new Event("storage"));
+              
+              // Actualizar el perfil con los nuevos datos
+              setPerfil((prev: any) => ({
+                ...prev,
+                rol: nuevoRol,
+                guide_status: nuevoGuideStatus
+              }));
+
+              // Si fue aprobado como guía, mostrar notificación y enviar a storage
+              if (nuevoRol === "guia" && nuevoGuideStatus === "aprobado" && userLocal.role !== "guia") {
+                notificarAprobacionGuia(userLocal.uid);
+                registrarAccionSolicitud("aceptada", userLocal.nombre || userLocal["01_nombre"] || "Usuario", "Solicitud aceptada. El usuario ahora es guía.");
+                setMostrarNotificacionAprobado(true);
+                setTimeout(() => setMostrarNotificacionAprobado(false), 8000);
+              }
+            }
+          }
+        }
+
+        // Cargar tipo de guía (empresa/persona) — solo si no está guardado localmente
+        if (rol === "guia" && !userLocal.guia_tipo) {
+          try {
+            const guideRes = await fetch(`${API_BASE}/guides/profile/${userLocal.uid}`);
+            if (guideRes.ok) {
+              const gData = await guideRes.json();
+              if (gData.success && gData.guide?.tipo) setTipoGuia(gData.guide.tipo);
+            }
+          } catch {}
+        }
+
+        const resolvedGuideType = userLocal.guia_tipo || tipoGuia || "persona";
+
+        // Cargar paquetes publicados del guía (tours activos)
+        if (rol === "guia" && resolvedGuideType !== "empresa") {
+          try {
+            const token = localStorage.getItem("pitzbol_token");
+            const toursRes = await fetch(`${API_BASE}/tours/guia/${userLocal.uid}`, {
+              credentials: "include",
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            if (toursRes.ok) {
+              const toursData = await toursRes.json();
+              if (toursData.success) setTours(toursData.tours || []);
+            }
+          } catch {}
+        } else if (rol === "guia") {
+          try {
+            const solRes = await fetchWithAuth(`${API_BASE}/business/my-requests`, {
+              cache: "no-store",
+              headers: { "Content-Type": "application/json" },
+            });
+            if (solRes.ok) {
+              const solData = await solRes.json();
+              if (solData.success) setTours(solData.solicitudes || []);
+            }
+          } catch {}
+        }
+
+        // Cargar historial de experiencias completadas del guía
+        if (rol === "guia" && resolvedGuideType !== "empresa") {
+          try {
+            const token = localStorage.getItem("pitzbol_token");
+            const expRes = await fetch(`${API_BASE}/bookings/guia/${userLocal.uid}/experiencias`, {
+              credentials: "include",
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            if (expRes.ok) {
+              const expData = await expRes.json();
+              if (expData.success) setExperiencias(expData.experiencias || []);
+            }
+          } catch {}
+        }
+
+        // Cargar historial de reservas (todos los usuarios autenticados, incluidos guías que reservan con otros guías)
+        try {
+          const reservasRes = await fetchWithAuth(`${API_BASE}/bookings/tourist/${userLocal.uid}`, {
+            cache: "no-store",
+          });
+          if (reservasRes.ok) {
+            const reservasData = await reservasRes.json();
+            if (reservasData.success) setReservasHistorial(reservasData.bookings || []);
+          }
+        } catch {}
+
+        // Cargar calificaciones del guía (solo guías)
+        if (rol === "guia") {
+          try {
+            const statsRes = await fetch(`${API_BASE}/ratings/guide/${userLocal.uid}/stats`);
+            if (statsRes.ok) {
+              const statsData = await statsRes.json();
+              if (statsData.success) setGuiaRatingStats(statsData.stats);
+            }
+          } catch {}
+        }
+
+        // Cargar foto de perfil desde el endpoint correcto (JWT del backend)
+        try {
+          const tokenHeader2 = localStorage.getItem("pitzbol_token");
+          const fotoResponse = await fetch(`${API_BASE}/perfil/foto-perfil`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: tokenHeader2 ? { 'Authorization': `Bearer ${tokenHeader2}` } : undefined,
+          });
+          if (fotoResponse.ok) {
+            const fotoData = await fotoResponse.json();
+            if (fotoData.fotoPerfil) {
+              setFotoPerfil(fotoData.fotoPerfil);
+            }
+          }
+        } catch (error) {
+          console.error('Error al cargar foto de perfil:', error);
+        }
+      } catch (error) {
+        console.error("Error de sincronización con Pitzbol Server:", error);
+      }
+      setLoading(false);
+    };
+    cargarDatos();
+  }, []);
+
+  useEffect(() => {
+    refrescarFavoritos();
+
+    const handleFavoritesChanged = (event?: Event) => {
+      if (event instanceof StorageEvent) {
+        const storageKey = event.key || "";
+        if (storageKey && !storageKey.startsWith("pitzbol_favorites")) {
+          return;
+        }
+      }
+      refrescarFavoritos();
+    };
+
+    window.addEventListener("favoritesChanged", handleFavoritesChanged);
+    window.addEventListener("storage", handleFavoritesChanged);
+
+    return () => {
+      window.removeEventListener("favoritesChanged", handleFavoritesChanged);
+      window.removeEventListener("storage", handleFavoritesChanged);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Escuchar cambios en el localStorage (cuando se cierren modales)
+  useEffect(() => {
+    const handleStorageChange = (event?: Event) => {
+      if (event instanceof StorageEvent) {
+        const storageKey = event.key || "";
+        if (storageKey && storageKey !== "pitzbol_user") {
+          return;
+        }
+      }
+      refrescarEspecialidades();
+    };
+
+    // Escuchar cambios del localStorage
+    window.addEventListener("storage", handleStorageChange);
+    
+    // También escuchar un evento personalizado para cambios en la misma pestaña
+    window.addEventListener("especialidadesActualizadas", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("especialidadesActualizadas", handleStorageChange);
+    };
+  }, []);
+
+  const guardarTelefono = async () => {
+    setErrorTelefono("");
+
+    if (!numeroTemp.trim()) {
+      setErrorTelefono(t('phoneRequired'));
+      return;
+    }
+
+    const telefonoRegex = /^[\d\s\-()]+$/;
+    if (!telefonoRegex.test(numeroTemp)) {
+      setErrorTelefono(t('phoneInvalidChars'));
+      return;
+    }
+
+    const soloDigitos = numeroTemp.replace(/\D/g, "");
+    if (soloDigitos.length < 7) {
+      setErrorTelefono(t('phoneMinDigits'));
+      return;
+    }
+
+    if (soloDigitos.length > 15) {
+      setErrorTelefono(t('phoneMaxDigits'));
+      return;
+    }
+
+    setGuardando(true);
+    setExito("");
+
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = getBackendOrigin();
+      const telefonoCompleto = `${ladaTemp} ${numeroTemp}`;
+
+      if (!token) {
+        throw new Error(t('noSession'));
+      }
+
+      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
+        method: "PATCH",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          telefono: telefonoCompleto,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || t('errorUpdatingPhone'));
+      }
+
+      const perfilActualizado = { ...perfil, telefono: telefonoCompleto };
+      setPerfil(perfilActualizado);
+      
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal.telefono = telefonoCompleto;
+      userLocal["06_telefono"] = telefonoCompleto;
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+
+      setExito(t('phoneUpdated'));
+      setEditandoTelefono(false);
+      
+      setTimeout(() => setExito(""), 3000);
+
+    } catch (err: any) {
+      setErrorTelefono(err.message || t('errorUpdating'));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarTelefono = () => {
+    if (perfil.telefono && perfil.telefono !== "No registrado") {
+      const match = perfil.telefono.match(/^(\+\d+)\s*(.+)$/);
+      if (match) {
+        setLadaTemp(match[1]);
+        setNumeroTemp(match[2]);
+      } else {
+        setLadaTemp("+52");
+        setNumeroTemp(perfil.telefono);
+      }
+    }
+    setEditandoTelefono(false);
+    setErrorTelefono("");
+  };
+
+  const guardarNombre = async () => {
+    setErrorNombre("");
+
+    if (!nombreTemp.trim()) {
+      setErrorNombre("El nombre es requerido");
+      return;
+    }
+
+    if (!apellidoTemp.trim()) {
+      setErrorNombre("El apellido es requerido");
+      return;
+    }
+
+    setGuardando(true);
+    setExito("");
+
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = getBackendOrigin();
+
+      if (!token) {
+        throw new Error(t('noSession'));
+      }
+
+      console.log("📤 Enviando actualización de nombre:", {
+        nombre: nombreTemp.trim(),
+        apellido: apellidoTemp.trim(),
+        url: `${backendUrl}/api/perfil/update-profile`
+      });
+
+      const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+        method: "PATCH",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          nombre: nombreTemp.trim(),
+          apellido: apellidoTemp.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      console.log("📥 Respuesta del servidor:", data);
+
+      if (!response.ok) {
+        throw new Error(data.msg || "Error al actualizar nombre");
+      }
+
+      const perfilActualizado = { 
+        ...perfil, 
+        nombre: nombreTemp.trim(),
+        apellido: apellidoTemp.trim()
+      };
+      setPerfil(perfilActualizado);
+      
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal.nombre = nombreTemp.trim();
+      userLocal["01_nombre"] = nombreTemp.trim();
+      userLocal.apellido = apellidoTemp.trim();
+      userLocal["02_apellido"] = apellidoTemp.trim();
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+
+      // Emitir evento para actualizar otros componentes
+      console.log('📤 Emitiendo eventos: authStateChanged y guideProfileUpdated');
+      window.dispatchEvent(new Event('authStateChanged'));
+      window.dispatchEvent(new Event('guideProfileUpdated'));
+
+      setExito("Nombre actualizado exitosamente");
+      setEditandoNombre(false);
+      
+      setTimeout(() => setExito(""), 3000);
+
+    } catch (err: any) {
+      setErrorNombre(err.message || "Error al actualizar");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarNombre = () => {
+    setNombreTemp(perfil.nombre || "");
+    setApellidoTemp(perfil.apellido || "");
+    setEditandoNombre(false);
+    setErrorNombre("");
+  };
+
+  const guardarDescripcion = async () => {
+    setErrorDescripcion("");
+    
+    if (descripcionTemp.trim().length > 500) {
+      setErrorDescripcion(t('descriptionMaxLength'));
+      return;
+    }
+
+    setGuardando(true);
+    setExito("");
+
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = getBackendOrigin();
+
+      if (!token) {
+        throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
+      }
+
+      console.log("📝 Enviando descripción al backend:", { descripcion: descripcionTemp });
+
+      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
+        method: "PATCH",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          descripcion: descripcionTemp,
+        }),
+      });
+
+      const data = await response.json();
+
+      console.log("📥 Respuesta del servidor:", { status: response.status, data });
+
+      if (!response.ok) {
+        throw new Error(data.msg || `${t('errorServer')}: ${response.statusText}`);
+      }
+
+      const perfilActualizado = { ...perfil, descripcion: descripcionTemp };
+      setPerfil(perfilActualizado);
+      
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal.descripcion = descripcionTemp;
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+
+      // Emitir evento para actualizar lista de guías
+      console.log('📤 Emitiendo evento: guideProfileUpdated (descripción)');
+      window.dispatchEvent(new Event('guideProfileUpdated'));
+
+      setExito(t('descriptionUpdated'));
+      setEditandoDescripcion(false);
+      
+      setTimeout(() => setExito(""), 3000);
+
+    } catch (err: any) {
+      console.error("❌ Error al guardar descripción:", err);
+      setErrorDescripcion(err.message || "Error al guardar la descripción");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarDescripcion = () => {
+    setDescripcionTemp(perfil?.descripcion || "");
+    setEditandoDescripcion(false);
+    setErrorDescripcion("");
+  };
+
+  const agregarEspecialidad = (interes: string) => {
+    setErrorEspecialidades("");
+    if (especialidadesTemp.includes(interes)) {
+      setErrorEspecialidades(t('interestAlreadyAdded'));
+      return;
+    }
+    if (especialidadesTemp.length >= 10) {
+      setErrorEspecialidades(t('maxInterests'));
+      return;
+    }
+    setEspecialidadesTemp((prev: string[]) => [...prev, interes]);
+  };
+
+  const handleDeleteTour = async (tourId: string) => {
+    if (!window.confirm("¿Eliminar esta experiencia? Esta acción no se puede deshacer.")) return;
+    const token = localStorage.getItem("pitzbol_token");
+    try {
+      const res = await fetch(`${API_BASE}/tours/${tourId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setTours(prev => prev.filter(t => t.id !== tourId));
+    } catch {}
+  };
+
+  const handleSaveTourTitle = async (tourId: string) => {
+    const trimmed = editingTourTitle.trim();
+    if (!trimmed) return;
+    setSavingTourTitle(true);
+    const token = localStorage.getItem("pitzbol_token");
+    const backendUrl = getBackendOrigin();
+    try {
+      const fd = new FormData();
+      fd.append("titulo", trimmed);
+      const res = await fetch(`${backendUrl}/api/paquetes/${tourId}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      if (res.ok) {
+        setTours(prev => prev.map(t => t.id === tourId ? { ...t, titulo: trimmed } : t));
+        setEditingTourId(null);
+      }
+    } catch {}
+    finally { setSavingTourTitle(false); }
+  };
+
+  const handleDeletePaquete = async (paqId: string) => {
+    if (!window.confirm("¿Eliminar este paquete? Esta acción no se puede deshacer.")) return;
+    const token = localStorage.getItem("pitzbol_token");
+    const backendUrl = getBackendOrigin();
+    try {
+      const res = await fetch(`${backendUrl}/api/paquetes/${paqId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setPaquetes(prev => prev.filter(p => p.id !== paqId));
+    } catch {}
+  };
+
+  const eliminarEspecialidad = (especialidad: string) => {
+    setEspecialidadesTemp((prev: string[]) => prev.filter(e => e !== especialidad));
+    setErrorEspecialidades("");
+  };
+
+  const guardarEspecialidades = async () => {
+    setGuardando(true);
+    const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+    const rolLocal = userLocal["03_rol"] || userLocal.role || "turista";
+    const esGuiaSave = rolLocal === "guia";
+
+    try {
+      let response: Response;
+
+      if (esGuiaSave) {
+        // Guías: endpoint específico de guías (requiere rol guía)
+        const token = localStorage.getItem("pitzbol_token");
+        const backendUrl = getBackendOrigin();
+        response = await fetch(`${backendUrl}/api/guides/update`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ uid: userLocal.uid, categorias: especialidadesTemp }),
+        });
+      } else {
+        // Turistas: endpoint general de perfil
+        const token = localStorage.getItem("pitzbol_token");
+        const backendUrl = getBackendOrigin();
+        response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ especialidades: especialidadesTemp }),
+        });
+      }
+
+      if (response.ok) {
+        setEspecialidades([...especialidadesTemp]);
+        setEditandoEspecialidades(false);
+        const userUpdated = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+        localStorage.setItem("pitzbol_user", JSON.stringify({
+          ...userUpdated,
+          "07_intereses": especialidadesTemp,
+          "07_especialidades": especialidadesTemp,
+        }));
+        window.dispatchEvent(new Event("storage"));
+        if (esGuiaSave) {
+          console.log('📤 Emitiendo evento: guideProfileUpdated (especialidades)');
+          window.dispatchEvent(new Event('guideProfileUpdated'));
+        }
+        setExito(t('changesSaved'));
+        setTimeout(() => setExito(""), 3000);
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        console.error("Error al guardar intereses:", errData);
+        setErrorEspecialidades(errData.msg || errData.error || "Error al guardar");
+      }
+    } catch (error) {
+      console.error("Error al guardar intereses", error);
+      setErrorEspecialidades("Error de conexión. Intenta de nuevo.");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarEspecialidades = () => {
+    setEspecialidadesTemp([...especialidades]);
+    setNuevoInteres("");
+    setEditandoEspecialidades(false);
+    setErrorEspecialidades("");
+  };
+
+  const agregarIdioma = (idioma: string) => {
+    setErrorIdiomas("");
+    const idiomaCapitalizado = idioma.charAt(0).toUpperCase() + idioma.slice(1).toLowerCase().trim();
+    
+    console.log("➕ Agregando idioma:", idiomaCapitalizado);
+    console.log("📋 Idiomas actuales en temp:", idiomasTemp);
+    
+    if (idiomasTemp.includes(idiomaCapitalizado)) {
+      setErrorIdiomas(t('languageAlreadyAdded'));
+      return;
+    }
+    if (idiomasTemp.length >= 10) {
+      setErrorIdiomas(t('maxLanguages'));
+      return;
+    }
+    setIdiomasTemp((prev: string[]) => {
+      const nuevosIdiomas = [...prev, idiomaCapitalizado];
+      console.log("✅ Nuevos idiomas en temp:", nuevosIdiomas);
+      return nuevosIdiomas;
+    });
+  };
+
+  const eliminarIdioma = (idioma: string) => {
+    setIdiomasTemp((prev: string[]) => prev.filter(i => i !== idioma));
+    setErrorIdiomas("");
+  };
+
+  const guardarIdiomas = async () => {
+    setGuardando(true);
+    setExito("");
+    setErrorIdiomas("");
+
+    try {
+      const token = localStorage.getItem("pitzbol_token");
+      const backendUrl = getBackendOrigin();
+      
+      if (!token) {
+        throw new Error(t('noSession'));
+      }
+
+      console.log("📤 Guardando idiomas:", idiomasTemp);
+      console.log("🔑 Token presente:", !!token);
+      console.log("🌐 Backend URL:", backendUrl);
+
+      const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          idiomas: idiomasTemp 
+        })
+      });
+
+      const data = await response.json();
+      console.log("📥 Respuesta del servidor:", data);
+
+      if (!response.ok) {
+        throw new Error(data.error || data.msg || "Error al actualizar idiomas");
+      }
+
+      // Actualizar localStorage primero
+      const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
+      userLocal.idiomas = idiomasTemp;
+      userLocal["09_idiomas"] = idiomasTemp;
+      localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
+      
+      // Actualizar estados
+      const nuevosIdiomas = [...idiomasTemp];
+      setIdiomas(nuevosIdiomas);
+      
+      // Actualizar perfil en estado
+      setPerfil((prev: any) => ({ 
+        ...prev, 
+        idiomas: nuevosIdiomas 
+      }));
+      
+      console.log("✅ Idiomas guardados exitosamente");
+      console.log("📊 Estado actualizado - idiomas:", nuevosIdiomas);
+      console.log("📊 Estado idiomas actual:", idiomas);
+      
+      // Emitir evento para actualizar lista de guías
+      console.log('📤 Emitiendo evento: guideProfileUpdated (idiomas)');
+      window.dispatchEvent(new Event('guideProfileUpdated'));
+      
+      setExito(t('languagesUpdated'));
+      setTimeout(() => setExito(""), 3000);
+      
+      // Cerrar modo edición
+      setEditandoIdiomas(false);
+      
+    } catch (error: any) {
+      console.error("❌ Error al guardar idiomas:", error);
+      setErrorIdiomas(error.message || t('errorSavingLanguages'));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarIdiomas = () => {
+    setIdiomasTemp([...idiomas]);
+    setEditandoIdiomas(false);
+    setErrorIdiomas("");
+  };
+
+  // El rol ya viene normalizado del backend (turista si está pendiente, guia si está aprobado)
+  const esGuia = perfil?.rol === "guia";
+  const esAdmin = perfil?.rol === "admin";
+
+  if (loading) return (
+    <div className="h-screen flex items-center justify-center bg-gradient-to-br from-[#F6F0E6] to-[#FDFCF9]">
+      <motion.div 
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        className="w-16 h-16 border-4 border-[#0D601E] border-t-transparent rounded-full"
+      />
+    </div>
+  );
+
+  const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tamaño (5MB)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      setError(`${t('fileTooLarge', { size: (file.size / 1024 / 1024).toFixed(2) })}`);
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
+
+    // Validar formato
+    const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!ALLOWED_FORMATS.includes(file.type)) {
+      setError(`${t('invalidFormat')}`);
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
+
+    const stored = localStorage.getItem("pitzbol_user");
+    const userLocal = stored ? JSON.parse(stored) : null;
+
+    if (!userLocal?.uid) {
+      console.error('❌ No hay sesión activa');
+      setError(`❌ ${t('sessionExpired')}`);
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
+
+    // Crear FormData para enviar como multipart
+    const formData = new FormData();
+    formData.append('foto', file);
+
+    try {
+      console.log('📤 Enviando foto al servidor...');
+      const apiBase = API_BASE;
+      const response = await fetchWithAuth(`${apiBase}/perfil/foto-perfil`, {
+        method: 'POST',
+        body: formData
+      });
+
+      const rawResponse = await response.text();
+      let data: any = null;
+
+      if (rawResponse) {
+        try {
+          data = JSON.parse(rawResponse);
+        } catch {
+          data = { error: rawResponse };
+        }
+      }
+
+      if (response.ok && data?.fotoPerfil) {
+        setFotoPerfil(data.fotoPerfil);
+        setExito(t('photoUpdated'));
+        const updated = { ...userLocal, fotoPerfil: data.fotoPerfil };
+        localStorage.setItem("pitzbol_user", JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('fotoPerfilActualizada', { detail: { fotoPerfil: data.fotoPerfil, usuario: updated } }));
+        window.dispatchEvent(new Event('guideProfileUpdated'));
+        setTimeout(() => setExito(""), 4000);
+      } else {
+        const errorMessage = data?.details && data?.error === 'Error al procesar la imagen'
+          ? data.details
+          : data?.error
+            || data?.msg
+            || data?.details
+            || (response.status === 401 ? 'Sesión expirada. Inicia sesión nuevamente.' : '')
+            || (response.status === 404 ? 'Servicio no disponible. Intenta más tarde.' : '')
+            || (response.status === 413 ? 'Archivo demasiado grande. Máximo 5MB.' : '')
+            || (response.status === 500 ? 'Error interno del servidor. Intenta más tarde.' : '')
+            || `Error ${response.status} al subir foto.`;
+        console.error('❌ Error del servidor:', errorMessage);
+        setError(`❌ ${errorMessage}`);
+        setTimeout(() => setError(""), 5000);
+      }
+    } catch (err: any) {
+      console.error("❌ Error al subir foto:", err);
+      setError('❌ Error de conexión al subir foto. Verifica que el servidor esté activo.');
+      setTimeout(() => setError(""), 5000);
+    }
+
+    // Limpiar input para poder seleccionar la misma imagen nuevamente
+    e.target.value = '';
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#F6F0E6] via-[#FDFCF9] to-white pb-20">
+      {/* Notificación de Éxito */}
+      <AnimatePresence>
+        {exito && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, x: -20 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: -20, x: -20 }}
+            className="fixed top-6 left-6 z-50 max-w-sm"
+          >
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-[20px] shadow-xl p-4 border-l-4 border-green-300 flex items-center gap-3">
+              <div className="text-xl">✅</div>
+              <p className="text-sm font-semibold">{exito}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Notificación de Error */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, x: -20 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: -20, x: -20 }}
+            className="fixed top-6 left-6 z-50 max-w-sm"
+          >
+            <div className="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-[20px] shadow-xl p-4 border-l-4 border-red-300 flex items-center gap-3">
+              <div className="text-xl">❌</div>
+              <p className="text-sm font-semibold">{error}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {esAdmin && (
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="mb-6 p-6 bg-gradient-to-r from-[#1A4D2E] to-[#0D601E] rounded-[28px] shadow-lg border-l-8 border-[#F00808] flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/10 rounded-xl text-white">
+              <FiShield size={24} />
+            </div>
+            <div>
+              <h4 className="text-white font-bold text-lg leading-tight">{t('adminPanel')}</h4>
+              <p className="text-white/60 text-xs">{t('pendingRequestsReview')}</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setIsAdminModalOpen(true)}
+            className="px-6 py-2.5 bg-white text-[#1A4D2E] rounded-xl font-bold text-sm hover:bg-[#F6F0E6] transition-all shadow-sm"
+          >
+            {t('viewRequests')}
+          </button>
+        </motion.div>
+      )}
+      
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#6C9D1C] to-[#3A5A40] border-b border-[#4CAF50]">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 py-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <motion.h1 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-3xl md:text-4xl font-medium text-white mb-1"
+              style={{ fontFamily: "'Jockey One', sans-serif" }}
+            >
+              {t('title')}
+            </motion.h1>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 md:px-12 -mt-16 pt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Card de Perfil Principal */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="lg:col-span-1"
+          >
+            <div className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]">
+              <div className="flex flex-col items-center">
+                {/* Mensaje animado si no hay foto */}
+                <AnimatePresence>
+                  {!fotoPerfil && (
+                    <motion.p 
+                      initial={{ opacity: 0, y: -2 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ 
+                        duration: 4,
+                        ease: "easeInOut",
+                        repeat: Infinity,
+                        repeatType: "reverse"
+                      }}
+                      className="text-sm text-[#3C590D] text-center font-semibold mb-0.5 max-w-xs"
+                    >
+                      {t('uploadPhotoMessage')}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+
+                {/* Foto de perfil */}
+                <div className="relative mb-8 mt-4 group">
+                  {/* Botón de cámara - Solo si no hay foto */}
+                  {!fotoPerfil && (
+                    <motion.button
+                      whileHover={{ scale: 1.08 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute -bottom-2 -right-2 p-3 bg-[#E53935] text-white rounded-full shadow-md cursor-pointer hover:bg-[#D32F2F] transition-colors z-10"
+                      title={t('changeProfilePhoto')}
+                      type="button"
+                    >
+                      <FiCamera size={18} strokeWidth={2.5} />
+                    </motion.button>
+                  )}
+                  
+                  {/* Área de foto */}
+                  <div className="relative w-40 h-40 md:w-48 md:h-48">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#0D601E] to-[#F00808] rounded-full opacity-20 blur-xl" />
+                    <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-white shadow-xl bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center">
+                      {fotoPerfil ? (
+                        <img src={fotoPerfil} alt="Perfil" className="w-full h-full object-cover" />
+                      ) : (
+                        <FiUser size={64} className="text-gray-300" />
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Botón de cámara - Si hay foto */}
+                  {fotoPerfil && (
+                    <motion.button
+                      whileHover={{ scale: 1.08 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute -bottom-2 -right-2 p-3 bg-[#E53935] text-white rounded-full shadow-md cursor-pointer hover:bg-[#D32F2F] transition-colors z-10"
+                      title={t('changeProfilePhoto')}
+                      type="button"
+                    >
+                      <FiCamera size={18} strokeWidth={2.5} />
+                    </motion.button>
+                  )}
+                </div>
+
+                {/* Input file hidden */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFotoChange}
+                />
+
+                {/* Mensajes inline para upload */}
+                <div className="mt-3 space-y-2">
+                  {error && (
+                    <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                      {error}
+                    </div>
+                  )}
+                  {exito && (
+                    <div className="text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                      {exito}
+                    </div>
+                  )}
+                </div>
+
+                {/* Info básica */}
+                {editandoNombre ? (
+                  <div className="w-full mt-2 space-y-3">
+                    <div>
+                      <input
+                        type="text"
+                        value={nombreTemp}
+                        onChange={(e) => setNombreTemp(e.target.value)}
+                        placeholder="Nombre"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-gray-800"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={apellidoTemp}
+                        onChange={(e) => setApellidoTemp(e.target.value)}
+                        placeholder="Apellido"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-gray-800"
+                      />
+                    </div>
+                    {errorNombre && (
+                      <p className="text-red-600 text-xs">{errorNombre}</p>
+                    )}
+                    <div className="flex gap-2 justify-center">
+                      <button
+                        onClick={guardarNombre}
+                        disabled={guardando}
+                        className="flex-1 px-4 py-2 bg-[#1A4D2E] text-white rounded-lg hover:bg-[#0D601E] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                      >
+                        {guardando ? tCommon('loading') : tCommon('save')}
+                      </button>
+                      <button
+                        onClick={cancelarNombre}
+                        disabled={guardando}
+                        className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                      >
+                        {tCommon('cancel')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative group">
+                    <h2 className="text-2xl md:text-3xl font-semibold text-[#1A4D2E] text-center mb-1">
+                      {perfil.nombre} {perfil.apellido}
+                    </h2>
+                    {/* Solo permitir editar nombre si NO es turista ni guía */}
+                    {perfil.rol !== "turista" && perfil.rol !== "guia" && (
+                      <button
+                        onClick={() => {
+                          setNombreTemp(perfil.nombre || "");
+                          setApellidoTemp(perfil.apellido || "");
+                          setEditandoNombre(true);
+                        }}
+                        className="absolute -right-8 top-1/2 -translate-y-1/2 p-2 text-[#1A4D2E] hover:bg-[#F6F0E6] rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        title="Editar nombre"
+                      >
+                        <FiEdit2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-center gap-1 text-[#81C784] text-xs mb-3">
+                  <FiGlobe size={13} />
+                  <span className="font-normal">{perfil?.nacionalidad}</span>
+                </div>
+                
+                <div className="flex items-center gap-2 text-[#81C784] text-sm mb-6">
+                  <FiMail size={14} />
+                  <span className="font-normal text-sm">{perfil.email}</span>
+                </div>
+
+                {/* Badge de rol */}
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#F1F8F6] text-[#0D601E] rounded-full border border-[#0D601E]/10 mb-6">
+                  <FiShield size={12} className="opacity-70" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.15em]">
+                    {esGuia ? t('verifiedGuide') : t('explorer')}
+                  </span>
+                </div>
+
+                {/* Stats Cards - Solo visibles para Guías y Turistas */}
+                {!esAdmin && (
+                  <div className="w-full space-y-4 mb-6">
+                    {/* Card de Descripción */}
+                    <motion.div 
+                      whileHover={{ y: -1 }}
+                      className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs font-medium text-[#81C784] tracking-wide">{t('descriptionLabel')}</h3>
+                        {!editandoDescripcion && (
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => {
+                              setDescripcionTemp(perfil?.descripcion || "");
+                              setEditandoDescripcion(true);
+                            }}
+                            className="px-2.5 py-1 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1"
+                          >
+                            <FiEdit2 size={12} /> {t('edit')}
+                          </motion.button>
+                        )}
+                      </div>
+                      
+                      {editandoDescripcion ? (
+                        <div className="space-y-3">
+                          <textarea
+                            className="w-full bg-[#FDFCF9] border border-[#1A4D2E]/20 rounded-2xl p-4 text-[#1A4D2E] min-h-[150px] focus:ring-2 focus:ring-[#0D601E]/20 outline-none resize-none transition-all"
+                            placeholder={t('descriptionPlaceholder')}
+                            value={descripcionTemp} 
+                            onChange={(e) => setDescripcionTemp(e.target.value)}
+                            readOnly={!editandoDescripcion}
+                          />
+                          <p className="text-xs text-[#81C784]">{descripcionTemp.length}/500</p>
+                          {errorDescripcion && (
+                            <p className="text-xs text-red-600">{errorDescripcion}</p>
+                          )}
+                          <div className="flex gap-2">
+                            <button onClick={guardarDescripcion} disabled={guardando} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50">{t('save')}</button>
+                            <button onClick={cancelarDescripcion} disabled={guardando} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors disabled:opacity-50">{tCommon('cancel')}</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm font-normal text-[#1A4D2E] whitespace-pre-wrap">
+                          {perfil?.descripcion || t('noDescriptionYet')}
+                        </p>
+                      )}
+                    </motion.div>
+
+                    {/* Card de Tarifa por Tour — solo para guías */}
+                    {esGuia && (
+                      <motion.div
+                        whileHover={{ y: -1 }}
+                        className="bg-white p-4 rounded-xl border border-[#E0F2F1] relative"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 bg-[#F1F8F6] rounded-lg">
+                              <FiDollarSign size={16} className="text-[#66BB6A]" />
+                            </div>
+                            <h3 className="text-xs font-medium text-[#81C784] tracking-wide">Cobro por Tour</h3>
+                          </div>
+                          {!editandoTarifa && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => {
+                                setTarifaTemp(perfil?.tarifa ? String(perfil.tarifa) : "");
+                                setEditandoTarifa(true);
+                              }}
+                              className="px-2.5 py-1 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1"
+                            >
+                              <FiEdit2 size={12} /> Editar
+                            </motion.button>
+                          )}
+                        </div>
+
+                        {editandoTarifa ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-[#1A4D2E]">$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="10"
+                                value={tarifaTemp}
+                                onChange={(e) => setTarifaTemp(e.target.value)}
+                                placeholder="Ej. 200"
+                                className="flex-1 text-sm font-medium text-[#1A4D2E] bg-white border-2 rounded-lg px-3 py-2 focus:outline-none border-[#C8E6C9]"
+                              />
+                              <span className="text-xs text-[#81C784] whitespace-nowrap">MXN / hora</span>
+                            </div>
+                            {errorTarifa && <p className="text-xs text-red-600">{errorTarifa}</p>}
+                            <div className="flex gap-2">
+                              <button onClick={guardarTarifa} disabled={guardando} className="flex-1 bg-[#3A5A40] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#2D4630] transition-colors disabled:opacity-50">Guardar</button>
+                              <button onClick={cancelarTarifa} disabled={guardando} className="px-4 bg-[#F1F8F6] text-[#81C784] text-xs font-medium py-2 rounded-lg hover:bg-[#E0F2F1] transition-colors disabled:opacity-50">Cancelar</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm font-medium text-[#1A4D2E] pl-12">
+                            {perfil?.tarifa
+                              ? `$${Number(perfil.tarifa).toLocaleString("es-MX")} MXN / hora`
+                              : <span className="text-xs font-medium text-[#E53935] tracking-wide">Agrega tu tarifa para que turistas reserven</span>
+                            }
+                          </p>
+                        )}
+                      </motion.div>
+                    )}
+
+                    {/* Card de Billetera */}
+                    <button 
+                      onClick={() => setShowWalletModal(true)} 
+                      className="w-full flex items-center gap-4 p-4 rounded-2xl border border-gray-100 hover:border-[#0D601E]/20 hover:bg-[#FDFCF9] transition-all group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:text-[#0D601E] group-hover:bg-[#F1F8F6] transition-colors">
+                        <FiCreditCard size={20} />
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className="text-xs font-bold text-[#1A4D2E]">{t('paymentMethods')}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">{t('manageCards')}</span>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
+                {/* Estadística  */}
+                <div className="w-full bg-gradient-to-r from-[#E8F5E9] to-white rounded-xl p-4 border border-[#E0F2F1]">
+                  <div className="flex justify-between items-center">
+                    <div className="text-center flex-1">
+                      <p className="text-xl font-semibold text-[#66BB6A]">{tours.filter((s: any) => s.estado === 'aprobado').length}</p>
+                      <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wide">{t('tours')}</p>
+                    </div>
+                    <div className="w-px h-8 bg-[#E0F2F1]" />
+                    <div className="text-center flex-1">
+                      <p className="text-xl font-semibold text-[#66BB6A]">{guardadosCount}</p>
+                      <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wide">
+                        {guardadosCount === 1 ? "Guardado" : t('saved')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Contenido Principal */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Sección de Interesess */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-[#1A4D2E] mb-1">
+                    {esGuia ? t('specialties') : t('myInterests')}
+                  </h3>
+                  <p className="text-xs text-[#81C784] font-normal">
+                    {editandoEspecialidades ? especialidadesTemp.length : especialidades.length} {(editandoEspecialidades ? especialidadesTemp.length : especialidades.length) === 1 ? t('selected') : t('selectedPlural')}
+                  </p>
+                </div>
+                {!editandoEspecialidades && (
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setEditandoEspecialidades(true)}
+                    className="flex items-center gap-2 px-3.5 py-1.5 bg-[#3A5A40] text-white rounded-lg text-sm font-medium hover:bg-[#2D4630] transition-colors"
+                  >
+                    <FiEdit2 size={14} /> {t('edit')}
+                  </motion.button>
+                )}
+              </div>
+              
+              {editandoEspecialidades ? (
+                <div className="space-y-6">
+                  {/* Grid de intereses disponibles para seleccionar */}
+                  <div>
+                    <p className="text-sm font-medium text-[#81C784] mb-4 tracking-wide">{t('selectYourInterests')}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {INTERESES_DISPONIBLES.filter(int => !especialidadesTemp.includes(int.nombre)).map((interes, i) => {
+                        const Icon = interes.icono;
+                        return (
+                          <motion.button
+                            key={interes.nombre}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: i * 0.03 }}
+                            whileHover={{ scale: 1.03, y: -1 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => agregarEspecialidad(interes.nombre)}
+                            disabled={guardando}
+                            className="group relative bg-white rounded-xl p-4 border border-[#E0F2F1] hover:border-[#A5D6A7] hover:bg-[#F1F8F6] transition-all shadow-sm disabled:opacity-50"
+                          >
+                            <div className="flex flex-col items-center gap-2">
+                              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${interes.color} flex items-center justify-center text-white shadow-lg`}>
+                                <Icon size={24} />
+                              </div>
+                              <span className="text-xs font-medium text-[#1A4D2E] text-center leading-tight">
+                                {interes.nombre}
+                              </span>
+                            </div>
+                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-[#3A5A40] rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <FiPlus size={13} className="text-white" />
+                            </div>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {errorEspecialidades && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="flex items-center gap-2 text-red-600 text-sm font-semibold bg-red-50 px-4 py-3 rounded-xl border-2 border-red-200"
+                      >
+                        <FiX size={18} />
+                        <span>{errorEspecialidades}</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Intereses seleccionados */}
+                  {especialidadesTemp.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-[#81C784] mb-4 tracking-wide">
+                        {t('selectedCount', { count: especialidadesTemp.length })}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 md:grid-cols-4">
+                        <AnimatePresence>
+                          {especialidadesTemp.map((esp, i) => {
+                            const interesData = getInteresData(esp);
+                            const Icon = interesData.icono;
+                            return (
+                              <motion.div 
+                                key={esp}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.5 }}
+                                transition={{ delay: i * 0.03 }}
+                                className="group relative bg-gradient-to-br from-[#F1F8F6] to-white rounded-xl p-4 border border-[#A5D6A7] shadow-sm hover:shadow-md transition-all"
+                              >
+                                <div className="flex flex-col items-center gap-2">
+                                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${interesData.color} flex items-center justify-center text-white shadow-lg`}>
+                                    <Icon size={24} />
+                                  </div>
+                                  <span className="text-xs font-medium text-[#1A4D2E] text-center leading-tight">
+                                    {esp}
+                                  </span>
+                                </div>
+                                <motion.button 
+                                  whileHover={{ scale: 1.1, rotate: 90 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => eliminarEspecialidad(esp)}
+                                  disabled={guardando}
+                                  className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-red-400 hover:bg-red-500 rounded-full flex items-center justify-center text-white shadow-md transition-colors disabled:opacity-50"
+                                >
+                                  <FiX size={14} strokeWidth={3} />
+                                </motion.button>
+                              </motion.div>
+                            );
+                          })}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Botones de acción */}
+                  <div className="flex gap-2.5 pt-4 border-t border-[#E0F2F1]">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={guardarEspecialidades}
+                      disabled={guardando}
+                      className="flex-1 bg-[#3A5A40] text-white text-sm font-medium py-2.5 rounded-lg hover:bg-[#2D4630] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+                    >
+                      {guardando ? (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                        />
+                      ) : (
+                        <>
+                          <FiCheck size={16} />
+                          {t('save')}
+                        </>
+                      )}
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={cancelarEspecialidades}
+                      disabled={guardando}
+                      className="px-4 bg-[#F1F8F6] text-[#81C784] text-sm font-medium py-2.5 rounded-lg hover:bg-[#E0F2F1] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {tCommon('cancel')}
+                    </motion.button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:gap-3 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {especialidades.map((esp, i) => {
+                    const interesData = getInteresData(esp);
+                    const Icon = interesData.icono;
+                    return (
+                      <motion.div 
+                        key={i}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.05 }}
+                        whileHover={{ y: -2, scale: 1.02 }}
+                        className="bg-gradient-to-br from-[#F1F8F6] to-white rounded-xl p-5 border border-[#E0F2F1] hover:border-[#A5D6A7] transition-all shadow-sm hover:shadow-md"
+                      >
+                        <div className="flex flex-col items-center gap-3">
+                          <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${interesData.color} flex items-center justify-center text-white shadow-lg`}>
+                            <Icon size={28} />
+                          </div>
+                          <span className="text-sm font-medium text-[#1A4D2E] text-center leading-tight">
+                            {esp}
+                          </span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+
+            {/* Sección de Idiomas */}
+            {esGuia && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
+              >
+                <div className="mb-6 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">{t('languages')}</h3>
+                    <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
+                      {t('languagesYouSpeak')}
+                    </p>
+                  </div>
+                  {!editandoIdiomas && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setEditandoIdiomas(true)}
+                      className="px-3 py-1.5 bg-[#3A5A40] text-white rounded-lg text-xs font-medium hover:bg-[#2D4630] transition-colors flex items-center gap-1.5"
+                    >
+                      <FiEdit2 size={14} /> {t('edit')}
+                    </motion.button>
+                  )}
+                </div>
+                
+                {editandoIdiomas ? (
+                  <div className="space-y-6">
+                    {/* Selector de idioma */}
+                    <div>
+                      <p className="text-sm font-medium text-[#81C784] mb-3 tracking-wide">{t('addLanguage')}</p>
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (!val || idiomasTemp.includes(val) || idiomasTemp.length >= 10) return;
+                          setIdiomasTemp(prev => [...prev, val]);
+                          setErrorIdiomas("");
+                        }}
+                        disabled={guardando || idiomasTemp.length >= 10}
+                        className="w-full px-4 py-2.5 border border-[#E0F2F1] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-[#1A4D2E] bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">-- Selecciona un idioma --</option>
+                        {IDIOMAS_DISPONIBLES.filter(id => !idiomasTemp.includes(id)).map(id => (
+                          <option key={id} value={id}>{id}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <AnimatePresence>
+                      {errorIdiomas && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="flex items-center gap-2 text-red-600 text-sm font-semibold bg-red-50 px-4 py-3 rounded-xl border-2 border-red-200"
+                        >
+                          <FiX size={18} />
+                          <span>{errorIdiomas}</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Idiomas seleccionados */}
+                    {idiomasTemp.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-[#81C784] mb-4 tracking-wide">
+                          {t('selectedLanguages')} ({idiomasTemp.length})
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <AnimatePresence>
+                            {idiomasTemp.map((idioma, i) => (
+                              <motion.div 
+                                key={idioma}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.5 }}
+                                transition={{ delay: i * 0.03 }}
+                                className="group relative bg-gradient-to-br from-[#F1F8F6] to-white rounded-lg px-4 py-2 border border-[#A5D6A7] shadow-sm hover:shadow-md transition-all"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <FiGlobe size={16} className="text-[#3A5A40]" />
+                                  <span className="text-sm font-medium text-[#1A4D2E]">
+                                    {idioma}
+                                  </span>
+                                </div>
+                                <motion.button 
+                                  whileHover={{ scale: 1.1, rotate: 90 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => eliminarIdioma(idioma)}
+                                  disabled={guardando}
+                                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-400 hover:bg-red-500 rounded-full flex items-center justify-center text-white shadow-md transition-colors disabled:opacity-50"
+                                >
+                                  <FiX size={12} strokeWidth={3} />
+                                </motion.button>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Botones de acción */}
+                    <div className="flex gap-2.5 pt-4 border-t border-[#E0F2F1]">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={guardarIdiomas}
+                        disabled={guardando}
+                        className="flex-1 bg-[#3A5A40] text-white text-sm font-medium py-2.5 rounded-lg hover:bg-[#2D4630] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        {guardando ? (
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                          />
+                        ) : (
+                          <>
+                            <FiCheck size={16} />
+                            Guardar
+                          </>
+                        )}
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={cancelarIdiomas}
+                        disabled={guardando}
+                        className="px-4 bg-[#F1F8F6] text-[#81C784] text-sm font-medium py-2.5 rounded-lg hover:bg-[#E0F2F1] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {tCommon('cancel')}
+                      </motion.button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {idiomas.length > 0 ? (
+                      idiomas.map((idioma, i) => (
+                        <motion.div 
+                          key={i}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.05 }}
+                          whileHover={{ y: -2, scale: 1.05 }}
+                          className="bg-gradient-to-br from-[#F1F8F6] to-white rounded-lg px-4 py-2 border border-[#E0F2F1] hover:border-[#A5D6A7] transition-all shadow-sm hover:shadow-md"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FiGlobe size={16} className="text-[#3A5A40]" />
+                            <span className="text-sm font-medium text-[#1A4D2E]">
+                              {idioma}
+                            </span>
+                          </div>
+                        </motion.div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">{t('noLanguagesYet')}</p>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* ── Sección de Paquetes (tours publicados) ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
+            >
+              <div className="mb-6 flex justify-between items-end">
+                <div>
+                  <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">
+                    {esGuia ? "Paquetes" : t('upcomingDestinations')}
+                  </h3>
+                  <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
+                    {esGuia ? "Tours que ofreces a turistas" : t('bookings')}
+                  </p>
+                </div>
+                {esGuia && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
+                      {tipoGuia !== "empresa" ? tours.length : tours.filter((s: any) => s.estado === 'aprobado').length} publicados
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {esGuia ? (
+                tipoGuia !== "empresa" ? (
+                  <div className="space-y-4">
+                    <motion.button
+                      whileHover={{ scale: 1.01, backgroundColor: "#f9fafb" }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => setShowTourModal(true)}
+                      className="w-full py-4 border-2 border-dashed border-[#E0F2F1] rounded-lg flex items-center justify-center gap-2 text-[#81C784] hover:text-[#66BB6A] hover:border-[#A5D6A7] transition-all group"
+                    >
+                      <div className="w-7 h-7 bg-[#E8F5E9] group-hover:bg-[#3A5A40] group-hover:text-white rounded-full flex items-center justify-center transition-colors">
+                        <FiPlus size={16} />
+                      </div>
+                      <span className="text-sm font-medium tracking-tight">Crear paquete</span>
+                    </motion.button>
+
+                    {tours.length === 0 ? (
+                      <p className="text-center text-[11px] text-[#81C784] font-normal py-4">
+                        Aún no tienes paquetes. Crea uno para que los turistas puedan reservarlo.
+                      </p>
+                    ) : (
+                      <div className="space-y-3 mt-1">
+                        {tours.map((tour: any, i: number) => {
+                          const foto = tour.fotoPrincipal || tour.fotos?.[0] || null;
+                          const idiomasTour = Array.isArray(tour.idiomas) ? tour.idiomas.slice(0, 2).join(" · ") : "";
+                          return (
+                            <motion.div
+                              key={tour.id || i}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.05 }}
+                              className="relative flex items-center gap-3 rounded-xl border border-[#E0F2F1] p-3 transition-all group hover:border-[#A5D6A7] hover:bg-[#F7FBF7]"
+                            >
+                              {editingTourId === tour.id ? (
+                                <div className="flex flex-1 items-center gap-2 min-w-0">
+                                  <input
+                                    autoFocus
+                                    value={editingTourTitle}
+                                    onChange={e => setEditingTourTitle(e.target.value)}
+                                    onKeyDown={e => { if (e.key === "Enter") handleSaveTourTitle(tour.id); if (e.key === "Escape") setEditingTourId(null); }}
+                                    className="flex-1 min-w-0 px-3 py-1.5 border border-[#1A4D2E] rounded-lg text-sm text-[#1A4D2E] focus:outline-none focus:ring-2 focus:ring-[#1A4D2E]/30"
+                                    maxLength={120}
+                                  />
+                                  <button
+                                    onClick={() => handleSaveTourTitle(tour.id)}
+                                    disabled={savingTourTitle || !editingTourTitle.trim()}
+                                    className="shrink-0 p-1.5 rounded-lg text-[#1A4D2E] hover:bg-[#E8F5E9] disabled:opacity-40 transition-colors"
+                                    title="Guardar nombre"
+                                  >
+                                    <FiCheck size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingTourId(null)}
+                                    className="shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    title="Cancelar"
+                                  >
+                                    <FiX size={14} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <>
+                                  <a href={`/tours/${tour.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                                    {foto ? (
+                                      <img src={foto} alt={tour.titulo || "Paquete"} className="h-14 w-14 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
+                                    ) : (
+                                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
+                                        <FiMap size={18} className="text-[#66BB6A]" />
+                                      </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-sm font-semibold text-[#1A4D2E] group-hover:text-[#0D601E]">{tour.titulo || "Paquete"}</p>
+                                      <p className="truncate text-[11px] text-gray-500">{tour.destino || "Destino por definir"}</p>
+                                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#6C8870]">
+                                        {tour.duracion && <span>{tour.duracion}</span>}
+                                        {tour.precio && <span>{tour.precio}</span>}
+                                        {idiomasTour && <span>{idiomasTour}</span>}
+                                      </div>
+                                    </div>
+                                  </a>
+                                  <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">
+                                    Activo
+                                  </span>
+                                  <button
+                                    onClick={() => { setEditingTourId(tour.id); setEditingTourTitle(tour.titulo || ""); }}
+                                    className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-[#1A4D2E] hover:bg-[#E8F5E9] transition-colors"
+                                    title="Editar nombre del paquete"
+                                  >
+                                    <FiEdit2 size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTour(tour.id)}
+                                    className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    title="Eliminar paquete"
+                                  >
+                                    <FiTrash2 size={14} />
+                                  </button>
+                                </>
+                              )}
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {tours.length === 0 ? (
+                      <p className="text-center text-[11px] text-[#81C784] font-normal py-4">
+                        {t('noExperiencesYet')}
+                      </p>
+                    ) : (
+                      <div className="space-y-3 mt-1">
+                        {tours.map((sol: any, i: number) => {
+                          const nombre = sol.business?.name || sol.businessName || sol.nombre || "Negocio";
+                          const categoria = sol.business?.category || sol.categoria || "";
+                          const logo = sol.business?.logo || (sol.business?.images?.[0]) || null;
+                          const estado = sol.estado as string;
+                          const estadoColor: Record<string, string> = {
+                            aprobado: "bg-[#E8F5E9] text-[#2E7D32]",
+                            pendiente: "bg-amber-50 text-amber-700",
+                            rechazado: "bg-red-50 text-red-600",
+                            archivado: "bg-gray-100 text-gray-500",
+                          };
+                          const estadoLabel: Record<string, string> = {
+                            aprobado: "Publicado",
+                            pendiente: "En revisión",
+                            rechazado: "Rechazado",
+                            archivado: "Archivado",
+                          };
+                          const href = estado === "aprobado"
+                            ? `/informacion/${encodeURIComponent(nombre)}`
+                            : `/negocio/mis-solicitudes/${sol.id}`;
+                          return (
+                            <motion.a
+                              key={sol.id || i}
+                              href={href}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.05 }}
+                              className="flex items-center gap-3 p-3 rounded-xl border border-[#E0F2F1] hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all group"
+                            >
+                              {logo ? (
+                                <img src={logo} alt={nombre} className="w-11 h-11 rounded-lg object-cover shrink-0 border border-[#E0F2F1]" />
+                              ) : (
+                                <div className="w-11 h-11 rounded-lg bg-[#E8F5E9] flex items-center justify-center shrink-0">
+                                  <FiMap size={18} className="text-[#66BB6A]" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-[#1A4D2E] truncate group-hover:text-[#0D601E]">{nombre}</p>
+                                {categoria && <p className="text-[11px] text-gray-400 truncate">{categoria}</p>}
+                              </div>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${estadoColor[estado] || "bg-gray-100 text-gray-500"}`}>
+                                {estadoLabel[estado] || estado}
+                              </span>
+                            </motion.a>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              ) : (
+                /* Vista para Turista - Próximos destinos */
+                (() => {
+                  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+                  const proximos = [...reservasHistorial]
+                    .filter((r: any) => {
+                      const f = new Date(r.fecha + 'T00:00:00'); f.setHours(0, 0, 0, 0);
+                      return f >= hoy && r.status !== 'cancelado' && r.status !== 'completado';
+                    })
+                    .sort((a: any, b: any) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+                    .slice(0, 3);
+
+                  if (proximos.length === 0) {
+                    return (
+                      <div className="relative group cursor-pointer" onClick={() => window.location.href = '/tours'}>
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#E8F5E9] to-white rounded-lg -z-10" />
+                        <div className="py-10 flex flex-col items-center text-center">
+                          <div className="w-14 h-14 bg-[#F1F8F6] rounded-xl shadow-sm flex items-center justify-center mb-3 border border-[#E0F2F1]">
+                            <FiMap size={24} className="text-[#66BB6A]" />
+                          </div>
+                          <h4 className="text-base font-semibold text-[#1A4D2E]">{t('exploreTours')}</h4>
+                          <p className="text-xs text-[#81C784] max-w-[200px] mt-1.5 mb-5 font-normal">
+                            {t('findPerfectTour')}
+                          </p>
+                          <button className="px-5 py-1.5 bg-[#3A5A40] text-white rounded-lg text-xs font-medium tracking-wide shadow-md hover:bg-[#2D4630]">
+                            {t('explore')}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {proximos.map((reserva: any, i: number) => {
+                        const fechaReserva = new Date(reserva.fecha + 'T00:00:00');
+                        fechaReserva.setHours(0, 0, 0, 0);
+                        const esHoy = fechaReserva.getTime() === hoy.getTime();
+                        return (
+                          <motion.div
+                            key={reserva.id || i}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            className="rounded-xl border border-[#E0F2F1] p-4 hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-[#1A4D2E] truncate">{reserva.guideName || 'Guía'}</p>
+                                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-[#6C8870]">
+                                  <span className="flex items-center gap-1">
+                                    <FiCalendar size={11} />
+                                    {fechaReserva.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <FiClock size={11} />
+                                    {reserva.duracion === 'completo' ? 'Día completo' : 'Medio día'}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <FiUsers size={11} />
+                                    {reserva.numPersonas} {reserva.numPersonas === 1 ? 'persona' : 'personas'}
+                                  </span>
+                                  {reserva.total != null && (
+                                    <span className="flex items-center gap-1">
+                                      <FiDollarSign size={11} />
+                                      ${reserva.total.toLocaleString('es-MX')} MXN
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-2 shrink-0">
+                                <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${esHoy ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
+                                  {esHoy ? 'En proceso' : 'Por empezar'}
+                                </span>
+                                {reserva.id && (
+                                  <button
+                                    onClick={() => setConfirmCancelId(reserva.id)}
+                                    disabled={cancelandoReservaId === reserva.id}
+                                    className="text-[10px] font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-0.5 rounded-full transition-colors disabled:opacity-50"
+                                  >
+                                    {cancelandoReservaId === reserva.id ? 'Cancelando...' : 'Cancelar'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()
+              )}
+            </motion.div>
+
+            {/* ── Historial de Reservas (visible para cualquier usuario que reserve, incluidos guías) ── */}
+            {(
+              reservasHistorial.length === 0 ? (
+                !esGuia ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
+                >
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
+                    <div className="w-12 h-12 bg-[#E8F5E9] rounded-full flex items-center justify-center mb-3">
+                      <FiCalendar size={20} className="text-[#66BB6A]" />
+                    </div>
+                    <p className="text-sm font-medium text-[#1A4D2E]">Sin historial aún</p>
+                    <p className="text-xs text-[#81C784] mt-1">Tus reservas completadas aparecerán aquí</p>
+                  </div>
+                </motion.div>
+                ) : null
+              ) : (
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  onClick={async () => {
+                    setShowHistorialModal(true);
+                    // Load existing ratings for completed bookings
+                    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+                    const completedIds = reservasHistorial
+                      .filter((r: any) => {
+                        const f = new Date(r.fecha + 'T00:00:00'); f.setHours(0,0,0,0);
+                        return (r.status === 'completado' || f < hoy) && r.status !== 'cancelado' && r.id;
+                      })
+                      .map((r: any) => r.id);
+                    const results = await Promise.allSettled(
+                      completedIds.map((id: string) =>
+                        fetch(`${API_BASE}/ratings/booking/${id}`).then(r => r.json()).then(d => ({ id, rating: d.rating || null }))
+                      )
+                    );
+                    const map: Record<string, any> = {};
+                    results.forEach(r => { if (r.status === 'fulfilled' && r.value.rating) map[r.value.id] = r.value.rating; });
+                    setBookingRatings(map);
+                  }}
+                  className="w-full bg-white rounded-2xl shadow-md border border-[#E0F2F1] p-5 text-left hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-11 h-11 bg-[#E8F5E9] rounded-xl flex items-center justify-center shrink-0">
+                        <FiCalendar size={20} className="text-[#2E7D32]" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-semibold text-[#1A4D2E]">Historial de Reservas</h3>
+                        <p className="text-[11px] text-[#81C784] mt-0.5">
+                          {reservasHistorial.length} {reservasHistorial.length === 1 ? 'reserva' : 'reservas'} · Ver todos los tours asistidos
+                        </p>
+                      </div>
+                    </div>
+                    <FiChevronRight size={18} className="text-[#81C784] group-hover:text-[#1A4D2E] transition-colors shrink-0" />
+                  </div>
+                  {(() => {
+                    const ultima = [...reservasHistorial].sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())[0];
+                    if (!ultima) return null;
+                    return (
+                      <div className="mt-3 pt-3 border-t border-[#E0F2F1] flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs text-[#6C8870]">
+                        <span className="flex items-center gap-1.5">
+                          <FiUser size={11} className="shrink-0" />
+                          {ultima.guideName || 'Guía'}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <FiCalendar size={11} />
+                          {new Date(ultima.fecha + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                        {ultima.total != null && (
+                          <span className="flex items-center gap-1.5">
+                            <FiDollarSign size={11} />
+                            ${ultima.total.toLocaleString('es-MX')} MXN
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </motion.button>
+              )
+            )}
+
+            {/* ── Sección de Mis Experiencias (historial de tours completados) ── */}
+            {esGuia && tipoGuia !== "empresa" && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1] overflow-hidden"
+              >
+                <div className="mb-6 flex justify-between items-end">
+                  <div>
+                    <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Experiencias</h3>
+                    <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
+                      Historial de tours completados
+                    </p>
+                  </div>
+                  <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded-full font-medium">
+                    {experiencias.length} completados
+                  </span>
+                </div>
+
+                {experiencias.length === 0 ? (
+                  <div className="py-10 flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-[#F1F8F6] rounded-xl flex items-center justify-center mb-3 border border-[#E0F2F1]">
+                      <FiMap size={20} className="text-[#A5D6A7]" />
+                    </div>
+                    <p className="text-sm font-medium text-[#1A4D2E] mb-1">Sin experiencias aún</p>
+                    <p className="text-[11px] text-[#81C784] max-w-[220px] font-normal">
+                      Una vez que hayas completado un tour, aparecerá aquí y será visible en tu perfil público.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {experiencias.map((exp: any, i: number) => {
+                      const tourTitulo = exp.tourTitulo || exp.titulo || "Tour";
+                      const tourFoto = exp.tourFoto || exp.fotoPrincipal || null;
+                      const fotosExp: string[] = exp.fotosExperiencia || [];
+                      const isEditing = editingExpId === exp.id;
+                      return (
+                        <motion.div
+                          key={exp.id || i}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className="rounded-xl border border-[#E0F2F1] overflow-hidden"
+                        >
+                          {/* Header row */}
+                          <div className="flex items-center gap-3 p-3 hover:bg-[#F7FBF7] transition-all">
+                            {tourFoto ? (
+                              <img src={tourFoto} alt={tourTitulo} className="h-12 w-12 rounded-xl object-cover shrink-0 border border-[#E0F2F1]" />
+                            ) : (
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9]">
+                                <FiMap size={16} className="text-[#66BB6A]" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-[#1A4D2E]">{tourTitulo}</p>
+                              <p className="text-[11px] text-gray-500">{exp.fecha || ""} {exp.horaInicio ? `· ${exp.horaInicio}` : ""}</p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-[#E8F5E9] px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32] mr-2">
+                              Completado
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (isEditing) {
+                                  setEditingExpId(null);
+                                  setEditExpNewFiles([]);
+                                  setEditExpDescripcion("");
+                                } else {
+                                  setEditingExpId(exp.id);
+                                  setEditExpTitulo(exp.tourTitulo || exp.titulo || "");
+                                  setEditExpDescripcion(exp.descripcionExperiencia || "");
+                                  setEditExpNewFiles([]);
+                                }
+                              }}
+                              className="shrink-0 p-2 rounded-lg bg-[#F1F8F6] hover:bg-[#E0F2F1] text-[#1A4D2E] transition-colors"
+                              title="Editar experiencia"
+                            >
+                              {isEditing ? <FiX size={14} /> : <FiEdit2 size={14} />}
+                            </button>
+                          </div>
+
+                          {/* Fotos existentes (preview) */}
+                          {!isEditing && fotosExp.length > 0 && (
+                            <div className="flex gap-1 px-3 pb-3">
+                              {fotosExp.map((src, fi) => (
+                                <div key={fi} className="relative h-20 w-20 rounded-lg overflow-hidden shrink-0">
+                                  <img src={src} alt="" className="w-full h-full object-cover" />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {!isEditing && exp.descripcionExperiencia && (
+                            <p className="px-3 pb-3 text-xs text-[#1A4D2E]/70 italic">{exp.descripcionExperiencia}</p>
+                          )}
+
+                          {/* Edit form */}
+                          {isEditing && (
+                            <div className="border-t border-[#E0F2F1] bg-[#FAFAF7] px-4 py-4 space-y-4">
+                              {/* Existing photos with delete */}
+                              {fotosExp.length > 0 && (
+                                <div>
+                                  <p className="text-[11px] font-semibold text-[#1A4D2E] mb-2 uppercase tracking-wide">Fotos actuales</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {fotosExp.map((src, fi) => (
+                                      <div key={fi} className="relative h-20 w-20 rounded-lg overflow-hidden shrink-0 group">
+                                        <img src={src} alt="" className="w-full h-full object-cover" />
+                                        <button
+                                          onClick={() => handleDeleteExpFoto(exp, src)}
+                                          className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center text-white rounded-lg"
+                                        >
+                                          <FiTrash2 size={16} />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* New photos */}
+                              {fotosExp.length + editExpNewFiles.length < 5 && (
+                                <div>
+                                  <p className="text-[11px] font-semibold text-[#1A4D2E] mb-2 uppercase tracking-wide">
+                                    Agregar fotos ({fotosExp.length + editExpNewFiles.length}/5)
+                                  </p>
+                                  <label className="flex items-center gap-2 cursor-pointer w-fit px-4 py-2 rounded-xl border-2 border-dashed border-[#A5D6A7] hover:border-[#1A4D2E] text-[#1A4D2E] text-xs font-medium transition-colors">
+                                    <FiCamera size={14} />
+                                    Seleccionar fotos
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      multiple
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const files = Array.from(e.target.files || []);
+                                        const remaining = 5 - fotosExp.length - editExpNewFiles.length;
+                                        setEditExpNewFiles((prev) => [...prev, ...files].slice(0, prev.length + remaining));
+                                      }}
+                                    />
+                                  </label>
+                                  {editExpNewFiles.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                      {editExpNewFiles.map((file, fi) => (
+                                        <div key={fi} className="relative h-20 w-20 rounded-lg overflow-hidden shrink-0 group">
+                                          <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
+                                          <button
+                                            onClick={() => setEditExpNewFiles((prev) => prev.filter((_, idx) => idx !== fi))}
+                                            className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center text-white rounded-lg"
+                                          >
+                                            <FiX size={16} />
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Tour title */}
+                              <div>
+                                <p className="text-[11px] font-semibold text-[#1A4D2E] mb-2 uppercase tracking-wide">Nombre del tour</p>
+                                <input
+                                  type="text"
+                                  value={editExpTitulo}
+                                  onChange={(e) => setEditExpTitulo(e.target.value)}
+                                  placeholder={exp.tourTitulo || exp.titulo || "Nombre del tour"}
+                                  className="w-full px-3 py-2 text-sm border border-[#E0F2F1] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] text-[#1A4D2E]"
+                                />
+                              </div>
+
+                              {/* Description */}
+                              <div>
+                                <p className="text-[11px] font-semibold text-[#1A4D2E] mb-2 uppercase tracking-wide">Descripción</p>
+                                <textarea
+                                  value={editExpDescripcion}
+                                  onChange={(e) => setEditExpDescripcion(e.target.value)}
+                                  rows={3}
+                                  placeholder="Cuéntale a los turistas cómo fue este tour..."
+                                  className="w-full px-3 py-2 text-sm border border-[#E0F2F1] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] resize-none text-[#1A4D2E]"
+                                />
+                              </div>
+
+                              {/* Save / Cancel */}
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  onClick={() => { setEditingExpId(null); setEditExpNewFiles([]); setEditExpDescripcion(""); setEditExpTitulo(""); }}
+                                  className="px-4 py-2 text-xs font-semibold rounded-xl border border-[#E0F2F1] text-[#1A4D2E] hover:bg-[#F1F8F6] transition-colors"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  onClick={() => handleSaveExperiencia(exp)}
+                                  disabled={savingExpId === exp.id}
+                                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-[#1A4D2E] text-white hover:bg-[#0D601E] disabled:opacity-60 transition-colors flex items-center gap-1.5"
+                                >
+                                  {savingExpId === exp.id ? (
+                                    <><span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />Guardando...</>
+                                  ) : (
+                                    <><FiCheck size={13} />Guardar</>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* ── Mis Calificaciones (solo guías) ── */}
+            {esGuia && guiaRatingStats && guiaRatingStats.totalCalificaciones > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-white rounded-2xl shadow-md border border-[#E0F2F1] overflow-hidden"
+              >
+                <div className="px-7 pt-7 pb-5">
+                  <h3 className="text-xl font-semibold text-[#1A4D2E] leading-none">Mis Calificaciones</h3>
+                  <p className="text-[11px] text-[#81C784] font-normal uppercase tracking-wider mt-1">
+                    Lo que los turistas dicen de ti
+                  </p>
+                </div>
+
+                {/* Score summary */}
+                <div className="mx-7 mb-5 rounded-2xl bg-linear-to-br from-[#1A4D2E] to-[#0D601E] p-5 text-white flex items-center gap-5">
+                  <div className="text-center shrink-0">
+                    <p className="text-5xl font-black leading-none">{guiaRatingStats.promedioEstrellas.toFixed(1)}</p>
+                    <div className="flex items-center justify-center gap-0.5 mt-2">
+                      {[1,2,3,4,5].map((s: number) => (
+                        <svg key={s} viewBox="0 0 20 20" className={`w-4 h-4 ${ s <= Math.round(guiaRatingStats.promedioEstrellas) ? 'text-amber-400' : 'text-white/30'}`} fill="currentColor">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                      ))}
+                    </div>
+                    <p className="text-xs text-white/60 mt-1">{guiaRatingStats.totalCalificaciones} {guiaRatingStats.totalCalificaciones === 1 ? 'reseña' : 'reseñas'}</p>
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    {[5,4,3,2,1].map((star: number) => {
+                      const count = guiaRatingStats.distribucion?.[`estrellas${star}`] || 0;
+                      const pct = guiaRatingStats.totalCalificaciones > 0 ? (count / guiaRatingStats.totalCalificaciones) * 100 : 0;
+                      return (
+                        <div key={star} className="flex items-center gap-2 text-xs">
+                          <span className="text-white/70 w-2 text-right">{star}</span>
+                          <svg viewBox="0 0 20 20" className="w-3 h-3 text-amber-400 shrink-0" fill="currentColor">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                          </svg>
+                          <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                            <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-white/50 w-5 text-right">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Reviews list */}
+                <div className="px-7 pb-7 space-y-3">
+                  {guiaRatingStats.ultimasCalificaciones?.map((r: any) => (
+                    <div key={r.id} className="rounded-xl border border-[#E0F2F1] p-4 bg-[#FAFAF7]">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-[#E8F5E9] flex items-center justify-center shrink-0">
+                            <FiUser size={14} className="text-[#1A4D2E]" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-[#1A4D2E]">{r.touristName}</p>
+                            <p className="text-[10px] text-gray-400">{new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          {[1,2,3,4,5].map((s: number) => (
+                            <svg key={s} viewBox="0 0 20 20" className={`w-3.5 h-3.5 ${s <= r.estrellas ? 'text-amber-400' : 'text-gray-200'}`} fill="currentColor">
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                            </svg>
+                          ))}
+                        </div>
+                      </div>
+                      {r.comentario && <p className="text-xs text-gray-600 italic">&ldquo;{r.comentario}&rdquo;</p>}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Historial de Reservas */}
+      <AnimatePresence>
+        {showHistorialModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-5"
+            onClick={() => setShowHistorialModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[68vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#E0F2F1] shrink-0">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold text-[#1A4D2E]">Historial de Reservas</h2>
+                  <p className="text-xs text-[#81C784] mt-0.5">
+                    {reservasHistorial.length} {reservasHistorial.length === 1 ? 'experiencia' : 'experiencias'} en total
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowHistorialModal(false)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full bg-[#F1F8F6] hover:bg-[#E0F2F1] transition-colors"
+                >
+                  <FiX size={18} className="text-[#1A4D2E]" />
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 p-4 space-y-3">
+                {[...reservasHistorial]
+                  .sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+                  .map((reserva: any, i: number) => {
+                    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+                    const fechaReserva = new Date(reserva.fecha + 'T00:00:00');
+                    fechaReserva.setHours(0, 0, 0, 0);
+                    let estadoDisplay: { label: string; color: string; bg: string };
+                    if (reserva.status === 'cancelado') {
+                      estadoDisplay = { label: 'Cancelado', color: 'text-red-600', bg: 'bg-red-50' };
+                    } else if (reserva.status === 'completado' || fechaReserva < hoy) {
+                      estadoDisplay = { label: 'Finalizado', color: 'text-[#2E7D32]', bg: 'bg-[#E8F5E9]' };
+                    } else if (fechaReserva.getTime() === hoy.getTime()) {
+                      estadoDisplay = { label: 'En proceso', color: 'text-amber-700', bg: 'bg-amber-50' };
+                    } else {
+                      estadoDisplay = { label: 'Por empezar', color: 'text-blue-700', bg: 'bg-blue-50' };
+                    }
+                    return (
+                      <motion.div
+                        key={reserva.id || i}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="rounded-xl border border-[#E0F2F1] p-4 hover:border-[#A5D6A7] hover:bg-[#F7FBF7] transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-[#1A4D2E] truncate">{reserva.guideName || 'Guía'}</p>
+                            <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-[#6C8870]">
+                              <span className="flex items-center gap-1">
+                                <FiCalendar size={11} />
+                                {fechaReserva.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <FiClock size={11} />
+                                {reserva.duracion === 'completo' ? 'Día completo' : 'Medio día'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <FiUsers size={11} />
+                                {reserva.numPersonas} {reserva.numPersonas === 1 ? 'persona' : 'personas'}
+                              </span>
+                              {reserva.total != null && (
+                                <span className="flex items-center gap-1">
+                                  <FiDollarSign size={11} />
+                                  ${reserva.total.toLocaleString('es-MX')} MXN
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full ${estadoDisplay.bg} ${estadoDisplay.color}`}>
+                            {estadoDisplay.label}
+                          </span>
+                        </div>
+
+                        {/* Calificar guía — solo tours finalizados */}
+                        {estadoDisplay.label === 'Finalizado' && reserva.id && (() => {
+                          const existing = bookingRatings[reserva.id];
+                          const draft = ratingDraft[reserva.id] || { estrellas: 0, comentario: '' };
+                          if (existing) {
+                            return (
+                              <div className="mt-3 pt-3 border-t border-[#E0F2F1]">
+                                <p className="text-[10px] font-bold text-[#81C784] uppercase mb-1.5">Tu calificaci\u00f3n</p>
+                                <div className="flex items-center gap-1 mb-1">
+                                  {[1,2,3,4,5].map(s => (
+                                    <svg key={s} viewBox="0 0 20 20" className={`w-4 h-4 ${s <= existing.estrellas ? 'text-amber-400' : 'text-gray-200'}`} fill="currentColor">
+                                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                    </svg>
+                                  ))}
+                                </div>
+                                {existing.comentario && <p className="text-xs text-[#6C8870] italic">&ldquo;{existing.comentario}&rdquo;</p>}
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="mt-3 pt-3 border-t border-[#E0F2F1]">
+                              <p className="text-[10px] font-bold text-[#81C784] uppercase mb-2">Califica tu experiencia</p>
+                              <div className="flex items-center gap-1 mb-2">
+                                {[1,2,3,4,5].map(s => (
+                                  <button
+                                    key={s}
+                                    onClick={() => setRatingDraft(prev => ({ ...prev, [reserva.id]: { ...draft, estrellas: s } }))}
+                                    className="focus:outline-none"
+                                    title={`${s} estrella${s > 1 ? 's' : ''}`}
+                                  >
+                                    <svg viewBox="0 0 20 20" className={`w-6 h-6 transition-colors ${s <= draft.estrellas ? 'text-amber-400' : 'text-gray-200 hover:text-amber-200'}`} fill="currentColor">
+                                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                    </svg>
+                                  </button>
+                                ))}
+                              </div>
+                              <textarea
+                                value={draft.comentario}
+                                onChange={e => setRatingDraft(prev => ({ ...prev, [reserva.id]: { ...draft, comentario: e.target.value } }))}
+                                placeholder="Comentario opcional..."
+                                rows={2}
+                                className="w-full text-xs text-black rounded-lg border border-[#E0F2F1] bg-white px-3 py-2 resize-none focus:outline-none focus:border-[#81C784] placeholder-gray-300"
+                              />
+                              <button
+                                disabled={draft.estrellas === 0 || submittingRating === reserva.id}
+                                onClick={async () => {
+                                  if (!draft.estrellas || !reserva.id) return;
+                                  setSubmittingRating(reserva.id);
+                                  try {
+                                    const token = localStorage.getItem('pitzbol_token');
+                                    const userLocal = JSON.parse(localStorage.getItem('pitzbol_user') || '{}');
+                                    const res = await fetch(`${API_BASE}/ratings/create`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                      body: JSON.stringify({ bookingId: reserva.id, guideId: reserva.guideId, touristId: userLocal.uid, estrellas: draft.estrellas, comentario: draft.comentario }),
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                      setBookingRatings(prev => ({ ...prev, [reserva.id]: { estrellas: draft.estrellas, comentario: draft.comentario } }));
+                                    }
+                                  } finally { setSubmittingRating(null); }
+                                }}
+                                className="mt-2 w-full py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 bg-[#1A4D2E] text-white hover:bg-[#0D601E] disabled:cursor-not-allowed"
+                              >
+                                {submittingRating === reserva.id ? 'Enviando...' : 'Enviar calificaci\u00f3n'}
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </motion.div>
+                    );
+                  })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Notificación de Aprobación como Guía */}
+      <AnimatePresence>
+        {mostrarNotificacionAprobado && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className="fixed bottom-8 right-8 z-50 max-w-md"
+          >
+            <div className="bg-gradient-to-r from-[#0D601E] to-[#1A4D2E] text-white rounded-[28px] shadow-2xl p-6 border-4 border-white">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                    className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center"
+                  >
+                    <FiCheck className="text-[#0D601E]" size={32} strokeWidth={3} />
+                  </motion.div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-black mb-2">¡Felicidades! 🎉</h3>
+                  <p className="text-white/90 text-sm font-medium leading-relaxed">
+                    Tu solicitud ha sido aprobada. Ahora eres un <span className="font-bold">Guía Oficial Pitzbol</span>. 
+                    Puedes comenzar a crear experiencias increíbles.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setMostrarNotificacionAprobado(false)}
+                  className="flex-shrink-0 text-white/60 hover:text-white transition-colors"
+                >
+                  <FiX size={24} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Wallet Modal */}
+      <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
+
+      {/* Modal de confirmación de cancelación de reserva */}
+      <AnimatePresence>
+        {confirmCancelId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full"
+            >
+              <div className="flex flex-col items-center text-center gap-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <FiAlertTriangle size={22} className="text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-800">¿Cancelar reserva?</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Esta acción no se puede deshacer. Si el tour estaba pagado, recibirás un reembolso.
+                  </p>
+                </div>
+                <div className="flex gap-3 w-full pt-1">
+                  <button
+                    onClick={() => setConfirmCancelId(null)}
+                    disabled={cancelandoReservaId !== null}
+                    className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors disabled:opacity-50"
+                  >
+                    Volver
+                  </button>
+                  <button
+                    onClick={() => cancelarReserva(confirmCancelId)}
+                    disabled={cancelandoReservaId !== null}
+                    className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {cancelandoReservaId ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      'Sí, cancelar'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal crear paquete (usa el formulario de tour) */}
+      {showTourModal && esGuia && tipoGuia !== "empresa" && (
+        <PersonaTourFormModal
+          guiaId={perfil?.id || ""}
+          guiaNombre={`${perfil?.nombre || ""} ${perfil?.apellido || ""}`.trim()}
+          guiaIdiomas={perfil?.idiomas || []}
+          onClose={() => setShowTourModal(false)}
+          onSuccess={(tour: any) => {
+            setTours((prev: any[]) => [tour, ...prev]);
+            setShowTourModal(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
