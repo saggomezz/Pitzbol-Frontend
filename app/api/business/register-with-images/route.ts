@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Aumentar el límite de tamaño para uploads de imágenes (logo + galería)
 export const maxDuration = 30;
 
-const BACKEND = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.pitzbol.me';
+const BACKEND = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://pitzbol-backend.onrender.com';
 
 export async function POST(req: NextRequest) {
   try {
