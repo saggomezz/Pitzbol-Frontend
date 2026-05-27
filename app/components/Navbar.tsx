@@ -213,7 +213,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             refreshFromStorage();
         };
         const handleGuideSubmission = (_e: Event) => {
-            console.log("�x}� Evento: guideSubmissionCompleted - Actualizando Navbar...");
+
             refreshFromStorage();
         };
         const handleBusinessRequestSubmitted = (_e: Event) => {
