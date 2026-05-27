@@ -43,12 +43,10 @@ export function useChatSocket({ userId, userType, enabled = true }: UseChatSocke
     });
 
     socketRef.current.on("connect", () => {
-      console.log("Socket conectado para notificaciones");
       setIsConnected(true);
     });
 
     socketRef.current.on("disconnect", () => {
-      console.log("Socket desconectado");
       setIsConnected(false);
     });
 

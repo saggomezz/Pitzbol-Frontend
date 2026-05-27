@@ -51,8 +51,7 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
-          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(self)' },
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(self), payment=(self), usb=(), bluetooth=()' },
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
@@ -66,6 +65,11 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: https:",
               "font-src 'self' https://fonts.gstatic.com",
               `connect-src ${connectSrc}`,
+              // worker-src needed for PWA service workers and TensorFlow.js WASM workers
+              "worker-src 'self' blob:",
+              // manifest-src needed for PWA manifest.json
+              "manifest-src 'self'",
+              "media-src 'self' https://res.cloudinary.com blob:",
               "frame-src 'self' https://js.stripe.com https://www.openstreetmap.org",
               "frame-ancestors 'none'",
               "base-uri 'self'",

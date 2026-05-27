@@ -50,6 +50,7 @@ export default function BookTourPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [userChecked, setUserChecked] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
 
   // Paquetes del guía
   const [paquetes, setPaquetes] = useState<PaqueteInfo[]>([]);
@@ -192,12 +193,21 @@ export default function BookTourPage() {
       if (data.success) {
         // Redirigir al pago
         router.push(`/tours/pago/${data.bookingId}`);
+      } else if (response.status === 409 && data.code === 'TOUR_FULL') {
+        const disponibles = data.disponibles ?? 0;
+        setBookingError(
+          disponibles === 0
+            ? `Este tour está completo para la fecha seleccionada. Por favor elige otra fecha.`
+            : `Capacidad insuficiente. Solo quedan ${disponibles} plaza${disponibles !== 1 ? 's' : ''} disponible${disponibles !== 1 ? 's' : ''}. Reduce el número de personas.`
+        );
+      } else if (response.status === 409) {
+        setBookingError('El guía ya tiene una reserva en esa fecha y hora. Por favor elige otra fecha u horario.');
       } else {
-        alert("Error al crear la reserva: " + (data.message || "Error desconocido"));
+        setBookingError(data.message || 'Error al crear la reserva. Inténtalo de nuevo.');
       }
     } catch (error) {
       console.error("Error al crear reserva:", error);
-      alert("Error al crear la reserva");
+      setBookingError('Error de conexión. Verifica tu internet e inténtalo de nuevo.');
     } finally {
       setSubmitting(false);
     }
@@ -290,7 +300,7 @@ export default function BookTourPage() {
                           </div>
                           <button
                             type="button"
-                            onClick={() => setPaqueteSeleccionado(null)}
+                            onClick={() => { setPaqueteSeleccionado(null); setBookingError(null); }}
                             className="self-end text-gray-400 hover:text-red-500 transition-colors p-1 shrink-0 sm:self-start"
                             aria-label="Quitar paquete"
                           >
@@ -304,7 +314,7 @@ export default function BookTourPage() {
                           <button
                             key={paq.id}
                             type="button"
-                            onClick={() => setPaqueteSeleccionado(paq)}
+                            onClick={() => { setPaqueteSeleccionado(paq); setBookingError(null); }}
                             className="text-left w-full border-2 border-gray-200 hover:border-[#1A4D2E] hover:bg-[#F6F0E6]/50 rounded-xl p-4 transition-all overflow-hidden"
                           >
                             <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
@@ -337,7 +347,7 @@ export default function BookTourPage() {
               <input
                 type="date"
                 value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
+                onChange={(e) => { setFecha(e.target.value); setBookingError(null); }}
                 min={new Date().toISOString().split("T")[0]}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A4D2E] focus:border-transparent"
                 style={{ colorScheme: "light" }}
@@ -425,6 +435,25 @@ export default function BookTourPage() {
                 </ul>
               </div>
             </div>
+
+            {/* Error de reserva */}
+            {bookingError && (
+              <div className="bg-red-50 border border-red-300 rounded-xl p-4 flex items-start gap-3">
+                <FiAlertCircle className="text-red-600 mt-0.5 shrink-0" size={20} />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-red-800">No se pudo crear la reserva</p>
+                  <p className="text-sm text-red-700 mt-0.5">{bookingError}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBookingError(null)}
+                  className="text-red-400 hover:text-red-600 shrink-0"
+                  aria-label="Cerrar"
+                >
+                  <FiX size={18} />
+                </button>
+              </div>
+            )}
 
             {/* Botones */}
             <div className="flex gap-4">

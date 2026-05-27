@@ -192,7 +192,6 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
       });
 
       socket.on("connect", () => {
-        console.log("Socket conectado para notificaciones");
         setIsConnected(true);
 
         // Obtener conteo inicial de mensajes no leídos
@@ -200,7 +199,6 @@ export function useMessageNotifications({ userId, userType, enabled = true }: Us
       });
 
       socket.on("disconnect", () => {
-        console.log("Socket desconectado");
         setIsConnected(false);
       });
 
