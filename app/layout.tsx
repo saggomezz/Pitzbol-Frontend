@@ -10,7 +10,9 @@ import Footer from "./components/Footer";
 import InstallPWAPrompt from "./components/InstallPWAPrompt";
 import LocationPermissionModal from "./components/LocationPermissionModal";
 import Navbar from "./components/Navbar";
+import ServerWakingScreen from "./components/ServerWakingScreen";
 import { PWAInstallProvider } from "./context/PWAInstallContext";
+import { ServerStatusProvider } from "./context/ServerStatusContext";
 import "./globals.css";
 import { ensureFaceApiReady } from "./initTF";
 const PublishBusinessFlow = dynamic(() => import("./components/PublishBusinessFlow"), { ssr: false });
@@ -157,6 +159,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {messages ? (
           <PWAInstallProvider>
             <NextIntlClientProvider locale={locale} messages={messages}>
+            <ServerStatusProvider>
+            <ServerWakingScreen />
             <Navbar
               onOpenAuth={() => { setPendingRole("turista"); setIsAuthOpen(true); }}
               onOpenAuthAsGuide={() => { setPendingRole("guia"); setIsAuthOpen(true); }}
@@ -229,6 +233,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </AnimatePresence>
             <LocationPermissionModal />
 
+            </ServerStatusProvider>
             </NextIntlClientProvider>
           </PWAInstallProvider>
         ) : (
