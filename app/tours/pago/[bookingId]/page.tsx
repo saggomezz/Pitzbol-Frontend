@@ -341,10 +341,12 @@ export default function TourPaymentPage() {
   useEffect(() => {
     const stored = localStorage.getItem("pitzbol_user");
     if (!stored) {
-      alert("Debes iniciar sesión");
-      router.push("/");
-      return;
+      router.replace("/?login=1");
     }
+    // Redirect when session expires mid-page
+    const onExpired = () => router.replace("/?login=1");
+    window.addEventListener("pitzbol:auth-expired", onExpired);
+    return () => window.removeEventListener("pitzbol:auth-expired", onExpired);
   }, [router]);
 
   useEffect(() => {
@@ -357,6 +359,12 @@ export default function TourPaymentPage() {
         const bookingResponse = await fetchWithAuth(
           `${BACKEND_URL}/api/bookings/${bookingId}`
         );
+
+        if (bookingResponse.status === 401) {
+          router.replace("/?login=1");
+          return;
+        }
+
         const bookingData = await bookingResponse.json();
 
         if (!bookingData.success) {

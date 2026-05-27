@@ -13,17 +13,17 @@ const HEALTH_CHECK_TIMEOUT_MS = 5000;   // 5 s sin respuesta → servidor dormid
 const POLL_INTERVAL_MS = 5000;          // reintentar cada 5 s mientras duerme
 const PATIENCE_BEFORE_SCREEN_MS = 4000; // mostrar pantalla si no responde en 4 s
 
-/** Hace un GET al proxy /api/auth/me sin token.
- *  Cualquier respuesta HTTP (incluso 401/403) = servidor despierto.
+/** GET /api/health — returns 200 { ok: true } with no auth required.
+ *  Qualquier respuesta 2xx = servidor despierto.
  *  Timeout / 523 / 502 / 504 = servidor dormido. */
 async function pingBackend(): Promise<boolean> {
   const controller = new AbortController();
   const tid = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT_MS);
   try {
-    const res = await fetch("/api/auth/me", {
+    const res = await fetch("/api/health", {
       method: "GET",
       signal: controller.signal,
-      headers: { "x-health-check": "1", "Cache-Control": "no-cache" },
+      headers: { "Cache-Control": "no-cache" },
     });
     clearTimeout(tid);
     // 523 = Cloudflare "origin unreachable" / VPS offline
