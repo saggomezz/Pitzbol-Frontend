@@ -187,8 +187,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
             const parsedUser = JSON.parse(storedUser);
             if (parsedUser.fotoPerfil) return;
             try {
-                const resp = await fetch(`${API_BASE}/perfil/foto-perfil`, {
-                    headers: { Authorization: `Bearer ${token}` },
+                const resp = await fetchWithAuth(`${API_BASE}/perfil/foto-perfil`, {
                     credentials: "include",
                 });
                 if (!resp.ok) return;

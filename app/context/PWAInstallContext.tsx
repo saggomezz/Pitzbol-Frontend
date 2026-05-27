@@ -74,10 +74,16 @@ export function PWAInstallProvider({ children }: { children: ReactNode }) {
 
     // Android / Chrome: capturar beforeinstallprompt
     const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      // Only call preventDefault() when we intend to show our own banner.
+      // If the user has permanently dismissed it, skip preventDefault so the
+      // browser does not log a "Banner not shown" warning.
       if (!never && !recentlyDismissed) {
+        e.preventDefault();
+        setDeferredPrompt(e as BeforeInstallPromptEvent);
         setTimeout(() => setShowBanner(true), 3000);
+      } else {
+        // Still capture the event so the manual "Install" button can work later
+        setDeferredPrompt(e as BeforeInstallPromptEvent);
       }
     };
 

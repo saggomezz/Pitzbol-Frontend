@@ -435,9 +435,6 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         return;
       }
       
-      console.log('📝 Response status:', response.status);
-      console.log('📝 Response data:', data);
-
       if (response.ok) {
         // El backend ya normaliza todos los campos, usar directamente
         const userRole = data.user.role || "turista";

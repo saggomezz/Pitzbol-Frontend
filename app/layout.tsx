@@ -13,6 +13,8 @@ import Navbar from "./components/Navbar";
 import ServerWakingScreen from "./components/ServerWakingScreen";
 import { PWAInstallProvider } from "./context/PWAInstallContext";
 import { ServerStatusProvider } from "./context/ServerStatusContext";
+import { ToastProvider, _registerImperativeToast, useToast } from "./context/ToastContext";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./globals.css";
 import { ensureFaceApiReady } from "./initTF";
 const PublishBusinessFlow = dynamic(() => import("./components/PublishBusinessFlow"), { ssr: false });
@@ -30,13 +32,20 @@ const roboto = Roboto({ variable: "--font-roboto", subsets: ["latin"], weight: [
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 const jockey = Jockey_One({ variable: "--font-jockey", subsets: ["latin"], weight: "400" });
-const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], weight: ["300"] });
+const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], weight: ["300"], preload: false });
 
 function getRoleFromStorage(): string {
   try {
     const u = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
     return u.role || u.rol || u["03_rol"] || "";
   } catch { return ""; }
+}
+
+/** Registers the imperative toast handle so non-component code can call showToast(). */
+function ToastBridge() {
+  const { toast } = useToast();
+  useEffect(() => { _registerImperativeToast(toast); }, [toast]);
+  return null;
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -157,6 +166,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${jockey.variable} ${jetbrains.variable} ${roboto.variable} antialiased bg-[#FDFCF9]`}>
         {messages ? (
+          <ToastProvider>
+          <ToastBridge />
           <PWAInstallProvider>
             <NextIntlClientProvider locale={locale} messages={messages}>
             <ServerStatusProvider>
@@ -177,7 +188,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
 
             <main className="relative z-10 min-h-screen">
-              {children}
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
             </main>
 
             <Footer />
@@ -236,6 +249,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </ServerStatusProvider>
             </NextIntlClientProvider>
           </PWAInstallProvider>
+          </ToastProvider>
         ) : (
           <div className="flex items-center justify-center min-h-screen">
             <div className="text-center">Cargando...</div>
