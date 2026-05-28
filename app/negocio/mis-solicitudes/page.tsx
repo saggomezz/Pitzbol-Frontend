@@ -267,9 +267,13 @@ export default function MisSolicitudesPage() {
         exit={{ opacity: 0, scale: 0.9 }}
         transition={{ delay: index * 0.04 }}
         layout
-        className={`bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group border-2 border-transparent ${
+        className={`bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group border-2 border-transparent cursor-pointer ${
           kind === "activo" ? "hover:border-emerald-300" : "hover:border-[#0D601E]/20"
         }`}
+        onClick={() => router.push(targetHref)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); router.push(targetHref); } }}
+        role="button"
+        tabIndex={0}
       >
         <div className="relative h-32 bg-gradient-to-br from-[#0D601E]/5 to-[#1A4D2E]/10 flex items-center justify-center overflow-hidden">
           {logo ? (

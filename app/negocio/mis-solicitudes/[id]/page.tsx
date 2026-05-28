@@ -17,6 +17,9 @@ import {
   FiArchive,
   FiImage,
   FiShare2,
+  FiEdit2,
+  FiTrash2,
+  FiRotateCcw,
 } from "react-icons/fi";
 import { fetchWithAuth } from "../../../../lib/fetchWithAuth";
 
@@ -218,6 +221,9 @@ export default function MiSolicitudDetallePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [procesando, setProcesando] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [actionMsg, setActionMsg] = useState<{ tipo: "success" | "error"; texto: string } | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -244,6 +250,63 @@ export default function MiSolicitudDetallePage() {
     }
     if (id) load();
   }, [id]);
+
+  const handleArchive = async () => {
+    setProcesando(true);
+    setActionMsg(null);
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/business/${id}/archive`, { method: "PATCH" });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setActionMsg({ tipo: "success", texto: "Negocio archivado correctamente" });
+        setData((prev: any) => prev ? { ...prev, estado: "archivado" } : prev);
+      } else {
+        setActionMsg({ tipo: "error", texto: json.message || "Error al archivar" });
+      }
+    } catch {
+      setActionMsg({ tipo: "error", texto: "Error de red al archivar" });
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    setProcesando(true);
+    setActionMsg(null);
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/business/${id}/reactivate`, { method: "PATCH" });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setActionMsg({ tipo: "success", texto: "Negocio reactivado correctamente" });
+        setData((prev: any) => prev ? { ...prev, estado: "aprobado" } : prev);
+      } else {
+        setActionMsg({ tipo: "error", texto: json.message || "Error al reactivar" });
+      }
+    } catch {
+      setActionMsg({ tipo: "error", texto: "Error de red al reactivar" });
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setConfirmDelete(false);
+    setProcesando(true);
+    setActionMsg(null);
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/business/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        router.push("/negocio/mis-solicitudes");
+      } else {
+        const json = await res.json().catch(() => ({}));
+        setActionMsg({ tipo: "error", texto: json.message || "Error al eliminar" });
+        setProcesando(false);
+      }
+    } catch {
+      setActionMsg({ tipo: "error", texto: "Error de red al eliminar" });
+      setProcesando(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -558,11 +621,85 @@ export default function MiSolicitudDetallePage() {
               </motion.div>
             )}
 
-            {/* Acciones */}
+            {/* Acciones del propietario */}
+            {(status === "aprobado" || status === "archivado" || status === "APPROVED" || status === "ARCHIVED") && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="mb-8 rounded-3xl border-2 border-[#1A4D2E]/18 bg-white shadow-sm p-6"
+              >
+                <div className="mb-4 pb-3 border-b border-[#1A4D2E]/12">
+                  <p className="text-xs uppercase tracking-wide font-bold text-[#769C7B] mb-1">Acciones</p>
+                  <h3 className="text-xl font-black text-[#1A4D2E]">
+                    {(status === "aprobado" || status === "APPROVED") ? "Gestionar negocio activo" : "Gestionar negocio archivado"}
+                  </h3>
+                  <p className="text-sm text-[#4F6757] mt-1">
+                    {(status === "aprobado" || status === "APPROVED")
+                      ? "Puedes editar los datos de tu negocio o archivarlo temporalmente."
+                      : "Puedes reactivar tu negocio o eliminarlo permanentemente."}
+                  </p>
+                </div>
+
+                {actionMsg && (
+                  <div className={`mb-4 px-4 py-3 rounded-2xl text-sm font-semibold ${
+                    actionMsg.tipo === "success"
+                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      : "bg-red-50 text-red-800 border border-red-200"
+                  }`}>
+                    {actionMsg.texto}
+                  </div>
+                )}
+
+                {(status === "aprobado" || status === "APPROVED") && (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <button
+                      onClick={() => router.push(`/negocio/mis-solicitudes/${id}/editar`)}
+                      disabled={procesando}
+                      className="inline-flex items-center justify-center gap-2 bg-[#EEF4EF] hover:bg-[#E4EFE5] text-[#1A4D2E] font-bold py-3.5 px-6 rounded-2xl transition-all border border-[#BFD0C2] shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <FiEdit2 size={18} />
+                      Editar negocio
+                    </button>
+                    <button
+                      onClick={handleArchive}
+                      disabled={procesando}
+                      className="inline-flex items-center justify-center gap-2 bg-[#F6F0E6] hover:bg-[#EFE5D6] text-[#1A4D2E] font-bold py-3.5 px-6 rounded-2xl transition-all border border-[#D6CDBF] shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <FiArchive size={18} />
+                      {procesando ? "Procesando..." : "Archivar negocio"}
+                    </button>
+                  </div>
+                )}
+
+                {(status === "archivado" || status === "ARCHIVED") && (
+                  <div className="grid sm:grid-cols-[1fr_auto] gap-3">
+                    <button
+                      onClick={handleReactivate}
+                      disabled={procesando}
+                      className="inline-flex items-center justify-center gap-2 bg-[#0D601E] hover:bg-[#094d18] text-white font-bold py-3.5 px-6 rounded-2xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <FiRotateCcw size={18} />
+                      {procesando ? "Procesando..." : "Reactivar negocio"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      disabled={procesando}
+                      className="inline-flex items-center justify-center gap-2 bg-[#8B0000] hover:bg-[#6B0000] text-white font-bold p-3.5 rounded-2xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Eliminar permanentemente"
+                    >
+                      <FiTrash2 size={20} />
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Navegación */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
+              transition={{ delay: 0.75 }}
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
               <button
@@ -571,7 +708,7 @@ export default function MiSolicitudDetallePage() {
               >
                 <FiArrowLeft /> Mis Solicitudes
               </button>
-              {status === "aprobado" && (
+              {(status === "aprobado" || status === "APPROVED") && (
                 <button
                   onClick={() => {
                     if (navigator.share)
@@ -634,6 +771,49 @@ export default function MiSolicitudDetallePage() {
         </AnimatePresence>
         </div>
       </div>
+
+      {/* Confirm delete modal */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setConfirmDelete(false)}
+            className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md"
+            >
+              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiTrash2 className="text-red-600" size={32} />
+              </div>
+              <h2 className="text-2xl font-black text-[#1A4D2E] text-center mb-2">¿Eliminar negocio?</h2>
+              <p className="text-gray-600 text-center text-sm mb-6">
+                Esta acción es <strong>permanente</strong> y no se puede deshacer. El negocio y todas sus imágenes serán eliminados.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="flex-1 px-4 py-3 rounded-2xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="flex-1 px-4 py-3 rounded-2xl bg-[#8B0000] hover:bg-[#6B0000] text-white font-bold transition-colors"
+                >
+                  Eliminar definitivamente
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Lightbox */}
       <AnimatePresence>
