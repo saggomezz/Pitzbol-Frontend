@@ -1,6 +1,7 @@
 "use client";
 import ChatModal from "@/app/components/ChatModal";
 import { getBackendOrigin } from "@/lib/backendUrl";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { usePitzbolUser } from "@/lib/usePitzbolUser";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -434,7 +435,7 @@ export default function GuidePublicProfilePage() {
         createdAt: new Date().toISOString(),
       };
 
-      const response = await fetch(`/api/bookings/create`, {
+      const response = await fetchWithAuth(`/api/bookings/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

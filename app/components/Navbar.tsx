@@ -157,8 +157,12 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         };
     }, [user?.uid, user?.role]);
 
-    // Determinar tipo de usuario para notificaciones
-    const isGuide = user?.role === "guide" || user?.role === "guia" || user?.guide_status === "aprobado";
+    // Determinar tipo de usuario para notificaciones.
+    // Un guía solo cuenta como tal si su solicitud está aprobada — pendientes o
+    // rechazados NO deben ver el panel de guía.
+    const isGuide =
+        (user?.role === "guide" || user?.role === "guia") &&
+        user?.guide_status === "aprobado";
     const userType = isGuide ? "guide" : "tourist";
 
     // Hook de notificaciones de mensajes
@@ -396,7 +400,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                 <Link href="/favoritos"><FiHeart size={20} className="md:w-[22px] md:h-[22px] hover:text-[#F00808] transition-colors" title={t('favorites')} /></Link>
                 
                 {/* Panel de Notificaciones */}
-                {user && <NotificationsPanel userId={user.uid} />}
+                {user && <NotificationsPanel userId={user.uid} userType={isGuide ? "guide" : "tourist"} />}
 <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 z-[110] hover:text-[#F00808] transition-colors relative">
                     {isMenuOpen ? <FiX size={22} className="md:w-[24px] md:h-[24px]" /> : <FiMenu size={22} className="md:w-[24px] md:h-[24px]" />}
                 </button>
@@ -510,12 +514,17 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                             ) : role === "guia" ? (
                                 <>
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('guidePanel')}</p>
+                                    <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group w-full text-left hover:text-[#F00808] transition-colors">
+                                        <FiUser className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
+                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('myProfile')}</span>
+                                    </Link>
                                     <Link href="/guide/solicitudes" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group w-full text-left hover:text-[#F00808] transition-colors">
                                         <FiClock className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
                                         <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('tourRequests')}</span>
                                     </Link>
-                                    <Link href="/guide/solicitudes" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left hover:text-[#F00808] transition-colors">
-                                        <FiCreditCard /> {t('myPayments')}
+                                    <Link href="/perfil/pagos" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium group w-full text-left hover:text-[#F00808] transition-colors">
+                                        <FiCreditCard className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
+                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('myPayments')}</span>
                                     </Link>
                                     <div className="h-[1px] bg-gray-100 my-3 mx-2" />
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('opportunities')}</p>

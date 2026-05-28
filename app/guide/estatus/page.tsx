@@ -35,13 +35,15 @@ export default function GuideEstatusPage() {
   useEffect(() => {
     if (!user) return;
 
-    async function fetchGuideRequest() {
-      setLoading(true);
-      setError(null);
+    let cancelled = false;
+
+    async function fetchGuideRequest(isFirstLoad = false) {
+      if (isFirstLoad) setLoading(true);
+      if (isFirstLoad) setError(null);
       try {
         const token = localStorage.getItem("pitzbol_token");
         if (!token) {
-          setError("No estás autenticado. Por favor inicia sesión.");
+          if (isFirstLoad) setError("No estás autenticado. Por favor inicia sesión.");
           return;
         }
 
@@ -55,28 +57,43 @@ export default function GuideEstatusPage() {
           }
         );
 
+        if (cancelled) return;
+
         if (!response.ok) {
-          if (response.status === 404) {
-            setError("No encontramos ninguna solicitud de guía para tu cuenta.");
-          } else {
-            setError("Error al cargar el estatus de tu solicitud.");
+          if (isFirstLoad) {
+            if (response.status === 404) {
+              setError("No encontramos ninguna solicitud de guía para tu cuenta.");
+            } else {
+              setError("Error al cargar el estatus de tu solicitud.");
+            }
+            setGuideRequest(null);
           }
-          setGuideRequest(null);
           return;
         }
 
         const data = await response.json();
+        if (cancelled) return;
         setGuideRequest(data);
       } catch (err) {
         console.error("Error fetching guide request:", err);
-        setError("Error de conexión. Intenta más tarde.");
-        setGuideRequest(null);
+        if (cancelled) return;
+        if (isFirstLoad) {
+          setError("Error de conexión. Intenta más tarde.");
+          setGuideRequest(null);
+        }
       } finally {
-        setLoading(false);
+        if (isFirstLoad && !cancelled) setLoading(false);
       }
     }
 
-    fetchGuideRequest();
+    fetchGuideRequest(true);
+    // Re-consultar cada 30s para detectar aprobación/rechazo sin recargar
+    const intervalId = window.setInterval(() => fetchGuideRequest(false), 30000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
   }, [user]);
 
   if (!user)

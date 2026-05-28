@@ -28,6 +28,7 @@ interface Notification {
 
 interface NotificationsPanelProps {
   userId?: string;
+  userType?: "tourist" | "guide" | "business";
 }
 
 const BACKEND_URL = getSocketBackendOrigin();
@@ -380,7 +381,7 @@ function resolveNotifLink(notif: Notification, userRole?: string): string | unde
   return enlace;
 }
 
-export default function NotificationsPanel({ userId }: NotificationsPanelProps) {
+export default function NotificationsPanel({ userId, userType = "tourist" }: NotificationsPanelProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [notificaciones, setNotificaciones] = useState<Notification[]>([]);
@@ -829,7 +830,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
         auth: {
           token,
           userId,
-          userType: "tourist",
+          userType,
         },
       });
 
@@ -850,7 +851,7 @@ export default function NotificationsPanel({ userId }: NotificationsPanelProps) 
           ...(typeof socket.auth === "object" ? socket.auth : {}),
           token: refreshedToken,
           userId,
-          userType: "tourist",
+          userType,
         } as any;
 
         if (!socket.connected) {

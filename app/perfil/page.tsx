@@ -16,7 +16,6 @@ import { getBackendOrigin } from "@/lib/backendUrl";
 
 import WalletModal from "@/app/components/WalletModal";
 import PersonaTourFormModal from "@/app/components/PersonaTourFormModal";
-import PaqueteFormModal from "@/app/components/PaqueteFormModal";
 
 const API_BASE = '/api';
 
