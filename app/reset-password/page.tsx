@@ -42,8 +42,6 @@ function ResetPasswordPageInner() {
   ];
 
   const handleReset = async () => {
-    console.log("oobCode recibido:", oobCode);
-    console.log("URL completa:", window.location.href);
     if (!oobCode) {
       setStatus({ type: 'error', msg: "El código de recuperación es inválido o ha expirado." });
       return;

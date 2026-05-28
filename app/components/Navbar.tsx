@@ -331,6 +331,105 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
         window.location.href = "/";
     };
 
+    const renderBusinessActions = (canManageBusinesses: boolean) => (
+        <div
+            ref={businessTriggerRef}
+            className="relative"
+            onMouseEnter={canManageBusinesses ? openBusinessSubmenuDesktop : undefined}
+            onMouseLeave={canManageBusinesses ? scheduleBusinessSubmenuClose : undefined}
+        >
+            <button
+                onClick={() => {
+                    if (canManageBusinesses && typeof window !== "undefined" && window.innerWidth < 768) {
+                        setIsBusinessSubmenuOpen((prev) => !prev);
+                        return;
+                    }
+                    setIsMenuOpen(false);
+                    user ? onOpenBusiness() : onOpenAuthAsBusiness();
+                }}
+                className="flex items-center justify-between gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group transition-all hover:bg-[#F6F0E6] hover:text-[#F00808]"
+            >
+                <span className="flex items-center gap-3 group-hover:text-[#F00808] transition-colors">
+                    <FiBriefcase className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
+                    <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('publishBusiness')}</span>
+                </span>
+                {canManageBusinesses && (
+                    <motion.span
+                        animate={{ rotate: isBusinessSubmenuOpen ? 180 : 0, x: isBusinessSubmenuOpen ? -2 : 0 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className="text-[#0D601E] group-hover:text-[#F00808]"
+                    >
+                        <FiChevronLeft className="hidden md:block" />
+                        <FiChevronDown className="md:hidden" />
+                    </motion.span>
+                )}
+            </button>
+
+            <AnimatePresence>
+                {isBusinessSubmenuOpen && canManageBusinesses && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0, x: -12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -12 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            style={{ top: businessSubmenuPosition.top, left: businessSubmenuPosition.left }}
+                            onMouseEnter={clearBusinessCloseTimeout}
+                            onMouseLeave={scheduleBusinessSubmenuClose}
+                            className="hidden md:block fixed w-60 z-[200] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+                        >
+                            <button
+                                onClick={() => {
+                                    setIsMenuOpen(false);
+                                    user ? onOpenBusiness() : onOpenAuthAsBusiness();
+                                }}
+                                className="flex items-center gap-3 p-3 text-sm font-medium w-full text-left transition-all hover:bg-[#F6F0E6] hover:text-[#F00808]"
+                            >
+                                <FiPlusCircle className="text-[#0D601E]" />
+                                <span>{t('publishBusiness')}</span>
+                            </button>
+                            <Link
+                                href="/negocio/mis-solicitudes"
+                                onClick={() => setIsMenuOpen(false)}
+                                className="flex items-center gap-3 p-3 text-sm font-medium w-full text-left transition-all hover:bg-[#F6F0E6] hover:text-[#F00808]"
+                            >
+                                <FiShoppingBag className="text-[#0D601E]" />
+                                <span>Gestionar mis negocios</span>
+                            </Link>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: -4, height: 0 }}
+                            animate={{ opacity: 1, y: 0, height: "auto" }}
+                            exit={{ opacity: 0, y: -4, height: 0 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            className="md:hidden bg-[#F6F0E6] rounded-2xl overflow-hidden"
+                        >
+                            <button
+                                onClick={() => {
+                                    setIsMenuOpen(false);
+                                    user ? onOpenBusiness() : onOpenAuthAsBusiness();
+                                }}
+                                className="flex items-center gap-3 p-3 text-sm font-medium w-full text-left transition-all hover:bg-white hover:text-[#F00808]"
+                            >
+                                <FiPlusCircle className="text-[#0D601E]" />
+                                <span>{t('publishBusiness')}</span>
+                            </button>
+                            <Link
+                                href="/negocio/mis-solicitudes"
+                                onClick={() => setIsMenuOpen(false)}
+                                className="flex items-center gap-3 p-3 text-sm font-medium w-full text-left transition-all hover:bg-white hover:text-[#F00808]"
+                            >
+                                <FiShoppingBag className="text-[#0D601E]" />
+                                <span>Gestionar mis negocios</span>
+                            </Link>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+
     return (
         <nav className="flex justify-between items-center bg-[#F6F0E6] px-3 md:px-8 h-16 md:h-20 lg:h-24 sticky top-0 z-[100] shadow-sm text-[#1A4D2E]">
             {/* LOGO Y NOMBRE */}
@@ -528,26 +627,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     </Link>
                                     <div className="h-[1px] bg-gray-100 my-3 mx-2" />
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('opportunities')}</p>
-                                    <button
-                                        onClick={() => {
-                                            setIsMenuOpen(false);
-                                            user ? onOpenBusiness() : onOpenAuthAsBusiness();
-                                        }}
-                                        className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group hover:bg-[#F6F0E6] hover:text-[#F00808] transition-all"
-                                    >
-                                        <FiBriefcase className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
-                                        <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('publishBusiness')}</span>
-                                    </button>
-                                    {hasBusinessRequests && (
-                                        <Link
-                                            href="/negocio/mis-solicitudes"
-                                            onClick={() => setIsMenuOpen(false)}
-                                            className="flex items-center gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group hover:bg-[#F6F0E6] hover:text-[#F00808] transition-all"
-                                        >
-                                            <FiShoppingBag className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
-                                            <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">Gestionar mis negocios</span>
-                                        </Link>
-                                    )}
+                                    {renderBusinessActions(shouldShowBusinessManager)}
                                 </>
                             ) : (
                                 <>
@@ -573,102 +653,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                             <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('becomeGuide')}</span>
                                         </button>
                                     )}
-                                    <div
-                                        ref={businessTriggerRef}
-                                        className="relative"
-                                        onMouseEnter={shouldShowBusinessManager ? openBusinessSubmenuDesktop : undefined}
-                                        onMouseLeave={shouldShowBusinessManager ? scheduleBusinessSubmenuClose : undefined}
-                                    >
-                                        <button
-                                            onClick={() => {
-                                                if (shouldShowBusinessManager && typeof window !== "undefined" && window.innerWidth < 768) {
-                                                    setIsBusinessSubmenuOpen((prev) => !prev);
-                                                    return;
-                                                }
-                                                setIsMenuOpen(false);
-                                                user ? onOpenBusiness() : onOpenAuthAsBusiness();
-                                            }}
-                                            className="flex items-center justify-between gap-3 p-3 rounded-2xl text-sm font-medium w-full text-left group transition-all hover:bg-[#F6F0E6] hover:text-[#F00808]"
-                                        >
-                                            <span className="flex items-center gap-3 group-hover:text-[#F00808] transition-colors">
-                                                <FiBriefcase className="text-[#0D601E] group-hover:text-[#F00808] transition-colors" />
-                                                <span className="text-[#1A4D2E] group-hover:text-[#F00808] transition-colors">{t('publishBusiness')}</span>
-                                            </span>
-                                            {shouldShowBusinessManager && (
-                                                <motion.span
-                                                    animate={{ rotate: isBusinessSubmenuOpen ? 180 : 0, x: isBusinessSubmenuOpen ? -2 : 0 }}
-                                                    transition={{ duration: 0.2, ease: "easeInOut" }}
-                                                    className="text-[#0D601E] group-hover:text-[#F00808]"
-                                                >
-                                                    <FiChevronLeft className="hidden md:block" />
-                                                    <FiChevronDown className="md:hidden" />
-                                                </motion.span>
-                                            )}
-                                        </button>
-
-                                        <AnimatePresence>
-                                            {isBusinessSubmenuOpen && shouldShowBusinessManager && (
-                                                <>
-                                                    <motion.div
-                                                        initial={{ opacity: 0, x: -12 }}
-                                                        animate={{ opacity: 1, x: 0 }}
-                                                        exit={{ opacity: 0, x: -12 }}
-                                                        transition={{ duration: 0.2, ease: "easeOut" }}
-                                                        style={{ top: businessSubmenuPosition.top, left: businessSubmenuPosition.left }}
-                                                        onMouseEnter={clearBusinessCloseTimeout}
-                                                        onMouseLeave={scheduleBusinessSubmenuClose}
-                                                        className="hidden md:block fixed w-60 z-[200] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
-                                                    >
-                                                        <button
-                                                            onClick={() => {
-                                                                setIsMenuOpen(false);
-                                                                user ? onOpenBusiness() : onOpenAuthAsBusiness();
-                                                            }}
-                                                            className="flex items-center gap-3 p-3 text-sm font-medium w-full text-left transition-all hover:bg-[#F6F0E6] hover:text-[#F00808]"
-                                                        >
-                                                            <FiPlusCircle className="text-[#0D601E]" />
-                                                            <span>{t('publishBusiness')}</span>
-                                                        </button>
-                                                        <Link
-                                                            href="/negocio/mis-solicitudes"
-                                                            onClick={() => setIsMenuOpen(false)}
-                                                            className="flex items-center gap-3 p-3 text-sm font-medium w-full text-left transition-all hover:bg-[#F6F0E6] hover:text-[#F00808]"
-                                                        >
-                                                            <FiShoppingBag className="text-[#0D601E]" />
-                                                            <span>Gestionar mis negocios</span>
-                                                        </Link>
-                                                    </motion.div>
-
-                                                    <motion.div
-                                                        initial={{ opacity: 0, y: -4, height: 0 }}
-                                                        animate={{ opacity: 1, y: 0, height: "auto" }}
-                                                        exit={{ opacity: 0, y: -4, height: 0 }}
-                                                        transition={{ duration: 0.2, ease: "easeOut" }}
-                                                        className="md:hidden bg-[#F6F0E6] rounded-2xl overflow-hidden"
-                                                    >
-                                                        <button
-                                                            onClick={() => {
-                                                                setIsMenuOpen(false);
-                                                                user ? onOpenBusiness() : onOpenAuthAsBusiness();
-                                                            }}
-                                                            className="flex items-center gap-3 p-3 text-sm font-medium w-full text-left transition-all hover:bg-white hover:text-[#F00808]"
-                                                        >
-                                                            <FiPlusCircle className="text-[#0D601E]" />
-                                                            <span>{t('publishBusiness')}</span>
-                                                        </button>
-                                                        <Link
-                                                            href="/negocio/mis-solicitudes"
-                                                            onClick={() => setIsMenuOpen(false)}
-                                                            className="flex items-center gap-3 p-3 text-sm font-medium w-full text-left transition-all hover:bg-white hover:text-[#F00808]"
-                                                        >
-                                                            <FiShoppingBag className="text-[#0D601E]" />
-                                                            <span>Gestionar mis negocios</span>
-                                                        </Link>
-                                                    </motion.div>
-                                                </>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                    {renderBusinessActions(shouldShowBusinessManager)}
                                 </>
                             )}
                             <div className="h-[1px] bg-gray-100 my-3 mx-2" />

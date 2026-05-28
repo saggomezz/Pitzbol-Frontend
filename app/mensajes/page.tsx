@@ -29,14 +29,9 @@ export default function MensajesPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Determinar si es guía o turista
-  const isGuide = user?.role === "guide" || user?.role === "guia" || user?.guide_status === "aprobado";
+  const isGuide = (user?.role === "guide" || user?.role === "guia") && user?.guide_status === "aprobado";
   const isTourist = user?.role === "tourist" || user?.role === "turista" || (!isGuide && user);
 
-  // Debug logs
-  console.log("User data:", user);
-  console.log("User role:", user?.role);
-  console.log("Is Guide:", isGuide);
-  console.log("Is Tourist:", isTourist);
   
   const handleChatDeleted = () => {
     // Cerrar el modal

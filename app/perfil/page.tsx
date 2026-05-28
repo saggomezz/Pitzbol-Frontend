@@ -190,12 +190,10 @@ export default function PerfilDetallado() {
         )
       );
 
-      const token = localStorage.getItem("pitzbol_token");
-      const res = await fetch(`${API_BASE}/bookings/${exp.id}/experiencia`, {
+      const res = await fetchWithAuth(`${API_BASE}/bookings/${exp.id}/experiencia`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           descripcion: editExpDescripcion,
@@ -232,13 +230,11 @@ export default function PerfilDetallado() {
   };
 
   const handleDeleteExpFoto = async (exp: any, fotoUrl: string) => {
-    const token = localStorage.getItem("pitzbol_token");
     try {
-      const res = await fetch(`${API_BASE}/bookings/${exp.id}/experiencia/foto`, {
+      const res = await fetchWithAuth(`${API_BASE}/bookings/${exp.id}/experiencia/foto`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ fotoUrl }),
       });
@@ -308,13 +304,10 @@ export default function PerfilDetallado() {
     setGuardando(true);
     setErrorTarifa("");
     try {
-      const token = localStorage.getItem("pitzbol_token");
       const backendUrl = getBackendOrigin();
-      if (!token) throw new Error("No hay sesión activa");
-      const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+      const response = await fetchWithAuth(`${backendUrl}/api/perfil/update-profile`, {
         method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tarifa: valor }),
       });
       const data = await response.json();
@@ -363,13 +356,8 @@ export default function PerfilDetallado() {
 
       // Refrescar datos desde Firestore via /api/auth/me
       try {
-        const token = localStorage.getItem("pitzbol_token");
-        if (token) {
-          const meRes = await fetch(`${API_BASE}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-            credentials: "include",
-          });
-          if (meRes.ok) {
+        const meRes = await fetchWithAuth(`${API_BASE}/auth/me`, {});
+        if (meRes.ok) {
             const meData = await meRes.json();
             if (meData.success && meData.user) {
               // Mezclar datos frescos: solo sobreescribir campos no vacíos
@@ -391,7 +379,6 @@ export default function PerfilDetallado() {
               localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
             }
           }
-        }
       } catch {}
 
       const initialEspecialidades =
@@ -406,17 +393,10 @@ export default function PerfilDetallado() {
       const rol = userLocal["03_rol"] || userLocal.role || "turista";
       const guideStatus = userLocal["16_status"] || userLocal.guide_status || "ninguno";
       
-      console.log("👤 Estado del usuario:");
-      console.log("   - Rol:", rol);
-      console.log("   - Guide Status:", guideStatus);
-      console.log("   - UID:", userLocal.uid);
-      
       if (rol === "guia" || guideStatus === "aprobado") {
-        console.log("✅ Usuario es guía VERIFICADO - Aparecerá en /tours");
+        // guía verificado
       } else if (guideStatus === "en_revision" || guideStatus === "pendiente") {
-        console.log("⏳ Usuario es guía EN REVISIÓN - NO aparecerá en /tours hasta ser aprobado");
-      } else {
-        console.log("ℹ️ Usuario es turista - NO aparecerá en /tours");
+        // en revisión
       }
       
       setPerfil({
@@ -442,11 +422,7 @@ export default function PerfilDetallado() {
       setDescripcionTemp(descripcionInicial);
 
       try {
-        const tokenHeader = localStorage.getItem("pitzbol_token");
-        const estadoResponse = await fetch(`${API_BASE}/admin/verificar-estado/${userLocal.uid}`, {
-          credentials: 'include',
-          headers: tokenHeader ? { 'Authorization': `Bearer ${tokenHeader}` } : undefined,
-        });
+        const estadoResponse = await fetchWithAuth(`${API_BASE}/admin/verificar-estado/${userLocal.uid}`, {});
         
         if (estadoResponse.ok) {
           const estadoData = await estadoResponse.json();
@@ -503,11 +479,7 @@ export default function PerfilDetallado() {
         // Cargar paquetes publicados del guía (tours activos)
         if (rol === "guia" && resolvedGuideType !== "empresa") {
           try {
-            const token = localStorage.getItem("pitzbol_token");
-            const toursRes = await fetch(`${API_BASE}/tours/guia/${userLocal.uid}`, {
-              credentials: "include",
-              headers: token ? { Authorization: `Bearer ${token}` } : {},
-            });
+            const toursRes = await fetchWithAuth(`${API_BASE}/tours/guia/${userLocal.uid}`, {});
             if (toursRes.ok) {
               const toursData = await toursRes.json();
               if (toursData.success) setTours(toursData.tours || []);
@@ -529,11 +501,7 @@ export default function PerfilDetallado() {
         // Cargar historial de experiencias completadas del guía
         if (rol === "guia" && resolvedGuideType !== "empresa") {
           try {
-            const token = localStorage.getItem("pitzbol_token");
-            const expRes = await fetch(`${API_BASE}/bookings/guia/${userLocal.uid}/experiencias`, {
-              credentials: "include",
-              headers: token ? { Authorization: `Bearer ${token}` } : {},
-            });
+            const expRes = await fetchWithAuth(`${API_BASE}/bookings/guia/${userLocal.uid}/experiencias`, {});
             if (expRes.ok) {
               const expData = await expRes.json();
               if (expData.success) setExperiencias(expData.experiencias || []);
@@ -565,11 +533,8 @@ export default function PerfilDetallado() {
 
         // Cargar foto de perfil desde el endpoint correcto (JWT del backend)
         try {
-          const tokenHeader2 = localStorage.getItem("pitzbol_token");
-          const fotoResponse = await fetch(`${API_BASE}/perfil/foto-perfil`, {
+          const fotoResponse = await fetchWithAuth(`${API_BASE}/perfil/foto-perfil`, {
             method: 'GET',
-            credentials: 'include',
-            headers: tokenHeader2 ? { 'Authorization': `Bearer ${tokenHeader2}` } : undefined,
           });
           if (fotoResponse.ok) {
             const fotoData = await fotoResponse.json();
@@ -663,20 +628,13 @@ export default function PerfilDetallado() {
     setExito("");
 
     try {
-      const token = localStorage.getItem("pitzbol_token");
       const backendUrl = getBackendOrigin();
       const telefonoCompleto = `${ladaTemp} ${numeroTemp}`;
 
-      if (!token) {
-        throw new Error(t('noSession'));
-      }
-
-      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
+      const response = await fetchWithAuth(`${backendUrl}/api/auth/update-profile`, {
         method: "PATCH",
-        credentials: 'include',
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           telefono: telefonoCompleto,
@@ -741,25 +699,12 @@ export default function PerfilDetallado() {
     setExito("");
 
     try {
-      const token = localStorage.getItem("pitzbol_token");
       const backendUrl = getBackendOrigin();
 
-      if (!token) {
-        throw new Error(t('noSession'));
-      }
-
-      console.log("📤 Enviando actualización de nombre:", {
-        nombre: nombreTemp.trim(),
-        apellido: apellidoTemp.trim(),
-        url: `${backendUrl}/api/perfil/update-profile`
-      });
-
-      const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+      const response = await fetchWithAuth(`${backendUrl}/api/perfil/update-profile`, {
         method: "PATCH",
-        credentials: 'include',
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           nombre: nombreTemp.trim(),
@@ -768,7 +713,6 @@ export default function PerfilDetallado() {
       });
 
       const data = await response.json();
-      console.log("📥 Respuesta del servidor:", data);
 
       if (!response.ok) {
         throw new Error(data.msg || "Error al actualizar nombre");
@@ -789,7 +733,6 @@ export default function PerfilDetallado() {
       localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
 
       // Emitir evento para actualizar otros componentes
-      console.log('📤 Emitiendo eventos: authStateChanged y guideProfileUpdated');
       window.dispatchEvent(new Event('authStateChanged'));
       window.dispatchEvent(new Event('guideProfileUpdated'));
 
@@ -824,21 +767,12 @@ export default function PerfilDetallado() {
     setExito("");
 
     try {
-      const token = localStorage.getItem("pitzbol_token");
       const backendUrl = getBackendOrigin();
 
-      if (!token) {
-        throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
-      }
-
-      console.log("📝 Enviando descripción al backend:", { descripcion: descripcionTemp });
-
-      const response = await fetch(`${backendUrl}/api/auth/update-profile`, {
+      const response = await fetchWithAuth(`${backendUrl}/api/auth/update-profile`, {
         method: "PATCH",
-        credentials: 'include',
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           descripcion: descripcionTemp,
@@ -846,8 +780,6 @@ export default function PerfilDetallado() {
       });
 
       const data = await response.json();
-
-      console.log("📥 Respuesta del servidor:", { status: response.status, data });
 
       if (!response.ok) {
         throw new Error(data.msg || `${t('errorServer')}: ${response.statusText}`);
@@ -860,8 +792,6 @@ export default function PerfilDetallado() {
       userLocal.descripcion = descripcionTemp;
       localStorage.setItem("pitzbol_user", JSON.stringify(userLocal));
 
-      // Emitir evento para actualizar lista de guías
-      console.log('📤 Emitiendo evento: guideProfileUpdated (descripción)');
       window.dispatchEvent(new Event('guideProfileUpdated'));
 
       setExito(t('descriptionUpdated'));
@@ -870,7 +800,6 @@ export default function PerfilDetallado() {
       setTimeout(() => setExito(""), 3000);
 
     } catch (err: any) {
-      console.error("❌ Error al guardar descripción:", err);
       setErrorDescripcion(err.message || "Error al guardar la descripción");
     } finally {
       setGuardando(false);
@@ -898,11 +827,9 @@ export default function PerfilDetallado() {
 
   const handleDeleteTour = async (tourId: string) => {
     if (!window.confirm("¿Eliminar esta experiencia? Esta acción no se puede deshacer.")) return;
-    const token = localStorage.getItem("pitzbol_token");
     try {
-      const res = await fetch(`${API_BASE}/tours/${tourId}`, {
+      const res = await fetchWithAuth(`${API_BASE}/tours/${tourId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setTours(prev => prev.filter(t => t.id !== tourId));
     } catch {}
@@ -912,14 +839,12 @@ export default function PerfilDetallado() {
     const trimmed = editingTourTitle.trim();
     if (!trimmed) return;
     setSavingTourTitle(true);
-    const token = localStorage.getItem("pitzbol_token");
     const backendUrl = getBackendOrigin();
     try {
       const fd = new FormData();
       fd.append("titulo", trimmed);
-      const res = await fetch(`${backendUrl}/api/paquetes/${tourId}`, {
+      const res = await fetchWithAuth(`${backendUrl}/api/paquetes/${tourId}`, {
         method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
         body: fd,
       });
       if (res.ok) {
@@ -932,12 +857,10 @@ export default function PerfilDetallado() {
 
   const handleDeletePaquete = async (paqId: string) => {
     if (!window.confirm("¿Eliminar este paquete? Esta acción no se puede deshacer.")) return;
-    const token = localStorage.getItem("pitzbol_token");
     const backendUrl = getBackendOrigin();
     try {
-      const res = await fetch(`${backendUrl}/api/paquetes/${paqId}`, {
+      const res = await fetchWithAuth(`${backendUrl}/api/paquetes/${paqId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setPaquetes(prev => prev.filter(p => p.id !== paqId));
     } catch {}
@@ -958,29 +881,17 @@ export default function PerfilDetallado() {
       let response: Response;
 
       if (esGuiaSave) {
-        // Guías: endpoint específico de guías (requiere rol guía)
-        const token = localStorage.getItem("pitzbol_token");
         const backendUrl = getBackendOrigin();
-        response = await fetch(`${backendUrl}/api/guides/update`, {
+        response = await fetchWithAuth(`${backendUrl}/api/guides/update`, {
           method: 'PUT',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid: userLocal.uid, categorias: especialidadesTemp }),
         });
       } else {
-        // Turistas: endpoint general de perfil
-        const token = localStorage.getItem("pitzbol_token");
         const backendUrl = getBackendOrigin();
-        response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+        response = await fetchWithAuth(`${backendUrl}/api/perfil/update-profile`, {
           method: 'PATCH',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ especialidades: especialidadesTemp }),
         });
       }
@@ -996,7 +907,6 @@ export default function PerfilDetallado() {
         }));
         window.dispatchEvent(new Event("storage"));
         if (esGuiaSave) {
-          console.log('📤 Emitiendo evento: guideProfileUpdated (especialidades)');
           window.dispatchEvent(new Event('guideProfileUpdated'));
         }
         setExito(t('changesSaved'));
@@ -1021,12 +931,9 @@ export default function PerfilDetallado() {
     setErrorEspecialidades("");
   };
 
-  const agregarIdioma = (idioma: string) => {
+    const agregarIdioma = (idioma: string) => {
     setErrorIdiomas("");
     const idiomaCapitalizado = idioma.charAt(0).toUpperCase() + idioma.slice(1).toLowerCase().trim();
-    
-    console.log("➕ Agregando idioma:", idiomaCapitalizado);
-    console.log("📋 Idiomas actuales en temp:", idiomasTemp);
     
     if (idiomasTemp.includes(idiomaCapitalizado)) {
       setErrorIdiomas(t('languageAlreadyAdded'));
@@ -1038,7 +945,6 @@ export default function PerfilDetallado() {
     }
     setIdiomasTemp((prev: string[]) => {
       const nuevosIdiomas = [...prev, idiomaCapitalizado];
-      console.log("✅ Nuevos idiomas en temp:", nuevosIdiomas);
       return nuevosIdiomas;
     });
   };
@@ -1054,31 +960,17 @@ export default function PerfilDetallado() {
     setErrorIdiomas("");
 
     try {
-      const token = localStorage.getItem("pitzbol_token");
       const backendUrl = getBackendOrigin();
-      
-      if (!token) {
-        throw new Error(t('noSession'));
-      }
 
-      console.log("📤 Guardando idiomas:", idiomasTemp);
-      console.log("🔑 Token presente:", !!token);
-      console.log("🌐 Backend URL:", backendUrl);
-
-      const response = await fetch(`${backendUrl}/api/perfil/update-profile`, {
+      const response = await fetchWithAuth(`${backendUrl}/api/perfil/update-profile`, {
         method: 'PATCH',
-        credentials: 'include',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          idiomas: idiomasTemp 
-        })
+        body: JSON.stringify({ idiomas: idiomasTemp })
       });
 
       const data = await response.json();
-      console.log("📥 Respuesta del servidor:", data);
 
       if (!response.ok) {
         throw new Error(data.error || data.msg || "Error al actualizar idiomas");
@@ -1100,12 +992,6 @@ export default function PerfilDetallado() {
         idiomas: nuevosIdiomas 
       }));
       
-      console.log("✅ Idiomas guardados exitosamente");
-      console.log("📊 Estado actualizado - idiomas:", nuevosIdiomas);
-      console.log("📊 Estado idiomas actual:", idiomas);
-      
-      // Emitir evento para actualizar lista de guías
-      console.log('📤 Emitiendo evento: guideProfileUpdated (idiomas)');
       window.dispatchEvent(new Event('guideProfileUpdated'));
       
       setExito(t('languagesUpdated'));
@@ -1177,7 +1063,7 @@ export default function PerfilDetallado() {
     formData.append('foto', file);
 
     try {
-      console.log('📤 Enviando foto al servidor...');
+      // enviar foto al servidor
       const apiBase = API_BASE;
       const response = await fetchWithAuth(`${apiBase}/perfil/foto-perfil`, {
         method: 'POST',
@@ -2772,11 +2658,10 @@ export default function PerfilDetallado() {
                                   if (!draft.estrellas || !reserva.id) return;
                                   setSubmittingRating(reserva.id);
                                   try {
-                                    const token = localStorage.getItem('pitzbol_token');
                                     const userLocal = JSON.parse(localStorage.getItem('pitzbol_user') || '{}');
-                                    const res = await fetch(`${API_BASE}/ratings/create`, {
+                                    const res = await fetchWithAuth(`${API_BASE}/ratings/create`, {
                                       method: 'POST',
-                                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                      headers: { 'Content-Type': 'application/json' },
                                       body: JSON.stringify({ bookingId: reserva.id, guideId: reserva.guideId, touristId: userLocal.uid, estrellas: draft.estrellas, comentario: draft.comentario }),
                                     });
                                     const data = await res.json();
