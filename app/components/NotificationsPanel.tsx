@@ -391,7 +391,20 @@ export default function NotificationsPanel({ userId, userType = "tourist" }: Not
   const [selectedDeletedNotification, setSelectedDeletedNotification] = useState<Notification | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
+  const isMountedRef = useRef(false);
   const notificationsRef = useRef<Notification[]>([]);
+
+  const setLoadingSafely = useCallback((value: boolean) => {
+    if (!isMountedRef.current) return;
+    setCargando(value);
+  }, []);
+
+  const setNotificationsSafely = useCallback((next: Notification[]) => {
+    notificationsRef.current = next;
+    if (!isMountedRef.current) return;
+    setNotificaciones(next);
+    setNoLeidas(next.filter((n) => !n.leido).length);
+  }, []);
 
   const getNotificationBucketId = useCallback(() => {
     if (!userId) return "";
@@ -463,6 +476,14 @@ export default function NotificationsPanel({ userId, userType = "tourist" }: Not
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     notificationsRef.current = notificaciones;
   }, [notificaciones]);
 
@@ -476,7 +497,7 @@ export default function NotificationsPanel({ userId, userType = "tourist" }: Not
   const cargarNotificacionesDelBackend = async () => {
     const bucketId = getNotificationBucketId();
     if (!bucketId) return;
-    setCargando(true);
+    setLoadingSafely(true);
 
     const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 25000) => {
       const controller = new AbortController();
@@ -535,7 +556,7 @@ export default function NotificationsPanel({ userId, userType = "tourist" }: Not
     };
 
     try {
-      setCargando(true);
+      setLoadingSafely(true);
       const user = localStorage.getItem('pitzbol_user') ? JSON.parse(localStorage.getItem('pitzbol_user') || '{}') : null;
 
       // Obtener notificaciones del usuario con fallback de endpoint + reintentos exponenciales.
@@ -574,7 +595,7 @@ export default function NotificationsPanel({ userId, userType = "tourist" }: Not
       } else if (response.status === 401) {
         console.warn('⚠ Token expirado (401), recargando desde localStorage');
         cargarNotificacionesLocal();
-        setCargando(false);
+        setLoadingSafely(false);
         return;
       } else {
         console.warn(`⚠ Respuesta no ok (${response.status} ${response.statusText})`);
@@ -686,8 +707,7 @@ export default function NotificationsPanel({ userId, userType = "tourist" }: Not
         new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
       );
 
-      setNotificaciones(notificacionesCombinadas);
-      setNoLeidas(notificacionesCombinadas.filter((n) => !n.leido).length);
+      setNotificationsSafely(notificacionesCombinadas);
 
       // Actualizar localStorage
       localStorage.setItem(key, JSON.stringify(notificacionesCombinadas));
@@ -696,7 +716,7 @@ export default function NotificationsPanel({ userId, userType = "tourist" }: Not
       // Cargar solo del localStorage si el backend falla
       cargarNotificacionesLocal();
     } finally {
-      setCargando(false);
+      setLoadingSafely(false);
     }
   };
 
@@ -708,8 +728,7 @@ export default function NotificationsPanel({ userId, userType = "tourist" }: Not
     const key = `pitzbol_notifications_${bucketId}`;
     const stored = localStorage.getItem(key);
     const notifs: Notification[] = stored ? JSON.parse(stored) : [];
-    setNotificaciones(notifs);
-    setNoLeidas(notifs.filter((n) => !n.leido).length);
+    setNotificationsSafely(notifs);
   };
 
   // Efecto inicial para cargar notificaciones
@@ -861,9 +880,7 @@ export default function NotificationsPanel({ userId, userType = "tourist" }: Not
 
       socket.on("new-notification", (notif: Notification) => {
         const updated = mergeIncomingNotification(notificationsRef.current, notif);
-        notificationsRef.current = updated;
-        setNotificaciones(updated);
-        setNoLeidas(updated.filter((n) => !n.leido).length);
+        setNotificationsSafely(updated);
 
         const bucketId = getNotificationBucketId();
         if (bucketId) {
@@ -1120,6 +1137,8 @@ export default function NotificationsPanel({ userId, userType = "tourist" }: Not
     marcarComoLeida(notif.id);
 
     const backendNavigation = await resolveBusinessNavigationFromBackend(notif, isAdmin);
+    if (!isMountedRef.current) return;
+
     if (backendNavigation.deletedNotification) {
       const deletedNotif = backendNavigation.deletedNotification;
       setSelectedDeletedNotification(deletedNotif);
@@ -1128,8 +1147,7 @@ export default function NotificationsPanel({ userId, userType = "tourist" }: Not
       if (userId) {
         const existing = notificationsRef.current;
         const merged = mergeIncomingNotification(existing, deletedNotif);
-        notificationsRef.current = merged;
-        setNotificaciones(merged);
+        setNotificationsSafely(merged);
         persistDeletedBusinessNotifications(userId, merged);
       }
       return;
@@ -1202,6 +1220,7 @@ export default function NotificationsPanel({ userId, userType = "tourist" }: Not
       const shouldResolveById = !targetLink || targetLink.startsWith("/negocio/mis-solicitudes/");
       if (shouldResolveById) {
         const publicLink = await resolvePublicBusinessLinkById(notif);
+        if (!isMountedRef.current) return;
         if (publicLink) {
           targetLink = publicLink;
         }

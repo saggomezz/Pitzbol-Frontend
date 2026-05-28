@@ -404,7 +404,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
 <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 z-[110] hover:text-[#F00808] transition-colors relative">
                     {isMenuOpen ? <FiX size={22} className="md:w-[24px] md:h-[24px]" /> : <FiMenu size={22} className="md:w-[24px] md:h-[24px]" />}
                 </button>
-                {/* MEN�a DESPLEGABLE */}
+                {/* MENU DESPLEGABLE */}
                 <AnimatePresence>
                     {isMenuOpen && (
                         <>
@@ -497,7 +497,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                 </>
                             )}
                             <div className="h-[1px] bg-gray-100 my-3 mx-2" />
-                            {/* SECCI�N DINÁMICA POR ROL */}
+                            {/* SECCION DINAMICA POR ROL */}
                             {role === "admin" ? (
                                 <>
                                     <p className="text-[10px] uppercase tracking-widest text-[#769C7B] font-bold px-3 mb-2">{t('administration')}</p>
@@ -742,7 +742,7 @@ export default function Navbar({ onOpenAuth, onOpenGuide, onOpenBusiness, onOpen
                                     onClick={clearNotification}
                                     className="text-xs text-[#0D601E] hover:underline mt-2 inline-block font-semibold"
                                 >
-                                    Ver mensaje � 
+                                    Ver mensaje
                                 </Link>
                             </div>
                         </div>
