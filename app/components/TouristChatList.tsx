@@ -37,11 +37,7 @@ export default function TouristChatList({ touristId, onSelectChat }: TouristChat
       setLoading(true);
       setError(null);
       const token = localStorage.getItem("pitzbol_token");
-      
-      console.log("🔄 Fetching chats for tourist:", touristId);
-      console.log("Token exists:", !!token);
-      console.log("Backend URL:", BACKEND_URL);
-      
+
       if (!token) {
         console.warn("⚠️ No token found, user might not be authenticated");
         setError("No se encontró token de autenticación");
