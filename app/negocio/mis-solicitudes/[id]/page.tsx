@@ -18,6 +18,7 @@ import {
   FiImage,
   FiShare2,
 } from "react-icons/fi";
+import { fetchWithAuth } from "../../../../lib/fetchWithAuth";
 
 const API_BASE = '/api';
 
@@ -222,10 +223,8 @@ export default function MiSolicitudDetallePage() {
     async function load() {
       setLoading(true);
       try {
-        const token = localStorage.getItem("pitzbol_token");
-        const res = await fetch(`${API_BASE}/business/by-id/${id}`, {
+        const res = await fetchWithAuth(`${API_BASE}/business/by-id/${id}`, {
           credentials: "include",
-          headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {
           setError("No se pudo cargar la solicitud.");

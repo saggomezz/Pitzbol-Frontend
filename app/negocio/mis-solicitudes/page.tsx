@@ -7,18 +7,12 @@ import { usePitzbolUser } from "../../../lib/usePitzbolUser";
 import { fetchWithAuth } from "../../../lib/fetchWithAuth";
 import {
   FaPlus, FaStore, FaSearch, FaCheckCircle, FaTimesCircle, FaHourglassHalf,
-  FaArchive, FaEnvelope, FaPhone, FaMapMarkerAlt, FaList,
+  FaArchive, FaEnvelope, FaPhone, FaMapMarkerAlt, FaList, FaTrash, FaEye, FaEdit, FaBoxOpen,
 } from "react-icons/fa";
 import { MdBusiness, MdCategory, MdImage } from "react-icons/md";
 import { FiArrowLeft } from "react-icons/fi";
 
 const API_BASE = '/api';
-const APPROVED_TOAST_PENDING_KEY = "pitzbol_approved_business_toast_pending_v2";
-
-type ApprovedToastPendingPayload = {
-  businessId?: string;
-  businessName?: string;
-};
 
 type TabKey = "todas" | "pendiente" | "aprobado" | "rechazado" | "archivado";
 
@@ -55,6 +49,8 @@ export default function MisSolicitudesPage() {
   const [businessView, setBusinessView] = useState<"activos" | "archivados">("activos");
   const [selectedMetric, setSelectedMetric] = useState<"activos" | TabKey>("todas");
   const [searchQuery, setSearchQuery] = useState("");
+  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   const scrollToSection = (id: "activos" | "solicitudes") => {
     if (typeof window === "undefined") return;
@@ -184,37 +180,71 @@ export default function MisSolicitudesPage() {
     }`;
   };
 
+  const handleArchive = async (sol: any) => {
+    const id = sol.id;
+    setActionLoading((prev) => ({ ...prev, [id]: true }));
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/business/${id}/archive`, { method: "PATCH" });
+      if (res.ok) {
+        await fetchSolicitudes();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Error al archivar el negocio");
+      }
+    } catch {
+      alert("Error de red al archivar");
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const handleReactivate = async (sol: any) => {
+    const id = sol.id;
+    setActionLoading((prev) => ({ ...prev, [id]: true }));
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/business/${id}/reactivate`, { method: "PATCH" });
+      if (res.ok) {
+        await fetchSolicitudes();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Error al reactivar el negocio");
+      }
+    } catch {
+      alert("Error de red al reactivar");
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setConfirmDelete(null);
+    setActionLoading((prev) => ({ ...prev, [id]: true }));
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/business/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        await fetchSolicitudes();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Error al eliminar el negocio");
+      }
+    } catch {
+      alert("Error de red al eliminar");
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [id]: false }));
+    }
+  };
+
   const getCardNavigationHref = (sol: any, kind: "activo" | "solicitud") => {
     const estado = String(sol?.estado || "").toLowerCase();
-    const businessName = sol?.business?.name;
     const businessCategory = sol?.business?.category || "";
 
     if (kind === "activo" && estado === "aprobado") {
       if (businessCategory === "Transporte / Traslados / Tours") {
         return `/negocio/transportes/${sol.id}`;
       }
-      if (businessName) {
-        return `/informacion/${encodeURIComponent(String(businessName))}?origen=gestion-negocios-activo`;
-      }
     }
 
     return `/negocio/mis-solicitudes/${sol.id}`;
-  };
-
-  const shouldTriggerApprovedToast = (sol: any, kind: "activo" | "solicitud") => {
-    const estado = String(sol?.estado || "").toLowerCase();
-    return kind === "activo" && estado === "aprobado";
-  };
-
-  const navigateFromCard = (sol: any, kind: "activo" | "solicitud", targetHref: string) => {
-    if (typeof window !== "undefined" && shouldTriggerApprovedToast(sol, kind)) {
-      const payload: ApprovedToastPendingPayload = {
-        businessId: String(sol?.id || ""),
-        businessName: String(sol?.business?.name || ""),
-      };
-      localStorage.setItem(APPROVED_TOAST_PENDING_KEY, JSON.stringify(payload));
-    }
-    router.push(targetHref);
   };
 
   const renderCard = (sol: any, index: number, kind: "activo" | "solicitud" = "solicitud") => {
@@ -224,6 +254,9 @@ export default function MisSolicitudesPage() {
       ? business.images.filter((img: string) => !!img)
       : [];
     const estado: string = sol.estado || "pendiente";
+    const isActivo = estado === "aprobado";
+    const isArchivado = estado === "archivado";
+    const isLoading = !!actionLoading[sol.id];
     const targetHref = getCardNavigationHref(sol, kind);
 
     return (
@@ -234,16 +267,7 @@ export default function MisSolicitudesPage() {
         exit={{ opacity: 0, scale: 0.9 }}
         transition={{ delay: index * 0.04 }}
         layout
-        onClick={() => navigateFromCard(sol, kind, targetHref)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            navigateFromCard(sol, kind, targetHref);
-          }
-        }}
-        role="button"
-        tabIndex={0}
-        className={`bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group border-2 border-transparent cursor-pointer ${
+        className={`bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group border-2 border-transparent ${
           kind === "activo" ? "hover:border-emerald-300" : "hover:border-[#0D601E]/20"
         }`}
       >
@@ -379,6 +403,60 @@ export default function MisSolicitudesPage() {
                 })
               : "Sin fecha"}
           </p>
+
+          {/* Action buttons */}
+          <div className="mt-4 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+            {/* Ver detalle — siempre disponible */}
+            <button
+              onClick={() => router.push(targetHref)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0D601E]/10 hover:bg-[#0D601E] text-[#0D601E] hover:text-white text-xs font-semibold transition-all"
+            >
+              <FaEye /> Ver
+            </button>
+
+            {/* Editar — solo activos y pendientes */}
+            {(isActivo || estado === "pendiente") && (
+              <button
+                onClick={() => router.push(`/negocio/mis-solicitudes/${sol.id}/editar`)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white text-xs font-semibold transition-all"
+              >
+                <FaEdit /> Editar
+              </button>
+            )}
+
+            {/* Archivar — solo activos */}
+            {isActivo && (
+              <button
+                disabled={isLoading}
+                onClick={() => handleArchive(sol)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-600 text-gray-600 hover:text-white text-xs font-semibold transition-all disabled:opacity-50"
+              >
+                <FaArchive /> {isLoading ? "..." : "Archivar"}
+              </button>
+            )}
+
+            {/* Reactivar — solo archivados */}
+            {isArchivado && (
+              <button
+                disabled={isLoading}
+                onClick={() => handleReactivate(sol)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white text-xs font-semibold transition-all disabled:opacity-50"
+              >
+                <FaBoxOpen /> {isLoading ? "..." : "Reactivar"}
+              </button>
+            )}
+
+            {/* Eliminar — solo archivados */}
+            {isArchivado && (
+              <button
+                disabled={isLoading}
+                onClick={() => setConfirmDelete({ id: sol.id, name: business.name || "este negocio" })}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-600 text-red-600 hover:text-white text-xs font-semibold transition-all disabled:opacity-50"
+              >
+                <FaTrash /> Eliminar
+              </button>
+            )}
+          </div>
         </div>
       </motion.div>
     );
@@ -663,6 +741,32 @@ export default function MisSolicitudesPage() {
           </div>
         )}
       </div>
+
+      {/* Confirm Delete Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-[#1A4D2E] mb-2">Eliminar negocio</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              ¿Estás seguro de eliminar permanentemente <strong>{confirmDelete.name}</strong>? Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDelete(confirmDelete.id)}
+                className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition"
+              >
+                Eliminar definitivamente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
