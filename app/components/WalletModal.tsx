@@ -46,9 +46,6 @@ const WalletModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
       const token = localStorage.getItem("pitzbol_token");
 
       console.log('📋 [WalletModal] Cargando tarjetas...');
-      console.log(`   - UID local: ${userLocal.uid}`);
-      console.log(`   - Token disponible: ${!!token}`);
-      console.log(`   - Backend URL: ${process.env.NEXT_PUBLIC_BACKEND_URL}`);
 
       if (!token) {
         console.warn('⚠️ [WalletModal] Sin token - usuario no autenticado');
@@ -419,9 +416,6 @@ const AddCardForm = ({ onSuccess }: { onSuccess: () => void }) => {
       const token = localStorage.getItem("pitzbol_token");
 
       console.log('🔐 [AddCardForm] Iniciando proceso de guardar tarjeta');
-      console.log(`   - UID local: ${userLocal.uid}`);
-      console.log(`   - Token disponible: ${!!token}`);
-      console.log(`   - Token (primeros 30 chars): ${token ? token.substring(0, 30) + '...' : 'NO DISPONIBLE'}`);
 
       if (!token) {
         setMessage("❌ No estás autenticado. Por favor, inicia sesión nuevamente.");
@@ -493,7 +487,6 @@ const AddCardForm = ({ onSuccess }: { onSuccess: () => void }) => {
 
         console.log(`💾 [AddCardForm] Guardar tarjeta en base de datos...`);
         console.log(`   - Payment Method ID: ${paymentMethodId}`);
-        console.log(`   - Token (primeros 30 chars): ${token.substring(0, 30) + '...'}`);
 
         const saveCardRes = await fetchWithAuth(
           `/api/perfil/save-card`,

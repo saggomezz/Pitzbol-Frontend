@@ -37,11 +37,7 @@ export default function GuideChatList({ guideId, onSelectChat }: GuideChatListPr
       setLoading(true);
       setError(null);
       const token = localStorage.getItem("pitzbol_token");
-      
-      console.log("🔄 Fetching chats for guide:", guideId);
-      console.log("Token exists:", !!token);
-      console.log("Backend URL:", BACKEND_URL);
-      
+
       if (!token) {
         console.warn("⚠️ No token found, user might not be authenticated");
         setError("No se encontró token de autenticación");
