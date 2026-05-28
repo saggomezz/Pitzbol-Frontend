@@ -40,6 +40,10 @@ export default function GuideEstatusPage() {
     async function fetchGuideRequest(isFirstLoad = false) {
       if (isFirstLoad) setLoading(true);
       if (isFirstLoad) setError(null);
+      // Timeout para evitar que la pantalla quede en loading infinito si el
+      // backend está dormido o tarda demasiado en responder.
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 15000);
       try {
         const token = localStorage.getItem("pitzbol_token");
         if (!token) {
@@ -54,6 +58,7 @@ export default function GuideEstatusPage() {
               Authorization: `Bearer ${token}`,
             },
             credentials: "include",
+            signal: controller.signal,
           }
         );
 
@@ -74,14 +79,19 @@ export default function GuideEstatusPage() {
         const data = await response.json();
         if (cancelled) return;
         setGuideRequest(data);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error fetching guide request:", err);
         if (cancelled) return;
         if (isFirstLoad) {
-          setError("Error de conexión. Intenta más tarde.");
+          if (err?.name === "AbortError") {
+            setError("El servidor está tardando demasiado en responder. Intenta más tarde.");
+          } else {
+            setError("Error de conexión. Intenta más tarde.");
+          }
           setGuideRequest(null);
         }
       } finally {
+        window.clearTimeout(timeoutId);
         if (isFirstLoad && !cancelled) setLoading(false);
       }
     }

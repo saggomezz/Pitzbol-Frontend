@@ -181,8 +181,9 @@ export function formatHoraGM(hhmm: string): string {
   return m === 0 ? `${h12} ${ampm}` : `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
 }
 
-export function formatRango(d: DaySchedule): string {
-  if (d === 'cerrado') return 'Cerrado';
+export function formatRango(d: DaySchedule | undefined | null): string {
+  if (!d || d === 'cerrado') return 'Cerrado';
+  if (typeof d !== 'object' || typeof (d as any).apertura !== 'string' || typeof (d as any).cierre !== 'string') return 'Cerrado';
   if (d.apertura === '00:00' && d.cierre === '23:59') return 'Abierto 24 horas';
   return `${formatHoraGM(d.apertura)} – ${formatHoraGM(d.cierre)}`;
 }
