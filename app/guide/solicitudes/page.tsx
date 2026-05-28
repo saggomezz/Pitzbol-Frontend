@@ -108,7 +108,7 @@ export default function GuideSolicitudesPage() {
   useEffect(() => {
     if (!user) return;
 
-    if (user.role !== "guia" && user.guide_status !== "aprobado") {
+    if (user.role !== "guia" || user.guide_status !== "aprobado") {
       router.push("/");
       return;
     }

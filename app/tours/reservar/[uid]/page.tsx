@@ -127,10 +127,13 @@ export default function BookTourPage() {
       return parsePrecio(paqueteSeleccionado.precio) * numPersonas;
     }
     if (!guide) return 0;
+    // Tarifa del guía es POR HORA. Multiplicar por horas y personas.
+    // medio día = 4 h, día completo = 8 h
+    const horas = duracion === "completo" ? 8 : 4;
     const tarifaBase = duracion === "completo" && guide.tarifaCompleta
-      ? guide.tarifaCompleta
-      : guide.tarifa;
-    return tarifaBase * numPersonas;
+      ? Number(guide.tarifaCompleta) || 0
+      : Number(guide.tarifa) || 0;
+    return tarifaBase * horas * numPersonas;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

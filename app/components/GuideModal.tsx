@@ -307,7 +307,7 @@ const GuideModal = ({ isOpen, onClose, onOpenAuth }: { isOpen: boolean; onClose:
         localStorage.removeItem("pitzbol_guide_submitted");
         
         console.log("✅ Solicitud guardada en localStorage:", updatedUser);
-        console.log("� localStorage values:", {
+        console.log("localStorage values:", {
           user: localStorage.getItem("pitzbol_user"),
           submitted: localStorage.getItem("pitzbol_guide_submitted")
         });

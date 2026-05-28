@@ -1472,12 +1472,9 @@ const BusinessModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         // PRIORIDAD 2: Si no está en el hook, intentar localStorage
         try {
           const storedUser = localStorage.getItem("pitzbol_user");
-          console.log("[BusinessModal] localStorage storedUser:", storedUser);
           if (storedUser) {
             const parsedUser = JSON.parse(storedUser);
             ownerUid = parsedUser?.uid;
-            console.log("[BusinessModal] ownerUid extraído del localStorage:", ownerUid);
-            console.log("[BusinessModal] Usuario completo:", parsedUser);
           }
         } catch (error) {
           console.error("[BusinessModal] Error al parsear pitzbol_user:", error);

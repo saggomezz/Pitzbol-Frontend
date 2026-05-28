@@ -712,7 +712,7 @@ function HomeContent() {
   const cargarItinerarioHome = async () => {
     setLoadingIA(true);
 
-    // Coordenadas por defecto (Centro de GDL) � la geolocalización se maneja en ia.pitzbol.me
+    // Coordenadas por defecto (Centro de GDL); la geolocalizacion se maneja en ia.pitzbol.me
     const ubicacionUsuario = { lat: 20.6767, lng: -103.3371 };
 
     try {
@@ -749,12 +749,12 @@ function HomeContent() {
       const shouldShowWelcome = localStorage.getItem("pitzbol_showWelcome");
       const welcomeName = localStorage.getItem("pitzbol_welcomeName");
       
-      console.log("�x� Verificando bienvenida en home:", { shouldShowWelcome, welcomeName });
+      console.log("Verificando bienvenida en home:", { shouldShowWelcome, welcomeName });
       
       if (shouldShowWelcome === "true" && welcomeName) {
         hasCheckedWelcome.current = true;
         
-        console.log("�S& Mostrando mensaje de bienvenida");
+        console.log("Mostrando mensaje de bienvenida");
         
         // Mostrar inmediatamente
         setWelcomeMessage(welcomeName);
@@ -852,7 +852,7 @@ function HomeContent() {
           <GdlMatchCarousel partidos={PARTIDOS_GDL} sede="GDL" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_CDMX} sede="CDMX" tHome={tHome} />
           <GdlMatchCarousel partidos={PARTIDOS_MTY} sede="MTY" tHome={tHome} />
-          {/* PITZBOT � IA de Itinerarios */}
+          {/* PITZBOT IA de Itinerarios */}
           <div className="bg-white rounded-3xl p-4 shadow-lg border border-gray-100 relative overflow-hidden hover:shadow-xl transition-all duration-300">
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">

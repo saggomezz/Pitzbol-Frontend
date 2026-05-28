@@ -546,7 +546,10 @@ export default function InformacionLugar() {
         }
 
         const userLocal = JSON.parse(localStorage.getItem("pitzbol_user") || "{}");
-        setEsAdminLugares(EMAILS_ADMIN_LUGARES.includes(userLocal.email));
+        const userEmail = String(userLocal?.email || "").trim().toLowerCase();
+        const lugarOwnerEmail = String((lugarEncontrado as any)?.email || "").trim().toLowerCase();
+        const esOwnerDelNegocio = !!(userEmail && lugarOwnerEmail && userEmail === lugarOwnerEmail);
+        setEsAdminLugares(EMAILS_ADMIN_LUGARES.includes(userLocal.email) || esOwnerDelNegocio);
 
         // Verificar si esta en favoritos
         try {
