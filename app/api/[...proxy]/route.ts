@@ -18,6 +18,7 @@ const PROXY_FETCH_TIMEOUT_MS = 55_000;
 // Endpoints conocidos por ser pesados (operaciones admin batch / subida de imágenes)
 // donde queremos usar el timeout máximo y nunca abortar antes de tiempo.
 const HEAVY_PATH_PATTERNS: RegExp[] = [
+  /^auth\/send-code$/,
   /^admin\/negocios\//,
   /^admin\/guias\//,
   /^business\/register/,

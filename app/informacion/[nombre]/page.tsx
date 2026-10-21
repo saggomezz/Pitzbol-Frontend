@@ -15,6 +15,7 @@ import { usePlaceView } from "@/lib/usePlaceView";
 import { getMergedPlaces, PlaceRecord } from "@/lib/placesApi";
 import type { GeoPoint } from "@/lib/geoClient";
 import { getPlaceImageUrlSync } from "@/lib/placeImages";
+import { useServerStatus } from "@/app/context/ServerStatusContext";
 
 /* ─── Layout informativo para Avisos (sin calificación, horario, costo ni mapa) ─ */
 function AvisoLayout({ lugar, fotos, onBack }: { lugar: Lugar; fotos: string[]; onBack: () => void }) {
@@ -447,6 +448,7 @@ export default function InformacionLugar() {
   });
 
   const { getFavorites, addFavorite, removeFavorite: removeFavoriteApi, syncLocalFavorites, isAuthenticated } = useFavoritesSync();
+  const { status: serverStatus } = useServerStatus();
 
   useEffect(() => {
     if (fotos.length <= 1) return;
@@ -506,6 +508,11 @@ export default function InformacionLugar() {
 
   useEffect(() => {
     const cargarLugar = async () => {
+      if (serverStatus !== "awake") {
+        setLoading(true);
+        return;
+      }
+
       setLoading(true);
       setLugar(null);
       setFotos([]);
@@ -575,7 +582,7 @@ export default function InformacionLugar() {
     };
 
     cargarLugar();
-  }, [nombreLugar, getFavorites, isAuthenticated, syncLocalFavorites]);
+  }, [nombreLugar, serverStatus, getFavorites, isAuthenticated, syncLocalFavorites]);
 
   useEffect(() => {
     if (!nombreLugar || typeof window === "undefined") return;
