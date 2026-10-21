@@ -16,9 +16,6 @@ const PATIENCE_BEFORE_SCREEN_MS = 4000; // mostrar pantalla si no responde en 4 
 const isApiUrl = (value: string) =>
   value.startsWith("/api/") || value.startsWith(window.location.origin + "/api/");
 
-const shouldTriggerWaking = (value: string) =>
-  isApiUrl(value) && !value.includes("/api/auth/send-code");
-
 /** GET /api/health — returns 200 { ok: true } with no auth required.
  *  Qualquier respuesta 2xx = servidor despierto.
  *  Timeout / 523 / 502 / 504 = servidor dormido. */
@@ -103,7 +100,7 @@ export function ServerStatusProvider({ children }: { children: React.ReactNode }
       if (res.status === 523 || res.status === 502 || res.status === 504) {
         // Solo activar si la petición va a nuestra propia API (proxy de Vercel)
         const url = typeof args[0] === "string" ? args[0] : (args[0] as Request).url;
-        if (shouldTriggerWaking(url)) {
+        if (isApiUrl(url)) {
           triggerWaking();
         }
       } else if (

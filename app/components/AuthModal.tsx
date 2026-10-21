@@ -1,9 +1,11 @@
 "use client";
 import { getBackendOrigin } from "@/lib/backendUrl";
+import { auth } from "@/lib/firebase";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { FiChevronDown, FiEye, FiEyeOff, FiLock, FiMail, FiX } from "react-icons/fi";
 
 const API_BASE = getBackendOrigin();
@@ -86,12 +88,9 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
 
   // Verificación de email
   const [showVerification, setShowVerification] = useState(false);
-  const [verifyDigits, setVerifyDigits] = useState(["", "", "", "", "", ""]);
   const [verifyError, setVerifyError] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
-  const [wrongAttempts, setWrongAttempts] = useState(0);
-  const verifyInputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   // y datos de Login
   const [loginEmail, setLoginEmail] = useState("");
@@ -181,59 +180,46 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     if (regPassword !== regConfirmPassword) newErrors.confirmPassword = t('passwordsNotMatch');
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
 
-    // Enviar código y mostrar paso de verificación
+    // Crear la cuenta en Firebase y enviar el enlace nativo de verificación
     setSendingCode(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/send-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: regEmail, nombre: regNombre }),
-      });
-      if (res.ok) {
-        setShowVerification(true);
-        setVerifyDigits(["", "", "", "", "", ""]);
-        setVerifyError("");
-        setWrongAttempts(0);
-        setTimeout(() => verifyInputsRef.current[0]?.focus(), 100);
-      } else if (res.status === 404) {
-        // Endpoint aún no disponible en el servidor — registrar directamente
-        await doActualRegister();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setGeneralError(
-          res.status === 504
-            ? "El servidor está tardando en responder. Espera unos segundos y vuelve a intentarlo."
-            : data.msg || "No se pudo enviar el código. Intenta de nuevo."
-        );
-      }
-    } catch {
-      setGeneralError("No se pudo conectar con el servidor para enviar el código. Intenta de nuevo.");
+      const credential = await createUserWithEmailAndPassword(auth, regEmail.trim(), regPassword);
+      await sendEmailVerification(credential.user);
+      setShowVerification(true);
+      setVerifyError("");
+    } catch (error: any) {
+      const message =
+        error?.code === "auth/email-already-in-use"
+          ? "Este correo ya tiene una cuenta. Inicia sesión o utiliza otro correo."
+          : error?.code === "auth/invalid-email"
+            ? "Email inválido."
+            : error?.code === "auth/weak-password"
+              ? "La contraseña no cumple los requisitos de seguridad."
+              : "No se pudo enviar el enlace de verificación. Intenta de nuevo.";
+      setGeneralError(message);
     } finally {
       setSendingCode(false);
     }
   };
 
-  const handleSendCode = async (): Promise<boolean> => {
+  const handleSendVerificationEmail = async (): Promise<boolean> => {
     setSendingCode(true);
     setVerifyError("");
     try {
-      const res = await fetch(`${BACKEND_URL}/send-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: regEmail, nombre: regNombre }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setVerifyError(
-          res.status === 504
-            ? "El servidor está tardando en responder. Espera unos segundos y vuelve a intentarlo."
-            : data.msg || "No se pudo enviar el código. Intenta de nuevo."
-        );
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setVerifyError("Tu sesión de registro expiró. Vuelve a iniciar el registro.");
         return false;
       }
+      await sendEmailVerification(currentUser);
+      setVerifyError("Nuevo enlace enviado. Revisa tu correo.");
       return true;
-    } catch {
-      setVerifyError("No se pudo conectar con el servidor para enviar el código. Intenta de nuevo.");
+    } catch (error: any) {
+      setVerifyError(
+        error?.code === "auth/too-many-requests"
+          ? "Solicitaste demasiados enlaces. Espera unos minutos antes de intentarlo otra vez."
+          : "No se pudo enviar el enlace de verificación. Intenta de nuevo."
+      );
       return false;
     } finally {
       setSendingCode(false);
@@ -241,34 +227,22 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   };
 
   const handleVerifyCode = async () => {
-    const code = verifyDigits.join("");
-    if (code.length < 6) { setVerifyError("Ingresa los 6 dígitos del código."); return; }
     setVerifying(true);
     setVerifyError("");
     try {
-      const res = await fetch(`${BACKEND_URL}/verify-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: regEmail, code }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        // Código correcto → proceder con el registro real
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setVerifyError("Tu sesión de registro expiró. Vuelve a iniciar el registro.");
+        return;
+      }
+      await currentUser.reload();
+      if (auth.currentUser?.emailVerified) {
         await doActualRegister();
       } else {
-        const newAttempts = wrongAttempts + 1;
-        setWrongAttempts(newAttempts);
-        if (newAttempts >= 2) {
-          setVerifyError("Código incorrecto. Te enviamos uno nuevo automáticamente.");
-          setVerifyDigits(["", "", "", "", "", ""]);
-          setWrongAttempts(0);
-          await handleSendCode();
-        } else {
-          setVerifyError("Código incorrecto. Inténtalo de nuevo.");
-        }
+        setVerifyError("Aún no aparece como verificado. Abre el enlace del correo y vuelve a intentarlo.");
       }
-    } catch {
-      setVerifyError("Error al verificar. Intenta de nuevo.");
+    } catch (error: any) {
+      setVerifyError(error?.message || "No se pudo comprobar la verificación. Intenta de nuevo.");
     } finally {
       setVerifying(false);
     }
@@ -286,12 +260,19 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         setShowVerification(false);
         return;
       }
+      const firebaseToken = await auth.currentUser?.getIdToken();
+      if (!firebaseToken) {
+        setGeneralError("Tu sesión de registro expiró. Vuelve a iniciar el registro.");
+        setShowVerification(false);
+        return;
+      }
       // Paso 1: Registrar en el backend directamente
       const response = await fetch(`${BACKEND_URL}/register`, {
         method: "POST",
         credentials: "include",
         headers: { 
           "Content-Type": "application/json",
+          Authorization: `Bearer ${firebaseToken}`,
         },
         body: JSON.stringify({
           email: regEmail,
@@ -735,48 +716,25 @@ if (!isOpen) return null;
           {showVerification ? (
             <div className="w-full max-w-sm flex flex-col items-center gap-y-5">
               <p className="text-sm text-gray-600 text-center leading-relaxed">
-                Enviamos un código de 6 dígitos a<br />
+                Enviamos un enlace de verificación a<br />
                 <span className="font-bold text-[#1A4D2E]">{regEmail.replace(/(.{2}).*@/, '$1***@')}</span>
               </p>
-              {/* 6 cajas de dígitos */}
-              <div className="flex gap-2 justify-center">
-                {verifyDigits.map((d, i) => (
-                  <input
-                    key={i}
-                    ref={el => { verifyInputsRef.current[i] = el; }}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={d}
-                    onChange={e => {
-                      const val = e.target.value.replace(/\D/, "");
-                      const next = [...verifyDigits];
-                      next[i] = val;
-                      setVerifyDigits(next);
-                      if (val && i < 5) verifyInputsRef.current[i + 1]?.focus();
-                    }}
-                    onKeyDown={e => {
-                      if (e.key === "Backspace" && !verifyDigits[i] && i > 0) {
-                        verifyInputsRef.current[i - 1]?.focus();
-                      }
-                    }}
-                    className="w-11 h-14 text-center text-2xl font-black border-2 rounded-xl focus:outline-none focus:border-[#1A4D2E] border-gray-200 bg-[#F7F9F4] text-[#1A4D2E]"
-                  />
-                ))}
-              </div>
+              <p className="text-xs text-gray-500 text-center">
+                Abre el enlace en tu correo y después vuelve aquí para confirmar tu cuenta.
+              </p>
               {verifyError && (
                 <p className="text-xs text-red-500 text-center">{verifyError}</p>
               )}
               <button
                 type="submit"
-                disabled={verifying || verifyDigits.join("").length < 6}
+                disabled={verifying}
                 className="w-full bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium disabled:opacity-50"
               >
-                {verifying ? "Verificando..." : "Siguiente"}
+                {verifying ? "Comprobando..." : "Ya verifiqué mi correo"}
               </button>
               <button
                 type="button"
-                onClick={() => { setShowVerification(false); setVerifyDigits(["","","","","",""]); setVerifyError(""); }}
+                onClick={() => { setShowVerification(false); setVerifyError(""); }}
                 className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
               >
                 ← Volver y editar datos
@@ -784,14 +742,12 @@ if (!isOpen) return null;
               <button
                 type="button"
                 onClick={async () => {
-                  setVerifyDigits(["","","","","",""]);
-                  const sent = await handleSendCode();
-                  if (sent) setVerifyError("Nuevo código enviado.");
+                  await handleSendVerificationEmail();
                 }}
                 disabled={sendingCode}
                 className="text-xs text-[#1A4D2E] underline disabled:opacity-50"
               >
-                {sendingCode ? "Enviando..." : "Reenviar código"}
+                {sendingCode ? "Enviando enlace..." : "Reenviar enlace de verificación"}
               </button>
             </div>
           ) : (
