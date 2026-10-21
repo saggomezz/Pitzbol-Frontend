@@ -39,6 +39,7 @@ export function ServerStatusProvider({ children }: { children: React.ReactNode }
   const [status, setStatus] = useState<Status>("checking");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakingTriggered = useRef(false);
+  const statusRef = useRef<Status>("checking");
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -65,6 +66,10 @@ export function ServerStatusProvider({ children }: { children: React.ReactNode }
       startPolling();
     }
   }, [startPolling]);
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   useEffect(() => {
     let patienceTimer: ReturnType<typeof setTimeout>;
@@ -97,7 +102,7 @@ export function ServerStatusProvider({ children }: { children: React.ReactNode }
         }
       } else if (
         (res.status === 200 || res.status === 401 || res.status === 403) &&
-        status === "waking"
+        statusRef.current === "waking"
       ) {
         // Una respuesta válida significa que ya despertó
         const url = typeof args[0] === "string" ? args[0] : (args[0] as Request).url;

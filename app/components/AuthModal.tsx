@@ -200,17 +200,20 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         await doActualRegister();
       } else {
         const data = await res.json().catch(() => ({}));
-        setGeneralError(data.msg || "No se pudo enviar el código. Intenta de nuevo.");
+        setGeneralError(
+          res.status === 504
+            ? "El servidor está tardando en responder. Espera unos segundos y vuelve a intentarlo."
+            : data.msg || "No se pudo enviar el código. Intenta de nuevo."
+        );
       }
     } catch {
-      // Si falla la conexión al endpoint de código, registrar directamente
-      await doActualRegister();
+      setGeneralError("No se pudo conectar con el servidor para enviar el código. Intenta de nuevo.");
     } finally {
       setSendingCode(false);
     }
   };
 
-  const handleSendCode = async () => {
+  const handleSendCode = async (): Promise<boolean> => {
     setSendingCode(true);
     setVerifyError("");
     try {
@@ -221,10 +224,17 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setVerifyError(data.msg || "No se pudo enviar el código. Intenta de nuevo.");
+        setVerifyError(
+          res.status === 504
+            ? "El servidor está tardando en responder. Espera unos segundos y vuelve a intentarlo."
+            : data.msg || "No se pudo enviar el código. Intenta de nuevo."
+        );
+        return false;
       }
+      return true;
     } catch {
-      setVerifyError("Error de conexión al enviar el código.");
+      setVerifyError("No se pudo conectar con el servidor para enviar el código. Intenta de nuevo.");
+      return false;
     } finally {
       setSendingCode(false);
     }
@@ -773,7 +783,11 @@ if (!isOpen) return null;
               </button>
               <button
                 type="button"
-                onClick={async () => { setVerifyDigits(["","","","","",""]); setVerifyError(""); await handleSendCode(); setVerifyError("Nuevo código enviado."); }}
+                onClick={async () => {
+                  setVerifyDigits(["","","","","",""]);
+                  const sent = await handleSendCode();
+                  if (sent) setVerifyError("Nuevo código enviado.");
+                }}
                 disabled={sendingCode}
                 className="text-xs text-[#1A4D2E] underline disabled:opacity-50"
               >
