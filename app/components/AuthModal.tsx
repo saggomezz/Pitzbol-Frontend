@@ -184,7 +184,10 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     setSendingCode(true);
     try {
       const credential = await createUserWithEmailAndPassword(auth, regEmail.trim(), regPassword);
-      await sendEmailVerification(credential.user);
+      await sendEmailVerification(credential.user, {
+        url: `${window.location.origin}/verify-email`,
+        handleCodeInApp: true,
+      });
       setShowVerification(true);
       setVerifyError("");
     } catch (error: any) {
@@ -211,7 +214,10 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         setVerifyError("Tu sesión de registro expiró. Vuelve a iniciar el registro.");
         return false;
       }
-      await sendEmailVerification(currentUser);
+      await sendEmailVerification(currentUser, {
+        url: `${window.location.origin}/verify-email`,
+        handleCodeInApp: true,
+      });
       setVerifyError("Nuevo enlace enviado. Revisa tu correo.");
       return true;
     } catch (error: any) {
