@@ -1,7 +1,7 @@
 "use client";
 import { getBackendOrigin } from "@/lib/backendUrl";
-import { auth } from "@/lib/firebase";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { getFirebaseAuth } from "@/lib/firebase";
+import { createUserWithEmailAndPassword, sendEmailVerification, signOut } from "firebase/auth";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -166,6 +166,33 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     { label: "Símbolo (!@#$...)", met: /[^A-Za-z0-9]/.test(value) },
   ];
 
+  const sendVerificationEmail = async (user: Parameters<typeof sendEmailVerification>[0]) => {
+    try {
+      await sendEmailVerification(user, {
+        url: `${window.location.origin}/verify-email`,
+        handleCodeInApp: true,
+      });
+    } catch (error: unknown) {
+      // Firebase rejects custom continue URLs whose domain is not in Authorized domains.
+      // Retry with its hosted verification page so registration still works.
+      const errorCode =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        typeof error.code === "string"
+          ? error.code
+          : undefined;
+      const isUnauthorizedContinueUrl =
+        errorCode === "auth/unauthorized-continue-uri" ||
+        errorCode === "auth/invalid-continue-uri";
+
+      if (!isUnauthorizedContinueUrl) {
+        throw error;
+      }
+
+      await sendEmailVerification(user);
+    }
+  };
 
   const handleRegister = async () => {
     setErrors({});
@@ -183,11 +210,9 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     // Crear la cuenta en Firebase y enviar el enlace nativo de verificación
     setSendingCode(true);
     try {
+      const auth = getFirebaseAuth();
       const credential = await createUserWithEmailAndPassword(auth, regEmail.trim(), regPassword);
-      await sendEmailVerification(credential.user, {
-        url: `${window.location.origin}/verify-email`,
-        handleCodeInApp: true,
-      });
+      await sendVerificationEmail(credential.user);
       setShowVerification(true);
       setVerifyError("");
     } catch (error: any) {
@@ -209,15 +234,13 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     setSendingCode(true);
     setVerifyError("");
     try {
+      const auth = getFirebaseAuth();
       const currentUser = auth.currentUser;
       if (!currentUser) {
         setVerifyError("Tu sesión de registro expiró. Vuelve a iniciar el registro.");
         return false;
       }
-      await sendEmailVerification(currentUser, {
-        url: `${window.location.origin}/verify-email`,
-        handleCodeInApp: true,
-      });
+      await sendVerificationEmail(currentUser);
       setVerifyError("Nuevo enlace enviado. Revisa tu correo.");
       return true;
     } catch (error: any) {
@@ -236,6 +259,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     setVerifying(true);
     setVerifyError("");
     try {
+      const auth = getFirebaseAuth();
       const currentUser = auth.currentUser;
       if (!currentUser) {
         setVerifyError("Tu sesión de registro expiró. Vuelve a iniciar el registro.");
@@ -256,6 +280,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
 
   const doActualRegister = async () => {
     try {
+      const auth = getFirebaseAuth();
       if (!regEmail || !regPassword || !regNombre) {
         setGeneralError("Por favor completa los campos obligatorios.");
         setShowVerification(false);
@@ -315,6 +340,12 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         setGeneralError(loginData?.msg || "Registro completado, pero fallo al iniciar sesión. Inicia sesión manualmente.");
         setShowVerification(false);
         return;
+      }
+
+      try {
+        await signOut(auth);
+      } catch (error) {
+        console.error("No se pudo cerrar la sesión temporal de Firebase:", error);
       }
 
       // El backend ya normaliza todos los campos

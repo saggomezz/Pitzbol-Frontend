@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { FiAlertCircle, FiCheckCircle } from "react-icons/fi";
-import { auth } from "@/lib/firebase";
+import { getFirebaseAuth } from "@/lib/firebase";
 
 type VerificationState = "loading" | "success" | "error";
 
@@ -23,6 +23,7 @@ function VerifyEmailContent() {
       return;
     }
 
+    const auth = getFirebaseAuth();
     applyActionCode(auth, oobCode)
       .then(async () => {
         if (auth.currentUser) {
