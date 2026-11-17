@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { FiAlertCircle, FiCheckCircle } from "react-icons/fi";
+import { getBackendOrigin } from "@/lib/backendUrl";
 import { getFirebaseAuth } from "@/lib/firebase";
 
 type VerificationState = "loading" | "success" | "error";
@@ -14,6 +15,7 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const [state, setState] = useState<VerificationState>("loading");
   const [message, setMessage] = useState("Confirmando tu correo...");
+  const [redirectTo, setRedirectTo] = useState("/");
 
   useEffect(() => {
     const oobCode = searchParams.get("oobCode");
@@ -26,23 +28,69 @@ function VerifyEmailContent() {
     const auth = getFirebaseAuth();
     applyActionCode(auth, oobCode)
       .then(async () => {
-        if (auth.currentUser) {
-          await auth.currentUser.reload();
+        const pendingRaw = sessionStorage.getItem("pendingRegistration");
+        const pending = pendingRaw ? JSON.parse(pendingRaw) : null;
+        const currentUser = auth.currentUser;
+
+        if (!pending || !currentUser) {
+          setState("success");
+          setMessage("Tu correo fue verificado correctamente. Ya puedes iniciar sesión en Pitzbol.");
+          return;
         }
+
+        await currentUser.reload();
+        const firebaseToken = await currentUser.getIdToken(true);
+        const registerResponse = await fetch(`${getBackendOrigin()}/api/auth/complete-registration`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${firebaseToken}`,
+          },
+          body: JSON.stringify({
+            email: pending.email,
+            nombre: pending.nombre,
+            apellido: pending.apellido,
+            nacionalidad: pending.nacionalidad,
+            role: pending.role,
+          }),
+        });
+
+        const registerData = await registerResponse.json().catch(() => ({}));
+        if (!registerResponse.ok && registerResponse.status !== 400) {
+          throw new Error(registerData?.msg || "No se pudo completar tu registro.");
+        }
+
+        const sessionResponse = await fetch(`${getBackendOrigin()}/api/auth/firebase-session`, {
+          method: "POST",
+          credentials: "include",
+          headers: { Authorization: `Bearer ${firebaseToken}` },
+        });
+        const sessionData = await sessionResponse.json().catch(() => ({}));
+        if (!sessionResponse.ok) {
+          throw new Error(sessionData?.msg || "No se pudo iniciar tu sesión.");
+        }
+
+        localStorage.setItem("pitzbol_token", sessionData.token);
+        localStorage.setItem("pitzbol_user", JSON.stringify(sessionData.user));
+        sessionStorage.removeItem("pendingRegistration");
+        window.dispatchEvent(new Event("storage"));
+        setRedirectTo(pending.redirectTo || "/");
         setState("success");
-        setMessage("Tu correo fue verificado correctamente. Ya puedes continuar con tu registro.");
+        setMessage("Tu correo fue confirmado. Tu sesión ya está iniciada.");
+        window.setTimeout(() => router.replace(pending.redirectTo || "/"), 1400);
       })
-      .catch((error: { code?: string }) => {
+      .catch((error: { code?: string; message?: string }) => {
         setState("error");
         setMessage(
           error.code === "auth/expired-action-code"
             ? "El enlace de verificación expiró. Solicita que te enviemos uno nuevo."
             : error.code === "auth/invalid-action-code"
               ? "El enlace ya fue utilizado o no es válido."
-              : "No pudimos verificar el correo. Solicita un enlace nuevo."
+              : error.message || "No pudimos verificar el correo. Solicita un enlace nuevo."
         );
       });
-  }, [searchParams]);
+  }, [router, searchParams]);
 
   return (
     <main className="min-h-screen bg-[#FDFCF9] flex items-center justify-center p-6">
@@ -67,7 +115,7 @@ function VerifyEmailContent() {
         {state !== "loading" && (
           <button
             type="button"
-            onClick={() => router.push("/")}
+            onClick={() => router.push(redirectTo)}
             className="w-full rounded-full bg-[#0D601E] py-3 font-bold text-white transition-colors hover:bg-[#094d18]"
           >
             {state === "success" ? "Volver a Pitzbol" : "Volver al inicio"}
