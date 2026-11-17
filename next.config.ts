@@ -70,7 +70,7 @@ const nextConfig: NextConfig = {
               // manifest-src needed for PWA manifest.json
               "manifest-src 'self'",
               "media-src 'self' https://res.cloudinary.com blob:",
-              "frame-src 'self' https://js.stripe.com https://www.openstreetmap.org",
+              "frame-src 'self' https://js.stripe.com https://www.openstreetmap.org https://pitzbol.firebaseapp.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
