@@ -1,7 +1,7 @@
 "use client";
 import { getBackendOrigin } from "@/lib/backendUrl";
 import { getFirebaseAuth } from "@/lib/firebase";
-import { createUserWithEmailAndPassword, sendEmailVerification, signOut } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -167,34 +167,15 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   ];
 
   const sendVerificationEmail = async (user: Parameters<typeof sendEmailVerification>[0]) => {
-    try {
-      await sendEmailVerification(user, {
-        url: `${window.location.origin}/verify-email`,
-        handleCodeInApp: true,
-      });
-    } catch (error: unknown) {
-      // Firebase rejects custom continue URLs whose domain is not in Authorized domains.
-      // Retry with its hosted verification page so registration still works.
-      const errorCode =
-        typeof error === "object" &&
-        error !== null &&
-        "code" in error &&
-        typeof error.code === "string"
-          ? error.code
-          : undefined;
-      const isUnauthorizedContinueUrl =
-        errorCode === "auth/unauthorized-continue-uri" ||
-        errorCode === "auth/invalid-continue-uri";
-
-      if (!isUnauthorizedContinueUrl) {
-        throw error;
-      }
-
-      await sendEmailVerification(user);
-    }
+    await sendEmailVerification(user, {
+      url: `${window.location.origin}/verify-email`,
+      handleCodeInApp: true,
+    });
   };
 
   const handleRegister = async () => {
+    if (sendingCode) return;
+
     setErrors({});
     setGeneralError("");
     const newErrors: any = {};
@@ -213,12 +194,56 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
       const auth = getFirebaseAuth();
       const credential = await createUserWithEmailAndPassword(auth, regEmail.trim(), regPassword);
       await sendVerificationEmail(credential.user);
+      sessionStorage.setItem("pendingRegistration", JSON.stringify({
+        email: regEmail.trim(),
+        nombre: regNombre.trim(),
+        apellido: regApellido.trim(),
+        nacionalidad,
+        role: intendedRole,
+        redirectTo: redirectTo || "/",
+      }));
       setShowVerification(true);
       setVerifyError("");
     } catch (error: any) {
+      if (error?.code === "auth/email-already-in-use") {
+        try {
+          const auth = getFirebaseAuth();
+          const existingCredential = await signInWithEmailAndPassword(auth, regEmail.trim(), regPassword);
+
+          if (existingCredential.user.emailVerified) {
+            setGeneralError("Este correo ya está verificado. Inicia sesión para continuar.");
+            return;
+          }
+
+          await sendVerificationEmail(existingCredential.user);
+          sessionStorage.setItem("pendingRegistration", JSON.stringify({
+            email: regEmail.trim(),
+            nombre: regNombre.trim(),
+            apellido: regApellido.trim(),
+            nacionalidad,
+            role: intendedRole,
+            redirectTo: redirectTo || "/",
+          }));
+          setShowVerification(true);
+          setVerifyError("");
+          return;
+        } catch (recoveryError: any) {
+          const recoveryCode = recoveryError?.code;
+          if (
+            recoveryCode !== "auth/invalid-credential" &&
+            recoveryCode !== "auth/invalid-login-credentials" &&
+            recoveryCode !== "auth/wrong-password"
+          ) {
+            console.error("No se pudo recuperar el registro pendiente:", recoveryError);
+          }
+        }
+      }
+
       const message =
         error?.code === "auth/email-already-in-use"
           ? "Este correo ya tiene una cuenta. Inicia sesión o utiliza otro correo."
+          : error?.code === "auth/unauthorized-continue-uri" || error?.code === "auth/invalid-continue-uri"
+            ? "El dominio de Pitzbol no está autorizado para enviar enlaces de verificación. Configúralo en Firebase Authentication."
           : error?.code === "auth/invalid-email"
             ? "Email inválido."
             : error?.code === "auth/weak-password"
@@ -247,6 +272,8 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
       setVerifyError(
         error?.code === "auth/too-many-requests"
           ? "Solicitaste demasiados enlaces. Espera unos minutos antes de intentarlo otra vez."
+          : error?.code === "auth/unauthorized-continue-uri" || error?.code === "auth/invalid-continue-uri"
+            ? "El dominio de Pitzbol no está autorizado en Firebase Authentication."
           : "No se pudo enviar el enlace de verificación. Intenta de nuevo."
       );
       return false;
@@ -757,7 +784,7 @@ if (!isOpen) return null;
                 <span className="font-bold text-[#1A4D2E]">{regEmail.replace(/(.{2}).*@/, '$1***@')}</span>
               </p>
               <p className="text-xs text-gray-500 text-center">
-                Abre el enlace en tu correo y después vuelve aquí para confirmar tu cuenta.
+                Abre el enlace en tu correo. Tu cuenta se confirmará y tu sesión se iniciará automáticamente.
               </p>
               {verifyError && (
                 <p className="text-xs text-red-500 text-center">{verifyError}</p>
