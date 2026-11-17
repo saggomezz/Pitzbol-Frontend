@@ -229,11 +229,9 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
       return true;
     } catch (error: any) {
       setVerifyError(
-        error?.code === "auth/too-many-requests"
-          ? "Solicitaste demasiados enlaces. Espera unos minutos antes de intentarlo otra vez."
-          : error?.code === "auth/unauthorized-continue-uri" || error?.code === "auth/invalid-continue-uri"
-            ? "El dominio de Pitzbol no está autorizado en Firebase Authentication."
-          : "No se pudo enviar el enlace de verificación. Intenta de nuevo."
+        error?.code === "email_service_unavailable"
+          ? "El servicio de correo no está disponible. Intenta de nuevo más tarde."
+          : "No se pudo enviar el código de verificación. Intenta de nuevo."
       );
       return false;
     } finally {
