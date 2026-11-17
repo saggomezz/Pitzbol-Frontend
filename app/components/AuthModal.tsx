@@ -1,11 +1,9 @@
 "use client";
 import { getBackendOrigin } from "@/lib/backendUrl";
-import { getFirebaseAuth } from "@/lib/firebase";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiChevronDown, FiEye, FiEyeOff, FiLock, FiMail, FiX } from "react-icons/fi";
 
 const API_BASE = getBackendOrigin();
@@ -88,9 +86,12 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
 
   // Verificación de email
   const [showVerification, setShowVerification] = useState(false);
+  const [verifyDigits, setVerifyDigits] = useState(["", "", "", "", "", ""]);
   const [verifyError, setVerifyError] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
+  const verifyInputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   // y datos de Login
   const [loginEmail, setLoginEmail] = useState("");
@@ -166,24 +167,6 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     { label: "Símbolo (!@#$...)", met: /[^A-Za-z0-9]/.test(value) },
   ];
 
-  const sendVerificationEmail = async (user: User) => {
-    const firebaseToken = await user.getIdToken(true);
-    const response = await fetch(`${BACKEND_URL}/send-verification-email`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${firebaseToken}`,
-      },
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const error = new Error(data?.msg || "No se pudo enviar el correo de verificación.");
-      Object.assign(error, { code: data?.code });
-      throw error;
-    }
-  };
-
   const handleRegister = async () => {
     if (sendingCode) return;
 
@@ -199,68 +182,30 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     if (regPassword !== regConfirmPassword) newErrors.confirmPassword = t('passwordsNotMatch');
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
 
-    // Crear la cuenta en Firebase y enviar el enlace nativo de verificación
     setSendingCode(true);
     try {
-      const auth = getFirebaseAuth();
-      const credential = await createUserWithEmailAndPassword(auth, regEmail.trim(), regPassword);
-      await sendVerificationEmail(credential.user);
-      sessionStorage.setItem("pendingRegistration", JSON.stringify({
-        email: regEmail.trim(),
-        nombre: regNombre.trim(),
-        apellido: regApellido.trim(),
-        nacionalidad,
-        role: intendedRole,
-        redirectTo: redirectTo || "/",
-      }));
-      setShowVerification(true);
-      setVerifyError("");
-    } catch (error: any) {
-      if (error?.code === "auth/email-already-in-use") {
-        try {
-          const auth = getFirebaseAuth();
-          const existingCredential = await signInWithEmailAndPassword(auth, regEmail.trim(), regPassword);
-
-          if (existingCredential.user.emailVerified) {
-            setGeneralError("Este correo ya está verificado. Inicia sesión para continuar.");
-            return;
-          }
-
-          await sendVerificationEmail(existingCredential.user);
-          sessionStorage.setItem("pendingRegistration", JSON.stringify({
-            email: regEmail.trim(),
-            nombre: regNombre.trim(),
-            apellido: regApellido.trim(),
-            nacionalidad,
-            role: intendedRole,
-            redirectTo: redirectTo || "/",
-          }));
-          setShowVerification(true);
-          setVerifyError("");
-          return;
-        } catch (recoveryError: any) {
-          const recoveryCode = recoveryError?.code;
-          if (
-            recoveryCode !== "auth/invalid-credential" &&
-            recoveryCode !== "auth/invalid-login-credentials" &&
-            recoveryCode !== "auth/wrong-password"
-          ) {
-            console.error("No se pudo recuperar el registro pendiente:", recoveryError);
-          }
-        }
+      const response = await fetch(`${BACKEND_URL}/send-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: regEmail.trim(),
+          nombre: regNombre.trim(),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setGeneralError(data?.msg || "No se pudo enviar el código. Intenta de nuevo.");
+        return;
       }
 
-      const message =
-        error?.code === "auth/email-already-in-use"
-          ? "Este correo ya tiene una cuenta. Inicia sesión o utiliza otro correo."
-          : error?.code === "auth/unauthorized-continue-uri" || error?.code === "auth/invalid-continue-uri"
-            ? "El dominio de Pitzbol no está autorizado para enviar enlaces de verificación. Configúralo en Firebase Authentication."
-          : error?.code === "auth/invalid-email"
-            ? "Email inválido."
-            : error?.code === "auth/weak-password"
-              ? "La contraseña no cumple los requisitos de seguridad."
-              : "No se pudo enviar el enlace de verificación. Intenta de nuevo.";
-      setGeneralError(message);
+      setShowVerification(true);
+      setVerifyDigits(["", "", "", "", "", ""]);
+      setVerifyError("");
+      setWrongAttempts(0);
+      window.setTimeout(() => verifyInputsRef.current[0]?.focus(), 100);
+    } catch (error: any) {
+      console.error("Error enviando código:", error);
+      setGeneralError("Error de conexión. Verifica tu internet e intenta de nuevo.");
     } finally {
       setSendingCode(false);
     }
@@ -270,14 +215,17 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     setSendingCode(true);
     setVerifyError("");
     try {
-      const auth = getFirebaseAuth();
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        setVerifyError("Tu sesión de registro expiró. Vuelve a iniciar el registro.");
+      const response = await fetch(`${BACKEND_URL}/send-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: regEmail, nombre: regNombre }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setVerifyError(data?.msg || "No se pudo reenviar el enlace.");
         return false;
       }
-      await sendVerificationEmail(currentUser);
-      setVerifyError("Nuevo enlace enviado. Revisa tu correo.");
+      setVerifyError("Nuevo código enviado. Revisa tu correo.");
       return true;
     } catch (error: any) {
       setVerifyError(
@@ -294,23 +242,37 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   };
 
   const handleVerifyCode = async () => {
+    const code = verifyDigits.join("");
+    if (code.length < 6) {
+      setVerifyError("Ingresa los 6 dígitos del código.");
+      return;
+    }
     setVerifying(true);
     setVerifyError("");
     try {
-      const auth = getFirebaseAuth();
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        setVerifyError("Tu sesión de registro expiró. Vuelve a iniciar el registro.");
-        return;
-      }
-      await currentUser.reload();
-      if (auth.currentUser?.emailVerified) {
+      const response = await fetch(`${BACKEND_URL}/verify-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: regEmail, code }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.success) {
+        setWrongAttempts(0);
         await doActualRegister();
       } else {
-        setVerifyError("Aún no aparece como verificado. Abre el enlace del correo y vuelve a intentarlo.");
+        const attempts = wrongAttempts + 1;
+        setWrongAttempts(attempts);
+        if (attempts >= 2) {
+          setVerifyError("Código incorrecto. Te enviamos uno nuevo automáticamente.");
+          setVerifyDigits(["", "", "", "", "", ""]);
+          setWrongAttempts(0);
+          await handleSendVerificationEmail();
+        } else {
+          setVerifyError(data?.msg || "Código incorrecto. Inténtalo de nuevo.");
+        }
       }
     } catch (error: any) {
-      setVerifyError(error?.message || "No se pudo comprobar la verificación. Intenta de nuevo.");
+      setVerifyError(error?.message || "Error al verificar. Intenta de nuevo.");
     } finally {
       setVerifying(false);
     }
@@ -318,7 +280,6 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
 
   const doActualRegister = async () => {
     try {
-      const auth = getFirebaseAuth();
       if (!regEmail || !regPassword || !regNombre) {
         setGeneralError("Por favor completa los campos obligatorios.");
         setShowVerification(false);
@@ -329,19 +290,11 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         setShowVerification(false);
         return;
       }
-      const firebaseToken = await auth.currentUser?.getIdToken();
-      if (!firebaseToken) {
-        setGeneralError("Tu sesión de registro expiró. Vuelve a iniciar el registro.");
-        setShowVerification(false);
-        return;
-      }
-      // Paso 1: Registrar en el backend directamente
-      const response = await fetch(`${BACKEND_URL}/register`, {
+      const response = await fetch(`${BACKEND_URL}/register-verified`, {
         method: "POST",
         credentials: "include",
         headers: { 
           "Content-Type": "application/json",
-          Authorization: `Bearer ${firebaseToken}`,
         },
         body: JSON.stringify({
           email: regEmail,
@@ -380,12 +333,6 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
         return;
       }
 
-      try {
-        await signOut(auth);
-      } catch (error) {
-        console.error("No se pudo cerrar la sesión temporal de Firebase:", error);
-      }
-
       // El backend ya normaliza todos los campos
       const userRole = loginData.user?.role || "turista";
       const interesesData = loginData.user?.["07_intereses"] || loginData.user?.especialidades || loginData.user?.["07_especialidades"] || [];
@@ -418,6 +365,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
       }));
 
       window.dispatchEvent(new Event("storage"));
+      setShowVerification(false);
 
       // Redirección según rol deseado
       const registeredName = loginData.user?.nombre || regNombre;
@@ -791,12 +739,37 @@ if (!isOpen) return null;
           {showVerification ? (
             <div className="w-full max-w-sm flex flex-col items-center gap-y-5">
               <p className="text-sm text-gray-600 text-center leading-relaxed">
-                Enviamos un enlace de verificación a<br />
+                Enviamos un código de verificación a<br />
                 <span className="font-bold text-[#1A4D2E]">{regEmail.replace(/(.{2}).*@/, '$1***@')}</span>
               </p>
               <p className="text-xs text-gray-500 text-center">
-                Abre el enlace en tu correo. Tu cuenta se confirmará y tu sesión se iniciará automáticamente.
+                Introduce el código de 6 dígitos para confirmar tu correo y crear tu cuenta.
               </p>
+              <div className="flex justify-center gap-2">
+                {verifyDigits.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(element) => { verifyInputsRef.current[index] = element; }}
+                    value={digit}
+                    onChange={(event) => {
+                      const value = event.target.value.replace(/\D/g, "").slice(-1);
+                      const next = [...verifyDigits];
+                      next[index] = value;
+                      setVerifyDigits(next);
+                      if (value && index < 5) verifyInputsRef.current[index + 1]?.focus();
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Backspace" && !verifyDigits[index] && index > 0) {
+                        verifyInputsRef.current[index - 1]?.focus();
+                      }
+                    }}
+                    inputMode="numeric"
+                    maxLength={1}
+                    className="h-12 w-10 rounded-xl border border-gray-200 text-center text-xl font-bold text-[#1A4D2E] outline-none focus:border-[#0D601E]"
+                    aria-label={`Dígito ${index + 1}`}
+                  />
+                ))}
+              </div>
               {verifyError && (
                 <p className="text-xs text-red-500 text-center">{verifyError}</p>
               )}
@@ -805,7 +778,7 @@ if (!isOpen) return null;
                 disabled={verifying}
                 className="w-full bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium disabled:opacity-50"
               >
-                {verifying ? "Comprobando..." : "Ya verifiqué mi correo"}
+                {verifying ? "Comprobando..." : "Confirmar código"}
               </button>
               <button
                 type="button"
@@ -822,7 +795,7 @@ if (!isOpen) return null;
                 disabled={sendingCode}
                 className="text-xs text-[#1A4D2E] underline disabled:opacity-50"
               >
-                {sendingCode ? "Enviando enlace..." : "Reenviar enlace de verificación"}
+                {sendingCode ? "Enviando código..." : "Reenviar código de verificación"}
               </button>
             </div>
           ) : (
