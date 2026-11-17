@@ -1,7 +1,7 @@
 "use client";
 import { getBackendOrigin } from "@/lib/backendUrl";
 import { getFirebaseAuth } from "@/lib/firebase";
-import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -166,11 +166,22 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     { label: "Símbolo (!@#$...)", met: /[^A-Za-z0-9]/.test(value) },
   ];
 
-  const sendVerificationEmail = async (user: Parameters<typeof sendEmailVerification>[0]) => {
-    await sendEmailVerification(user, {
-      url: `${window.location.origin}/verify-email`,
-      handleCodeInApp: true,
+  const sendVerificationEmail = async (user: User) => {
+    const firebaseToken = await user.getIdToken(true);
+    const response = await fetch(`${BACKEND_URL}/send-verification-email`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${firebaseToken}`,
+      },
     });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(data?.msg || "No se pudo enviar el correo de verificación.");
+      Object.assign(error, { code: data?.code });
+      throw error;
+    }
   };
 
   const handleRegister = async () => {
