@@ -18,6 +18,35 @@ function VerifyEmailContent() {
   const [redirectTo, setRedirectTo] = useState("/");
 
   useEffect(() => {
+    const registrationToken = searchParams.get("registrationToken");
+    if (registrationToken) {
+      fetch(`${getBackendOrigin()}/api/auth/complete-pending-registration`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationToken }),
+      })
+        .then(async (response) => {
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(data?.msg || "No se pudo completar el registro.");
+          }
+
+          localStorage.setItem("pitzbol_token", data.token);
+          localStorage.setItem("pitzbol_user", JSON.stringify(data.user));
+          sessionStorage.removeItem("pendingRegistrationToken");
+          window.dispatchEvent(new Event("storage"));
+          setRedirectTo(data.redirectTo || "/");
+          setState("success");
+          setMessage("Tu correo fue confirmado. Tu sesión ya está iniciada.");
+          window.setTimeout(() => router.replace(data.redirectTo || "/"), 1400);
+        })
+        .catch((error: { message?: string }) => {
+          setState("error");
+          setMessage(error.message || "No se pudo completar el registro.");
+        });
+      return;
+    }
+
     const oobCode = searchParams.get("oobCode");
     if (!oobCode) {
       setState("error");
