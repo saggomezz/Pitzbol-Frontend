@@ -309,6 +309,7 @@ export default function MapaPage() {
     const [filtersExpanded, setFiltersExpanded] = useState(true);
     const [favorites, setFavorites] = useState<string[]>([]);
     const [selectedPlace, setSelectedPlace] = useState<Lugar | null>(null);
+    const [focusedPlaceName, setFocusedPlaceName] = useState<string | null>(null);
     const [mapCenter, setMapCenter] = useState<[number, number]>([20.6597, -103.3496]); // Guadalajara
     const [mapZoom, setMapZoom] = useState(12);
     const [showFavoriteToast, setShowFavoriteToast] = useState(false);
@@ -467,9 +468,16 @@ export default function MapaPage() {
             console.log(`🔍 Filtrado por búsqueda: ${antes} → ${filtered.length}`);
         }
 
+        if (focusedPlaceName) {
+            const focusedPlace = lugares.find(
+                (lugar) => normalizeText(lugar.nombre) === normalizeText(focusedPlaceName)
+            );
+            filtered = focusedPlace ? [focusedPlace] : [];
+        }
+
         console.log("✅ Lugares filtrados finales:", filtered.length);
         setFilteredLugares(filtered);
-    }, [selectedCategory, searchTerm, lugares]);
+    }, [selectedCategory, searchTerm, lugares, focusedPlaceName]);
 
     // Manejar query parameter "lugar" para mostrar solo un lugar específico
     useEffect(() => {
@@ -480,16 +488,14 @@ export default function MapaPage() {
         if (lugarParam && lugares.length > 0) {
             // Buscar el lugar por nombre (decodificando el URL)
             const lugarEncontrado = lugares.find(
-                lugar => lugar.nombre.toLowerCase() === decodeURIComponent(lugarParam).toLowerCase()
+                lugar => normalizeText(lugar.nombre) === normalizeText(lugarParam)
             );
             
             if (lugarEncontrado) {
                 console.log("📍 Lugar encontrado desde URL:", lugarEncontrado.nombre);
                 
-                // Filtrar para mostrar solo este lugar
-                setFilteredLugares([lugarEncontrado]);
-                
                 // Seleccionar el lugar y centrar el mapa
+                setFocusedPlaceName(lugarEncontrado.nombre);
                 setSelectedPlace(lugarEncontrado);
                 const lat = parseFloat(lugarEncontrado.latitud || "20.6597");
                 const lng = parseFloat(lugarEncontrado.longitud || "-103.3496");
@@ -516,6 +522,7 @@ export default function MapaPage() {
 
     // Limpiar selección y volver a mostrar todos los lugares
     const handleClearSelection = () => {
+        setFocusedPlaceName(null);
         setSelectedPlace(null);
         setMapCenter([20.6597, -103.3496]);
         setMapZoom(12);
@@ -624,7 +631,11 @@ export default function MapaPage() {
                                     className={`${styles.categoryCard} ${
                                         selectedCategory === cat.name ? styles.active : ""
                                     }`}
-                                    onClick={() => setSelectedCategory(cat.name)}
+                                    onClick={() => {
+                                        setFocusedPlaceName(null);
+                                        setSelectedPlace(null);
+                                        setSelectedCategory(cat.name);
+                                    }}
                                 >
                                     <div className={styles.categoryIcon}>
                                         <IconComponent size={28} />
@@ -644,7 +655,11 @@ export default function MapaPage() {
                                 className={styles.searchInput}
                                 placeholder="Buscar por nombre, descripción o ubicación..."
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => {
+                                    setFocusedPlaceName(null);
+                                    setSelectedPlace(null);
+                                    setSearchTerm(e.target.value);
+                                }}
                             />
                             {searchTerm && (
                                 <button 

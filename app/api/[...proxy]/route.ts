@@ -77,7 +77,7 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ proxy: 
   const acceptLang = req.headers.get("accept-language");
   if (acceptLang) headers["Accept-Language"] = acceptLang;
 
-  const hasBody = ["POST", "PUT", "PATCH"].includes(req.method);
+  const hasBody = ["POST", "PUT", "PATCH", "DELETE"].includes(req.method);
 
   // Si vamos a poder reintentar y hay body, necesitamos bufferizar para poder
   // reenviarlo en cada intento (los ReadableStream solo se consumen una vez).
