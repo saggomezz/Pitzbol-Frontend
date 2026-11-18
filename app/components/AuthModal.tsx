@@ -184,27 +184,30 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
 
     setSendingCode(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/send-code`, {
+      const response = await fetch(`${BACKEND_URL}/start-registration`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: regEmail.trim(),
+          password: regPassword,
           nombre: regNombre.trim(),
+          apellido: regApellido.trim(),
+          nacionalidad,
+          role: intendedRole,
+          redirectTo: redirectTo || "/",
         }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setGeneralError(data?.msg || "No se pudo enviar el código. Intenta de nuevo.");
+        setGeneralError(data?.msg || "No se pudo enviar el enlace de verificación. Intenta de nuevo.");
         return;
       }
 
+      sessionStorage.setItem("pendingRegistrationToken", data.registrationToken);
       setShowVerification(true);
-      setVerifyDigits(["", "", "", "", "", ""]);
       setVerifyError("");
-      setWrongAttempts(0);
-      window.setTimeout(() => verifyInputsRef.current[0]?.focus(), 100);
     } catch (error: any) {
-      console.error("Error enviando código:", error);
+      console.error("Error iniciando registro:", error);
       setGeneralError("Error de conexión. Verifica tu internet e intenta de nuevo.");
     } finally {
       setSendingCode(false);
@@ -215,23 +218,26 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
     setSendingCode(true);
     setVerifyError("");
     try {
-      const response = await fetch(`${BACKEND_URL}/send-code`, {
+      const registrationToken = sessionStorage.getItem("pendingRegistrationToken");
+      if (!registrationToken) {
+        setVerifyError("Tu registro pendiente expiró. Vuelve a iniciar el registro.");
+        return false;
+      }
+      const response = await fetch(`${BACKEND_URL}/resend-pending-registration`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: regEmail, nombre: regNombre }),
+        body: JSON.stringify({ registrationToken }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         setVerifyError(data?.msg || "No se pudo reenviar el enlace.");
         return false;
       }
-      setVerifyError("Nuevo código enviado. Revisa tu correo.");
+      setVerifyError("Nuevo enlace enviado. Revisa tu correo.");
       return true;
     } catch (error: any) {
       setVerifyError(
-        error?.code === "email_service_unavailable"
-          ? "El servicio de correo no está disponible. Intenta de nuevo más tarde."
-          : "No se pudo enviar el código de verificación. Intenta de nuevo."
+        "No se pudo enviar el enlace de verificación. Intenta de nuevo."
       );
       return false;
     } finally {
@@ -240,40 +246,7 @@ const AuthModal = ({ isOpen, onClose, intendedRole = "turista", redirectTo, defa
   };
 
   const handleVerifyCode = async () => {
-    const code = verifyDigits.join("");
-    if (code.length < 6) {
-      setVerifyError("Ingresa los 6 dígitos del código.");
-      return;
-    }
-    setVerifying(true);
-    setVerifyError("");
-    try {
-      const response = await fetch(`${BACKEND_URL}/verify-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: regEmail, code }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (response.ok && data.success) {
-        setWrongAttempts(0);
-        await doActualRegister();
-      } else {
-        const attempts = wrongAttempts + 1;
-        setWrongAttempts(attempts);
-        if (attempts >= 2) {
-          setVerifyError("Código incorrecto. Te enviamos uno nuevo automáticamente.");
-          setVerifyDigits(["", "", "", "", "", ""]);
-          setWrongAttempts(0);
-          await handleSendVerificationEmail();
-        } else {
-          setVerifyError(data?.msg || "Código incorrecto. Inténtalo de nuevo.");
-        }
-      }
-    } catch (error: any) {
-      setVerifyError(error?.message || "Error al verificar. Intenta de nuevo.");
-    } finally {
-      setVerifying(false);
-    }
+    setVerifyError("Abre el enlace que enviamos a tu correo. La cuenta se creará al confirmar.");
   };
 
   const doActualRegister = async () => {
@@ -737,46 +710,21 @@ if (!isOpen) return null;
           {showVerification ? (
             <div className="w-full max-w-sm flex flex-col items-center gap-y-5">
               <p className="text-sm text-gray-600 text-center leading-relaxed">
-                Enviamos un código de verificación a<br />
+                Enviamos un enlace de verificación a<br />
                 <span className="font-bold text-[#1A4D2E]">{regEmail.replace(/(.{2}).*@/, '$1***@')}</span>
               </p>
               <p className="text-xs text-gray-500 text-center">
-                Introduce el código de 6 dígitos para confirmar tu correo y crear tu cuenta.
+                Abre el enlace en tu correo. Tu cuenta se creará al confirmar y tu sesión se iniciará automáticamente.
               </p>
-              <div className="flex justify-center gap-2">
-                {verifyDigits.map((digit, index) => (
-                  <input
-                    key={index}
-                    ref={(element) => { verifyInputsRef.current[index] = element; }}
-                    value={digit}
-                    onChange={(event) => {
-                      const value = event.target.value.replace(/\D/g, "").slice(-1);
-                      const next = [...verifyDigits];
-                      next[index] = value;
-                      setVerifyDigits(next);
-                      if (value && index < 5) verifyInputsRef.current[index + 1]?.focus();
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Backspace" && !verifyDigits[index] && index > 0) {
-                        verifyInputsRef.current[index - 1]?.focus();
-                      }
-                    }}
-                    inputMode="numeric"
-                    maxLength={1}
-                    className="h-12 w-10 rounded-xl border border-gray-200 text-center text-xl font-bold text-[#1A4D2E] outline-none focus:border-[#0D601E]"
-                    aria-label={`Dígito ${index + 1}`}
-                  />
-                ))}
-              </div>
               {verifyError && (
                 <p className="text-xs text-red-500 text-center">{verifyError}</p>
               )}
               <button
-                type="submit"
-                disabled={verifying}
+                type="button"
+                onClick={onClose}
                 className="w-full bg-[#0D601E] text-white py-2.5 rounded-full hover:bg-[#094d18] shadow-md text-sm tracking-wide font-medium disabled:opacity-50"
               >
-                {verifying ? "Comprobando..." : "Confirmar código"}
+                Entendido
               </button>
               <button
                 type="button"
@@ -793,7 +741,7 @@ if (!isOpen) return null;
                 disabled={sendingCode}
                 className="text-xs text-[#1A4D2E] underline disabled:opacity-50"
               >
-                {sendingCode ? "Enviando código..." : "Reenviar código de verificación"}
+                {sendingCode ? "Enviando enlace..." : "Reenviar enlace de verificación"}
               </button>
             </div>
           ) : (
