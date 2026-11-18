@@ -1201,25 +1201,12 @@ export default function PerfilDetallado() {
           >
             <div className="bg-white rounded-2xl shadow-md p-7 border border-[#E0F2F1]">
               <div className="flex flex-col items-center">
-                {/* Mensaje animado si no hay foto */}
-                <AnimatePresence>
-                  {!fotoPerfil && (
-                    <motion.p 
-                      initial={{ opacity: 0, y: -2 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      transition={{ 
-                        duration: 4,
-                        ease: "easeInOut",
-                        repeat: Infinity,
-                        repeatType: "reverse"
-                      }}
-                      className="text-sm text-[#3C590D] text-center font-semibold mb-0.5 max-w-xs"
-                    >
-                      {t('uploadPhotoMessage')}
-                    </motion.p>
-                  )}
-                </AnimatePresence>
+                {/* Mensaje solo mientras no hay foto */}
+                {!fotoPerfil && (
+                  <p className="text-sm text-[#3C590D] text-center font-semibold mb-0.5 max-w-xs">
+                    {t('uploadPhotoMessage')}
+                  </p>
+                )}
 
                 {/* Foto de perfil */}
                 <div className="relative mb-8 mt-4 group">

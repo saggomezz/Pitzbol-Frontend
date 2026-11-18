@@ -8,34 +8,38 @@ import styles from "./nosotros.module.css";
 
 export default function Nosotros() {
     const t = useTranslations('aboutUs');
+    const [placesCount, setPlacesCount] = useState<number | null>(null);
     const [verifiedCount, setVerifiedCount] = useState<number | null>(null);
 
     useEffect(() => {
-        async function getVerifiedGuidesCount() {
-            const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-            if (!baseUrl) return null;
-            const candidates = [
-                `${baseUrl}/api/guides/verified-count`,
-                `${baseUrl}/api/guia/verified-count`,
-                `${baseUrl}/api/guides/stats`,
-            ];
-            for (const url of candidates) {
-                try {
-                    const res = await fetch(url, { cache: "no-store" });
-                    if (!res.ok) continue;
-                    const data = await res.json();
-                    const count = (data?.count ?? data?.total ?? data?.verified ?? null);
-                    if (typeof count === "number") return count;
-                    const parsed = Number(count);
-                    if (Number.isFinite(parsed)) return parsed;
-                } catch (_) {
-                    // try next candidate
-                }
-            }
-            return null;
-        }
+        const getDynamicCounts = async () => {
+            const [placesResult, guidesResult] = await Promise.allSettled([
+                fetch("/api/lugares-proxy?includeApprovedBusinesses=true", { cache: "no-store" }),
+                fetch("/api/guides/verified", { cache: "no-store" }),
+            ]);
 
-        getVerifiedGuidesCount().then(count => setVerifiedCount(count));
+            if (placesResult.status === "fulfilled" && placesResult.value.ok) {
+                const data = await placesResult.value.json();
+                if (Array.isArray(data?.lugares)) {
+                    setPlacesCount(data.lugares.length);
+                }
+            } else {
+                console.error("No se pudieron cargar los lugares destacados.");
+            }
+
+            if (guidesResult.status === "fulfilled" && guidesResult.value.ok) {
+                const data = await guidesResult.value.json();
+                const count = data?.total ?? (Array.isArray(data?.guides) ? data.guides.length : null);
+                const parsed = Number(count);
+                if (Number.isFinite(parsed)) {
+                    setVerifiedCount(parsed);
+                }
+            } else {
+                console.error("No se pudieron cargar los guías verificados.");
+            }
+        };
+
+        getDynamicCounts();
     }, []);
 
     return (
@@ -187,7 +191,9 @@ export default function Nosotros() {
                             <div className={styles.statLabel}>{t('stat1Label')}</div>
                         </div>
                         <div className={styles.stat}>
-                            <div className={styles.statNumber}>{t('stat2Number')}</div>
+                            <div className={styles.statNumber}>{
+                                placesCount === null ? "—" : placesCount.toLocaleString()
+                            }</div>
                             <div className={styles.statLabel}>{t('stat2Label')}</div>
                         </div>
                         <div className={styles.stat}>
